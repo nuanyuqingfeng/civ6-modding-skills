@@ -149,6 +149,10 @@ python art/normalize_icon.py --role unit_icon --show        # 查看该类别规
 - `make_atlas.py` / `convert_art.ps1` 未内置调用，由 AI 在 manifest 里**先跑 normalize 再喂给转换器**
   （或在转换脚本内 import 处理；本 skill 优先在 AI 流程里显式两步，便于审计与回退）。
 
+> **嵌套项目路径坑**：`make_atlas.py` 自动探测 Textures 目录依赖 `.civ6proj` 父目录名；
+> 当工程目录本身带嵌套（如 `示例工程/示例工程`）时会多嵌一层 `示例工程/Textures`。
+> 遇到此类结构请在 manifest 显式写 `texturesDir`（指向真实 `Textures/`），避免 DDS 落错目录。
+
 ## 五、通用转换约定（内置在 convert_art.ps1 / make_atlas.py，AI 只选 role）
 
 - 图标类 role：多尺寸 DDS（上一节全表）；非图标 role：原尺寸单 DDS。
