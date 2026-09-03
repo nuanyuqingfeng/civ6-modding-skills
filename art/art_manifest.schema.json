@@ -21,7 +21,11 @@
       "description": "单图条目：一张源图 → 一个/一串 DDS（走 convert_art.ps1）",
       "items": {
         "type": "object",
-        "required": ["tech", "role", "source"],
+        "required": [
+          "tech",
+          "role",
+          "source"
+        ],
         "properties": {
           "tech": {
             "type": "string",
@@ -31,21 +35,63 @@
           "role": {
             "type": "string",
             "enum": [
-              "civ_icon", "leader_icon", "building_icon", "citystate_icon",
-              "civic_icon", "district_icon", "feature_icon", "government_icon",
-              "greatwork_icon", "policy_icon", "project_icon", "resource_icon",
-              "stat_icon", "tech_icon", "unit_action_icon", "unit_portrait",
-              "unit_icon", "victory_icon", "wonder_icon",
-              "portrait", "background",
-              "fallback", "diplomacy_layer1", "diplomacy_layer2",
-              "diplomacy_layer3", "diplomacy_layer4",
-              "loyalty_3d", "loyalty_sv", "fow", "custom"
+              "civ_icon",
+              "leader_icon",
+              "building_icon",
+              "citystate_icon",
+              "civic_icon",
+              "district_icon",
+              "feature_icon",
+              "government_icon",
+              "greatwork_icon",
+              "policy_icon",
+              "project_icon",
+              "resource_icon",
+              "stat_icon",
+              "tech_icon",
+              "unit_action_icon",
+              "unit_portrait",
+              "unit_icon",
+              "victory_icon",
+              "wonder_icon",
+              "portrait",
+              "background",
+              "fallback",
+              "diplomacy_layer1",
+              "diplomacy_layer2",
+              "diplomacy_layer3",
+              "diplomacy_layer4",
+              "loyalty_3d",
+              "loyalty_sv",
+              "fow",
+              "custom"
             ],
             "description": "角色 → 决定转换尺寸（19 类图标多尺寸，见 art-pipeline.md 尺寸全表；其余原尺寸单 DDS）。custom = 原尺寸输出，兜底非标需求"
           },
           "source": {
             "type": "string",
             "description": "源 PNG 文件名（相对 assetsDir）或绝对路径；文件名可任意（含中文），输出一律重命名为技术名"
+          },
+          "normalize": {
+            "type": "boolean",
+            "default": false,
+            "description": "可选。true = 先做图标规范化预处理（统一画布/内容框/边距/居中，role 规范见 art-pipeline 第四节）再转 DDS；默认 false = 直接缩放，保留用户构图。"
+          },
+          "canvas": {
+            "type": "integer",
+            "minimum": 16,
+            "description": "可选。规范化主画布边长，缺省走 role 规范（如 unit_icon=256）。"
+          },
+          "content": {
+            "type": "integer",
+            "minimum": 16,
+            "description": "可选。规范化内容最长边（px），缺省走 role 规范（如 unit_icon=200≈78%）。"
+          },
+          "color": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255,
+            "description": "可选。剪影填充灰度（R=G=B），缺省走 role 规范；彩色图标传 null/省略。"
           }
         }
       }
@@ -55,7 +101,11 @@
       "description": "多图图集条目（≥2 张图拼网格时使用，走 make_atlas.py；单图多尺寸不要放这里，放 entries）。FOW 变体 = 独立一条 atlasEntries，组员换 FOW 配色源图",
       "items": {
         "type": "object",
-        "required": ["atlas", "grid", "members"],
+        "required": [
+          "atlas",
+          "grid",
+          "members"
+        ],
         "properties": {
           "atlas": {
             "type": "string",
@@ -64,10 +114,21 @@
           },
           "grid": {
             "type": "object",
-            "required": ["cols", "rows"],
+            "required": [
+              "cols",
+              "rows"
+            ],
             "properties": {
-              "cols": { "type": "integer", "minimum": 1, "description": "IconsPerRow" },
-              "rows": { "type": "integer", "minimum": 1, "description": "IconsPerColumn" }
+              "cols": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "IconsPerRow"
+              },
+              "rows": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "IconsPerColumn"
+              }
             }
           },
           "role": {
@@ -76,7 +137,10 @@
           },
           "sizes": {
             "type": "array",
-            "items": { "type": "integer", "minimum": 16 },
+            "items": {
+              "type": "integer",
+              "minimum": 16
+            },
             "description": "可选。显式尺寸列表（覆盖 role；项目自定义集如 Product 32,38,45,50,64,256 在此填写）"
           },
           "filenamePattern": {
@@ -89,7 +153,10 @@
             "minItems": 1,
             "items": {
               "type": "object",
-              "required": ["tech", "source"],
+              "required": [
+                "tech",
+                "source"
+              ],
               "properties": {
                 "tech": {
                   "type": "string",
@@ -98,6 +165,27 @@
                 "source": {
                   "type": "string",
                   "description": "组员源 PNG（≥256×256 正方形；相对 assetsDir 或绝对路径）；顺序即 Index（行优先）"
+                },
+                "normalize": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "可选。true = 先做图标规范化预处理（统一画布/内容框/边距/居中，role 规范见 art-pipeline 第四节）再转 DDS；默认 false = 直接缩放，保留用户构图。"
+                },
+                "canvas": {
+                  "type": "integer",
+                  "minimum": 16,
+                  "description": "可选。规范化主画布边长，缺省走 role 规范（如 unit_icon=256）。"
+                },
+                "content": {
+                  "type": "integer",
+                  "minimum": 16,
+                  "description": "可选。规范化内容最长边（px），缺省走 role 规范（如 unit_icon=200≈78%）。"
+                },
+                "color": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255,
+                  "description": "可选。剪影填充灰度（R=G=B），缺省走 role 规范；彩色图标传 null/省略。"
                 }
               }
             }
