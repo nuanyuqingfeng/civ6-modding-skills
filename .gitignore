@@ -1,0 +1,14 @@
+# ---- Python / 运行缓存 ----
+__pycache__/
+*.pyc
+
+# ---- 大型可再生成数据库（官方 SDK 拷贝快照，不入库）----
+database/*.sqlite
+*.sqlite
+
+# ---- 本地个人环境文件（不随仓库分享/覆盖他人）----
+local_paths.json
+
+# ---- 临时/日志 ----
+*.log
+.tmp/
