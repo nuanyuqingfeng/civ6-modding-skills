@@ -82,7 +82,7 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 | Type | Go To |
 |------|-------|
 | **UI panel** (XML + Lua) | → UI Routing ↓ |
-| **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节 |
+| **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节，图标规范化/占幅/边距规范查其第四节 |
 | **Gameplay logic** (Lua only) | → Gameplay Routing ↓ |
 | **Game data** (units, buildings, modifiers) | → Data Routing ↓ |
 | **Mixed** | → Read all relevant |
@@ -395,7 +395,7 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | `validation.md` | 验证清单 | 完成开发后 |
 | `debug-tools.md` | 调试面板/热重载 | 调试时 |
 | `gotchas.md` | **常见错误（必读）** | **写代码前扫一遍** |
-| `art-pipeline.md` | 素材转换管线（单图 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、Mod.Art.xml 生成、19 类图标尺寸全表）+ 素材询问铁律 | 涉及素材文件时 |
+| `art-pipeline.md` | 素材转换管线（单图 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、Mod.Art.xml 生成、19 类图标尺寸全表）+ 素材询问铁律 + **图标规范化专属章节（第四节，每类 Icon 对应规范，Units 已验证）** | 涉及素材文件时 |
 
 ### 速查表（先扫一眼）
 
@@ -430,6 +430,9 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 
 > 例外：忠诚度贴图 512/128 与 256/128（`civ6-loyalty-icon` skill）；项目可自定义增减
 > （如本项目 Resources 另加 32、Product 含 45），以项目 Icons XML 现状为准。
+>
+> **规范化占幅**：Units（unit_icon）主画布 256、内容占幅 ≈78%（200px）、四周 ≈28px 统一边距、白色剪影+Alpha；
+> 每类 Icon 对应规范见 art-pipeline 第四节（不同于尺寸表）；未验证类别下次触发时走「调研/原图入库/推断」三选一。
 
 ### 深度参考（需要时 grep）
 

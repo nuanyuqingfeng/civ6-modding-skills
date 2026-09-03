@@ -82,7 +82,74 @@
   与旧序列图合成工具（普通插值）的输出允许像素级差异——尺寸/网格/命名完全一致，
   仅像素级更锐；重生成覆盖旧 DDS 前须向用户说明此差异（一致性上报守则）。
 
-## 四、通用转换约定（内置在 convert_art.ps1 / make_atlas.py，AI 只选 role）
+## 四、图标规范化（icon normalization）—— 每类 Icon 遵守对应规范
+
+> **背景**：不同来源的图标源图（画布尺寸、边距、内容填充率、是否贴边各不相同）若直接
+> 进 `convert_art.ps1`（`-w/-h` 硬拉伸）或 `make_atlas.py`（正方形整体 resize），会被无脑拉伸 /
+> 直接等比缩放，导致最终图标**视觉权重不均、贴边或失衡**。本节定义"先规范化、再转 DDS"的
+> 专属流程，**每类 Icon 遵守各自的规范**。
+
+### 4.1 规范结构（每类 Icon 一份）
+
+| 字段 | 含义 |
+|---|---|
+| `canvas` | 统一主画布边长（该类别的最大档/基准档，px） |
+| `content` | 内容最长边目标（px），占画布比例 = content/canvas |
+| `color` | 剪影填充灰度（R=G=B）；彩色图标为 `None` 保留原色 |
+| `status` | `verified`（已调研验证） / `inferred`（由其他类别推断，兜底） / 未定 |
+| `source` | 规范依据/来源 |
+
+引擎：`art/normalize_icon.py`（内置上述 registry `ICON_SPECS`，可 CLI / 模块 / manifest 调用）。
+
+### 4.2 Units 图标规范（本次调研 · 已验证 verified）
+
+- 来源：`F:\Steam\...\Base\Assets\UI\Icons\Icons_Units.xml`（`ICON_ATLAS_UNITS`
+  256/80/50/38/32/22 六档 + FOW 32）+ 项目 12 个新增单位源实测。
+- 参数：`canvas=256`、`content=200`（**占幅 ≈78%**）、`color=255`（白色剪影）、
+  几何居中 → 四周统一边距 **≈28px**。
+- **占幅要点**（本次新增的核心信息）：
+  - 内容最长边缩放到 200px（256 画布的 78%），保持宽高比、等比 contain 居中；
+  - 不裁剪主体、不拉伸；源图贴边/边距不均会被吸收（统一到 ~28px）；
+  - 保留白色 R=G=B=255 + Alpha 定形（供游戏按玩家/文明色着色）；
+  - FOW 变体单独 32（见第九节 apply_fow.py）。
+
+```bash
+# 按内建规范规范化单张
+python art/normalize_icon.py --role unit_icon <源.png> <输出.png>
+python art/normalize_icon.py --role unit_icon --show        # 查看该类别规范参数
+```
+
+### 4.3 其他 Icon 类别：下次触发时的三选一（必问，禁止默认）
+
+未验证类别（building/district/wonder 等，registry 中 `status=inferred` 或未登记）**下次触发时**
+（即用户给该类别素材、要求转换/导入时）必须先问用户选哪种：
+
+1. **调研新规范**（推荐）：按 Units 的调研方式定位该类别原版规范（找 `Icons_*.xml` +
+   社区笔记 + 项目实测），验证后把参数固化进 `ICON_SPECS`（`status=verified`）。
+2. **原图直接入库**：用户自行处理好的/特殊的图（如 Leader 可能由用户仔细处理后才导入），
+   **跳过规范化**（manifest `normalize:false` 或不写），以用户构图为准原样缩放。
+3. **据其他规范推断**（兜底）：从相近类别推断参数，但**必须标记 `status=inferred`** 并
+   在交付说明里注明"推断值，未经该类别专项验证"，下次仍回到三选一确认。
+
+> 铁律衔接：本流程不豁免第一节「素材询问铁律」——处理素材前仍需先问来源/命名/多图意图；
+> 三选一是在此基础上额外的一次询问。
+
+### 4.4 manifest 接入（可选字段，默认关闭）
+
+`entries` 与 `atlasEntries.members` 均支持（`normalize:true` 才启用）：
+
+```jsonc
+{ "tech": "ICON_UNIT_X", "role": "unit_icon",
+  "source": "x.png", "normalize": true,      // 打开规范化预处理
+  "canvas": 256, "content": 200, "color": 255 }  // 可选覆盖；缺省走 role 规范
+```
+
+- `normalize` 缺省 **false**＝保留现有直接缩放行为（用户构图原样入库 / 未咨询前不动）；
+- 打开时：先 `normalize_icon.py` 规范化 → 再走 convert_art / make_atlas 转 DDS。
+- `make_atlas.py` / `convert_art.ps1` 未内置调用，由 AI 在 manifest 里**先跑 normalize 再喂给转换器**
+  （或在转换脚本内 import 处理；本 skill 优先在 AI 流程里显式两步，便于审计与回退）。
+
+## 五、通用转换约定（内置在 convert_art.ps1 / make_atlas.py，AI 只选 role）
 
 - 图标类 role：多尺寸 DDS（上一节全表）；非图标 role：原尺寸单 DDS。
 - 图标源图建议 ≥256×256 正方形；输出各尺寸由 texconv 缩放（atlas 组员由 Pillow 缩放后拼版）。
@@ -122,7 +189,7 @@
 }
 ```
 
-## 五、.tex 编码（重要坑，生成 .tex 时才需要知道）
+## 六、.tex 编码（重要坑，生成 .tex 时才需要知道）
 
 AssetEditor（WinForm/.NET）读取 `.tex` 用**系统 ANSI 代码页**（中文系统 = GBK），不是 UTF-8：
 `m_SourceFilePath` 含中文路径时写 UTF-8 会被 GBK 误读成乱码并令 AssetEditor 崩溃。
@@ -130,7 +197,7 @@ AssetEditor（WinForm/.NET）读取 `.tex` 用**系统 ANSI 代码页**（中文
 `locale.getpreferredencoding`——Python UTF-8 模式下它误报 utf-8）；代码页装不下字符时退用
 XML 字符引用转义，文件仍是合法 XML。**不要手工把 `.tex` 另存为 UTF-8。**
 
-## 六、缺图过滤语义
+## 七、缺图过滤语义
 
 - manifest 中 source 文件不存在 → 该条跳过（打印 skip），对应 XLP 条目**不写**；
 - atlas 条目：单个组员缺图 → 网格留空位并 WARN（其余组员 Index 不变）；
@@ -138,7 +205,7 @@ XML 字符引用转义，文件仍是合法 XML。**不要手工把 `.tex` 另�
 - 某 XLP（Icons.xlp 等）按实存 DDS 过滤后一条不剩 → 整个文件不生成，Art.xml 不引用；
 - 用户删除的图不重建、不恢复（删除 = 持久意图），仅向用户提醒缺失清单。
 
-## 七、完成标准（对照验证）
+## 八、完成标准（对照验证）
 
 1. `Textures\` 下 DDS 数量 = Σ(各 entry 尺寸数) + Σ(各 atlas 条目尺寸数)，每个 DDS 有同名 `.tex`；
 2. atlas 画布尺寸 = (IconsPerRow×s, IconsPerColumn×s)，注册片段的 Name/Filename/Index 与
@@ -149,7 +216,7 @@ XML 字符引用转义，文件仍是合法 XML。**不要手工把 `.tex` 另�
    必跑，差异人工确认后才 `--write`（新增 XLP/Artdef 不重生成 Art.xml = 最常见的漏项）；
 6. 未动用户未确认的任何素材文件。
 
-## 八、FOW 迷雾变体（apply_fow.py）
+## 九、FOW 迷雾变体（apply_fow.py）
 
 原版 `*_FOW` 图标（迷雾中显示的变体）是"羊皮纸素描"风格。原版为逐图标手绘、
 无法逐像素复刻；`art\apply_fow.py` 用官方
