@@ -82,6 +82,47 @@
   与旧序列图合成工具（普通插值）的输出允许像素级差异——尺寸/网格/命名完全一致，
   仅像素级更锐；重生成覆盖旧 DDS 前须向用户说明此差异（一致性上报守则）。
 
+### 3.9 单位立绘（unit_portrait）与伟人立绘（great person portrait）
+
+> 官方来源：`Base/Assets/UI/Icons/Icons_UnitPortraits.xml`、`Icons_GreatPeople.xml`、
+> `PortraitSupport.lua`、`GreatPeoplePopup.lua`。本子节解决"单位立绘怎么注册、伟人立绘为什么不一样"。
+
+#### A. 普通单位立绘（Unit Portrait）
+
+- 尺寸：`unit_portrait` = **38 / 50 / 70 / 95 / 200 / 256**（六档）。
+- 命名：`ICON_UNIT_<UnitType>_PORTRAIT`（1×1 单图集 Index=0 即可）。
+- 官方解析链（`PortraitSupport.lua`，按序回退）：
+  1. `ICON_[ETHNICITY_]<UnitType>_PORTRAIT_<ERA>`（如 `ICON_ETHNICITY_ASIAN_UNIT_X_PORTRAIT_RENAISSANCE`）
+  2. `ICON_[ETHNICITY_]<UnitType>_PORTRAIT`
+  3. `ICON_<UnitType>_PORTRAIT_<ERA>[_F/_M]`
+  4. `ICON_<UnitType>_PORTRAIT[_F/_M]`
+- 族裔前缀：文明 `Ethnicity` 非 `ETHNICITY_EURO` 时，UI 会带 `ICON_ETHNICITY_<ETH>_` 前缀；
+  若项目文明是 `ETHNICITY_EURO`（如 RGN），**不需要**注册族裔前缀条目。
+- 伟人单位额外有性别后缀 `_F/_M`（`GetGreatPersonGenderSuffix`），可按需注册
+  `ICON_UNIT_<Type>_PORTRAIT_F` 等女性/男性变体。
+
+#### B. 伟人立绘（Great Person）—— 与普通单位立绘是两套系统
+
+1. **伟人招募面板头像（Great People Popup）**：
+   - 名称 = `ICON_GENERIC_GREAT_PERSON_INDIVIDUAL_<CLASS>`（由 `GreatPeoplePopup.lua` 从 class 名生成，
+     把 `GREAT_PERSON_CLASS_X` 的 `_CLASS` 替换为 `_INDIVIDUAL`）。
+   - 图集 = `ICON_ATLAS_GREAT_PERSON_INDIVIDUAL`，**IconSize 105 / 216**（3×3 网格），
+     官方 9 个职业通用头像（ADMIRAL/ARTIST/ENGINEER/GENERAL/MERCHANT/MUSICIAN/PROPHET/SCIENTIST/WRITER）。
+   - **官方没有为每个伟人个体做专属立绘**；自定义伟人 class 时，要显示头像需注册
+     `ICON_GENERIC_GREAT_PERSON_INDIVIDUAL_<自定义CLASS>`（可指向官方 generic 图集对应职业 Index，
+     或自定义 105/216 图集）。
+   - 若复用官方 class（如 `GREAT_PERSON_CLASS_MUSICIAN`），面板头像自动用官方 generic，无需注册。
+
+2. **伟人单位的地图/单位面板立绘**：仍走普通 Unit Portrait（A），即 `ICON_UNIT_<Type>_PORTRAIT`。
+
+3. **`GreatPersonIndividualIconModifiers.OverrideUnitIcon`**：只覆盖地图上的单位图标/旗帜，
+   **不是**立绘；不要与 portrait 混为一谈。
+
+4. 兄弟项目参考：Jinhsi 的自定义伟人同时注册了
+   `ICON_UNIT_<自定义伟人单位>_PORTRAIT`（单位立绘 38~256）和
+   `ICON_GENERIC_GREAT_PERSON_INDIVIDUAL_<自定义CLASS>`（招募面板头像，复用官方 generic Index），
+   两者缺一不可。
+
 ## 四、图标规范化（icon normalization）—— 每类 Icon 遵守对应规范
 
 > **背景**：不同来源的图标源图（画布尺寸、边距、内容填充率、是否贴边各不相同）若直接
