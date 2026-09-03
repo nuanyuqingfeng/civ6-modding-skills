@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "art_manifest",
+  "description": "Civ6 美术素材转换清单：AI 按项目 XLPs/Icons.xml/ArtDefs 推导后编写，convert_art.ps1（单图 entries）与 make_atlas.py（多图图集 atlasEntries）执行。尺寸由 role 内置决定，AI 不填数字（atlas 条目除外）。",
+  "type": "object",
+  "properties": {
+    "projectRoot": {
+      "type": "string",
+      "description": "可选。工程根目录（含 .civ6sln 或工程子目录）；缺省 = 本 manifest 所在目录"
+    },
+    "texturesDir": {
+      "type": "string",
+      "description": "可选。DDS/.tex 输出目录；缺省 = <projectRoot>\\<ModName>\\Textures（ModName 由 *.civ6sln/*.civ6proj 自动探测）"
+    },
+    "assetsDir": {
+      "type": "string",
+      "description": "可选。源 PNG 检索根目录（也是 make_atlas 拼版 PNG 的输出目录）；缺省 = <projectRoot>\\.assets。source 为相对文件名时在此解析，绝对路径则直接使用"
+    },
+    "entries": {
+      "type": "array",
+      "description": "单图条目：一张源图 → 一个/一串 DDS（走 convert_art.ps1）",
+      "items": {
+        "type": "object",
+        "required": ["tech", "role", "source"],
+        "properties": {
+          "tech": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+            "description": "技术名 basename（不带扩展名/尺寸后缀），如 LEADER_CTTH_FOREGROUND、ICON_CIVILIZATION_MYMOD；BLP 条目名区分大小写，忠诚度贴图为混合大小写（Loyalty_Overlay_*）"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "civ_icon", "leader_icon", "building_icon", "citystate_icon",
+              "civic_icon", "district_icon", "feature_icon", "government_icon",
+              "greatwork_icon", "policy_icon", "project_icon", "resource_icon",
+              "stat_icon", "tech_icon", "unit_action_icon", "unit_portrait",
+              "unit_icon", "victory_icon", "wonder_icon",
+              "portrait", "background",
+              "fallback", "diplomacy_layer1", "diplomacy_layer2",
+              "diplomacy_layer3", "diplomacy_layer4",
+              "loyalty_3d", "loyalty_sv", "fow", "custom"
+            ],
+            "description": "角色 → 决定转换尺寸（19 类图标多尺寸，见 art-pipeline.md 尺寸全表；其余原尺寸单 DDS）。custom = 原尺寸输出，兜底非标需求"
+          },
+          "source": {
+            "type": "string",
+            "description": "源 PNG 文件名（相对 assetsDir）或绝对路径；文件名可任意（含中文），输出一律重命名为技术名"
+          }
+        }
+      }
+    },
+    "atlasEntries": {
+      "type": "array",
+      "description": "多图图集条目（≥2 张图拼网格时使用，走 make_atlas.py；单图多尺寸不要放这里，放 entries）。FOW 变体 = 独立一条 atlasEntries，组员换 FOW 配色源图",
+      "items": {
+        "type": "object",
+        "required": ["atlas", "grid", "members"],
+        "properties": {
+          "atlas": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+            "description": "IconTextureAtlases.Name，如 ATLAS_{PREFIX}_ICON_LEADERS（项目前缀由项目规范定义）"
+          },
+          "grid": {
+            "type": "object",
+            "required": ["cols", "rows"],
+            "properties": {
+              "cols": { "type": "integer", "minimum": 1, "description": "IconsPerRow" },
+              "rows": { "type": "integer", "minimum": 1, "description": "IconsPerColumn" }
+            }
+          },
+          "role": {
+            "type": "string",
+            "description": "可选。与 entries 同一套图标 role，决定 sizes；与 sizes 至少给一个"
+          },
+          "sizes": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 16 },
+            "description": "可选。显式尺寸列表（覆盖 role；项目自定义集如 Product 32,38,45,50,64,256 在此填写）"
+          },
+          "filenamePattern": {
+            "type": "string",
+            "default": "{atlas}{size}",
+            "description": "DDS 命名模板，可用 {atlas}/{size} 占位。默认 ATLAS_{PREFIX}_ICON_LEADERS{size} 风格；单格 1x1 建议用 {atlas}_{size}"
+          },
+          "members": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["tech", "source"],
+              "properties": {
+                "tech": {
+                  "type": "string",
+                  "description": "IconDefinitions 行的图标名（ICON_*），如 ICON_LEADER_CANTARELLA_QYQXP"
+                },
+                "source": {
+                  "type": "string",
+                  "description": "组员源 PNG（≥256×256 正方形；相对 assetsDir 或绝对路径）；顺序即 Index（行优先）"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
