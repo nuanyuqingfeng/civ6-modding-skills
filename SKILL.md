@@ -117,7 +117,7 @@ MODIFY rules
 └─ Via Lua override                     → gameplay-lua.md + `query_api.py`
 
 ADD content (unit/building/district)    → database.md + project-setup.md（优先查 .civ6proj）
-ADD civ/leader                          → database.md + `query_api.py`
+ADD civ/leader / agenda / AI 偏好                          → database.md + agenda-authoring.md + `query_api.py`
 ```
 
 **查询:** 事件签名 → `python database/scripts/query_events.py --search 关键词` · API → `api-cheatsheet.md` + `database\api.sqlite`
@@ -390,6 +390,7 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | `workflows.md` | 任务工作流决策树 | 路由指示时 |
 | `gameplay-lua.md` | GP Lua 脚本基础 | 写 GP 逻辑时 |
 | `database.md` | 数据增删改 + 查询指南 | 写数据时 |
+| `agenda-authoring.md` | **议程与领袖 AI 行为编写**：议程好感链 / reqset 复用与自建规则 / 文案规范 / 28 个 AI System 偏好表 / 注册顺序与验证 | **写议程、外交好感、领袖 AI 偏好时** |
 | `project-setup.md` | .civ6proj / .modinfo 项目结构与注册指南 | 注册文件时 |
 | `conventions.md` | 命名规范/文件模板 | 写任何文件前 |
 | `validation.md` | 验证清单 | 完成开发后 |
