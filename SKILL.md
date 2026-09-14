@@ -1,5 +1,6 @@
 ---
 name: civ6-tuner
+author: 千与千寻瀑
 description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局里执行任意 Lua，用于接口行为/参数/PROPERTY/modifier 的运行时验证、游戏内快速测试、复现脚本报错。当静态校验(rgn_validate)无法回答"这个 API 实际行为是什么"、需要查询运行时状态或验证 GP/UI 链路时使用。
 ---
 
@@ -199,3 +200,10 @@ python $T logs --log-file Database.log -n 50
 线格式与握手流程借鉴 [lmwilki/civ6-mcp](https://github.com/lmwilki/civ6-mcp)（MIT）逆向成果：
 帧 `[4B LE 长度][4B LE tag][null 结尾 payload]`；tag=4 握手(`APP:`/`LSQ:`)，tag=3 执行
 (`CMD:{索引}:{代码}`)；输出前缀 `O\x00<上下文>: `，错误前缀 `ERR:`，哨兵 `---END---`。
+
+---
+
+## 作者与致谢
+
+- 整理人：千与千寻瀑
+- 致谢：优妮
