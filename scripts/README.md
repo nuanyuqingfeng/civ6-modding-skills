@@ -11,6 +11,7 @@
 | `check_sql_exec.py` | **可执行性**：非法转义、字符错位导致「整条 INSERT 报废」 | `python check_sql_exec.py [--root <工程>] [--base <库>]` | 0 / 1 |
 | `check_types_kinds.py` | `INSERT INTO Types` 的 `Kind` 是否是引擎合法枚举（复现 `Invalid Reference on Types.Kind`） | `python check_types_kinds.py [--root <工程>] [--db <库>] [--dirs Data,Mod_Adaptation]` | 0 / 1 |
 | `check_proj_content.py` | `.civ6proj` 的 `<Content Include>` 与磁盘是否**双向闭合**（悬空清单项 / 漏登记） | `python check_proj_content.py <工程根目录>` | 0 / 1 |
+| `check_lua_registration.py` | **`.lua` 有没有有效加载路径**（按「UI 上下文 / include 扩展件 / GP 脚本」三角色判定） | `python check_lua_registration.py <工程根目录>` | 0 / 1 |
 | `check_pantry.py` | **pantry 卫生**：`.tex` 是否只在 `Textures/`、`m_Name`/`m_RelativePath` 是否全工程唯一、有无 depot 库路径、非 ASCII 文件名、`.tex`↔`.dds` 配对 | `python check_pantry.py [--root <pantry>] [--quiet]` | 0 通过 / 1 有 error |
 | `verify_trees.py` | 两棵目录树是否**逐字节相同**（递归 SHA256）—— 源 ↔ Mods 副本一致性 | `python verify_trees.py <dirA> <dirB>` | 0 相同 / 1 不同 |
 
@@ -46,7 +47,19 @@ check_types_kinds   管「Kind 是不是合法枚举」← 打包不报错，加
 ② node   rgn_validate_runner.mjs <工程>/Data   # 引用闭合吗
 ③ python check_types_kinds.py --root <工程>    # Kind 合法吗
 ④ python check_proj_content.py <工程>          # 打包清单闭合吗
-⑤ （动过贴图时）
+⑤ python check_lua_registration.py <工程>      # 每个 .lua 都有有效加载路径吗
+⑥ （动过贴图时）
    python check_pantry.py --root <工程>        # pantry 卫生
    python clear_ae_cache.py --mod <工程名>     # 清 AE 缓存，再开 AssetEditor 看日志有无 CRASH
 ```
+
+### ⚠ 写这类工具时的两条血泪教训（都踩过）
+
+1. **不要用 `<Tag>…</Tag>` 成对匹配去切 `.modinfo` / `.civ6proj` 的动作段** ——
+   文件里存在**自闭合**动作标签（`<UpdateAudio id="Audio" />`），成对匹配会让它一路吞到下一个同名闭合标签，
+   把中间夹着的其它动作整块吃掉（实测：`UpdateAudio` 吞掉了紧随其后的 `ImportFiles` 与 `AddUserInterfaces`，
+   导致这两个动作的文件全部漏判 → 一片假阳性）。**改用边界法**（本动作开标签 → 下一个动作开标签）。
+2. **判据上线前先用已知样本反向校验** ——
+   `check_lua_registration.py` 第一版把「同名 xml 不在 `AddUserInterfaces`」一律报错，
+   结果把官方的**整体替换**写法（同名 xml + lua 一起放 `ImportFiles`，如 `GovernorAssignmentChooser`）全误报。
+   静判断次必须是：**先看有没有 (b) ImportFiles 这条路径**，再看 (c) 同名 xml 自动加载。
