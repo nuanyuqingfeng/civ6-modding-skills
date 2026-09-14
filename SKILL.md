@@ -74,6 +74,9 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 
 ## Task Routing — Read This First
 
+> 🧭 **第一次接触这个 skill 家族？先读 `reference/FAMILY_INDEX.md`** —— 一页式导航：
+> 9 个 civ6 skill 各自的职责与边界、**任务 → 该加载哪个 skill** 的路由表、跨 skill 共用约定（环境路径总表 / 查询三级阶梯 / 校验工具 / 中文处理）、以及分享与版本控制状态。
+
 **Full workflow:** `workflows.md` · **Gotchas (必读):** `gotchas.md`  
 **若项目根目录存在 AGENTS.md，也需提前阅读。**
 
@@ -481,6 +484,7 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 
 | 文件 | 用途 |
 |------|------|
+| `reference/FAMILY_INDEX.md` | **家族索引**：9 个 civ6 skill 的职责/边界/路由表 + 共用约定 + 分享状态 |
 | `reference/api_enhanced.json` (4.2MB) | 增强 API + 中文注释 |
 | `reference/events_enhanced.json` (1.2MB) | 增强事件（`query_events.py` 查询） |
 | `database/schema-annotated.md` | 常用多列表注解（列定义/必填/示例值） |
