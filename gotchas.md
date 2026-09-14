@@ -110,8 +110,10 @@
     - 引擎/`executescript` **遇错即停**，**同文件后续语句块也全部不执行**；
     - 数据没进库 → 游戏按 `LanguagePriorities` 回退 en_US → **中文环境显示英文**，或直接显示裸 `LOC_` tag。
 
-    实测规模：某工程 2 个文件 11 处词内撇号（`Prophet's Teachings` ×5、`points d'Écrivain` ×6），
-    导致 en_US **463 行全丢**、fr_FR **335 行丢失**，全程无任何构建期报错。
+    实测规模（2026-09-14 修复）：某工程 2 个文件 **14 处**词内撇号
+    （en_US 5 处 `Prophet's Teachings` ×3 / `Merchant's Fortune` ×2；fr_FR 9 处 `d'Écrivain` / `d'Amiral`），
+    导致 en_US **463 行全丢**（块1 即失败，后续 6 块也不执行）、fr_FR **335 行丢失**，全程无任何构建期报错。
+    修复后两文件各入库 463 行，全工程 152/152 SQL 通过。
 
     **自查**：`python scripts/check_sql_exec.py --root <工程>` —— 它会整文件 `executescript` 并单独列出「未转义的词内撇号」及其**真实行号**。
     另一条纪律：写含文本的 INSERT 时**不要用 PowerShell here-string / 重定向生成**（会引入转义层），用 Python/Node 显式 UTF-8 写入。
@@ -313,6 +315,27 @@
     ```
     更隐蔽的是：`LIKE 0` **不是永不命中**，而是**只命中字面量为 `'0'` 的行**（内存 SQLite 实跑复现：只返回值为 `'0'` 的那行）。
     **写多关键词检索一律把 `LIKE` 重复写在每个条件上。**
+
+    ★ **实机复核（2026-09-14 FireTuner · gamecore · `DB.Query`）—— 与内存 SQLite 结论完全一致**：
+
+    | 探针 | 结果 |
+    |---|---|
+    | `SELECT ('%a%' OR '%b%'), typeof('%a%' OR '%b%')` | `0` / **`integer`** |
+    | `SELECT 'abc' WHERE 'abc' LIKE ('%a%' OR '%b%')` | **0 行** |
+    | `SELECT '0' WHERE '0' LIKE ('%a%' OR '%b%')` | **命中**（证实"只匹配字面量 0"） |
+    | `SELECT 'abc' WHERE 'abc' LIKE '%a%' OR 'abc' LIKE '%b%'` | 命中 |
+
+    真实运行时库（`Types` 表）全库检索对照：
+
+    | 查询 | 命中 |
+    |---|---|
+    | `Type LIKE '%TRAIT%' OR Type LIKE '%POLICY%'` | **627** |
+    | `Type LIKE ('%TRAIT%' OR '%POLICY%')` | **0** |
+    | 三关键词版（UNIT / BUILDING / DISTRICT）正确 / 错误 | **1402 / 0** |
+
+    > 引擎的 SQLite 与标准 SQLite 行为一致（字符串→数值强制转换为 0，`typeof` = `integer`）。
+    > 危险点在于：在恰好有 `'0'` 值的列上，错误写法会给出**看似有结果、实则完全无关**的答案 —— 比"返回空"更难发现。
+    > 复现探针存档：`civ6-tuner/snippets/sql_like_trap.lua`（`exec --context gamecore --file …`）。
 
 53. **`LIKE` 里的 `_` 是单字符通配符，匹配字面下划线必须 `ESCAPE '\'`**
     ```sql
