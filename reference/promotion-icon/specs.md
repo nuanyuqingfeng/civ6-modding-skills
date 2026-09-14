@@ -1,4 +1,4 @@
-# 原版实测规格（civ6-promotion-icon）
+# 原版实测规格（晋升图标）
 
 数据来源：`Promotions32.dds`（SDK Assets pantry 散装 DDS → texconv 转 PNG）1:1 像素测量。
 
