@@ -20,7 +20,12 @@ Events.SomeEvent();
 Events.ExitToMainMenu();
 ```
 
-**Events.* has 483 hooks.** The most important ~100 are listed below by category. Use `python database/scripts/query_events.py --search 关键词` to look up any event's parameters and signature.
+**`Events.*` 运行时实测 463 个**（UI 与 GP 两张表内容完全一致）。The most important ~100 are listed below by category. Use `python database/scripts/query_events.py --search 关键词` to look up any event's parameters and signature.
+
+> **可用性实测（2026-09 FireTuner）**：引擎共注册 325 个 `GameCoreEvent`，其中 **277 个暴露到 `Events.*`**，另 **48 个完全不经 Lua**（仅引擎内部使用）。
+> 这 48 个在 `events_enhanced.json` 中标注为 `availability: "None"` + `luaSubscribable: false`。
+> ⚠ **UI 侧对不存在的事件写 `.Add()` 会抛 `attempt to index a nil value`，并中断所在函数后续的全部初始化**（不是静默失败）——示例工程 曾因此整个面板打不开。
+> 判定某事件是否存在的**唯一权威探针**是 `type(Events.名称) == "table"`。
 
 ### Type Legend
 
@@ -464,7 +469,18 @@ end);
 
 **Key difference**: GamePlay scripts run on the game core side, not the UI side. They cannot access UI controls, `ContextPtr`, or `Controls`. Both `Events.*` and `GameEvents.*` are available in GP; `LuaEvents.*` is UI-only.
 
+> **⚠ 两条总线互不镜像（2026-09 FireTuner 对照实验，同上下文同时注册两边处理器）**
+> | 事件 | 性质 | `Events` 命中 | `GameEvents` 命中 |
+> |---|---|---|---|
+> | `UnitMoveComplete` | 引擎 GameCoreEvent | 11 | **0** |
+> | `PlayerTurnStarted` | Lua 级事件 | **0** | 17 |
+>
+> 即 **引擎 `GameCoreEvent` 只进 `Events.*`；`GameEvents.*` 只承载 Lua 级事件**（自定义 event、`EXECUTE_SCRIPT` 触发的）。所以 **`GameEvents` 不是引擎事件的"后门"**：引擎没暴露到 `Events.*` 的事件，用 `GameEvents.*` 订阅是**静默无效登记**——不报错，也永远不会回调。
+> **⚠ `GameEvents.X` 对任意名字都返回 table（自动建表）**：`type(GameEvents.X)` 说明不了任何事，别拿它当探针；只有 `type(Events.X)` 有效。
+
 ### Full GameEvents Reference (82 hooks)
+
+> **注**：本表列的是**实际被使用过**的 GamePlay 钩子（语料扫描所得）。`events_enhanced.json` 里 `eventSystem=GameEvents` 的记录数要多于此（2026-09 起含 48 条引擎内部事件，标 `availability: "None"` + `luaSubscribable: false`，**任何一层都订阅不到**）——查库时以 `availability` 字段区分，别只看 eventSystem。
 
 | Event | Parameters |
 |-------|-----------|
@@ -582,7 +598,9 @@ local data = params.result;
 
 7. **Context load order matters** — When a context loads, it subscribes to events. Already-fired events won't be replayed. Use `LoadScreenClose` or manual re-initialization for late-loading contexts.
 
-8. **GameCoreEvent type events are not available in GamePlay scripts** — Despite the name, many `GameCoreEvent`-typed events in `Events.*` are only accessible from UI contexts. The type describes the data source, not availability.
+8. **别把 `GameEvents.*` 当引擎事件的"后门"** — 2026-09 实测：`Events.*` 在 UI 与 GP 是同一张 463 条的表，`UnitMoveComplete`/`CitySelectionChanged`/`UnitAddedToMap`/`PlayerTurnActivated` 在 GP 侧同样正常触发；而 `GameEvents.*` 只承载 Lua 级事件，**不承载任何引擎 GameCoreEvent**（同一 `UnitMoveComplete`：Events 端 11 次 / GameEvents 端 0 次）。
+   真正"仅 UI"的少数事件（如 `UnitSimPositionChanged`）在 `events_enhanced.json` 里标 `availability: "UI"`；引擎未暴露到 `Events.*` 的 48 个标 `availability: "None"`——**哪一层都订阅不到**，UI 侧 `.Add()` 还会直接崩。
+   ⚠ `GameEvents.X` 与 `Events.X` 不同：前者对**任意**名字都自动建 table，不能用作存在性探针。
 
 ## P3 校准补充事件（2026-08，官方 Lua 验证）
 

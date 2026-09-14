@@ -473,8 +473,8 @@ XML instance (define in your context XML):
 
 ```lua
 "[NEWLINE]"                              -- Line break
-"[COLOR:Red]text[ENDCOLOR]"              -- Colored segment (全色名: DebugLocalization.sqlite.Colors)
-"[ICON_Food]"                            -- Inline icon from Icon Atlas (全图标: DebugLocalization.sqlite.Icons)
+"[COLOR:Red]text[ENDCOLOR]"              -- Colored segment (全色名: DebugLocalization.sqlite.SkillAnnotation_Colors)
+"[ICON_Food]"                            -- Inline icon from Icon Atlas (全图标: DebugLocalization.sqlite.SkillAnnotation_Icons)
 ```
 
 ## Localization

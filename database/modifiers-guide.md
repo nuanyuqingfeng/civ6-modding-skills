@@ -29,8 +29,11 @@ SELECT Name, Value FROM ModifierArguments WHERE ModifierId='MODIFIER_XXX';
 -- Search Requirements
 SELECT * FROM Requirements WHERE RequirementType LIKE '%CITY_HAS_BUILDING%';
 
--- Search DynamicModifiers (Collection + Effect mapping)
-SELECT * FROM DynamicModifiers WHERE EffectType LIKE '%ATTACH_MODIFIER%';
+-- Search DynamicModifiers (Collection + Effect mapping; official table has exactly 3 columns)
+SELECT ModifierType, CollectionType, EffectType FROM DynamicModifiers WHERE EffectType LIKE '%ATTACH_MODIFIER%';
+
+-- DLC/Mode dependency annotation (metadata DB: database/source_index.sqlite, NOT a game column)
+SELECT * FROM dlc_dependency WHERE ModifierType LIKE '%KEYWORD%';
 
 -- Search type names in Chinese or English
 SELECT Type FROM Units JOIN LocalizedText ON Units.Name = LocalizedText.Tag

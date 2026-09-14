@@ -132,7 +132,7 @@
 | 目的 | 说明 | 场景 |
 |------|------|------|
 | **改作用域** | 相同 Effect 换 CollectionType | 如 `UNIT`→`OWNER`、`CITY`→`CITIES` |
-| **消除 DLC 依赖** | 引擎 ModifierType 定义在 DLC 中，直接引用可能在缺失 DLC 时静默失效 | 查询到 `IsDlcDependency=1` 时**必须自注册** |
+| **消除 DLC 依赖** | 引擎 ModifierType 定义在 Mode/Scenario DLC 中，直接引用可能在缺失 DLC/模式时静默失效 | 查 `source_index.sqlite` 的 `dlc_dependency`（或 JSON 清单）标注为 1 时**必须自注册** |
 
 ### 注册模板
 
@@ -144,6 +144,8 @@ INSERT OR REPLACE INTO DynamicModifiers (ModifierType, EffectType, CollectionTyp
 ('MODIFIER_PLAYER_CITIES_ADJUST_UNIT_PRODUCTION_MYMOD', 'EFFECT_ADJUST_UNIT_PRODUCTION', 'COLLECTION_PLAYER_CITIES');
 ```
 
+> ⚠️ 官方 `DynamicModifiers` **只有 3 列**（`ModifierType` / `CollectionType` / `EffectType`）。`IsDlcDependency` 只是 skill 元数据（`source_index.sqlite` 的 `dlc_dependency` 表）里的标注，**不是游戏列**——**禁止写进 mod SQL**，否则游戏加载会报 `table DynamicModifiers has no column named IsDlcDependency`。
+
 用相同 EffectType + CollectionType 但不同 ModifierType 名 = 互不干扰的多份独立实例。
 
 ### 常用 EffectType 搭配
@@ -154,8 +156,9 @@ INSERT OR REPLACE INTO DynamicModifiers (ModifierType, EffectType, CollectionTyp
 | `EFFECT_ADJUST_ALL_UNIT_PRODUCTION_MODIFIER` | `COLLECTION_PLAYER_CITIES` | Amount（百分比） |
 | `EFFECT_ADJUST_CITY_YIELD_CHANGE` | `COLLECTION_PLAYER_CITIES` | Amount, YieldType |
 
-> **查询提示：** `SELECT * FROM DynamicModifiers WHERE ModifierType LIKE '%keyword%' AND (IsDlcDependency IS NULL OR IsDlcDependency = 0)`  
-> 结果中 `IsDlcDependency=1` 的条目表示该 ModifierType 来自 DLC，应自行注册同 Effect+Collection 的新类型，不要直接引用。
+> **查询提示（DLC/模式依赖）：** 官方表只有 3 列；DLC 标注在元数据库 `database/source_index.sqlite` 的 `dlc_dependency` 表里：
+> `SELECT * FROM dlc_dependency WHERE ModifierType LIKE '%keyword%';`  
+> 其中 `IsDlcDependency=1` 表示该 ModifierType 定义在 Mode/Scenario DLC 中，缺失对应 DLC/模式时会静默失效，应自行注册同 Effect+Collection 的新类型，不要直接引用。
 
 ## RequirementSet 类型
 
