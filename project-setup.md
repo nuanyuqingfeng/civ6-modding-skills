@@ -599,9 +599,13 @@ XML / SQL / Lua 同步时的条目格式：
 
 | 角色 | 判定 | 登记位置 |
 |---|---|---|
-| ① **UI 上下文脚本** | 有同名 `<Context>` `.xml` 被列进 `AddUserInterfaces` | **只需打包清单**；引擎会**自动加载同名 `.lua`** |
+| ① **UI 上下文脚本** | 有同名 `.xml` 被列进 `AddUserInterfaces` | **只需打包清单**；引擎会**自动加载同名 `.lua`** |
 | ② **include 扩展件 / 官方脚本替代件** | 文件名 `<官方名>_<后缀>.lua`，靠官方 `include("<官方名>_", true)` 拉入；或替换官方文件 | **必须进 `ImportFiles`** |
 | ③ **GamePlay 脚本** | 在 GP 侧运行 | **必须进 `AddGameplayScripts`** |
+
+> **①的两个放宽（易误判）**：
+> 1. **`.xml` 允许空着** —— 空的 `<GameData></GameData>` 占位也行，引擎**仍会加载同名 `.lua`**；
+> 2. 前提是那个 `.xml` **确实在 `AddUserInterfaces` 里**；**只列 `.lua` 不列 `.xml` 才是真错**。
 
 **证据（官方 + 工坊 170 个 modinfo 全量统计）**：
 - `AddUserInterfaces` 内**只列 `.xml`** 的占 **128/130** —— 标准写法；

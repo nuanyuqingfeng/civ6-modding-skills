@@ -28,9 +28,16 @@
    >
    > | `.lua` 的角色 | 判定依据 | 需要在哪里登记 |
    > |---|---|---|
-   > | **① UI 上下文脚本** | 有一个**同名 `.xml`**（`<Context>`）被列进 `AddUserInterfaces` | ★ **只需在打包清单里**。引擎建上下文时会**自动加载同名 `.lua`**，**不必**再单列 Action |
+   > | **① UI 上下文脚本** | 有一个**同名 `.xml`** 被列进 `AddUserInterfaces` | ★ **只需在打包清单里**。引擎建上下文时会**自动加载同名 `.lua`**，**不必**再单列 Action |
    > | **② include 扩展件 / 官方脚本替代件** | 文件名形如 `<官方名>_<后缀>.lua`，靠官方 `include("<官方名>_", true)` 通配拉入；或整体替换官方文件 | ★ **必须进 `ImportFiles`** —— 否则不在 UI 上下文的 `include()` 搜索路径里 |
    > | **③ GamePlay 脚本** | 在 GP 侧运行 | **必须进 `AddGameplayScripts`** |
+   >
+   > **★ ①的两个关键放宽（容易误判，务必记住）**：
+   > 1. **`.xml` 允许空着** —— 哪怕内容只是一个空的 `<GameData></GameData>` 占位（甚至没有真正的 `<Context>`），
+   >    引擎**依然会自动加载同名 `.lua`**。所以"xml 里没有东西"不等于"lua 不会跑"。实测例：某工程 `UI/Disaster_Plots/DisasterPlot_BS.xml` 全文就是空的 `<GameData></GameData>`，同名的 `DisasterPlot_BS.lua`（511 B）照样被加载。
+   > 2. **`.xml` 必须在 `AddUserInterfaces` 里** —— 这是①成立的前提；**只列 `.lua` 不列 `.xml` 才是真错**（上下文根本不会建立）。
+   >
+   > 因此判定①类文件的唯一问题是：**它有没有同名 `.xml`？那个 `.xml` 在不在 `AddUserInterfaces` 里？** 两条都满足 → 不需任何额外登记。
    >
    > **证据（官方 + 工坊 170 个 modinfo 全量统计）**：
    > - `AddUserInterfaces` 区块内**只列 `.xml`** 的有 **128/130** 例 —— 这是标准写法；
@@ -87,7 +94,28 @@
 
 12. **`Requirements.Inverse` (BOOLEAN NOT NULL) is universally supported on ALL RequirementType.** While only 53 of 545+ RequirementType instances use Inverse=1 in official data, the engine respects the column on every type. Use `Inverse=1` on the Requirements row to negate ANY requirement — confirmed safe for `REQUIREMENT_UNIT_TYPE_MATCHES`, `REQUIREMENT_UNIT_TAG_MATCHES`, and all others. Do NOT use `Inverse` as a RequirementArgument (it's a column on the Requirements table, not an argument in RequirementArguments).
 
-13. **SQL 文件中文本内的单引号 `'` 必须转义为 `''`** — SQL 标准转义方式是用两个连续单引号，反斜杠 `\'` 无效，会直接报错或插入错误数据。例如：`'Penitent''s End'` ✓，`'Penitent\'s End'` ✗。这在 `LocalizedText`、`ModifierStrings` 等含英文文本的 INSERT 中极易遗忘。
+13. **文本里绝对不可以出现单个 `'`、也不可以用 `\'` 或 `\` —— 唯一的隔离方式是连续两个 `''`**
+    SQL 的字符串转义是**两个连续单引号 `''`**，用来与文本两端的定界 `'` 区分开。
+    反斜杠**不是**转义符：`\'` 会让字符串在那里提前闭合，`\` 本身也是非法字符。
+
+    | 写法 | 结果 |
+    |---|---|
+    | `'Penitent''s End'` | ✅ 正确（`''` = 一个字面单引号） |
+    | `'Penitent\'s End'` | ❌ 反斜杠非转义符 → 字符串在 `\` 前闭合 → 语法错误 |
+    | `'Prophet's Teachings'` | ❌ 单个 `'` → 字符串在 `s` 前闭合 → 语法错误 |
+    | 文本里任何裸 `\` | ❌ 非法字符，不要把 Windows 路径、正则、LaTeX 之类原样塞进文本 |
+
+    **为什么必须当成硬性铁律**：
+    - 报错的是**整条 `INSERT` 语句**，不是那一行 —— 该语句的**所有行**一起丢失；
+    - 引擎/`executescript` **遇错即停**，**同文件后续语句块也全部不执行**；
+    - 数据没进库 → 游戏按 `LanguagePriorities` 回退 en_US → **中文环境显示英文**，或直接显示裸 `LOC_` tag。
+
+    实测规模：某工程 2 个文件 11 处词内撇号（`Prophet's Teachings` ×5、`points d'Écrivain` ×6），
+    导致 en_US **463 行全丢**、fr_FR **335 行丢失**，全程无任何构建期报错。
+
+    **自查**：`python scripts/check_sql_exec.py --root <工程>` —— 它会整文件 `executescript` 并单独列出「未转义的词内撇号」及其**真实行号**。
+    另一条纪律：写含文本的 INSERT 时**不要用 PowerShell here-string / 重定向生成**（会引入转义层），用 Python/Node 显式 UTF-8 写入。
+
 
 13. **查询游戏数据 API 首选 SQLite。** `database/api.sqlite` (Lua API) 和 `database/DebugGameplay.sqlite` (游戏数据) 覆盖全部查询需求。详见 SKILL.md Rule 0.4。
 
