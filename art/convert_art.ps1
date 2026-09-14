@@ -83,7 +83,7 @@ function Get-Sizes([string]$role) {
         "unit_icon"         { return $UnitIconSizes }
         "victory_icon"      { return $VictoryIconSizes }
         "wonder_icon"       { return $WonderIconSizes }
-        # loyalty_3d / loyalty_sv：原尺寸单 DDS（尺寸已由 civ6-loyalty-icon 管线固定）
+        # loyalty_3d / loyalty_sv：原尺寸单 DDS（尺寸已由 civ6-asset-forge 管线固定）
         # fow：FOW 迷雾变体原尺寸单 DDS（源图由 apply_fow.py 生成，尺寸同普通版）
         default             { return @() }   # 原尺寸单输出
     }

@@ -89,7 +89,7 @@
 
 非图标 role（原尺寸单 DDS，不进此表）：`portrait`/`fallback`（立绘 544×968）、
 `background`（1920×960）、`diplomacy_layer1..4`（960×505）、`loyalty_3d`/`loyalty_sv`
-（忠诚度贴图 512/128 与 256/128，尺寸由 `civ6-loyalty-icon` skill 固定）、`custom`（兜底）。
+（忠诚度贴图 512/128 与 256/128，尺寸由 `civ6-asset-forge` skill 的忠诚度图标分册固定）、`custom`（兜底）。
 
 **Atlas 图集命名约定（make_atlas.py 默认值即按此设计）：**
 - 图集名统一以 `ATLAS` 起始；项目专属前缀（如示例中的 `MYMOD`）不属于本 skill 职责，由项目自身规范定义，下面用 `{PREFIX}` 占位。
