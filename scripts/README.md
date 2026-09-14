@@ -9,24 +9,32 @@
 |---|---|---|---|
 | `rgn_validate_runner.mjs` | **引用完整性**：悬空 ModifierId / Type / RequirementSetId …（实跑模式会真实执行项目 SQL 再查库比对） | `node rgn_validate_runner.mjs <目录> [模式=*.sql] [checkNaming=true] [--base <库>] [--static]` | 0 无悬空 / 1 有 |
 | `check_sql_exec.py` | **可执行性**：非法转义、字符错位导致「整条 INSERT 报废」 | `python check_sql_exec.py [--root <工程>] [--base <库>]` | 0 / 1 |
+| `check_sql_antipatterns.py` | **语义反模式**：语法合法但恒假/恒错 —— `LIKE ('%A%' OR '%B%')`、`WHERE … = NULL` | `python check_sql_antipatterns.py <工程根目录> [--esc]` | 0 / 1 |
 | `check_types_kinds.py` | `INSERT INTO Types` 的 `Kind` 是否是引擎合法枚举（复现 `Invalid Reference on Types.Kind`） | `python check_types_kinds.py [--root <工程>] [--db <库>] [--dirs Data,Mod_Adaptation]` | 0 / 1 |
 | `check_proj_content.py` | `.civ6proj` 的 `<Content Include>` 与磁盘是否**双向闭合**（悬空清单项 / 漏登记） | `python check_proj_content.py <工程根目录>` | 0 / 1 |
 | `check_lua_registration.py` | **`.lua` 有没有有效加载路径**（按「UI 上下文 / include 扩展件 / GP 脚本」三角色判定） | `python check_lua_registration.py <工程根目录>` | 0 / 1 |
 | `check_pantry.py` | **pantry 卫生**：`.tex` 是否只在 `Textures/`、`m_Name`/`m_RelativePath` 是否全工程唯一、有无 depot 库路径、非 ASCII 文件名、`.tex`↔`.dds` 配对 | `python check_pantry.py [--root <pantry>] [--quiet]` | 0 通过 / 1 有 error |
 | `verify_trees.py` | 两棵目录树是否**逐字节相同**（递归 SHA256）—— 源 ↔ Mods 副本一致性 | `python verify_trees.py <dirA> <dirB>` | 0 相同 / 1 不同 |
 
-### 三者互补，缺一不可
+### 四个互补，缺一不可
 
 ```
-check_sql_exec.py   管「语句跑不跑得起来」   ← 一条语句报废时，数据根本没进库
-rgn_validate        管「引用闭不闭合」       ← 语句都跑通了，但引用了不存在的东西
-check_types_kinds   管「Kind 是不是合法枚举」← 打包不报错，加载期才丢弃
+check_sql_exec.py         管「语句跑不跑得起来」     ← 一条语句报废时，数据根本没进库
+rgn_validate              管「引用闭不闭合」         ← 语句都跑通了，但引用了不存在的东西
+check_types_kinds.py      管「Kind 是不是合法枚举」  ← 打包不报错，加载期才丢弃
+check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR 恒假、= NULL 恒 NULL
 ```
 
 > **★ 为什么需要 `check_sql_exec.py`**：一条 `INSERT` 因 `'knight\'s story!'`（应为 `''`）整条报废时，
 > 那批数据压根没进库，**引用自然也不会悬空** —— `rgn_validate` 看不到这类问题。
 > 真实症状：中英文共用同一条 INSERT 时英文行报错 → **中文行一起丢失** → 游戏按 `LanguagePriorities` 回退 en_US → **中文环境显示英文**。
 > 且 `executescript` / `sqlite3_exec` 遇错即停，**同一文件后续语句块也全部不执行**。
+
+> **★ 为什么需要 `check_sql_antipatterns.py`**：`LIKE ('%A%' OR '%B%')` 这类写法**语法完全合法**，
+> `executescript` 通过、`rgn_validate` 也不报 —— 它只在运行时表现为「条件永远不成立」。
+> **实测命中真实缺陷**：某工程 13 处该写法，导致注释声明"要包含 RGN 特色区域"的泛用 ReqSet 家族
+> 只生成了 **20** 条而非 **26** 条 —— 6 个特色区域被静默漏掉，且无任何报错。
+> **只有模式扫描能抓到它。**（该反模式的实机证据与修法见 `gotchas.md` §52。）
 
 ## 2. 运维脚本
 

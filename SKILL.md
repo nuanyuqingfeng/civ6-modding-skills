@@ -367,6 +367,7 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 | `scripts/check_sql_exec.py` | **可执行性** —— 非法转义（`'…\'s…'`）导致**整条 INSERT 报废**；遇错即停，同文件后续语句块也全不执行 | ★ `rgn_validate` 查不到：语句没跑起来 = 数据没进库 = 引用不悬空 |
 | `scripts/rgn_validate_runner.mjs` | **引用完整性** —— 悬空 ID | 与上面互补 |
 | `scripts/check_types_kinds.py` | `INSERT INTO Types` 的 `Kind` 是否引擎合法枚举 | 打包不报错、加载期才丢弃 |
+| `scripts/check_sql_antipatterns.py` | **语义反模式** —— 语法合法但恒假：`LIKE ('%A%' OR '%B%')`、`WHERE … = NULL` | ★ 前三个都抓不到：它跑得起来、引用也闭合，只是**意思错了** |
 | `scripts/check_proj_content.py` | `<Content Include>` ↔ 磁盘**双向闭合**（悬空清单项 / 漏登记） | 见 `gotchas.md` §3「打包 vs 加载」 |
 | `scripts/check_pantry.py` | **pantry 卫生** —— `.tex` 位置 / 重名 / depot 路径 / 非 ASCII / `.tex`↔`.dds` 配对 | 开 AssetEditor 前必跑 |
 | `scripts/clear_ae_cache.py` | 清 AssetEditor 依赖缓存（动过贴图后**必须**清，否则验证结论是缓存假象） | 同上 |
