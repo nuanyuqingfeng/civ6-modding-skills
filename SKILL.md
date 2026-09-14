@@ -74,7 +74,7 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 
 ## Task Routing — Read This First
 
-> 🧭 **第一次接触这个 skill 家族？先读 `reference/FAMILY_INDEX.md`**（9 个 skill 的职责/边界/路由表 + 共用约定 + 分享状态）。
+> 🧭 **第一次接触这个 skill 家族？先读 `reference/FAMILY_INDEX.md`**（5 个 skill 的职责/边界/路由表 + 共用约定 + 分享状态）。
 
 **Full workflow:** `workflows.md` · **Gotchas (必读):** `gotchas.md`  
 **若项目根目录存在 AGENTS.md，也需提前阅读。**
@@ -88,10 +88,11 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 | **原版美术素材引用 / ArtDef·XLP 链**（给新对象配原版模型、查引用链、排查美术悬空、ArtDef cook 报错或"不同步"、单位渲染残缺） | → **`civ6-art-reference` skill**（引用链与 cook 层逻辑全在该 skill 内，此处不重复） |
 | **Gameplay logic** (Lua only) | → Gameplay Routing ↓ |
 | **Game data** (units, buildings, modifiers) | → Data Routing ↓ |
-| **总督（Governor）**（新增总督 / 晋升树 / 就职回合 / 立绘注册 / 名额扩容） | → `governor-authoring.md`（美术规格另见 `civ6-governor-art` skill） |
+| **总督（Governor）**（新增总督 / 晋升树 / 就职回合 / 立绘注册 / 名额扩容） | → `governor-authoring.md`（美术规格另见 `civ6-asset-forge` skill 的总督素材分册） |
 | **城邦（City-State）**（自定义城邦 / 选单不出现 / 宗主国加成 / 使者层级） | → `citystate-authoring.md` |
 | **平衡补丁 / 差分覆盖**（改主工程数值、解挂载、覆盖文本的补丁 mod） | → `balance-patch.md` |
 | **Mixed** | → Read all relevant |
+| **Steam 创意工坊上传/更新** | → `release.md` |
 | **Debug** | → `debug-tools.md` + `gotchas.md` |
 
 ### 2. UI Routing
@@ -413,6 +414,7 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | `citystate-authoring.md` | **城邦编写**：★ 城邦横跨 Gameplay/Configuration 两个数据库 / `CityStates.Domain` / 宗主国加成标准模板 / 使者层级靠 `InheritFrom` 继承 / 自建分组标签 | **新增城邦、选单不出现时** |
 | `balance-patch.md` | **平衡补丁 / 差分覆盖**：★ LoadOrder 必须压过主工程最终覆盖层 / 差分手法表（改值·解挂载·换门槛·清 ID 族·文本 REPLACE）/ 全局标志 + 公式化系数 / 验证清单 | **写补丁 mod 时** |
 | `project-setup.md` | .civ6proj / .modinfo 项目结构与注册指南 | 注册文件时 |
+| `release.md` | **Steam 创意工坊发布**：workspace 准备 / 非 Trimmed 上传工具构建 / validate→upload→Steam API 验证 / Clash Verge 代理诊断（附带脚本见 `release/scripts/`、模板 `release/templates/`、`release/docs/`） | **上传或更新工坊条目时** |
 | `conventions.md` | 命名规范/文件模板 | 写任何文件前 |
 | `validation.md` | 验证清单 | 完成开发后 |
 | `debug-tools.md` | 调试面板/热重载 | 调试时 |
@@ -449,7 +451,7 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | Citystates | 22,30,32,36,40,44,48,64,68,80,256 |
 | Stats | 16,22,32,45,55 |
 
-> 例外：忠诚度贴图 512/128 与 256/128（`civ6-loyalty-icon` skill）；项目可自定义增减
+> 例外：忠诚度贴图 512/128 与 256/128（`civ6-asset-forge` skill 的忠诚度/宗教图标分册）；项目可自定义增减
 > （如本项目 Resources 另加 32、Product 含 45），以项目 Icons XML 现状为准。
 >
 > **规范化占幅**：Units（unit_icon）主画布 256、内容占幅 ≈87.5%（224px）、四周 ≈16px 统一边距、白色剪影+Alpha；
@@ -460,7 +462,7 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 
 | 文件 | 用途 |
 |------|------|
-| `reference/FAMILY_INDEX.md` | **家族索引**：9 个 civ6 skill 的职责/边界/路由表 + 共用约定 + 分享状态 |
+| `reference/FAMILY_INDEX.md` | **家族索引**：5 个 civ6 skill 的职责/边界/路由表 + 共用约定 + 分享状态 |
 | `reference/api_enhanced.json` | 增强 API + 中文注释（核验标记见「API 核验字段」） |
 | `reference/events_enhanced.json` (1.2MB) | 增强事件（`query_events.py` 查询） |
 | `database/schema-annotated.md` | 常用多列表注解（列定义/必填/示例值） |
