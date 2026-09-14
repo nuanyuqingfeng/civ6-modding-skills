@@ -118,3 +118,34 @@
 | database.md | +source_index 使用说明（更新为最终态） |
 | project-setup.md | +官方 modinfo 实证章节 |
 | database/CALIBRATION_LOG_2026-08.md | 校准全程记录 |
+
+
+## 九、P10 幻列根因修复（2026-09-10）
+
+### 根因
+- `database/DebugGameplay.sqlite` 的 `DynamicModifiers` 被手工加了第 4 列 `IsDlcDependency`（12 行=1 / 983 行=0），`modifiers-cheatsheet.md` 又把它当官方列写进查询提示。
+- 校验器 `rgn_validate_runner.mjs` 以该库为 ground truth → 执行期"侥幸成功" → 幻列 SQL 通过校验、游戏加载才报 `table DynamicModifiers has no column named IsDlcDependency`。
+
+### 修复
+| 对象 | 变更 |
+|------|------|
+| `DebugGameplay.sqlite` | `DynamicModifiers` 重建为官方 3 列；删除 skill 专属侧表/视图，恢复 100% 官方镜像 |
+| `DebugGameplay.sqlite` | `PlayerColors` 补 `Alt1/2/3PrimaryColor`、`Alt1/2/3SecondaryColor` 6 列（`ColorManager.sql` + `Color_Tables.xml` 并集） |
+| `source_index.sqlite` | 新增 `dlc_dependency`（12 行人工标注，Mode/Scenario DLC 依赖） |
+| `annotations/dynamic_modifiers_dlc.json` | 新增：12 行标注的版本真值（DB 可再生，此文件是唯一真值） |
+| `database/scripts/audit_schema_drift.py` | 新增：官方 schema 内存重建 → 逐表 `table_info` 比对，结构漂移 exit 1 |
+| `scripts/rgn_validate_runner.mjs` | 新增 INSERT 显式列存在性预检 + 基础库关键表列断言；`enableDoubleQuotedStringLiterals` 对齐游戏双引号语义 |
+| `DebugLocalization.sqlite` | skill 自带查询表 `Colors`/`Icons` 改名 `SkillAnnotation_Colors`/`SkillAnnotation_Icons`，避免与游戏表混淆 |
+| `modifiers-cheatsheet.md` / `schema-annotated.md` / `modifiers-guide.md` / `database.md` / `SKILL.md` | 文档同步：官方 3 列铁律、DLC 标注查 `source_index.dlc_dependency`、PlayerColors 列全集 |
+
+### 验证
+- `audit_schema_drift.py`：修复库 0 漂移（exit 0）；修复前备份命中 `DynamicModifiers.IsDlcDependency` + `PlayerColors` 缺 6 列（exit 1）
+- phantom 探针：修复前校验器放行；修复后命中 `INSERT INTO DynamicModifiers: unknown column(s) IsDlcDependency`
+- 项目 `Mod_Adaptation/SecretSocieties`：71 条语句全部成功，0 悬空
+- 项目 `Data`：双引号误报消除（成功 514→527、失败 23→10），剩余均为已知环境项（Players/PlayerItems 前端表、Config 的 DuplicateLeaders.Domain、Types.Hash UNIQUE、temp 表两遍顺序）
+- `DebugConfiguration.sqlite`：78/78 表与官方 config schema 一致（0 漂移）
+- `DebugGameplay.sqlite` / `DebugLocalization.sqlite`：`PRAGMA integrity_check = ok`
+
+### 备份
+- 修复前完整备份：`database/backups/DebugGameplay_pre_dlcfix.sqlite`（gitignore 内，仅本机）
+- ⚠️ 历史打包 `civ6-modding*.zip`（3 个）内含修复前的 `DebugGameplay.sqlite`（含 `IsDlcDependency`，且 `PlayerColors` 缺 Alt 列），仅作历史归档；**不要直接覆盖现库**，如恢复必须先跑 `python database/scripts/audit_schema_drift.py`

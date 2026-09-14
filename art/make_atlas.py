@@ -68,6 +68,8 @@ SIZE_TABLES = {
     "stat_icon":         [16, 22, 32, 45, 55],
     "tech_icon":         [30, 38, 42, 128, 160],
     "unit_action_icon":  [38, 50, 80, 256],
+    # 改良设施（Improvements）与原版单位操作共用 ICON_ATLAS_UNIT_ACTIONS，尺寸档同为 38/50/80/256
+    "improvement_icon":  [38, 50, 80, 256],
     "unit_portrait":     [38, 50, 70, 95, 200, 256],
     "unit_icon":         [22, 32, 38, 50, 80, 256],
     "victory_icon":      [64, 80, 130, 220],

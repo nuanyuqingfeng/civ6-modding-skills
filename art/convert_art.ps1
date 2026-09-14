@@ -50,6 +50,7 @@ $DistrictIconSizes   = @(22, 32, 38, 50, 80, 128, 256)
 $FeatureIconSizes    = @(50, 64, 256)
 $GovernmentIconSizes = @(32, 50)
 $GreatworkIconSizes  = @(45, 64, 256)
+$ImprovementIconSizes = @(38, 50, 80, 256)
 $PolicyIconSizes     = @(32, 38, 50, 256)
 $ProjectIconSizes    = @(30, 32, 38, 50, 70, 80, 256)
 $ResourceIconSizes   = @(38, 50, 64, 256)
@@ -71,6 +72,7 @@ function Get-Sizes([string]$role) {
         "feature_icon"      { return $FeatureIconSizes }
         "government_icon"   { return $GovernmentIconSizes }
         "greatwork_icon"    { return $GreatworkIconSizes }
+        "improvement_icon"  { return $ImprovementIconSizes }
         "policy_icon"       { return $PolicyIconSizes }
         "project_icon"      { return $ProjectIconSizes }
         "resource_icon"     { return $ResourceIconSizes }

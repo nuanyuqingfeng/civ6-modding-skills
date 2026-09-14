@@ -340,6 +340,8 @@ sqlite3 $db "SELECT name, dflt_value FROM pragma_table_info('TableName') WHERE [
 | CollectionType | TEXT | **YES** | — | `COLLECTION_OWNER` / `COLLECTION_PLAYER_CITIES` / `COLLECTION_ALL_UNITS` / `COLLECTION_ALL_PLAYERS` / `COLLECTION_ALL_CITIES` / `COLLECTION_ALL_DISTRICTS` / `COLLECTION_PLAYER_CAPITAL_CITY` / `COLLECTION_CITY_PLOT_YIELDS` / `COLLECTION_PLAYER_CAPTURED_CITIES` |
 | EffectType | TEXT | **YES** | — | `EFFECT_ATTACH_MODIFIER` / `EFFECT_ADJUST_CITY_YIELD_CHANGE` / `EFFECT_ADJUST_UNIT_HEALING_MODIFIERS` ... |
 
+> ⚠️ **官方仅 3 列。** `IsDlcDependency` 不是游戏列，是 skill 元数据（`source_index.sqlite` 的 `dlc_dependency` 表 / `database/annotations/dynamic_modifiers_dlc.json`）；写 mod SQL 时严禁加第 4 列。
+
 ### ModifierStrings
 
 | 列名 | 类型 | 必填 | 默认值 | 示例值 |

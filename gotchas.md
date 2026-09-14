@@ -23,6 +23,10 @@
 
 7. **GamePlay 脚本 `Events.*` 和 `GameEvents.*` 均可用，不可用 `LuaEvents.*`。** `LuaEvents.*` 是 UI 上下文的广播系统，GP 侧不可用。UI 侧不可用 `GameEvents.*`。
 
+> **⚠ 两条总线互不镜像（2026-09 FireTuner 对照实测）**：引擎 `GameCoreEvent` **只**进 `Events.*`（同一 `UnitMoveComplete`：Events 端触发 11 次时 GameEvents 端 0 次）；`GameEvents.*` **只**承载 Lua 级事件（`PlayerTurnStarted`：GameEvents 端 17 次时 Events 端 0 次）。所以**引擎事件写成 `GameEvents.X.Add()` 不报错、也永远不会回调**（静默无效登记）。
+>
+> **⚠ `GameEvents.X` 不是存在性探针**——它对**任意**名字都返回 table（自动建表）。只能用 `type(Events.X) == "table"` 判断事件是否存在；对不存在的事件写 `Events.X.Add()`，**UI 侧会直接抛 `attempt to index a nil value` 并中断该函数后续所有初始化**。引擎未暴露到 `Events.*` 的 48 个事件在 `events_enhanced.json` 中标 `availability: "None"`。
+
 8. **Never pass C++ objects or UI controls across `LuaEvents`.** The owning context may delete them before the receiver processes the event, causing crashes. Pass only string/number/boolean or pure-Lua tables.
 
 ## Database Pitfalls

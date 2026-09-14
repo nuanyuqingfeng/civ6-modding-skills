@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-10",
+  "purpose": "Skill-only annotation migrated out of the official DynamicModifiers table.",
+  "warning": "IsDlcDependency is NOT an official column of DynamicModifiers. The official table has exactly 3 columns: ModifierType, CollectionType, EffectType. Never emit IsDlcDependency in mod SQL.",
+  "semantics": "Curated list (12 rows) of ModifierTypes defined in a Mode/Scenario DLC file. These may silently fail when the corresponding DLC/mode is absent, so a mod that references them should self-register an equivalent ModifierType.",
+  "derivedFullSetNote": "A mechanical derivation from source_index.row_source yields 27 Mode/Scenario rows; this curated list is a subset and must not be regenerated mechanically.",
+  "entries": [
+    {
+      "modifierType": "MODIFIER_ALL_ARTIFACT_EXTRACTIONS_SPAWN_UNIT",
+      "collectionType": "COLLECTION_ALL_ARTIFACT_EXTRACTIONS",
+      "effectType": "EFFECT_GRANT_FREE_UNIT_ON_PLOT",
+      "isDlcDependency": 1,
+      "source": "Portugal",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Portugal\\Data\\Portugal_GameEffects_MODE.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_ALL_COMBAT_RESULTS_ADJUST_POPULATION",
+      "collectionType": "COLLECTION_COMBAT_RESULTS",
+      "effectType": "EFFECT_ADJUST_POPULATION_FROM_PLOT",
+      "isDlcDependency": 1,
+      "source": "Portugal",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Portugal\\Data\\Portugal_GameEffects_MODE.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_ALL_COMBAT_RESULTS_SPAWN_UNIT",
+      "collectionType": "COLLECTION_COMBAT_RESULTS",
+      "effectType": "EFFECT_GRANT_FREE_UNIT_ON_PLOT",
+      "isDlcDependency": 1,
+      "source": "Portugal",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Portugal\\Data\\Portugal_GameEffects_MODE.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_ALL_COMBAT_RESULTS_STEAL_POPULATION_AND_SPAWN_UNIT",
+      "collectionType": "COLLECTION_COMBAT_RESULTS",
+      "effectType": "EFFECT_STEAL_POP_ON_PLOT_TO_CREATE_UNIT",
+      "isDlcDependency": 1,
+      "source": "Portugal",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Portugal\\Data\\Portugal_GameEffects_MODE.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_ALL_PLAYERS_ADJUST_VALID_IMPROVEMENT",
+      "collectionType": "COLLECTION_ALL_PLAYERS",
+      "effectType": "EFFECT_ADJUST_PLAYER_VALID_IMPROVEMENT",
+      "isDlcDependency": 1,
+      "source": "Indonesia_KhmerScenario",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Indonesia_KhmerScenario\\Data\\Indonesia_KhmerScenario_Religions.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_ALL_UNIT_DEATHS_ADJUST_GAME_PROPERTY",
+      "collectionType": "COLLECTION_ALL_UNIT_DEATHS",
+      "effectType": "EFFECT_ADJUST_GAME_PROPERTY",
+      "isDlcDependency": 1,
+      "source": "Portugal",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Portugal\\Data\\Portugal_GameEffects_MODE.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_ALL_UNIT_DEATHS_SPAWN_UNIT",
+      "collectionType": "COLLECTION_ALL_UNIT_DEATHS",
+      "effectType": "EFFECT_GRANT_FREE_UNIT_ON_PLOT",
+      "isDlcDependency": 1,
+      "source": "Portugal",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Portugal\\Data\\Portugal_GameEffects_MODE.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_CITY_LEVY_UNITS",
+      "collectionType": "COLLECTION_OWNER",
+      "effectType": "EFFECT_CITY_LEVY_UNITS_IN_TERRITORY",
+      "isDlcDependency": 1,
+      "source": "Portugal",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Portugal\\Data\\Portugal_Projects_MODE.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_GRANT_GREAT_PERSON_CLASS_IN_CAPITAL",
+      "collectionType": "COLLECTION_PLAYER_CAPITAL_CITY",
+      "effectType": "EFFECT_GRANT_GREAT_PERSON_CLASS_IN_CITY",
+      "isDlcDependency": 1,
+      "source": "WarMachineScenario",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\WarMachineScenario\\Data\\WarMachineScenario_GameplayData.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_PLAYER_ADJUST_IDENTITY_PER_TURN_FROM_NEARBY_WONDERS",
+      "collectionType": "COLLECTION_OWNER",
+      "effectType": "EFFECT_ADJUST_IDENTITY_PER_TURN_FROM_NEARBY_WONDERS",
+      "isDlcDependency": 1,
+      "source": "Byzantium_Gaul",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Byzantium_Gaul\\Data\\Byzantium_Gaul_DramaticAges_MODE.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_PLAYER_ADJUST_NEUTRALIZE_INDEFINITELY",
+      "collectionType": "COLLECTION_OWNER",
+      "effectType": "EFFECT_ADJUST_NEUTRALIZE_INDEFINITELY",
+      "isDlcDependency": 1,
+      "source": "Byzantium_Gaul",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Byzantium_Gaul\\Data\\Byzantium_Gaul_DramaticAges_MODE.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_SCENARIO_UNITS_ADJUST_SIGHT",
+      "collectionType": "COLLECTION_PLAYER_UNITS",
+      "effectType": "EFFECT_ADJUST_UNIT_SIGHT",
+      "isDlcDependency": 1,
+      "source": "PiratesScenario",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\PiratesScenario\\Data\\PiratesScenario_Leaders.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    }
+  ]
+}

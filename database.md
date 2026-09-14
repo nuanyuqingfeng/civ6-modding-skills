@@ -84,7 +84,7 @@ All database XML wraps tables in `<GameInfo>`:
 | `Yields` | Yield types | `IconString`, `DefaultValue` |
 | `Eras` | Era definitions | `ChronologyIndex`, `GreatPersonBaseCost` |
 | `GlobalParameters` | Global constants | `Name`, `Value` |
-| `PlayerColors` | Color definitions | `PrimaryColor`, `SecondaryColor`, `TextColor` |
+| `PlayerColors` | Color definitions | `PrimaryColor`, `SecondaryColor`, `TextColor`, `Alt1/2/3PrimaryColor`, `Alt1/2/3SecondaryColor`（参考库取 `Color_Tables.xml` + `ColorManager.sql` 并集） |
 | `BaseGameText` | Localization | PK: `Tag`, also `Text` |
 | `IconDefinitions` | Icon atlas mapping | PK: `Name`, also `Atlas`, `Index` |
 
@@ -256,6 +256,7 @@ end
 | `row_source(table_name, pk_json, pk_text, source, first_file, first_line, op)` | 行级来源：每行主键 + 来源 + 首个定义文件:行号 |
 | `table_summary(table_name, distinct_pk, base_rows, exp1_rows, exp2_rows, dlc_rows)` | 每表来源分布统计 |
 | `missing_tables` | 官方 XML 中存在但 Debug 库无此表名的表（UI/Config 相关，如 IconDefinitions） |
+| `dlc_dependency(ModifierType, IsDlcDependency, Source, FirstFile, Note)` | 人工标注的 Mode/Scenario DLC 依赖（12 行，来自 `database/annotations/dynamic_modifiers_dlc.json`）。**不是 `DynamicModifiers` 的列**，只在此元数据库存在 |
 
 > 补全/清理的过程日志（missing_rows、patch_log、cleanup_log）已按清理要求删除；操作摘要见 `database/CALIBRATION_LOG_2026-08.md`。
 

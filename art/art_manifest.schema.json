@@ -44,6 +44,7 @@
               "feature_icon",
               "government_icon",
               "greatwork_icon",
+              "improvement_icon",
               "policy_icon",
               "project_icon",
               "resource_icon",
@@ -85,7 +86,7 @@
           "content": {
             "type": "integer",
             "minimum": 16,
-            "description": "可选。规范化内容最长边（px），缺省走 role 规范（如 unit_icon=200≈78%）。"
+            "description": "可选。规范化内容最长边（px），缺省走 role 规范（如 unit_icon=224≈87.5%）。"
           },
           "color": {
             "type": "integer",
@@ -179,7 +180,7 @@
                 "content": {
                   "type": "integer",
                   "minimum": 16,
-                  "description": "可选。规范化内容最长边（px），缺省走 role 规范（如 unit_icon=200≈78%）。"
+                  "description": "可选。规范化内容最长边（px），缺省走 role 规范（如 unit_icon=224≈87.5%）。"
                 },
                 "color": {
                   "type": "integer",

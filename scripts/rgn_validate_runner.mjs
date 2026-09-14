@@ -28,6 +28,14 @@ for (let i = 0; i < argv.length; i++) {
 }
 const SCRIPT_DIR = import.meta.dirname
 const DEFAULT_BASE = path.resolve(SCRIPT_DIR, '..', 'database', 'DebugGameplay.sqlite')
+// 基础库关键表官方列断言：参考库被手工加列时，执行期会"侥幸成功"导致校验器失明。
+// 这里对高流量表做列断言；全量漂移检查见 database/scripts/audit_schema_drift.py。
+const BASE_SCHEMA_ASSERTIONS = {
+  DynamicModifiers: ['ModifierType', 'CollectionType', 'EffectType'],
+  Modifiers: ['ModifierId', 'ModifierType', 'RunOnce', 'NewOnly', 'Permanent', 'Repeatable', 'OwnerRequirementSetId', 'SubjectRequirementSetId', 'OwnerStackLimit', 'SubjectStackLimit'],
+  ModifierArguments: ['ModifierId', 'Name', 'Type', 'Value', 'Extra', 'SecondExtra'],
+  Types: ['Type', 'Hash', 'Kind'],
+}
 const dir = pos[0]?.trim() || process.cwd()
 const pattern = pos[1]?.trim() || '*.sql'
 const checkNaming = pos[2] !== 'false'
@@ -248,12 +256,22 @@ function runExecMode() {
   let db = null
   const execIssues = []
   try {
-    db = mat.ok ? new DatabaseSync(tmpPath) : new DatabaseSync(':memory:')
+    // 游戏 SQLite 允许双引号字符串字面量（Colors_RGN 的 "COLOR_X" 写法）；node:sqlite 默认禁用，开启以对齐游戏语义
+    const dqsOpts = { enableDoubleQuotedStringLiterals: true }
+    db = mat.ok ? new DatabaseSync(tmpPath, dqsOpts) : new DatabaseSync(':memory:', dqsOpts)
     db.exec('PRAGMA foreign_keys = OFF') // node:sqlite 默认强制外键；游戏装载环境并不启用，校验器自己负责引用检查
     // 文本类扫描：DebugGameplay 属 gameplay 库，不含 LocalizedText；预建空表让 Text 目录获得语法校验能力
     try { db.exec('CREATE TABLE IF NOT EXISTS LocalizedText (Tag TEXT, Language TEXT, Text TEXT)') } catch { /* 已存在则忽略 */ }
     // 基线：原始 schema、原始定义/引用/Type 集
     const schemaBase = schemaTables(db)
+    // 基础库 schema 断言（防参考库被手工加列后校验器失明）
+    const baseSchemaWarnings = []
+    for (const [t, expected] of Object.entries(BASE_SCHEMA_ASSERTIONS)) {
+      const got = schemaBase.get(t)
+      if (!got) { baseSchemaWarnings.push(`基础库缺表 ${t}`); continue }
+      const same = got.length === expected.length && expected.every((c, i) => got[i] === c)
+      if (!same) baseSchemaWarnings.push(`基础库 ${t} 列异常：[${got.join(', ')}]，官方应为 [${expected.join(', ')}]`)
+    }
     const before = collectDefsRefs(db, schemaBase, schemaBase)
     const baseTypes = new Set(before.typeValues)
 
@@ -274,7 +292,25 @@ function runExecMode() {
       }
     }
     ddl.forEach(runStmt)
-    rest.forEach(runStmt)
+    // 显式列存在性预检：基础库若被污染，执行期可能"侥幸成功"；这里按实际库 schema 先拦一次
+    const liveSchema = schemaTables(db)
+    const insertColumnIssue = sql => {
+      const m = sql.match(/^\s*INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+["`\[]?([A-Za-z_][A-Za-z0-9_]*)["`\]]?\s*\(([^)]*)\)/i)
+      if (!m) return null
+      const cols = liveSchema.get(m[1])
+      if (!cols) return null
+      const unknown = m[2].split(',').map(s => s.trim().replace(/^["`\[]|["`\]]$/g, '')).filter(Boolean)
+        .filter(c => !cols.includes(c))
+      return unknown.length ? { table: m[1], unknown, cols } : null
+    }
+    rest.forEach(st => {
+      const bad = insertColumnIssue(st.sql)
+      if (bad) {
+        execIssues.push(`${st.file}:${st.line} INSERT INTO ${bad.table}: unknown column(s) ${bad.unknown.join(', ')} (table has: ${bad.cols.join(', ')})`)
+        return
+      }
+      runStmt(st)
+    })
 
     // 执行后：定义全集（含自定义表）、引用全集（仅基础库既有表——自定义表非主键列是内部载荷）
     const schemaAfter = schemaTables(db)
@@ -320,6 +356,10 @@ function runExecMode() {
     // ── 报告 ──
     L.push(`═══ rgn_validate 报告（实跑模式）═══`)
     L.push(`目录: ${dir} | 文件: ${files.length} 个 | 基础库: ${mat.ok ? '已快照 ' + path.basename(basePath) : '无（内存空库，仅项目内自洽）'}${mat.ok && mat.how !== 'vacuum-into' ? '（复制回退）' : ''}`)
+    if (baseSchemaWarnings.length) {
+      L.push(`⚠ 基础库 schema 异常（跑 database/scripts/audit_schema_drift.py 排查）:`)
+      for (const w of baseSchemaWarnings) L.push(`  - ${w}`)
+    }
     const defTotal = [...after.defs.values()].reduce((a, s) => a + s.size, 0)
     const newDefs = []
     for (const [dom, set] of after.defs) {

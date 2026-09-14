@@ -83,6 +83,7 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 |------|-------|
 | **UI panel** (XML + Lua) | → UI Routing ↓ |
 | **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节，图标规范化/占幅/边距规范查其第四节 |
+| **原版美术素材引用 / ArtDef·XLP 链**（给新对象配原版模型、查引用链、排查美术悬空、ArtDef cook 报错或"不同步"、单位渲染残缺） | → **`civ6-art-reference` skill**（引用链与 cook 层逻辑全在该 skill 内，此处不重复） |
 | **Gameplay logic** (Lua only) | → Gameplay Routing ↓ |
 | **Game data** (units, buildings, modifiers) | → Data Routing ↓ |
 | **Mixed** | → Read all relevant |
@@ -141,7 +142,7 @@ Modifier/PROPERTY 设计
 ADD tech/civic/policy   → database.md
 ADD resource/feature    → database.md
 REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "LoadOrder"（优先查 .civ6proj）
-ADD localization text   → database.md + DebugLocalization.sqlite (Colors/Icons) + 本地化桥接
+ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
 ```
 
 ### 4.1 本地化桥接（翻译/多语言任务）
@@ -208,9 +209,15 @@ ADD localization text   → database.md + DebugLocalization.sqlite (Colors/Icons
        需要参数签名 → SELECT a.* FROM api_args a JOIN api_functions f ON a.func_id=f.id
                        WHERE f.func_name='X' OR f.sub_func_name='X'
        需要示例/注释 → grep "FuncName" reference/api_enhanced.json
+       需要「运行时是否真有 / UI 还是 GP」→ 看 verify_status + verify_scope + runtime_gp/runtime_ui（见「API 核验字段」）
 ```
 
-**铁律：严禁凭经验猜测 API 名称或参数** — `database\api.sqlite` 有 5075 个函数，猜错即返工。
+**铁律：严禁凭经验猜测 API 名称或参数** — `database\api.sqlite` 有 4857 行 API，猜错即返工。
+
+> **核验优先（2026-09-08 FireTuner 全量实测已实装）**：`verify_status='已核验'` 3256 行可放心引用；
+> `='存疑'` 1434 行是**文档自身不对**（availability 标错 / 名称路径错 / 运行时确无此名 / CodeBuddy 文档转储），
+> 必须按 `verify_note`、`true_name`、`true_path` 改用真身，勿照抄；
+> `=''`（留空）167 行是**本次无法实测**（缺实例通道），不代表有错，也别当已验证。
 
 > **小技巧：尝试复数形式** — `GetAbility` 的子方法可能在 `sub_func_name` 列为 `GetAbilities`，`UnitModifier` 可能是 `UnitModifiers`。以 `s` 结尾的 `func_name` 往往是遍历器，其实方法在 `sub_func_name` 中。
 
@@ -232,6 +239,11 @@ ADD localization text   → database.md + DebugLocalization.sqlite (Colors/Icons
 | UI Lua context | `Events.*` | YES — `.Remove()` in `OnShutdown()` |
 | UI Lua context | `LuaEvents.*` | No — auto-cleanup |
 | GamePlay Lua script | `GameEvents.*` | No — loaded once per game |
+| GamePlay Lua script | `Events.*` | 引擎事件在 GP 侧同样可用；`.Remove()` 非必需（脚本每局加载一次） |
+
+> ⚠ **`Events.*` 与 `GameEvents.*` 是互不镜像的两条总线**（2026-09 实测）：引擎 `GameCoreEvent` 只进 `Events.*`；`GameEvents.*` 只承载 Lua 级事件（自定义 / `EXECUTE_SCRIPT`）。
+> 所以**引擎事件用 `GameEvents.*` 订阅是静默无效的**。另：`GameEvents.X` 对任意名字都自动建 table，**不能**用 `type()` 判断事件是否存在——只有 `type(Events.X)` 是权威探针。
+> 引擎未暴露到 `Events.*` 的那批事件在 `events_enhanced.json` 中标 `availability: "None"`（且 UI 侧 `.Add()` 会 nil 崩溃）。
 
 ## 数据传递速查
 
@@ -347,7 +359,8 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 
 - 基础库默认 `<本skill目录>/database/DebugGameplay.sqlite`（相对脚本定位），`--base` 可覆盖；临时副本用后即删，原库只读不动
 - `--static` 回退纯文本解析模式（仅认 VALUES 字面量行，SELECT 拼接会误报悬空）
-- 执行错误多为基础库缺引擎专属表（如 Players 前端表、PlayerColors 新版列）或 node:sqlite 禁用双引号字符串字面量（Colors_RGN 的 `"COLOR_X"` 写法），属环境性容错项而非项目错误
+- 执行错误多为基础库缺引擎专属/前端表（如 Players、PlayerItems）或校验器限制（Config 文件按 gameplay schema 校验，如 DuplicateLeaders.Domain；Types.Hash UNIQUE 未模拟引擎哈希；temp 表两遍执行顺序），属环境性容错项而非项目错误。双引号字符串字面量已通过 `enableDoubleQuotedStringLiterals` 对齐游戏语义；PlayerColors 已补 Alt1/2/3 列
+- **基础库防污染**：参考库必须与官方 schema 1:1。改过 DB 后跑 `python database/scripts/audit_schema_drift.py`（有漂移 exit 1）；校验器也会对 DynamicModifiers/Modifiers/ModifierArguments/Types 做列断言并告警
 
 ### （已移除）_query 离线执行器
 
@@ -369,9 +382,13 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | Modifier/Requirement/Unit 等游戏数据 | `SELECT * FROM Modifiers WHERE ModifierType LIKE '%Key%'` (DebugGameplay.sqlite) |
 | Lua API 函数签名 | `SELECT * FROM api_functions WHERE func_name LIKE '%Key%'` (database\api.sqlite) |
 | API 参数详情 | `SELECT a.* FROM api_args a JOIN api_functions f ON ...` (database\api.sqlite) |
+| API 运行时是否真有 / UI-GP 范围 | `SELECT id,availability,verify_status,verify_scope,runtime_gp,runtime_ui,true_path FROM api_functions WHERE func_name LIKE '%Key%'` |
+| 只取已核验 API | `... WHERE verify_status='已核验' AND availability IN ('Both','UI')` |
+| 查存疑项与真身 | `SELECT id,availability,suspect_type,true_name,true_path,verify_note FROM api_functions WHERE verify_status='存疑' AND table_name='X'` |
+| 命令行查（含核验标记） | `python database/scripts/query_api.py --search Key [--verified|--suspect|--pending]` |
 | 列定义 / NotNull / Default | `PRAGMA table_info(TableName)` (DebugGameplay.sqlite) |
 | 中英文游戏文本 | `SELECT Text FROM LocalizedText WHERE Tag='LOC_X' AND Language='zh_Hans_CN'` (DebugLocalization.sqlite) |
-| 颜色/图标名 | `SELECT * FROM Colors` / `SELECT * FROM Icons` (DebugLocalization.sqlite) |
+| 颜色/图标名 | `SELECT * FROM SkillAnnotation_Colors` / `SELECT * FROM SkillAnnotation_Icons` (DebugLocalization.sqlite；skill 自带查询表，非游戏表) |
 | FrontEnd 数据 (Map/Difficulty) | `SELECT * FROM Maps` (DebugConfiguration.sqlite) |
 | 事件回调参数 | `python database/scripts/query_events.py --show ExactEventName` |
 
@@ -432,7 +449,8 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 > 例外：忠诚度贴图 512/128 与 256/128（`civ6-loyalty-icon` skill）；项目可自定义增减
 > （如本项目 Resources 另加 32、Product 含 45），以项目 Icons XML 现状为准。
 >
-> **规范化占幅**：Units（unit_icon）主画布 256、内容占幅 ≈78%（200px）、四周 ≈28px 统一边距、白色剪影+Alpha；
+> **规范化占幅**：Units（unit_icon）主画布 256、内容占幅 ≈87.5%（224px）、四周 ≈16px 统一边距、白色剪影+Alpha；
+> 狭长图标（长短边比 ≥1.3）可 `--slender-flush` 让长边平齐画布边缘（仅狭长图标适用）；
 > 每类 Icon 对应规范见 art-pipeline 第四节（不同于尺寸表）；未验证类别下次触发时走「调研/原图入库/推断」三选一。
 
 ### 深度参考（需要时 grep）
@@ -456,9 +474,43 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | 数据库 | 大小 | 用途 |
 |--------|------|------|
 | `database/DebugGameplay.sqlite` | 10.9 MB | 游戏数据 (427 表) |
-| `database/api.sqlite` | 1.5 MB | Lua API (5075 函数) |
+| `database/api.sqlite` | 2.5 MB | Lua API（4857 行；含 2026-09-08 FireTuner 实测核验列，见下节） |
 | `database/DebugLocalization.sqlite` | 64.9 MB | 中英文文本 |
 | `database/DebugConfiguration.sqlite` | — | FrontEnd 配置数据 |
+
+### API 核验字段（2026-09-08 FireTuner 全量实测 · UI/GP 范围存在性）
+
+对 `api.sqlite` 全部 4857 行在**运行中的对局**里逐条做过存在性验证（GP=`GameCore_Tuner`、UI=`InGame`，
+另在 12 个其它 UI 状态复查；手法为 `loadstring`+`pcall` **只索引不调用**），结果已实装进本 skill。
+
+| `verify_status` | 含义 | 行数 | 怎么用 |
+|---|---|---|---|
+| `已核验` | 实测过关（与文档 availability 一致），或 P1 已实装修正 / 已核出真身 | 3256 | 可直接引用 |
+| `存疑` | **文档自身不对**：availability 标错、名称/路径错、运行时确无此名、CodeBuddy 文档转储 | 1434 | 按 `verify_note` + `true_name`/`true_path` 改用真身；未删除任何条目 |
+| `''` 留空 | **本次无法实测**（缺实例通道或事件动态代理），既不判过关也不挂嫌疑 | 167 | 待具备条件复测（外交会话/未读通知/已任命总督/世界生成器/输入回调/地图钉/自由城市/Fractal） |
+
+新增列（`api_functions`）：`verify_status` `verify_scope` `verify_note` `verify_at` `runtime_gp` `runtime_ui`
+`audit_priority` `suspect_type` `corrected_from` `true_name` `true_path`
+
+- `verify_scope`：实测范围 = 双端 / 仅GP / 仅UI / 双端未见 / 含不可判
+- `runtime_gp`、`runtime_ui`：实测类型（`function`/`table`/`userdata`/`string`/`nil`/`ERR`/`CF`）；
+  `ERR` = 命名空间或实例在该上下文根本不存在，`nil` = 容器可达但无此成员
+- `audit_priority`：`P1`（已实装）/ `P2`（需裁决）/ `P4`（Civ6LuaHelper 未收录）/ `转储` / `待补测`
+- `corrected_from`：**已实装修正的 53 条 availability 原值**（Both→GamePlay 28、UI→Both 20、Both→UI 5）
+- `true_name`（44 条）/ `true_path`（7 条）：文档名有误时的运行时真名与真身路径
+  （例：`Player:GetUnits():SetMilitaryFormation` 真身 `Unit:SetMilitaryFormation()`；
+  `Map.GetImprovementBuilder` 真身全局 `ImprovementBuilder`；`Player:SetScoringScenario` 实为 `SetScoringScenario1/2/3`）
+
+`reference/api_enhanced.json`（5.1 MB）同步标记：已核验 → `humanChecked:true` + `verifiedAt`/`verifiedScope`/
+`runtimeGP`/`runtimeUI` + `[核验]` 备注行（3214 条）；存疑 → `suspect:true` + `suspectType`/`suspectPriority`
++ `[存疑]` 备注行（76 条）；无法实测 → 仅 `pendingTest:true` + `pendingReason`，**不挂核验/存疑标记、不加备注行**（143 条）。
+`Civ6LuaHelper.exe` 内置的 18 条 `humanChecked` 已并入（另记 `helperHumanChecked`/`helperAvailability` 留痕）。
+
+> ⚠ 唯一一条人工结论与实测冲突：`City:GetBuildQueue():GetTurnsLeft()`（助手人工验证 = UI，本次实测 GP/UI 两端都存在）。
+> 按实测保留 `Both`，冲突详情写在该行 `verify_note`，需要改回 UI 时以人工结论为准即可。
+
+完整报告与逐条清单：桌面 `Civ6_API_UI-GP范围验证_20260908\`
+（`API范围验证报告.md` · `审核清单.xlsx/md/csv`（P1/P2/P3/P4 分档） · `GP_UI方法面差异.csv` · `raw\` 原始回传与脚本）
 
 ### Game Files
 
