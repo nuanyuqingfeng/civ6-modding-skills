@@ -54,6 +54,8 @@ These pieces of vocabulary are identical between `.modinfo` and `.civ6proj` (onl
 
 ### Load Order Values
 
+**vanilla 官方阶梯**（官方 modinfo 实测）：
+
 ```
 -100: Schema changes, Remove Data
 -75:  Unofficial schema changes
@@ -61,6 +63,23 @@ These pieces of vocabulary are identical between `.modinfo` and `.civ6proj` (onl
 0:    Standard content updates (DEFAULT)
 50:   Post updates
 100:  Scenario updates
+```
+
+> ⚠ **官方阶梯只覆盖 `-100 … 100`，真实工程用的远不止这一段。**
+> 11 个真实工程实测出现了 `-2 / -1 / 10 / 200 / 1000 / 10000 / 20000 / 30000 / 600000 / 610003 / 777777 / 888888 / 999999 / 1000000 / 9999999`。
+> **`LoadOrder = -1` 出现在 8/11 个工程**，且 4 个独立总督工程都把它用于 `Governors` 数据 → 事实约定：*被其他内容引用的定义类数据要早加载*。
+> 完整观测阶梯表、`600000` 段社区约定、以及「跨 mod 同 LoadOrder 次序无保证」的警告见 **`gotchas.md` §44**。
+> 写**平衡补丁**时的专项规则（必须压过主工程最终覆盖层，否则数值被静默回滚）见 **`balance-patch.md` §三**。
+
+**分层实践**（推荐骨架，来自真实工程）：
+
+```
+-1        内容/类型定义（被他人引用的先落地）
+200       常规内容（Types / Icons / 主数据）
+600000    ImportFiles（共享 Core 文件）
+600005+   Modifiers（晚于 Types，因为要引用它们）
+610002+   AddUserInterfaces（UI 必须晚于 ImportFiles）
+999999+   最终覆盖层（立绘适配 / 兼容补丁 / 平衡补丁）
 ```
 
 ### 官方 .modinfo 实证模式（42 个官方 modinfo 统计）
@@ -568,6 +587,80 @@ XML / SQL / Lua 同步时的条目格式：
 
 > 💡 `.civ6proj` 是 ModBuddy 的项目台账 —— XML/SQL/Lua 缺失条目会导致文件不被打包；若残留指向不存在文件的条目，会编译报错。
 > `.modinfo` 的 `<Files>` 块是运行时打包清单 —— XML/SQL/Lua 缺失条目会导致文件不包含在最终模组里。
+
+#### ⚠ 两条轴要分清：`<Content Include>` 管打包，Action 段管加载
+
+| 轴 | 来源 | 作用 | 漏了的后果 |
+|---|---|---|---|
+| **打包** | `.civ6proj` 的 `<Content Include>` → 构建时展平成 `.modinfo` 顶层 `<Files>` | 文件**是否被复制进 Mods 目录**（编译期） | 部署包里没有该文件 |
+| **加载** | `.civ6proj` 的 Action 段（`AddUserInterfaces` / `ImportFiles` / `AddGameplayScripts` / …） | 文件**在游戏里以什么身份被装载** | **文件在包里躺着，但永远不执行** |
+
+**两者都要写，且不是同一件事。** 判定"某文件是否被加载"，看的是 **Action 段有没有它**。
+
+**实测事故**：某工程 6 个 `.lua` 只写进 `<Content Include>`、不在任何 Action 段
+→ 6/6 **都真的被部署进了 Mods 目录**（物理存在），但在构建产物的 Action 段里出现 **0 次** → **打包了却从不执行**，且**全程无任何报错**；
+它们的同名 `.xml` 却在 `AddUserInterfaces` 里 → UI 上下文照建、lua 逻辑永不运行。
+对照：正确登记的 `.lua` 在产物里出现 **2 次**（Action 段 1 次 + `<Files>` 1 次）。
+
+**自检方法**：把 `<Content Include>` 与全部 Action 的 `<File>` 做归一化（`\`→`/`）**差集**，再对构建后的 `.modinfo` 复核一遍 ——
+差集里剩下的就是「打包了但不会加载」的文件。参考实现：示例工程 `workspace/_tools/check_proj_content.py`。
+
+### 工程骨架：`.gitignore` 白名单 + `.gitattributes` 钉 LF
+
+真实工程（多个独立收敛到同一策略）推荐的仓库骨架：
+
+```gitignore
+# 默认忽略一切，只放行可管理的源文件
+*
+!*/
+!.gitignore
+!*.civ6proj
+!*.civ6sln
+!*.xlp
+!*.artdef
+!*.sql
+!*.xml
+!*.lua
+
+# 专用的 agent/素材工作区（中间产物、源素材，统一不入库）
+workspace/
+
+# 可再生的贴图（由脚本生成）
+*.tex
+*.dds
+
+# 安全网：常见中间/临时产物显式忽略（防止被白名单放行）
+*.bak_*
+*.log
+*.tmp
+*.wem
+
+# 例外：音频 bank 产物要入库
+!Platforms/Windows/Audio/*.bnk
+!Platforms/Windows/Audio/*.txt
+!Platforms/Windows/Audio/*.ini
+```
+
+```gitattributes
+# ★ ArtDef / XML / SQL / Lua：强制 LF
+# 本机 core.autocrlf 常见为 true，checkout 会把仓库里的 LF 写成工作区 CRLF；
+# 而 cooker 产物一律是 LF → 「源 ↔ Mods 副本」会出现永久伪不一致。
+*.artdef  text eol=lf
+*.xml     text eol=lf
+*.sql     text eol=lf
+*.lua     text eol=lf
+
+# 美术二进制资产：禁止任何换行/编码转换
+*.dds -text -diff -merge binary
+*.tex -text -diff -merge binary
+*.ast -text -diff -merge binary
+*.mtl -text -diff -merge binary
+*.geo -text -diff -merge binary
+*.blp -text -diff -merge binary
+```
+
+> `.gitattributes` 的完整论证与实测支撑见 `civ6-art-reference/reference/cook-layer.md §2.3.1`。
+> 加完后若出现大批"看似被改动"的文件，那是 autocrlf 历史遗留，用 `git add --renormalize .` 一次性归位，**不是内容改动**。
 
 ### 加载动作更新（动作定义 / Action definitions）
 

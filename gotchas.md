@@ -166,5 +166,200 @@
 
 43. **ForgeUI `Offset` 正值恒指向容器内部，按锚点镜像翻转** — `Anchor` 是 `L/C/R × T/C/B` 九宫格，Offset 的正值方向不是全局坐标系而是相对锚点：`L`→右、`R`→**左**、`T`→下、`B`→**上**、`C`→全局正向（右/下）。症状：同一面板中一个按钮正常、另一个"贴屏幕边缘/面板外"，通常就是 `R,B`/`B` 系锚点写了负值（或镜像错值）。例：`R,B` + `Offset="-80,33"` = 向右 80 推出右缘；正确应为 `"80,33"`（向左）。vanilla 佐证 `WorldBuilderMenu.xml:14-15`（`R,B`/`L,B` 均正值正常）、`BoostUnlockedPopup.xml:38`（`C,B` + `0,15` 向上）。规避：角落锚点先按上表反推符号；或统一用 `C,*` 锚点 + 正值，无镜像歧义。详见 `xml-templates.md` "Anchor Syntax Reference"。
 
+---
+
+## LoadOrder 与跨 mod 门控（2026-09 · 11 个工程实测）
+
+44. **官方文档之外的 LoadOrder 阶梯：`-1` 是事实约定，`600000` 段是社区约定**
+    本文档上文只给了 vanilla 的 `-100 … 100` 阶梯；11 个真实工程实测分布的**观测值**如下（**按观测呈现，不臆造依据**）：
+
+    | 用途（按观测归纳） | 观测值 | 出现工程 |
+    |---|---|---|
+    | 内容/类型**定义**前置 | `-2` / `-1` | 工程 F、工程 G、工程 H、工程 B、工程 C、工程 I、示例工程、工程 A |
+    | 常规内容 | `10` – `200`（`200` 最常见，多用于 Types） | 多数 |
+    | 跨 mod 适配层 | `1000` / `10000` / `20000` / `30000` | BlackShores_Patch、工程 F/SK、工程 D |
+    | 大包主体（需晚于他人读取） | `600000` – `610003` | 工程 A `600003`、工程 C `600000/600001`、示例工程 `600000/600005`、UI 层 `610002/610003` |
+    | 最终覆盖层（立绘/适配/补丁） | `777777` – `9999999`（`999999` 见于 7 个工程） | 多个 |
+
+    - ★ **`-1` 出现在 8/11 个工程**，且 4 个独立总督工程都把它用于 `Governors` 数据 → **强约定**：*被其他内容引用的定义类数据要早加载*。
+    - **UI 层的 LoadOrder 要晚于 `ImportFiles`**（实测 `ImportFiles` 600000 → `AddUserInterfaces`+`Context=InGame` 610002）。
+    - ⚠ **跨 mod 同 LoadOrder 的执行次序无保证**。`999999` 被 6 个工程同时占用；**新增同名 tag / 同 ModifierId 前必须自查是否与他人撞值**。
+    - 写平衡补丁时必须压过主工程**最终覆盖层**，详见 `balance-patch.md` §三。
+
+45. **`<Criteria>` 除了单个 `ModInUse`，还支持 `any="1"` 与 `inverse="1"` 组合**
+    ```xml
+    <!-- 任一命中即成立（多候选 mod GUID） -->
+    <Criteria id="Rover_Any" any="1">
+      <ModInUse>073b6367-…</ModInUse>
+      <ModInUse>21183d1e-…</ModInUse>
+      <ModInUse>66685738-…</ModInUse>
+    </Criteria>
+    <!-- 反选：对方【不】在场才成立 -->
+    <Criteria id="X_Disabled"><ModInUse inverse="1">对方GUID</ModInUse></Criteria>
+    ```
+    vanillar/CDATA 特性：`inverse` 是 `.civ6proj` CDATA 才支持的写法，手写 `.modinfo` 需预定义独立的 `X_Disabled` 判据。
+    **三态生态用法**（11 工程实测，skill 此前只文档了语法未文档用法）：
+    | 用法 | 语义 |
+    |---|---|
+    | `<ModInUse>GUID</ModInUse>` | 对方在场 → **加载我的适配内容** |
+    | `<ModInUse inverse="1">GUID</ModInUse>` | 对方在场 → **关闭我的重复内容**（避免同一内容被两个 mod 各定义一份） |
+    | 补丁门控 | 父 mod 在场才加载补丁（见 `balance-patch.md`） |
+    实测被多个工程共同适配的生态 GUID：`HD`、`Suk_Portrait`、`工程 I`、`DLL`、`BuilderCharges`。
+
+46. **Lua 拿不到 `<Criteria>` —— 用 `GlobalParameters` 做桥**
+    `<Criteria>` 只在**加载期**决定"这块内容跑不跑"，Lua 运行时读不到它。
+    需要让 Lua 按"某 mod 是否在场"分支时：主数据文件先声明 `(Name, 0)`，由被 Criteria 守护的兼容文件把它 `UPDATE` 成 `1`，Lua 启动读值分支。
+    ```sql
+    -- 主数据文件
+    INSERT OR REPLACE INTO GlobalParameters (Name, Value) VALUES ('MYMOD_ADAPT_FIX_X', 0);
+    -- 被 <Criteria> 守护的兼容文件（对方在场时才执行）
+    UPDATE GlobalParameters SET Value = 1 WHERE Name = 'MYMOD_ADAPT_FIX_X';
+    ```
+    ```lua
+    local ADAPT = math.floor(GlobalParameters.MYMOD_ADAPT_FIX_X) or 0;
+    ```
+    另一条路：补丁侧 `Game.SetProperty("X_BALANCED", 1)`，主 mod 读 `Game.GetProperty` —— 见 `balance-patch.md` §五。
+    第三条路（**不需要对方配合**）：遍历 `GameInfo.Leaders()` 等表探测对方领袖/条目是否存在；SQL 侧等价物是 `WHERE EXISTS (SELECT 1 FROM …)`。
+
+---
+
+## 引擎数据细节（skill 库实查 · 反直觉）
+
+47. **`Modifiers.OwnerRequirementSetId = 'ON_TURN_STARTED'` 是伪条件集（每回合重评估）**
+    该列**不是只能填 RequirementSetId** —— `ON_TURN_STARTED` 是引擎识别的伪值。
+    ★ vanilla 实测 66 行，**全部**是 `MODIFIER_PLAYER_DIPLOMACY_AGENDA_*`（议程需要周期性重估）。
+    查库确认：除该伪值外，`OwnerRequirementSetId` 的取值与 `RequirementSets` 差集为空。
+    ```sql
+    SELECT OwnerRequirementSetId, COUNT(*) FROM Modifiers GROUP BY 1 ORDER BY 2 DESC;
+    ```
+    用法：把修饰符挂上它即可获得"每回合重算"的触发时机（实测被用于"每回合授予经验"等场景）。
+
+48. **`ModifierArguments.Value` 支持逗号列表，按位置与另一参数配对**
+    ```sql
+    -- 一条修饰符改三种产出
+    ('PETRA_YIELD_MODIFIER', 'YieldType', 'YIELD_FOOD,YIELD_GOLD,YIELD_PRODUCTION'),
+    ('PETRA_YIELD_MODIFIER', 'Amount',    '2,2,1')
+    ```
+    ★ vanilla 实测 45 行含逗号（`YieldType` 16 / `Amount` 15 / `UnitType` 7 / `DistrictType` 4）。
+    **反直觉点**：`Amount` 列被当字符串存，**不做数值校验** —— 两边长度写不等会**静默错配**，不报错。
+    紧凑写法（`2,2,1`）与带空格写法（`1, 1, 1`）原版都在用。
+
+49. **`Modifiers.SubjectStackLimit` / `OwnerStackLimit` 限叠加（词条型效果重复挂会出 bug）**
+    ★ 实测列存在、vanilla 57 行非 0。同一 `ModifierId` 被多个来源（多建筑 / 多次 ATTACH / 多晋升）挂到同一主体时**默认叠加**；
+    视野、攻击次数、移动力、进入深海这类词条型效果重复叠加会出显示或逻辑 bug。
+    `SubjectStackLimit = 1` = 同一主体只生效一份。（注意：这与 `gotchas.md` §30「同名 ABILITY 只叠加 1 层」是**两个不同层面**的机制。）
+
+50. **`EFFECT_CHANGE_UNIT_OPERATION_AVAILABILITY` 的参数只认 `UNITOPERATION_*`，填 `UNITCOMMAND_*` 是空转**
+    ★ `UnitOperations`（键列 `OperationType`）与 `UnitCommands`（键列 `CommandType`）是**两张不同的表**。
+    vanilla 用法：`MODIFIER_ALL_UNITS_DISABLE_OPERATION` 的参数为 `Available` + `OperationType='UNITOPERATION_SOOTHSAYER_SACRIFICE'`。
+    实测踩坑：把 `UNITCOMMAND_MOVE_JUMP` 填进 `OperationType`（`Available=0`）**毫无作用、也不报错**，原版行为照旧。
+    **规范**：写任何枚举型参数前，先 `SELECT DISTINCT <列> FROM <表>` 确认合法取值域。
+
+51. **`Improvements.Coast = 1` 指「沿海陆地」，水域改良必须 `Domain='DOMAIN_SEA'` + `Coast=0`**
+    ★ vanilla 实查：`Domain='DOMAIN_SEA'` 的 8 条改良（FISHING_BOATS / OFFSHORE_OIL_RIG / KAMPUNG / POLDER / FISHERY / OFFSHORE_WIND_FARM / SEASTEAD / FEITORIA）**全部 `Coast=0`**；
+    唯一 `Coast=1` 的是 `IMPROVEMENT_BEACH_RESORT`，其 `Domain='DOMAIN_LAND'`。
+    ```sql
+    SELECT Domain, Coast, COUNT(*) FROM Improvements GROUP BY 1,2;
+    -- DOMAIN_LAND/0 = 57 ; DOMAIN_LAND/1 = 1 ; DOMAIN_SEA/0 = 8
+    ```
+    **禁止 `Domain='DOMAIN_SEA'` + `Coast=1`。**
+
+52. **SQL `LIKE ('%A%' OR '%B%')` 是陷阱：括号表达式先求值为整数 `0`**
+    症状：多关键词搜索**一条都搜不到**，且**不报错**。
+    ```
+    WHERE col LIKE ('%大剑%' OR '%knight%')     -- ✗ 括号先算 (字符串 OR 字符串) → 整数 0 → 等价 LIKE 0
+    WHERE col LIKE '%大剑%' OR col LIKE '%knight%'   -- ✓
+    ```
+    更隐蔽的是：`LIKE 0` **不是永不命中**，而是**只命中字面量为 `'0'` 的行**（内存 SQLite 实跑复现：只返回值为 `'0'` 的那行）。
+    **写多关键词检索一律把 `LIKE` 重复写在每个条件上。**
+
+53. **`LIKE` 里的 `_` 是单字符通配符，匹配字面下划线必须 `ESCAPE '\'`**
+    ```sql
+    WHERE Type LIKE 'CIVILIZATION\_（已移除）\_WAVES\_%' ESCAPE '\'
+    ```
+    漏写 `ESCAPE` 会静默多匹配（`\_` 被当"任意单字符"），在批量 `DELETE`/`UPDATE` 里后果放大。
+
+54. **SQL 保留字列名要加反引号：`` `Range` ``**
+    `Units` 表的 `Range` 列是 SQL 关键字，`INSERT` 时须写 `` `Range` ``。写枚举列/保留字列前先看同文件既有写法。
+
+55. **引擎自带的拼写错误只能"照抄"，但必须先在原版数据里实证**
+    判定标准：该字符串能在**原版数据快照 / 游戏本体文件**里查到，且**同族字符串拼写正确** → 认定为引擎官方笔误，逐字照抄。
+    **工程或第三方 mod 里的拼写错误不要跟着抄**（那是缺陷，不是约定）。
+    ★ 已实证例（互为镜像的一对）：
+    | 错误串 | 位置 | 同族正确写法（对照证据） |
+    |---|---|---|
+    | `MODIFIER_GOVERNOR_ADJUST_PREVENET_STRUCTURAL_DAMAGE` | `Modifiers` 的 ModifierType | 对应 `EffectType` = `EFFECT_ADJUST_PREVENT_STRUCTURAL_DAMAGE` |
+    | `EFFECT_GOVERNOR_ADJUST_IDENITITY_PER_TITLE` | `DynamicModifiers` 的 EffectType | 对应 `ModifierType` = `MODIFIER_PLAYER_GOVERNORS_ADJUST_IDENTITY_PER_TITLE` |
+    复核命令：`SELECT ModifierType, CollectionType, EffectType FROM DynamicModifiers WHERE ModifierType LIKE '%PREVENET%' OR EffectType LIKE '%IDENITITY%';`
+    （更多总督相关内容见 `governor-authoring.md` §五。）
+
+56. **`TypeProperties` 是"不打 Lua 就给 Type 挂引擎开关"的声明式表 —— 与 Lua `SetProperty` 是两套**
+    ```sql
+    INSERT OR REPLACE INTO TypeProperties (Type, Name, Value) VALUES
+      ('UNIT_X', 'CAN_TELEPORT_TO_CITY', '1'),
+      ('UNIT_X', 'IGNORE_PLAYER_STAT_MAX_STRENGTH', '1');
+    ```
+    ★ vanilla 实测 395 行 / 42 个不同 `Name`（`CityStateCategory` / `LIFESPAN` / `CAN_MOVE_AFTER_PURCHASE` / `CAN_EVER_TRAIN_CITY_STATE` / `HERO_LOYALTY_CHANGE_PER_TURN` …）。
+    注意原版行**还带第 4 列 `PropertyType`**（如 `PROPERTYTYPE_IDENTITY`）；省略是否降级未实测。
+
+---
+
+## UI / GP 双端 API 面差异（工程实测；标注为项目断言者未独立复核）
+
+> **通用写法：探测方法存在性，而不是靠上下文标志分支。** 同一份 Core 文件要被 GP 和 UI 同时 `include()`，
+> 就写成「探测方法存在 → 用；不存在 → 换等价方法；都没有 → 走保守默认值」：
+> ```lua
+> local f = pUnit.GetUnitType or pUnit.GetType;
+> ```
+
+57. **同一语义在两端的可用性可能不同，且"存在但语义错"比"不存在"更难查**
+
+    | API | 实测差异 | 处置 |
+    |---|---|---|
+    | `Unit:GetMovesRemaining()` | UI 返回 4.5 / **GP 返回 4（整数截断）** | 统一改用分数接口 `GetMovementMovesRemaining()` |
+    | `Plot:IsValidFoundLocation()` | UI 可用；**GP 恒 `false`** | 用 `GetCities():IsValidFoundLocation(x,y)`（仅 GP） |
+    | `GetPastTimeline` | **仅 UI** | UI 采集后经 `EXECUTE_SCRIPT` 回灌 GP |
+    | `Game.SetProperty` | **仅 GP** | —— |
+    | `GetNumBeliefsEarned` | **仅 UI** | GP 侧用 `GetStats:GetNumBeliefsInReligion` |
+    | `Unit:GetUnitType` | **仅 UI**（GP 只有 `GetType` 返回索引） | 上面的探测式写法 |
+
+    ⚠ `Plot:IsValidFoundLocation()` 在 `database/api.sqlite` 里标 `availability=Both` —— 即「**存在但语义错**」，查库查不出来，只有实测能发现。**这类差异是"查 API 库"覆盖不到的地带。**
+
+58. **`ContextPtr:AddUpdate` / `RemoveUpdate` 在 Civ6 不存在** —— 逐帧回调用 `ContextPtr:SetUpdate(fn)` / `SetUpdate(nil)`。
+    ⚠ `SetUpdate` **只在 context 可见时被调度**。
+
+59. **`Religion:GetHolyCityID()` 返回的是 componentIDs 表 `{type, player, id}`，必须取 `.id`**
+    曾把整表当数值转发导致下游静默失效。
+
+60. **`bCancelled` 在日志里常见 `-1`，表示"未取消"** —— 只有 `true` / `1` 才算取消。
+    把它当布尔用会把"正常事件"误判成"队列被取消"，导致逻辑中断。
+
+61. **Modifier 授予/移除 PROPERTY 不会触发 `UnitPropertyChanged`**
+    SQL modifier 直接写 PROPERTY 时，依赖 `Events.UnitPropertyChanged` 刷新 UI 的按钮/面板**静默不刷新**。
+    兜底：`ContextPtr:SetUpdate` 累加计时 + 节流脏检查（实测 0.2s 一档可用）。
+
+62. **需要"本局第一次通知"的 handler 必须写在文件加载期，不能放进初始化函数**
+    `Events.NotificationAdded` 这类"开局前几回合就会来"的事件，若在 `LoadScreenClose` / `LoadGameViewStateDone` 里才 `.Add()`，
+    初始化窗口内的事件**永久丢失且不报错**（实测漏掉通知 1、3，只剩 8）。
+    **判据**：该事件是否可能在 `LoadGameViewStateDone` 之前触发？是 → 顶层注册。
+
+63. **引擎返回的"数组"可能是稀疏 table —— 用 `pairs` 不要用 `ipairs`**
+    `City:GetOwnedPlots()` 等 `Get*` 返回的列表底层可能有空洞，`ipairs` 会在第一个 `nil` 处停止，**静默丢掉后半段**
+    （表现为"随机选地块总选不到某些格"）。
+    ```lua
+    for k, pPlot in pairs(plots or {}) do
+      if type(k) == "number" and pPlot then … end
+    end
+    ```
+
+64. **`INSERT OR REPLACE` / `INSERT OR IGNORE` / 裸 `INSERT INTO` 是三层语义，不要混用**
+    | 写法 | 语义 | 场景 |
+    |---|---|---|
+    | `INSERT OR REPLACE` | **夺权**：覆盖已有定义 | 主流程（幂等可重跑） |
+    | `INSERT OR IGNORE` | **只补缺，不夺权** | 与其他 mod 可能撞车的定义；属性标记 |
+    | 裸 `INSERT INTO` | 写**没有 Types 注册**的纯数据表 | 该表不参与 Type 体系时 |
+    裸 `INSERT` 出现得极少 —— 见到它通常是"该表不需要 Types"的信号。
+
+
 
 
