@@ -13,6 +13,23 @@
 
 3. **`<Files>` must list every XML/SQL/Lua file.** Missing any of these will cause packaging/distribution failure or the mod silently not loading. 注意范围：ImportFiles 引用的图片/视频、`Platforms/` 下的音频 bank 等媒体资产走专门的导入流程或用户手动导入；其余文件 ModBuddy 引擎默认自动打包，无需写进清单（见 project-setup.md「文件清单同步」）。
 
+   > **⚠ 两轴必须分清：`<Content Include>` 管「打包」，Action 管「加载」**（2026-09 补，实测事故）
+   >
+   > | 轴 | 来源 | 作用 | 后果 |
+   > |---|---|---|---|
+   > | **打包** | `.civ6proj` 的 `<Content Include="…">` → 构建时展平成 `.modinfo` 的顶层 `<Files>` | 决定文件**是否被复制进 Mods 目录**（编译期） | 漏了 → 部署包里没有该文件 |
+   > | **加载** | `.civ6proj` 的 Action 段（`AddUserInterfaces` / `ImportFiles` / `AddGameplayScripts` / `UpdateDatabase` / `UpdateText` / …） | 决定文件**在游戏里以什么身份被装载** | 漏了 → **文件在包里躺着，但永远不执行** |
+   >
+   > **两者都要写，且不是同一件事。** 判定某文件是否被加载，看的是 **Action 段有没有它**，不是 `<Files>` 里有没有它。
+   >
+   > **实测事故（工程 A）**：6 个 `.lua` 只写进 `<Content Include>`、不在任何 Action 段 ——
+   > `UI/UI_Civ_BS.lua`、`UI/Leader_SK/SK_Caculation_BS.lua`、`UI/Leader_CML/CML_Switcher_BS.lua`、`UI/Disaster_Plots/DisasterPlot_BS.lua`、`Rover/UnitFlag_Rover.lua`、`ImportFiles/TechAndCivicUnlockables_BS.lua`。
+   > 实测状态：这 6 个文件**都真的被部署进了 Mods 目录**（16 KB / 46 KB / 17 KB / 511 B / 3.3 KB / 2.3 KB，物理存在），但在构建产物的 Action 段里出现 **0 次** → **打进了包却从不执行**；而它们的同名 `.xml` 却在 `AddUserInterfaces` 里 → UI 上下文照建、lua 逻辑永不运行，且**全程无任何报错**。
+   > 对照：同工程正确登记的 `.lua` 在产物里出现 **2 次**（Action 段 1 次 + `<Files>` 1 次）。
+   >
+   > **自检方法**：把 `<Content Include>` 与全部 Action 的 `<File>` 做归一化（`\`→`/`）**差集**，再对构建后的 `.modinfo` 复核一遍 —— 差集里剩下的就是「打包了但不会加载」的文件。官方写法佐证：`DLC/Babylon/Babylon.modinfo` 的 `<AddUserInterfaces>` 列 `UI/Additions/HeroesPopup.xml`，`<ImportFiles>` **同时**列 `HeroesPopup.xml` 与 `HeroesPopup.lua`。
+   > 工具：示例工程 的 `workspace/_tools/check_proj_content.py` 即此差集检查器（见 project-setup.md）。
+
 <!-- 4. **Mod ID must be a valid GUID.** Don't reuse GUIDs across mods. -->
 
 ## Event Pitfalls
@@ -23,9 +40,27 @@
 
 7. **GamePlay 脚本 `Events.*` 和 `GameEvents.*` 均可用，不可用 `LuaEvents.*`。** `LuaEvents.*` 是 UI 上下文的广播系统，GP 侧不可用。UI 侧不可用 `GameEvents.*`。
 
-> **⚠ 两条总线互不镜像（2026-09 FireTuner 对照实测）**：引擎 `GameCoreEvent` **只**进 `Events.*`（同一 `UnitMoveComplete`：Events 端触发 11 次时 GameEvents 端 0 次）；`GameEvents.*` **只**承载 Lua 级事件（`PlayerTurnStarted`：GameEvents 端 17 次时 Events 端 0 次）。所以**引擎事件写成 `GameEvents.X.Add()` 不报错、也永远不会回调**（静默无效登记）。
+> **⚠ 三条总线互不镜像 —— 用错总线是「静默无效」，必须按事件查表，不要凭印象**（2026-09 修订）
 >
-> **⚠ `GameEvents.X` 不是存在性探针**——它对**任意**名字都返回 table（自动建表）。只能用 `type(Events.X) == "table"` 判断事件是否存在；对不存在的事件写 `Events.X.Add()`，**UI 侧会直接抛 `attempt to index a nil value` 并中断该函数后续所有初始化**。引擎未暴露到 `Events.*` 的 48 个事件在 `events_enhanced.json` 中标 `availability: "None"`。
+> 同一个逻辑事件**通常只在其中一张表上有效**。用错总线的后果是**不报错、也永远不回调**（静默无效登记）。
+>
+> **权威判据 = `reference/events_enhanced.json` 的 `eventSystem` 字段**（1081 条全覆盖）：
+>
+> | `eventSystem` | 条数 | 注册方式 |
+> |---|---|---|
+> | `LuaEvents` | 481 | `LuaEvents.X.Add()`（UI 上下文互播；GP 侧不可用） |
+> | `Events` | 470 | `Events.X.Add()` |
+> | `GameEvents` | 130 | `GameEvents.X.Add()` |
+>
+> 也可以用 `python database/scripts/query_events.py --show <事件名>` 直接看 `System` 列。
+>
+> **⚠ 旧版本写「`GameEvents.*` 只承载 Lua 级事件、不承载任何引擎事件」——那是错的。**
+> 准确说法：`GameEvents.*` 上**存在一批非自定义事件，且它们在 `Events.*` 上没有对应条目**，例如 `OnDistrictConstructed` / `CityConquered` / `PolicyChanged` / `PlayerTurnStarted` / `OnUnitMoved` / `OnCombatOccurred` / `UnitCreated` / `PlotPropertyChanged`（130 条中 82 条 `availability=GamePlay`，`events_enhanced.json` 自带的 `exampleCode` 就写 `GameEvents.X.Add(...)`）。
+> 实测反证：一个已发布 mod 全工程 127 个事件注册点与 `eventSystem` 比对 **63/63 命中、0 处不一致**，其中 `GameEvents.PolicyChanged` / `GameEvents.CityConquered` / `GameEvents.OnDistrictConstructed` 都在正常工作；另一个工程 18 个事件同样零例外。
+> 同理 `UnitMoveComplete` 只在 `Events.*` 上有回调 —— **两边各自拥有一批对方没有的事件，谁也不能替代谁**。
+> 心智模型：三条总线是**按事件划分**的三张表，不是按「引擎 vs Lua」划分的 —— 所以永远查 `eventSystem`，不要按来源猜。
+>
+> **⚠ `GameEvents.X` 不是存在性探针**——它对**任意**名字都返回 table（自动建表）。只能用 `type(Events.X) == "table"` 判断事件是否存在；对不存在的事件写 `Events.X.Add()`，**UI 侧会直接抛 `attempt to index a nil value` 并中断该函数后续所有初始化**。引擎未暴露到 `Events.*` 的 48 个事件在 `events_enhanced.json` 中标 `availability: "None"`（这 48 条的 `eventSystem` 同为 `GameEvents`，即「按名字该走 GameEvents，但实际哪一层都订阅不到」）。
 
 8. **Never pass C++ objects or UI controls across `LuaEvents`.** The owning context may delete them before the receiver processes the event, causing crashes. Pass only string/number/boolean or pure-Lua tables.
 

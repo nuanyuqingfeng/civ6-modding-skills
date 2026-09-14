@@ -470,12 +470,20 @@ end);
 **Key difference**: GamePlay scripts run on the game core side, not the UI side. They cannot access UI controls, `ContextPtr`, or `Controls`. Both `Events.*` and `GameEvents.*` are available in GP; `LuaEvents.*` is UI-only.
 
 > **⚠ 两条总线互不镜像（2026-09 FireTuner 对照实验，同上下文同时注册两边处理器）**
-> | 事件 | 性质 | `Events` 命中 | `GameEvents` 命中 |
-> |---|---|---|---|
-> | `UnitMoveComplete` | 引擎 GameCoreEvent | 11 | **0** |
-> | `PlayerTurnStarted` | Lua 级事件 | **0** | 17 |
+> | 事件 | `Events` 命中 | `GameEvents` 命中 |
+> |---|---|---|
+> | `UnitMoveComplete` | 11 | **0** |
+> | `PlayerTurnStarted` | **0** | 17 |
 >
-> 即 **引擎 `GameCoreEvent` 只进 `Events.*`；`GameEvents.*` 只承载 Lua 级事件**（自定义 event、`EXECUTE_SCRIPT` 触发的）。所以 **`GameEvents` 不是引擎事件的"后门"**：引擎没暴露到 `Events.*` 的事件，用 `GameEvents.*` 订阅是**静默无效登记**——不报错，也永远不会回调。
+> **实测事实**：两边**各自只在一张表上有回调**，注册到另一张上就是**静默无效登记**——不报错、也永远不会回调。
+>
+> **⚠ 但由此推出「引擎事件一律走 `Events.*`、`GameEvents.*` 只装你自己写的 Lua 事件」是错的**（旧版本此处如此断言，2026-09 已更正）。
+> `events_enhanced.json` 里 `eventSystem=GameEvents` 共 **130 条**，其中 **82 条 `availability=GamePlay`**，都是**不是你自定义的**事件，且**在 `Events.*` 上根本没有对应条目**：
+> `OnDistrictConstructed` / `CityConquered` / `PolicyChanged` / `OnUnitMoved` / `OnCombatOccurred` / `UnitCreated` / `PlotPropertyChanged` / `OnWMDCountChanged` …（该库自带的 `exampleCode` 就写 `GameEvents.X.Add(...)`）。
+> 实测反证：一个已发布 mod 全工程 127 个事件注册点与 `eventSystem` 比对 **63/63 命中、0 处不一致**，其中 `GameEvents.PolicyChanged` / `GameEvents.CityConquered` / `GameEvents.OnDistrictConstructed` 都在正常工作；另一工程 18 个事件同样零例外。
+>
+> **正确的心智模型**：三条总线是**三张按事件划分的表**，不是按「引擎 vs Lua」划分的。
+> **选总线永远查 `eventSystem` / `query_events.py` 的 `System` 列**，不要按来源猜。
 > **⚠ `GameEvents.X` 对任意名字都返回 table（自动建表）**：`type(GameEvents.X)` 说明不了任何事，别拿它当探针；只有 `type(Events.X)` 有效。
 
 ### Full GameEvents Reference (82 hooks)
@@ -578,9 +586,14 @@ local data = params.result;
 |--------------|--------|-------|
 | UI Lua context | `Events.*` | Must `.Remove()` in `OnShutdown()` |
 | UI Lua context | `LuaEvents.*` | Auto-cleanup. Only pass simple types. |
-| GamePlay Lua script | `GameEvents.*` | No access to UI or UI events. |
+| GamePlay Lua script | `Events.*` **或** `GameEvents.*` | 二选一，**按事件定**（见下） |
 | Raising an event cross-context | `LuaEvents.*` | Name after the raising context. |
-| Reacting to game state change | `Events.*` | C++ engine emits these. |
+| Reacting to game state change | **查 `eventSystem` 后决定** | ⚠ 不可一律用 `Events.*`，见 Gotcha 8 |
+
+> **选总线三步法（禁止凭印象）**
+> 1. `python database/scripts/query_events.py --show <事件名>` 看 `System` 列（或查 `reference/events_enhanced.json` 的 `eventSystem`）；
+> 2. `System=Events` → `Events.X.Add()`；`System=GameEvents` → `GameEvents.X.Add()`；`System=LuaEvents` → `LuaEvents.X.Add()`；
+> 3. `availability=None`（48 条）→ **不要注册**，UI 侧会抛 nil 崩溃。
 
 ## Gotchas
 
@@ -598,9 +611,21 @@ local data = params.result;
 
 7. **Context load order matters** — When a context loads, it subscribes to events. Already-fired events won't be replayed. Use `LoadScreenClose` or manual re-initialization for late-loading contexts.
 
-8. **别把 `GameEvents.*` 当引擎事件的"后门"** — 2026-09 实测：`Events.*` 在 UI 与 GP 是同一张 463 条的表，`UnitMoveComplete`/`CitySelectionChanged`/`UnitAddedToMap`/`PlayerTurnActivated` 在 GP 侧同样正常触发；而 `GameEvents.*` 只承载 Lua 级事件，**不承载任何引擎 GameCoreEvent**（同一 `UnitMoveComplete`：Events 端 11 次 / GameEvents 端 0 次）。
-   真正"仅 UI"的少数事件（如 `UnitSimPositionChanged`）在 `events_enhanced.json` 里标 `availability: "UI"`；引擎未暴露到 `Events.*` 的 48 个标 `availability: "None"`——**哪一层都订阅不到**，UI 侧 `.Add()` 还会直接崩。
-   ⚠ `GameEvents.X` 与 `Events.X` 不同：前者对**任意**名字都自动建 table，不能用作存在性探针。
+8. **不要凭印象选总线 —— 查 `eventSystem` 列**（2026-09 修订；旧结论有误）。
+   同一个逻辑事件**通常只在 `Events.*` / `GameEvents.*` 其中一张上有效**，用错即**静默无效**（不报错、不回调）。
+   权威判据是 `reference/events_enhanced.json` 的 **`eventSystem`** 字段（1081 条全覆盖）：`LuaEvents` 481 / `Events` 470 / `GameEvents` 130；
+   等价命令：`python database/scripts/query_events.py --show <事件名>` 看 `System` 列。
+
+   - 走 `Events.*` 的事件例：`UnitMoveComplete` / `CitySelectionChanged` / `UnitAddedToMap` / `PlayerTurnActivated`
+   - **只在** `GameEvents.*` 上存在、`Events.*` 无对应条目的非自定义事件例：`OnDistrictConstructed` / `CityConquered` / `PolicyChanged` / `PlayerTurnStarted` / `OnUnitMoved` / `OnCombatOccurred`
+
+   > ⚠ **旧版本本条写「`GameEvents.*` 只承载 Lua 级事件，不承载任何引擎 GameCoreEvent」——该结论是错的**。
+   > 本条自身引用的实测数据（`PlayerTurnStarted`：GameEvents 端 17 次、Events 端 0 次）恰好证明它本就走 `GameEvents.*`。
+   > 实测反证：一个已发布 mod 全工程 127 个事件注册点与 `eventSystem` 比对 **63/63 命中、0 处不一致**，其中 `GameEvents.PolicyChanged` / `GameEvents.CityConquered` / `GameEvents.OnDistrictConstructed` 都在正常工作；另一工程 18 个事件同样零例外。
+   > 正确表述是「**三条总线是按事件划分的三张表**」，而不是「引擎事件一律走 `Events.*`」。
+
+   `availability=None` 的 48 条**哪一层都订阅不到**，UI 侧 `.Add()` 还会直接抛 nil 崩溃（这 48 条的 `eventSystem` 同为 `GameEvents`，即「按名字该走 GameEvents，但实际不可用」）。
+   ⚠ `GameEvents.X` 对**任意**名字都自动建 table，不能用作存在性探针——只有 `type(Events.X) == "table"` 是权威探针。
 
 ## P3 校准补充事件（2026-08，官方 Lua 验证）
 
