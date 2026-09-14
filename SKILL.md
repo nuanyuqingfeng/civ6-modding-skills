@@ -165,6 +165,7 @@ python $T logs --log-file Database.log -n 50
 | `bridge_probe_1_register.lua` → `_2_dispatch.lua` → `_3_read.lua` | **UI→GP 派发可达性三连测**（确认 `EXECUTE_SCRIPT` 的 `OnStart` 是否到达你注册的那个 GP 态） | gamecore → ingame → gamecore |
 | `cheat_setup.lua` | 造测试条件（金币/信仰/刷兵/科技进度） | ingame |
 | `end_turn.lua` | 结束回合观察跨回合结算 | ingame |
+| `sql_like_trap.lua` | **SQL `LIKE ('%A%' OR '%B%')` 陷阱实机复核** —— 括号表达式求值为整数 `0`（`typeof`=`integer`），等价 `LIKE 0` → 只命中字面量 `'0'` 的行；真实库对照 627 vs 0。顺手示范 `DB.Query` 在 gamecore 的正确用法（逐条 `pcall` 包住，避免一处报错丢全部输出） | gamecore |
 
 片段中标注【待实测】的 API 未经验证，失败时换方案，勿当作已证实结论上报。
 端口可用性的**权威对照表**见 `reference/PORT_MATRIX.md`（本次实测，含与 api.sqlite 冲突的条目）。
