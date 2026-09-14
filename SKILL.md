@@ -355,6 +355,21 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 | 查（已移除）官方译名/名词/剧情台词（`（语料库已移除）`，12 万行语料，多语言+说话人） | `dsh_validate` | `（语料执行器已移除）` |
 | 校验项目 `*_RGN.sql` 引用完整性（悬空 ModifierId/Type/RequirementSetId 等，可对照基础库） | `dsh_validate` | `scripts/rgn_validate_runner.mjs` |
 
+### 自带校验/运维脚本（`scripts/`，全部零依赖 + 带退出码）
+
+**完整清单与标准验证顺序见 `scripts/README.md`。** 改完代码/数据后按序跑：
+
+| 脚本 | 查什么 | 与谁的职责互补 |
+|------|--------|---------------|
+| `scripts/check_sql_exec.py` | **可执行性** —— 非法转义（`'…\'s…'`）导致**整条 INSERT 报废**；遇错即停，同文件后续语句块也全不执行 | ★ `rgn_validate` 查不到：语句没跑起来 = 数据没进库 = 引用不悬空 |
+| `scripts/rgn_validate_runner.mjs` | **引用完整性** —— 悬空 ID | 与上面互补 |
+| `scripts/check_types_kinds.py` | `INSERT INTO Types` 的 `Kind` 是否引擎合法枚举 | 打包不报错、加载期才丢弃 |
+| `scripts/check_proj_content.py` | `<Content Include>` ↔ 磁盘**双向闭合**（悬空清单项 / 漏登记） | 见 `gotchas.md` §3「打包 vs 加载」 |
+| `scripts/check_pantry.py` | **pantry 卫生** —— `.tex` 位置 / 重名 / depot 路径 / 非 ASCII / `.tex`↔`.dds` 配对 | 开 AssetEditor 前必跑 |
+| `scripts/clear_ae_cache.py` | 清 AssetEditor 依赖缓存（动过贴图后**必须**清，否则验证结论是缓存假象） | 同上 |
+| `scripts/verify_trees.py` | 两棵目录逐字节相同（源 ↔ Mods 副本） | 双目录一致性 |
+
+
 ### rgn_validate 离线执行器
 
 `scripts/rgn_validate_runner.mjs`：逻辑提取自 dsh-rgn-tools 插件源码，仅依赖 Node ≥22 内置 `node:sqlite`，任意终端可直接运行。默认**实跑模式**：把基础库快照到临时文件 → 真实执行项目 SQL（两遍：先跨文件 DDL 再其余语句，逐语句容错）→ 直接查库比对定义/引用全集，可识别 `INSERT INTO ... SELECT '字面量' || 列 ...` 动态拼接，并附带语法校验能力。
