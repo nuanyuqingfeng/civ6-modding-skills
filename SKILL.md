@@ -5,15 +5,15 @@ description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局
 
 # civ6-tuner：游戏内 Lua 快速测试
 
-## 前置条件（不满足时明确告知用户需要做什么）
+## 前置条件
 
 1. 游戏启动且 Options 已勾选 **Tuner**（禁成就；或 `AppOptions.txt` 设 `EnableTuner 1`）
 2. **FireTuner GUI 已关闭**——游戏只允许一个 tuner 连接，GUI 占着脚本就连不上
 3. **处于进行中的对局**——主菜单没有 GameCore_Tuner/InGame 状态
-4. 直启命令（用户已验证可用）：
+4. 直启命令：
    `& "F:\Steam\steamapps\common\Sid Meier's Civilization VI\Base\Binaries\Win64Steam\CivilizationVI.exe"`
 
-## ★ 七条铁律（不知道任意一条都会白费数轮；全部为实测结论）
+## ★ 七条铁律（全部为实测结论）
 
 ### 1. `gamecore` / `ingame` 是**独立沙箱 Lua 态**，不是 mod 的 `_ENV`
 
@@ -36,7 +36,7 @@ GameEvents.某个mod注册过的事件:Count()               = 0     ← 不同�
 
 - 被 UI 加载的文件（含被 UI `include` 的共享库）里出现 `GameEvents.*` → **必然 `attempt to index a nil value`**，并中断该 chunk 使其后语句**全部不执行**。
 - `Events.*` 两端都有（安全）；`Events.X=nil` 且 `GameEvents.X=table` 的才是 Lua 级 GP 事件。
-- **修法不是加守卫**：把 GP 事件注册**下沉到 GP 初始化入口**（由 GP 脚本调用），UI 侧不注册。
+- **修法**：把 GP 事件注册**下沉到 GP 初始化入口**（由 GP 脚本调用），UI 侧不注册。
 - ⚠ `GameEvents.X` 对任意名字都自动建 table → **不能用 `type(GameEvents.X)` 判断事件是否存在**，只有 `type(Events.X)` 是权威探针。
 
 ### 3. `entity:GetProperty(k)` 未设置时返回 **0 个值**（不是 nil）
@@ -79,19 +79,18 @@ Game.GetProperty(k)              -- 两端可读；但只能读到【Game 层】
 Players[pid]:GetProperty(k)      -- 两端可读；只能读到【Player 层】那个 key
 ```
 
-实测（2026-09-13）：项目 `RGNSetProperty` 默认 `obj = "Player"`，实际写的是 `Players[pid]:SetProperty`；
-验证时我去读 `Game.GetProperty(同名 key)` 得到 `nil`，**一度判定"EXECUTE_SCRIPT 派发失败"**，
-改读 `Players[0]:GetProperty(key)` 立刻拿到正确值 → PASS。
+实测（2026-09-13）：`RGNSetProperty` 默认 `obj = "Player"`，写入的是 `Players[pid]` 层；
+读 `Game.GetProperty(同名 key)` 得 `nil` **≠ 派发失败**。
 → **宣布"写不进去 / 派发没到 / 功能失效"之前，先核对属性挂在哪个层级。** 详见 `reference/PORT_MATRIX.md` 五。
 
-### 附：其它高频坑（一次踩到就浪费数轮）
+### 附：其它高频坑
 
 | 症状 | 原因与对策 |
 |---|---|
 | 属性读取批量返回 nil | 在同一 chunk 里对 `GetProperty` 返回的**表做了 `table.sort`**（原地改动污染）。→ 先复制再排序 |
 | 同一表达式一次给 10、一次给 0 | 在调用参数里**现拼属性 key**。→ 先把 key 落到局部变量 |
 | **"跨端写入没生效"（假阴性）** | **读错了对象层级**：写进 `Players[pid]` 却去读 `Game.GetProperty(同名 key)`。→ 先确认属性挂在 Game / Player / City / Plot / Unit 哪一层（详见 `reference/PORT_MATRIX.md` 五） |
-| **"派发/事件没到"（需先排除）** | ① 读错层级（同上）；② 派发是**异步**的，读太早；③ 注册所在的 GP 态不是派发目标态 → 最稳做法是**借项目已有的生产接收器复测**（见 `snippets/bridge_probe_*.lua`） |
+| **"派发/事件没到"** | ① 读错层级（同上）；② 派发是**异步**的，读太早；③ 注册所在的 GP 态不是派发目标态 → 最稳做法是**借项目已有的生产接收器复测**（见 `snippets/bridge_probe_*.lua`） |
 | 探针"没跑"但无报错 | chunk 内抛错会**丢弃整段 stdout**。→ 顶层 `pcall` 包住并打印结果 |
 | `--both` 里 UI 段读出空 | GP 段末尾把对照用的探针键**清理掉了**。→ 清理放最后单独跑，或用 `CLEANUP=false` |
 | 破坏了游戏状态 | 改属性前**没重新读当前值**（据旧快照改） |
@@ -138,7 +137,7 @@ python $T logs --log-file Database.log -n 50
 ## 输出约定
 
 - Lua 内**必须用 `print()`** 输出（return 不回传）；脚本自动追加哨兵 `---END---`
-- 报错以 `ERR:` 回传并置退出码 2；超时置退出码 3 并保留已收集输出
+- 报错以 `ERR:` 回传；超时保留已收集输出
 - 片段文件顶部都有 `==== CONFIG ====` 区，执行前按目标修改
 
 ## 测试工作流（与 示例工程 双目录联动）
@@ -165,11 +164,9 @@ python $T logs --log-file Database.log -n 50
 | `bridge_probe_1_register.lua` → `_2_dispatch.lua` → `_3_read.lua` | **UI→GP 派发可达性三连测**（确认 `EXECUTE_SCRIPT` 的 `OnStart` 是否到达你注册的那个 GP 态） | gamecore → ingame → gamecore |
 | `cheat_setup.lua` | 造测试条件（金币/信仰/刷兵/科技进度） | ingame |
 | `end_turn.lua` | 结束回合观察跨回合结算 | ingame |
-| `sql_like_trap.lua` | **SQL `LIKE ('%A%' OR '%B%')` 陷阱实机复核** —— 括号表达式求值为整数 `0`（`typeof`=`integer`），等价 `LIKE 0` → 只命中字面量 `'0'` 的行；真实库对照 627 vs 0。顺手示范 `DB.Query` 在 gamecore 的正确用法（逐条 `pcall` 包住，避免一处报错丢全部输出） | gamecore |
+| `sql_like_trap.lua` | **SQL `LIKE ('%A%' OR '%B%')` 陷阱实机复核** —— 等价 `LIKE 0` → 只命中字面量 `'0'` 的行（2026-09 实机复核 627 vs 0）。顺带示范 `DB.Query` 在 gamecore 的用法（逐条 `pcall` 包住） | gamecore |
 
 片段中标注【待实测】的 API 未经验证，失败时换方案，勿当作已证实结论上报。
-端口可用性的**权威对照表**见 `reference/PORT_MATRIX.md`（本次实测，含与 api.sqlite 冲突的条目）。
-
 ## 坑位清单
 
 ```
@@ -178,7 +175,7 @@ python $T logs --log-file Database.log -n 50
 ⚠ 必须在对局内：check 显示缺 GameCore_Tuner/InGame 即在主菜单
 ⚠ 成就禁用：Tuner 开启期间该配置不拿成就，仅测试环境使用
 ⚠ 日志持久化：%LOCALAPPDATA%\Firaxis Games\Sid Meier's Civilization VI\Logs
-   保留上次游玩记录直到下次启动覆盖——看报错注意时间戳区分新旧
+   保留上次游玩记录直到下次启动覆盖
    → 用 `logs --since-mark "<打点加载标志>" --grep "<前缀>"` 精准取本次会话
 ⚠ 跑 Lua 报错会丢 stdout：chunk 内抛错时已 print 的内容不回传 →
    探针一律用顶层 pcall 包住主逻辑，并把 pcall 结果打出来
