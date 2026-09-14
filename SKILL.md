@@ -86,6 +86,9 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 | **原版美术素材引用 / ArtDef·XLP 链**（给新对象配原版模型、查引用链、排查美术悬空、ArtDef cook 报错或"不同步"、单位渲染残缺） | → **`civ6-art-reference` skill**（引用链与 cook 层逻辑全在该 skill 内，此处不重复） |
 | **Gameplay logic** (Lua only) | → Gameplay Routing ↓ |
 | **Game data** (units, buildings, modifiers) | → Data Routing ↓ |
+| **总督（Governor）**（新增总督 / 晋升树 / 就职回合 / 立绘注册 / 名额扩容） | → `governor-authoring.md`（美术规格另见 `civ6-governor-art` skill） |
+| **城邦（City-State）**（自定义城邦 / 选单不出现 / 宗主国加成 / 使者层级） | → `citystate-authoring.md` |
+| **平衡补丁 / 差分覆盖**（改主工程数值、解挂载、覆盖文本的补丁 mod） | → `balance-patch.md` |
 | **Mixed** | → Read all relevant |
 | **Debug** | → `debug-tools.md` + `gotchas.md` |
 
@@ -241,9 +244,12 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 | GamePlay Lua script | `GameEvents.*` | No — loaded once per game |
 | GamePlay Lua script | `Events.*` | 引擎事件在 GP 侧同样可用；`.Remove()` 非必需（脚本每局加载一次） |
 
-> ⚠ **`Events.*` 与 `GameEvents.*` 是互不镜像的两条总线**（2026-09 实测）：引擎 `GameCoreEvent` 只进 `Events.*`；`GameEvents.*` 只承载 Lua 级事件（自定义 / `EXECUTE_SCRIPT`）。
-> 所以**引擎事件用 `GameEvents.*` 订阅是静默无效的**。另：`GameEvents.X` 对任意名字都自动建 table，**不能**用 `type()` 判断事件是否存在——只有 `type(Events.X)` 是权威探针。
-> 引擎未暴露到 `Events.*` 的那批事件在 `events_enhanced.json` 中标 `availability: "None"`（且 UI 侧 `.Add()` 会 nil 崩溃）。
+> ⚠ **`Events.*` / `GameEvents.*` / `LuaEvents.*` 是三条互不镜像的总线**（2026-09 修订）：同一个逻辑事件**通常只在其中一张上有效**，用错总线**静默无效**（不报错、不回调）。
+> **禁止凭印象选总线 —— 查 `reference/events_enhanced.json` 的 `eventSystem` 字段**（1081 条全覆盖：`LuaEvents` 481 / `Events` 470 / `GameEvents` 130），或 `python database/scripts/query_events.py --show <事件名>` 看 `System` 列。
+> 注意 `GameEvents.*` 上**存在一批非自定义事件、且它们在 `Events.*` 上无对应条目**（`OnDistrictConstructed`/`CityConquered`/`PolicyChanged`/`PlayerTurnStarted` 等，130 条中 82 条 `availability=GamePlay`）——旧版本此处「引擎事件用 `GameEvents.*` 订阅是静默无效的」的说法**是错的**。三条总线是**按事件划分**的三张表，不是按「引擎 vs Lua」划分，所以永远查表、不要按来源猜。
+> 另：`GameEvents.X` 对任意名字都自动建 table，**不能**用 `type()` 判断事件是否存在——只有 `type(Events.X)` 是权威探针。
+> `availability: "None"` 的 48 条**哪一层都订阅不到**（UI 侧 `.Add()` 会 nil 崩溃）。
+> 详见 `gotchas.md` §7 与 `events.md` Gotcha 8。
 
 ## 数据传递速查
 
@@ -408,6 +414,9 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | `gameplay-lua.md` | GP Lua 脚本基础 | 写 GP 逻辑时 |
 | `database.md` | 数据增删改 + 查询指南 | 写数据时 |
 | `agenda-authoring.md` | **议程与领袖 AI 行为编写**：议程好感链 / reqset 复用与自建规则 / 文案规范 / 28 个 AI System 偏好表 / 注册顺序与验证 | **写议程、外交好感、领袖 AI 偏好时** |
+| `governor-authoring.md` | **总督编写**：10 张总督表 / 12 列必填（唯一可空列 `TraitType`）/ `BaseAbility` 网格位 / `TransitionStrength` 就职回合 / 名额扩容 / 作用域与条件 / 立绘注册 / 引擎笔误照抄判定 | **新增总督、改晋升树时** |
+| `citystate-authoring.md` | **城邦编写**：★ 城邦横跨 Gameplay/Configuration 两个数据库 / `CityStates.Domain` / 宗主国加成标准模板 / 使者层级靠 `InheritFrom` 继承 / 自建分组标签 | **新增城邦、选单不出现时** |
+| `balance-patch.md` | **平衡补丁 / 差分覆盖**：★ LoadOrder 必须压过主工程最终覆盖层 / 差分手法表（改值·解挂载·换门槛·清 ID 族·文本 REPLACE）/ 全局标志 + 公式化系数 / 验证清单 | **写补丁 mod 时** |
 | `project-setup.md` | .civ6proj / .modinfo 项目结构与注册指南 | 注册文件时 |
 | `conventions.md` | 命名规范/文件模板 | 写任何文件前 |
 | `validation.md` | 验证清单 | 完成开发后 |
