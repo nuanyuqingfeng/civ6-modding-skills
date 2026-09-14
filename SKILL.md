@@ -1,6 +1,6 @@
 ---
 name: civ6-art-reference
-description: "Civ6 mod 引用原版美术素材全流程：ArtDef/XLP 四层引用链（DB Type → artdef 条目 → Xref → BLPEntryValue → 打包资产）查询与克隆生成，外加一层 cook 层机制（.Art.xml 依赖声明 → pantry 解析、产物归一化、警告即静默降级、XLP 条目可解析性与打包后果、源/产物差异分级判定）。适用场景：为新增资源/区域/建筑/改良/单位配置原版模型素材（按语义自动匹配相近原版对象并完整复制其美术引用）、查询某对象用哪些模型/贴图/战略视图、排查美术引用悬空、排查 ArtDef 双端不同步（编码层 CRLF/LF vs 语义层 _MissingArt）与 cook 报错（pantry 找不到、引用被替换成默认值）、单位渲染残缺（如只剩头）。内含建筑 hero-building 组合链（BuildingSets/BaseVariants/BuildingVariants）与替换型建筑上模型流程。内置全量引用链索引（Base+全DLC artdef + SDK 262 xlp）与五个工具：artdef_indexer（重建索引）/ art_lookup（查链路/列条目/列包/反查建筑模型链）/ art_copy（克隆原版条目为 mod 条目）/ art_copy_building（替换型建筑 3D 注册一键生成）/ artdef_sync_check（源 vs Mods 副本差异分级体检）。不处理 2D 图标链（除非悬空），不解包任何 .blp。领袖/文明美术另有 civ6-leader-2d 与 civ6-loyalty-icon 专项 skill。"
+description: "Civ6 mod 引用原版美术素材全流程：ArtDef/XLP 四层引用链（DB Type → artdef 条目 → Xref → BLPEntryValue → 打包资产）查询与克隆生成，外加一层 cook 层机制（.Art.xml 依赖声明 → pantry 解析、产物归一化、警告即静默降级、XLP 条目可解析性与打包后果、源/产物差异分级判定）。适用场景：为新增资源/区域/建筑/改良/单位配置原版模型素材（按语义自动匹配相近原版对象并完整复制其美术引用）、查询某对象用哪些模型/贴图/战略视图、排查美术引用悬空、排查 ArtDef 双端不同步（编码层 CRLF/LF vs 语义层 _MissingArt）与 cook 报错（pantry 找不到、引用被替换成默认值）、单位渲染残缺（如只剩头）。内含建筑 hero-building 组合链（BuildingSets/BaseVariants/BuildingVariants）与替换型建筑上模型流程。内置全量引用链索引（Base+全DLC artdef + SDK 262 xlp）与五个工具：artdef_indexer（重建索引）/ art_lookup（查链路/列条目/列包/反查建筑模型链）/ art_copy（克隆原版条目为 mod 条目）/ art_copy_building（替换型建筑 3D 注册一键生成）/ artdef_sync_check（源 vs Mods 副本差异分级体检）。不处理 2D 图标链（除非悬空），不解包任何 .blp。领袖/文明美术另有 civ6-asset-forge 专项 skill。"
 version: "1.3"
 author: 千与千寻瀑
 license: MIT
@@ -35,7 +35,7 @@ languages:
 - **例外**：裸纹理名链（`Governors.PortraitImage` / `PortraitImageSelected`、
   `SecretSocieties.SmallIcon` 这类存纹理名、靠 UITexture XLP 按名查找的列）属于
   「悬空排查」高发区，见 `reference/chain-map.md` §七 —— 不走 artdef 也不走图集。
-- 领袖立绘/文明图标走 civ6-leader-2d、civ6-loyalty-icon 专项 skill。
+- 领袖立绘/文明图标走 civ6-asset-forge 专项 skill。
 - 素材源文件查询只读 SDK pantry；游戏合并集以 `Base/ArtDefs` + `DLC/**/ArtDefs` 为准。
 
 ## ⚠ 注意事项：mod 工程目录**本身就是 pantry**（曾致 AssetEditor 闪退）
