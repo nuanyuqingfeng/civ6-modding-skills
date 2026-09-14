@@ -51,15 +51,30 @@ check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR �
 ## 4. 标准验证顺序
 
 ```
-① python check_sql_exec.py --root <工程>       # SQL 跑得起来吗
-② node   rgn_validate_runner.mjs <工程>/Data   # 引用闭合吗
-③ python check_types_kinds.py --root <工程>    # Kind 合法吗
-④ python check_proj_content.py <工程>          # 打包清单闭合吗
-⑤ python check_lua_registration.py <工程>      # 每个 .lua 都有有效加载路径吗
-⑥ （动过贴图时）
-   python check_pantry.py --root <工程>        # pantry 卫生
-   python clear_ae_cache.py --mod <工程名>     # 清 AE 缓存，再开 AssetEditor 看日志有无 CRASH
+⓿ 【有对局在跑时，先做这一步】
+   打开游戏运行时导出的真实库核对「生成的到底是什么」：
+     %LOCALAPPDATA%\Firaxis Games\Sid Meier's Civilization VI\Cache\DebugGameplay.sqlite
+   ★ 它是**权威产物** —— 所有 INSERT…SELECT / 动态拼接的最终结果都在里面。
+     只看源文件只能证明"我写了什么"，看它才能证明"引擎真的生成了什么"。
+     实测教训：一个恒假的 `TraitType LIKE ('%RGN%' OR '%RAGUNNA%')`
+     让泛用 ReqSet 家族只生成了 20 条而非 26 条，源文件语法完全正确、任何静态校验都不报；
+     一查运行时库，缺口一目了然（见 gotchas §52）。
+
+① python check_sql_exec.py --root <工程>          # SQL 跑得起来吗
+② node   rgn_validate_runner.mjs <工程>/Data      # 引用闭合吗
+③ python check_types_kinds.py --root <工程>       # Kind 合法吗
+④ python check_sql_antipatterns.py <工程>         # 语法合法但恒假吗
+⑤ python check_proj_content.py <工程>             # 打包清单闭合吗
+⑥ python check_lua_registration.py <工程>         # 每个 .lua 都有有效加载路径吗
+⑦ （动过贴图时）
+   python check_pantry.py --root <工程>           # pantry 卫生
+   python clear_ae_cache.py --mod <工程名>        # 清 AE 缓存，再开 AssetEditor 看日志有无 CRASH
 ```
+
+> **为什么 ⓿ 要排在第一位**：①–⑥ 都是**静态**检查 —— 它们能证明"源文件没写错"，
+> 但证明不了"引擎执行后真的如你所愿"。凡是依赖 `INSERT…SELECT`、`WITH RECURSIVE`、
+> `'前缀' || 列` 动态拼接、`LIKE` 过滤的生成式 SQL，**只有运行时库能给出裁决**。
+> 数据库文件在每次进对局时重写；用只读方式（`file:…?mode=ro`）打开，不要锁库。
 
 ### ⚠ 写这类工具时的两条血泪教训（都踩过）
 
