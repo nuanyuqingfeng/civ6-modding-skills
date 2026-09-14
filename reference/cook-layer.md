@@ -189,6 +189,38 @@ python artdef_sync_check.py <工程名> --detail 3 # 语义层差异时打印样
 - 1 个 **L5**（再加注释剥离）：`StrategicView`
 - 3 个语义层：`Districts` / `Landmarks` / `Overlay`
 
+#### 2.3.1 ★ 怎么把「源保持 LF」**钉死**：`.gitattributes`
+
+上面只是"结论"。真正让源不退回 CRLF 的是**版本控制侧强制** —— 本机 `core.autocrlf` 常见为 `true`，
+它会**在 checkout 时把仓库里的 LF 写成工作区的 CRLF**，于是"源永远 CRLF、产物永远 LF"，
+双端不一致被 git 反复制造出来。
+
+在工程根加 `.gitattributes`：
+
+```gitattributes
+# ArtDef / XML / SQL / Lua 等 cook 输入：强制 LF，禁止 git 引入 CRLF
+*.artdef  text eol=lf
+*.xml     text eol=lf
+*.sql     text eol=lf
+*.lua     text eol=lf
+
+# 美术二进制资产：禁止 git 做任何换行/编码转换
+*.dds  -text -diff -merge binary
+*.tex  -text -diff -merge binary
+*.ast  -text -diff -merge binary
+*.mtl  -text -diff -merge binary
+*.geo  -text -diff -merge binary
+*.blp  -text -diff -merge binary
+*.blb  -text -diff -merge binary
+```
+
+- `示例工程` 即用此法（其 `.gitattributes` 首行注释就写明"本机 `core.autocrlf=true`，若不钉死 checkout 会把 artdef 变成 CRLF，而 cooker 产物一律是 LF —— 于是『源 ↔ Mods 副本』永远不一致"，并注明跨工程 5 例 + 本工程 11/13 的实测支撑）。
+- 加完后工作区若出现大批"看似被改动"的文件，那是 **autocrlf 历史遗留**，用 `git add --renormalize .` 一次性归位即可，**不是**内容改动。
+- 对**不入 git 的工程**：等价手段是在编辑器/生成脚本里显式写 LF（`newline='\n'`），并同样禁止中间目录产出 CRLF 版本。
+
+> 推论：凡是"改了编码/格式想让源与产物一致"的任务，**先问"是谁在把 CRLF 塞回工作区"**，
+> 再决定是统一源写法还是加 `.gitattributes` —— 只改一次文件不改供给链，下次 checkout 就打回原形。
+
 ### 2.4 语义层差异：两类，只有一类是真缺陷
 
 | 子类 | 表现 | 性质 |

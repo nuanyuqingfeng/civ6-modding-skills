@@ -38,6 +38,40 @@ languages:
 - 领袖立绘/文明图标走 civ6-leader-2d、civ6-loyalty-icon 专项 skill。
 - 素材源文件查询只读 SDK pantry；游戏合并集以 `Base/ArtDefs` + `DLC/**/ArtDefs` 为准。
 
+## ⚠ 注意事项：mod 工程目录**本身就是 pantry**（曾致 AssetEditor 闪退）
+
+AssetEditor / cooker 会把**整个工程目录树**递归当 pantry 扫描 —— **不只是 `Textures/`**。
+任何位置的 `.tex` 都会被注册为贴图实体，同名副本会抢占注册。实测事故（2026-09-12 结案）：工作目录里有 752 个与 `Textures/` 正式贴图**同名**的 `.tex` 副本
+（生成目录 / `*_reimport/` / `tmp/backup_*`），其中 46 个 `m_SourceFilePath` 仍是 depot 库路径 `//civ6/main/...`
+→ AE 做版本状态更新时把它映射成本地形如 `D:\…\D:\…` 的非法路径 → `NotSupportedException: 不支持给定路径的格式` → 日志 `CRASH: Multiple Aggregated Exceptions (N)` → **浏览素材时闪退**。
+
+**四条硬性规则**
+
+1. **`.tex` 只允许存在于 `Textures/`**，每个资产只留一份；`workspace/`、`gen/`、`tmp/`、`*_reimport/`、任何备份/中间目录**严禁**出现 `.tex`；
+2. `m_Name` 与 `m_RelativePath` **全工程唯一**（`Textures/` 内同样不允许重名）；
+3. `m_SourceFilePath` 统一为 **ASCII 虚拟路径**（本工程约定 `D:\desktop\<stem>.png`）；**严禁** `//civ6/main/...` 等 depot/库路径，严禁中文/乱码路径；
+4. pantry 内文件名保持 **ASCII**。
+
+**改名 `.tex` 时必须同步三元组**（否则 cooker 按旧名找贴图 → 全部引用条目变成 error asset「红色感叹号」）：
+
+| 字段 | 必须同步为 |
+|---|---|
+| `m_Name` | `<新stem>` |
+| `m_RelativePath` | `<新stem>.dds` |
+| `.dds` 文件名 | `<新stem>.dds` |
+
+> 同类坑：`.ast` 自身名与几何同名时，批量改名会误伤 `m_GeoName`（曾致 10 个几何 I/O 错误）。
+
+**验证顺序**（贴图改动后）：
+
+1. 跑 pantry 体检脚本（检查 `.tex` 位置 / 重名 / depot 路径 / 非 ASCII / `.tex`↔`.dds` 配对）—— 必须 0 error；
+2. **清 AE 依赖缓存**（`%APPDATA%\AssetCloud\mod-<Mod>-asset-deps.json`）；
+3. 再启动 AssetEditor，确认日志无 `CRASH`。
+
+> ⚠ **缓存必须清**：不清缓存时，即使把问题文件移走也可能"仍不闪退"——那是缓存把被移走的文件记为 deleted 造成的**假象**。
+> 参考实现：示例工程 的 `workspace/_tools/check_pantry.py` 与 `clear_ae_cache.py`（零依赖、支持 `--root`）。
+> 附带铁律：**禁止修改/替换 SDK 安装目录下的任何 DLL**。
+
 ## 原版美术资产路径（强制约定）
 
 - **文明6游戏美术资产路径（唯一素材查找位置）**：
