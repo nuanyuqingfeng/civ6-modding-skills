@@ -111,11 +111,35 @@ BGM 制作触发时必须主动引导分类：
 
 - **绝对响度**：（`references/calibration.json`）：voice **-21** / quote **-23.5** / BGM 远古 **-28** / BGM 后世 **-25** / **sfx 普通音频默认 -27** LUFS（乐队多轨叠加实测确认，接近远古 BGM -28 且多轨并播整体更平衡）。已知替代风格：BS 系热母带（BGM ≈ -12，已入游戏验证），沿用该家族风格时用 `--i` 覆盖。
 - **BGM 时代响度分配（2026-09 用户定案）**：`-28`/`-25` 按**素材所属时代**分，不按播放时代分——远古时代素材**全部 -28**（远古主题曲即贯穿全局的主题曲，后续时代容器复用时保持 -28，**无需另做 -25 副本**）；中世纪及之后时代的素材**全部 -25**（含各自主题曲）。轮播曲跨时代复用只体现在 Wwise 容器权重配置，不改变文件响度。
+- **⚠ 同一播放容器内严禁混排两档基准**：上一条是**文件层**的规则；而轮播机制（§1.5）会把**本时代素材 + 上一时代素材**塞进同一个时代容器，-28 与 -25 一旦同容器就是**逐曲跳 3 dB 台阶**（听感：忽大忽小）。定案：**同一容器（同一时代列表）内所有曲目必须落在同一基准上**——沿用 -28/-25 时代分配时，跨时代复用进同一容器的素材也要归到该容器的基准。验收靠 `audio_check.py` 的 `[POOL]` 段，它会直接点出"疑似双基准混排 + 两簇中心与间隔"（实机教训：某 BGM 包 97 首被判出 低簇 n=24 中心 -28.00 / 高簇 n=73 中心 -25.00 / 间隔 2.80 dB）。
+- **短时响度锚（`--mode shortterm`）**：轮播池（BGM 轮播组）**不要用纯积分 LUFS 对齐**。积分响度相等 ≠ 听感相等——实测同一批交付 BGM 积分极差仅 **3.10 dB** 时，中位短时响度 S_p50 极差高达 **7.60 dB**，`corr(LRA, S_p50−I) = -0.555`（动态越大的曲子，典型听感越低于它自己的积分值）。`--mode shortterm` 以 S_p50 为目标、用**恒定增益**（`volume=` 滤波器）对齐，结构上不可能产生泵浦，并自带真峰夹紧（不越 `--tp`）。
 - **绝对响度与原始音量无关**：loudnorm 归一化 = 响度测量 + 增益补偿，最终 LUFS 与原始峰值/响度无关。原始差异只影响：① 原始过静提增益后可能触发限幅/底噪放大；② 已削波素材降增益也救不回失真。处理后音色与相对动态不变。
 - **相对响度**（`--mode relative`）：同批次同用途素材以**批内中位数为锚**，`target_i = 锚点 + retain×(原值−锚点)`，retain 默认 **0.10**（90% 矫正、保留 10% 偏差）——从高往低压但不强行平均，保留排序与动态。（15 轨批实测：散布 3.2dB → 残余 0.3dB）
 - **声道中间件（实测修复 3dB 偏差）**：`audio_normalize.py` 对“源声道数 ≠ 目标声道数”的素材（如 voice 收立体声录屏、bgm 收单声道源）会先自动生成目标声道 PCM 中间件，再对中间件做 loudnorm 测量与均衡，保证测量对象 = 最终输出对象。（旧流程成品整体低 3dB，脚本内已闭环，无需人工预降混。）
 - 若单轨**内部**乐器失衡（如混音里笛子偏响），per-track 响度无法修，需回源分轨重混。
 - **淘汰件与母带一律备份隔离，禁止直接删除**：查重淘汰件移入专用隔离目录，原始母带移入归档目录，由用户验收后自行清理。
+
+### 2.5a 三道安全闸（`audio_normalize.py` 已内建；违反即返工）
+
+1. **幂等闸 `--idem`（默认 0.3 dB）**：已落在目标 ±0.3 dB 内的文件**直接跳过**，不做任何处理（`[SKIP]`）。
+   *为什么*：对已达标素材再跑一遍，增益是 0，**唯一产物是风险**。实测某 BGM 批次 97 个源文件里 **91 个本已精确落在 -28.00/-25.00**（`Ancient_Ambient01` 源 = -28.00、`Atomic_Ambient01` 源 = -25.00、`Medieval_Ambient01` 源 = -24.99），这一遍均衡纯属空转；而其中 6 个文件正因为被"多跑了一遍"而在实机里出现忽大忽小。
+2. **线性闸（预检 + 后验，默认开启）**：`linear=true` 在 ffmpeg 里是**"允许"不是"保证"**。
+   `af_loudnorm.c` 的 `init()` 原文：
+   ```c
+   offset    = s->target_i - s->measured_i;
+   offset_tp = s->measured_tp + offset;
+   if ((offset_tp <= s->target_tp) && (s->measured_lra <= s->target_lra)) {
+       s->frame_type = LINEAR_MODE;      // 否则落到 FIRST/INNER/FINAL_FRAME = 时变增益
+   }
+   ```
+   不满足即**静默**改走时变增益——不报错、不告警，听感就是泵浦（呼吸感）。
+   - **预检**：脚本复刻上式，不通过就**拒写该文件**（原文件零改动）、逐条给出原因，进程退出码 **2**。
+   - **后验**：`print_format=json` 后 `uninit()` 会输出 `normalization_type = linear|dynamic`，这是权威判据；报 `dynamic` 一律判失败并丢弃产物。
+   - **`--lra` 是双重身份**：既是"目标动态范围"，也是"是否允许线性"的开关。源 LRA 超它就会被降级——**放宽 `--lra`（如 20）即可放行并保留原动态**；`--allow-dynamic` 才是在知情前提下接受泵浦。
+3. **短时闸**：轮播池走 `--mode shortterm`（恒定增益路径），结构上无泵浦可能。
+
+**验收口径**：`audio_check.py` 现已输出 LRA / S_p50 / 同池离散度（`[POOL]` 段）与"泵浦风险文件"计数。**只查积分 LUFS 是查不出泵浦的**——泵浦文件的积分响度完全达标（实测：一个被时变增益处理过的文件，积分精确 -25.00 LUFS、看不出任何异常，而轨内增益在 3 秒窗上摆动达 5.95 dB）。
+
 
 ## 2.8 ShortID 注册表 + 纯 Python bank（⚠️ 实验性，正式交付走 Vorbis）
 
@@ -192,8 +216,8 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 | `ncm_decrypt.py` | 网易云 ncm 解密→裸流（AES+RC4 变体密钥流，klen=128 布局变体兼容）；ffprobe 复核通过且显式 `--delete-source` 才删源；`--selftest` 往返自检 | anonymous5l/ncmdump 参考实现（taurusxin 复刻版）+ 本地 54/54 实证 |
 | `audio_dedupe.py` | 跨目录音频指纹查重：判同/疑似/人声伴奏守卫，质量排序，淘汰件备份隔离（默认只报告） | 本地双库查重实证（129 文件 / 32 对判同，已知歌曲对校准阈值） |
 | `music_features.py` | BPM/响度/动态/亮度/打击密度特征 + 唤醒度评分与四时代分位建议（CSV） | 本地 97 首 BGM 时代分区实证 |
-| `audio_check.py` | RIFF/PCM/48k/声道/LUFS 体检 + `--fix` 容器纠正；`--filelist/--jobs/--json`；UTF-8 子进程解码/输出自适应 | 教程 11 章最佳实践 + 中文 Windows 实测修复 |
-| `audio_normalize.py` | loudnorm 双遍响度均衡；`--out` 统一 .wav 后缀；`--filelist/--jobs`；LRA 回退警告；声道中间件自动对齐测量/输出 | 教程：语音-21、远古 BGM-28、后世-25 + 立体声语音实测修复 |
+| `audio_check.py` | RIFF/PCM/48k/声道/LUFS 体检 + `--fix` 容器纠正；**LRA / S_p50 / 同池离散度 `[POOL]`（含"双基准混排"判定）**；`--lra-cap/--pool-spread`；`--filelist/--jobs/--json`；UTF-8 子进程解码/输出自适应 | 教程 11 章最佳实践 + 中文 Windows 实测修复 + 2026-09 泵浦/听感离散度事故（§2.5a） |
+| `audio_normalize.py` | loudnorm 双遍响度均衡；**幂等闸 `--idem`、线性闸（预检拒写 + `normalization_type` 后验，拒写时退出码 2）、短时锚 `--mode shortterm`**；`--out` 统一 .wav 后缀；`--filelist/--jobs`；声道中间件自动对齐测量/输出 | 教程：语音-21、远古 BGM-28、后世-25 + 立体声语音实测修复 + `af_loudnorm.c init()` 线性判定 + 2026-09 重复归一事故（§2.5a） |
 | `new_bank_project.py` | 克隆模板→独立 bank 工程（导入+work unit 注入+可选生成） | 教程模板工程 + 本地实证 XML 模式 |
 | `wwise_wire.py` | scan/wire/rename/generate | 本地 mod 实战交付验证 |
 | `register_to_mod.py` | `.civ6proj`（CDATA UpdateAudio + Content 条目）与 `.modinfo`（UpdateAudio + Files）双注册 + Banks.ini；`--verify` 语义校验（UpdateAudio 只指向 ini） | 本地双案例（.civ6proj 与 .modinfo 各一）实证 |
