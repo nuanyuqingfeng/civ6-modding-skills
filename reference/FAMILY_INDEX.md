@@ -40,15 +40,15 @@
 | 排查 ArtDef 双端不同步 / cook 报错 / 单位渲染残缺 | `civ6-art-reference` → `reference/cook-layer.md` |
 | PNG → DDS/`.tex`、图标尺寸问答、图集拼版 | `civ6-modding` → `art-pipeline.md` |
 | 导入语音 / BGM / 音效、bank、响度均衡 | `civ6-audio-pipeline` |
-| **做 2D 领袖立绘（立绘纸片人注册链）** | `civ6-asset-forge` → 2D 领袖分册 |
-| **做忠诚度 / 宗教压力图标** | `civ6-asset-forge` → 忠诚度图标分册 |
-| **做单位晋升图标** | `civ6-asset-forge` → 晋升图标分册 |
-| **做总督素材（徽章 / 头像小图标 / 立绘 / 边缘透明渐变）** | `civ6-asset-forge` → 总督素材分册 |
+| **做 2D 领袖立绘（立绘纸片人注册链）** | `civ6-asset-forge` → `reference/leader-2d.md` |
+| **做忠诚度 / 宗教压力图标** | `civ6-asset-forge` → `reference/loyalty-icon.md` |
+| **做单位晋升图标** | `civ6-asset-forge` → `reference/promotion-icon.md` |
+| **做总督素材（徽章 / 头像小图标 / 立绘 / 边缘透明渐变）** | `civ6-asset-forge` → `reference/governor-art.md` |
 | **运行时验证 API 行为 / 复现脚本报错** | `civ6-tuner` |
 | **上传 / 更新 Steam 工坊** | `civ6-modding` → **`release.md`**（脚本 `release/scripts/`） |
 | 多语言翻译与本地化审计 | 借调 `（外部翻译 skill，已不作为依赖）`（见 §四） |
 
-> `civ6-asset-forge` 的四类素材在 skill 内以 `reference/*.md` 分册组织（具体文件名为 `specs.md` / `prompts.md` 一类专项文档，以该 skill 自己的 `SKILL.md` 路由表为准）。
+> `civ6-asset-forge` 的四类素材在 skill 内以 `reference/*.md` 分册组织（`leader-2d.md` / `loyalty-icon.md` / `promotion-icon.md` / `governor-art.md`，子资料在其同名子目录）；总入口与该 skill 自己的路由表见其 `SKILL.md`。
 > 原 `civ6-leader-2d` / `civ6-loyalty-icon` / `civ6-promotion-icon` / `civ6-governor-art` 四个名字**已废止**，一律改走 `civ6-asset-forge`。
 
 **混合任务**：先按本表定位主 skill，再按需读其它 skill 的对应章节；`civ6-modding/SKILL.md` 的 Task Routing 是完整决策树。

@@ -88,7 +88,7 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 | **原版美术素材引用 / ArtDef·XLP 链**（给新对象配原版模型、查引用链、排查美术悬空、ArtDef cook 报错或"不同步"、单位渲染残缺） | → **`civ6-art-reference` skill**（引用链与 cook 层逻辑全在该 skill 内，此处不重复） |
 | **Gameplay logic** (Lua only) | → Gameplay Routing ↓ |
 | **Game data** (units, buildings, modifiers) | → Data Routing ↓ |
-| **总督（Governor）**（新增总督 / 晋升树 / 就职回合 / 立绘注册 / 名额扩容） | → `governor-authoring.md`（美术规格另见 `civ6-asset-forge` skill 的总督素材分册） |
+| **总督（Governor）**（新增总督 / 晋升树 / 就职回合 / 立绘注册 / 名额扩容） | → `governor-authoring.md`（美术规格另见 `civ6-asset-forge` skill 的 `reference/governor-art.md`） |
 | **城邦（City-State）**（自定义城邦 / 选单不出现 / 宗主国加成 / 使者层级） | → `citystate-authoring.md` |
 | **平衡补丁 / 差分覆盖**（改主工程数值、解挂载、覆盖文本的补丁 mod） | → `balance-patch.md` |
 | **Mixed** | → Read all relevant |
@@ -451,7 +451,7 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | Citystates | 22,30,32,36,40,44,48,64,68,80,256 |
 | Stats | 16,22,32,45,55 |
 
-> 例外：忠诚度贴图 512/128 与 256/128（`civ6-asset-forge` skill 的忠诚度/宗教图标分册）；项目可自定义增减
+> 例外：忠诚度贴图 512/128 与 256/128（`civ6-asset-forge` skill 的 `reference/loyalty-icon.md`）；项目可自定义增减
 > （如本项目 Resources 另加 32、Product 含 45），以项目 Icons XML 现状为准。
 >
 > **规范化占幅**：Units（unit_icon）主画布 256、内容占幅 ≈87.5%（224px）、四周 ≈16px 统一边距、白色剪影+Alpha；
