@@ -27,11 +27,11 @@ languages:
 ## 目的与边界
 
 为 mod 新对象（资源/区域/建筑/改良/单位/特征）配置**原版已打包的美术素材**：找到
-相近功能的原版对象，完整复制其美术引用链，全程按名引用、**不解包任何 .blp**。
+相近功能的原版对象，完整复制其美术引用链。
 
 边界：
-- 2D UI 图标（IconTextureAtlases/Icons.xlp）默认不处理——仅当会悬空时补链
-  （"除非 Icon 没有素材否则不处理 Icon"）。
+- 2D UI 图标（IconTextureAtlases/Icons.xlp）默认不处理；仅当该图标引用的纹理在游戏内缺失时才补链
+
 - **例外**：裸纹理名链（`Governors.PortraitImage` / `PortraitImageSelected`、
   `SecretSocieties.SmallIcon` 这类存纹理名、靠 UITexture XLP 按名查找的列）属于
   「悬空排查」高发区，见 `reference/chain-map.md` §七 —— 不走 artdef 也不走图集。
@@ -41,9 +41,9 @@ languages:
 ## ⚠ 注意事项：mod 工程目录**本身就是 pantry**（曾致 AssetEditor 闪退）
 
 AssetEditor / cooker 会把**整个工程目录树**递归当 pantry 扫描 —— **不只是 `Textures/`**。
-任何位置的 `.tex` 都会被注册为贴图实体，同名副本会抢占注册。实测事故（2026-09-12 结案）：工作目录里有 752 个与 `Textures/` 正式贴图**同名**的 `.tex` 副本
-（生成目录 / `*_reimport/` / `tmp/backup_*`），其中 46 个 `m_SourceFilePath` 仍是 depot 库路径 `//civ6/main/...`
-→ AE 做版本状态更新时把它映射成本地形如 `D:\…\D:\…` 的非法路径 → `NotSupportedException: 不支持给定路径的格式` → 日志 `CRASH: Multiple Aggregated Exceptions (N)` → **浏览素材时闪退**。
+任何位置的 `.tex` 都会被注册为贴图实体，同名副本会抢占注册。实测（2026-09-12）：同名 `.tex` 副本 + `m_SourceFilePath` 为 depot 库路径 `//civ6/main/...`
+→ AE 版本状态更新抛 `NotSupportedException: 不支持给定路径的格式` → 日志 `CRASH` → **浏览素材时闪退**。
+复盘：`workspace/specs/2026-09-12-duplicate-tex-ae-crash.md`。
 
 **四条硬性规则**
 
@@ -60,16 +60,16 @@ AssetEditor / cooker 会把**整个工程目录树**递归当 pantry 扫描 —�
 | `m_RelativePath` | `<新stem>.dds` |
 | `.dds` 文件名 | `<新stem>.dds` |
 
-> 同类坑：`.ast` 自身名与几何同名时，批量改名会误伤 `m_GeoName`（曾致 10 个几何 I/O 错误）。
+> 同类坑：`.ast` 自身名与几何同名时，批量改名会误伤 `m_GeoName`。
 
 **验证顺序**（贴图改动后）：
 
-1. 跑 pantry 体检脚本（检查 `.tex` 位置 / 重名 / depot 路径 / 非 ASCII / `.tex`↔`.dds` 配对）—— 必须 0 error；
+1. 跑 `scripts/check_pantry.py`（检查 `.tex` 位置 / 重名 / depot 路径 / 非 ASCII / `.tex`↔`.dds` 配对）—— 必须 0 error；
 2. **清 AE 依赖缓存**（`%APPDATA%\AssetCloud\mod-<Mod>-asset-deps.json`）；
 3. 再启动 AssetEditor，确认日志无 `CRASH`。
 
-> ⚠ **缓存必须清**：不清缓存时，即使把问题文件移走也可能"仍不闪退"——那是缓存把被移走的文件记为 deleted 造成的**假象**。
-> 参考实现：示例工程 的 `workspace/_tools/check_pantry.py` 与 `clear_ae_cache.py`（零依赖、支持 `--root`）。
+> ⚠ **缓存必须清**：不清缓存会出现假象 —— 问题文件已移走却仍显示不闪退。
+> 参考实现：`scripts/check_pantry.py` 与 `scripts/clear_ae_cache.py`。
 > 附带铁律：**禁止修改/替换 SDK 安装目录下的任何 DLL**。
 
 ## 原版美术资产路径（强制约定）
@@ -93,8 +93,7 @@ AssetEditor / cooker 会把**整个工程目录树**递归当 pantry 扫描 —�
 3. `reference/cook-layer.md` — **cook 层**：`.Art.xml` 依赖声明 → pantry 解析、
    产物归一化、警告即静默降级、XLP 条目可解析性；排「ArtDef 不同步 / cook 报错 /
    单位渲染残缺」类问题前先读这个
-4. `CHANGELOG.md` — 版本改动与**实证来源**（1.1 更正了建筑链路与 artdef 合并语义，
-   排错前值得先看一眼，避免按旧结论操作）
+4. `CHANGELOG.md` — 版本改动与**实证来源**
 
 ## 第二步：查（art_lookup.py）
 
@@ -146,15 +145,15 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
 - 校验：条目名=DB Type；`XrefName` 目标能用 art_lookup 查到；XML 可解析；
   引用 DLC 素材时 mod 依赖已声明。
 - **cook 后校验（改动 artdef/xlp 后必做）**：
-  ① 构建日志里 `Art Pantry Path` 展开符合预期；
+  ① 构建日志的 `Art Pantry Path` 行覆盖 `.Art.xml` 声明的全部包（漏声明时对应路径不出现）；
   ② 数清 `references … that does not exist` + `has had its value replaced with its
   default value` 的**对子数**，每对都能解释（真没美术 / 忘补条目）；
-  ③ **重新 cook 一次，拿产物与 Mods 副本逐字节比对** —— 这是判断「本次改动有没有
-  运行时影响」的唯一可靠依据（日志级别会骗人）。详见 `cook-layer.md` §三、§六。
-- **「源 ↔ Mods 副本不一致」要分级看，别当成一个告警**：
+  ③ **重新 cook 一次，拿产物与 Mods 副本逐字节比对** —— 判断本次改动有无运行时影响只认这个。
+  详见 `cook-layer.md` §三、§六。
+- **「源 ↔ Mods 副本不一致」要分级看**：
   `python scripts/artdef_sync_check.py <工程名>`（或 `--all`）。
-  L1–L5 命中 = 纯编码层（行尾 / 自闭合写法 / 缩进 / 空行 / 注释），**可忽略**；
-  L5 仍不同 = 语义层，需分辨 `cook 补结构`（无害但永久）与
+  L1–L5 命中（差异在某一级归一化后消失）= 纯编码层（行尾 / 自闭合写法 / 缩进 / 空行 / 注释），**可忽略**；
+  五级归一化后仍不同 = 语义层，需分辨 `cook 补结构`（无害但永久）与
   `引用被清空`（`_MissingArt` / `text=""`，**真实缺陷**）。详见 `cook-layer.md` §2.2–2.4。
 - 替换型建筑附加校验：① **原有子条目零丢失**（读改写前后同区域内各子集合的子条目名集合，
   旧集合必须是新集合的子集）；② 所有取代该区域的 District 都已挂。
@@ -167,7 +166,7 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
 | 现象 | 先看 |
 |---|---|
 | 每次 build 后 artdef 与 Mods 副本「不同步」 | **先分级**：`python scripts/artdef_sync_check.py <工程名>`。L1–L5 命中 = 纯编码层（行尾/写法/缩进/空行/注释），可忽略；L5 仍不同才需看 → `cook-layer.md` §2.2 |
-| 想让「不同步」彻底消失 | 把源 artdef 统一成 cook 规范写法（**LF + `<x/>` 紧凑 + 无注释**）→ 源即产物。跨工程实测 5 个工程已如此，L0 全同 → `cook-layer.md` §2.3 |
+| 想让「不同步」彻底消失 | 把源 artdef 统一成 cook 规范写法（**LF + `<x/>` 紧凑 + 无注释**）→ 源即产物。2026-09 跨工程复核 → `cook-layer.md` §2.3 |
 | 产物里出现 `_MissingArt` 或 `text=""` | **真实缺陷**：引用解析不到被 cook 清空 → `cook-layer.md` §2.4 |
 | `Cannot cook the ArtDef ... does not exist in the pantry!` | `.Art.xml` `<requiredGameArtIDs>` 漏声明 → `cook-layer.md` §一 |
 | `references an ArtDef entry (X) that does not exist` | 该 X 真的不存在；**语义已被降级成默认值** → `cook-layer.md` §三 |
@@ -176,6 +175,6 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
 
 ## 与本工程的约定
 
-- 双目录工作流照旧：源文件为准，测试同步 Mods 副本前先询问。
+- 双目录工作流：源文件为准；同步 Mods 测试副本前先询问（细则见工程 AGENTS.md）。
 - 新建/修改 artdef 后不在 rgn_validate 范围（那是 SQL 工具），按上文静态校验 + 游戏内验证。
 - 默认不在源文件添加调试内容。
