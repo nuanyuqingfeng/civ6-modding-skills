@@ -199,7 +199,7 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 | `register_to_mod.py` | `.civ6proj`（CDATA UpdateAudio + Content 条目）与 `.modinfo`（UpdateAudio + Files）双注册 + Banks.ini；`--verify` 语义校验（UpdateAudio 只指向 ini） | 本地双案例（.civ6proj 与 .modinfo 各一）实证 |
 | `build_combination_bank.py` | 组合式 bank：N 分轨 + 全组合 Play/Stop 多动作事件（引擎并轨，UI 零改动） | Wwise 多动作事件 schema |
 | `music_wire.py` | fade 淡出检测 / ExitCustom 自动落点 / 时代权重（教程规则） | 模板 MusicCue CueType=2 + Weight=Real64 实测 |
-| `leader_timeline.py` | 领袖 .ast 时间线：6 槽位 FXName + Duration=语音时长+pad（三案例路由） | civ6-leader-2d 模板 ast 实测 schema |
+| `leader_timeline.py` | 领袖 .ast 时间线：6 槽位 FXName + Duration=语音时长+pad（三案例路由） | civ6-asset-forge（2D 领袖分册）模板 ast 实测 schema |
 | `unregister_audio.py` | 移除音频注册（modinfo UpdateAudio/Files、civ6proj CDATA/Content，可选清源目录） | 与 register 互逆 |
 | `ensure_template.py` | 模板缺失时询问用户并从教程仓库拉取，写 local_paths.json 自适应 | 致谢章节同源 |
 | `wwise_shortid.py` | WWise ShortID 核心库：FNV-1 事件哈希 / .bnk 解析 / 字节模板重建 / ID 注册表 / WAV→WEM 编码 | 内化自早期独立打包库（8/8 事件 ID 与成品一致实证）；ShortID 机制有效，编码部分不用于交付 |
