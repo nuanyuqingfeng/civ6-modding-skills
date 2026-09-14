@@ -35,7 +35,7 @@ languages:
 - **例外**：裸纹理名链（`Governors.PortraitImage` / `PortraitImageSelected`、
   `SecretSocieties.SmallIcon` 这类存纹理名、靠 UITexture XLP 按名查找的列）属于
   「悬空排查」高发区，见 `reference/chain-map.md` §七 —— 不走 artdef 也不走图集。
-- 领袖立绘/文明图标走 civ6-asset-forge 专项 skill。
+- 领袖立绘/文明图标走 civ6-asset-forge 专项 skill（reference/leader-2d.md / reference/loyalty-icon.md）。
 - 素材源文件查询只读 SDK pantry；游戏合并集以 `Base/ArtDefs` + `DLC/**/ArtDefs` 为准。
 
 ## ⚠ 注意事项：mod 工程目录**本身就是 pantry**（曾致 AssetEditor 闪退）

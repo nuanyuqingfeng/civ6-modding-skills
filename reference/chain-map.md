@@ -199,7 +199,7 @@ Units 表 → Units.artdef :: UNIT_X
    ├─ UnitMemberTypes 子条目（UnitMemberTypes/<名称>_Ancient01..）→ BLP @ units/units
    ├─ 引用 Cultures::UnitCulture / Eras::Era（文明/时代变体）
    └─ Formation/Audio/VFX
-（领袖与文明另有专项 skill：civ6-asset-forge）
+（领袖与文明另有专项 skill：civ6-asset-forge → reference/leader-2d.md / reference/loyalty-icon.md）
 
 #### 5.1 单位美术的装配链（克隆前必须走通）
 
