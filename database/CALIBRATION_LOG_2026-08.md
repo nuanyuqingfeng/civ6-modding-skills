@@ -147,5 +147,4 @@
 - `DebugGameplay.sqlite` / `DebugLocalization.sqlite`：`PRAGMA integrity_check = ok`
 
 ### 备份
-- 修复前完整备份：`database/backups/DebugGameplay_pre_dlcfix.sqlite`（gitignore 内，仅本机）
 - ⚠️ 历史打包 `civ6-modding*.zip`（3 个）内含修复前的 `DebugGameplay.sqlite`（含 `IsDlcDependency`，且 `PlayerColors` 缺 Alt 列），仅作历史归档；**不要直接覆盖现库**，如恢复必须先跑 `python database/scripts/audit_schema_drift.py`
