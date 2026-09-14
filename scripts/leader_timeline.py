@@ -10,7 +10,7 @@ leader_timeline.py -- 领袖 2D 行为资产(.ast)的语音时间线自动配置
 路由(由 agent 按 SKILL.md 执行):
   ① 项目/工程内已有领袖 ast → 直接 patch
   ② 没有 → 跳过并在报告中说明
-  ③ 任务本身要求新建 2D 领袖 → 引导 civ6-asset-forge skill 生成后再 patch
+  ③ 任务本身要求新建 2D 领袖 → 引导 civ6-asset-forge（reference/leader-2d.md）生成后再 patch
 """
 import os, re, sys, glob, json, argparse, subprocess
 
