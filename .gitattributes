@@ -1,0 +1,9 @@
+# 文本文件统一 LF：避免 core.autocrlf=true 下 checkout 把源文件写成 CRLF，
+# 导致「工作区 ↔ 仓库」以及（对 mod 工程而言）「源 ↔ cook 产物」出现永久伪差异。
+# 参见 civ6-art-reference/reference/cook-layer.md §2.3 与 CHANGELOG 1.3。
+* text=auto eol=lf
+
+# 二进制资产：禁止任何换行/编码转换
+*.sqlite binary
+*.json.gz binary
+*.png binary
