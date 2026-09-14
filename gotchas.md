@@ -9,26 +9,39 @@
 
 1. **UI Lua MUST call `Initialize()` at the bottom of the file.** The context system looks for this function. GamePlay Lua also typically calls it.
 
-2. **`AddUserInterfaces` references only the `.xml`.** The matching `.lua` must go in a separate `ImportFiles` entry. If you only list the `.lua`, the context won't load.
+2. **`AddUserInterfaces` 里只列 `.xml`；配套 `.lua` 是否需要另登记，看它的角色**（2026-09 修订）
+   - **UI 上下文脚本**（有同名 `<Context>` `.xml` 被列进 `AddUserInterfaces`）→ 引擎**自动加载同名 `.lua`**，**只需在打包清单 `<Content Include>` 里**，不必再单列 Action（官方+工坊 170 个 modinfo 中 203 例如此，且 5 个 mod 整包零 Action 级 lua 仍正常工作）；
+   - **include 扩展件 / 官方脚本替代件**（`<官方名>_<后缀>.lua`，靠官方 `include("<官方名>_", true)` 通配拉入，或替换官方文件）→ **必须进 `ImportFiles`**（Firaxis 的 `UI/Additions/*.lua`、`UI/Replacements/*.lua` 全在 `ImportFiles`）；
+   - **反过来一定错的是**：只列 `.lua` 而不列 `.xml` → **上下文根本不会建立**。
+   - 完整判定表与证据见本文件 §3 的「两轴」小节。
 
 3. **`<Files>` must list every XML/SQL/Lua file.** Missing any of these will cause packaging/distribution failure or the mod silently not loading. 注意范围：ImportFiles 引用的图片/视频、`Platforms/` 下的音频 bank 等媒体资产走专门的导入流程或用户手动导入；其余文件 ModBuddy 引擎默认自动打包，无需写进清单（见 project-setup.md「文件清单同步」）。
 
-   > **⚠ 两轴必须分清：`<Content Include>` 管「打包」，Action 管「加载」**（2026-09 补，实测事故）
+   > **⚠ 两轴必须分清：`<Content Include>` 管「打包」，Action 管「加载」**（2026-09 修订）
    >
-   > | 轴 | 来源 | 作用 | 后果 |
-   > |---|---|---|---|
-   > | **打包** | `.civ6proj` 的 `<Content Include="…">` → 构建时展平成 `.modinfo` 的顶层 `<Files>` | 决定文件**是否被复制进 Mods 目录**（编译期） | 漏了 → 部署包里没有该文件 |
-   > | **加载** | `.civ6proj` 的 Action 段（`AddUserInterfaces` / `ImportFiles` / `AddGameplayScripts` / `UpdateDatabase` / `UpdateText` / …） | 决定文件**在游戏里以什么身份被装载** | 漏了 → **文件在包里躺着，但永远不执行** |
+   > | 轴 | 来源 | 作用 |
+   > |---|---|---|
+   > | **打包** | `.civ6proj` 的 `<Content Include="…">` → 构建时展平成 `.modinfo` 顶层 `<Files>` | 决定文件**是否被复制进 Mods 目录**（编译期） |
+   > | **加载** | `.civ6proj` 的 Action 段 | 决定文件**在游戏里以什么身份被装载** |
    >
-   > **两者都要写，且不是同一件事。** 判定某文件是否被加载，看的是 **Action 段有没有它**，不是 `<Files>` 里有没有它。
+   > **怎么判断某个 `.lua` 会不会被加载 —— 按它的「角色」分三类，不要一刀切：**
    >
-   > **实测事故（工程 A）**：6 个 `.lua` 只写进 `<Content Include>`、不在任何 Action 段 ——
-   > `UI/UI_Civ_BS.lua`、`UI/Leader_SK/SK_Caculation_BS.lua`、`UI/Leader_CML/CML_Switcher_BS.lua`、`UI/Disaster_Plots/DisasterPlot_BS.lua`、`Rover/UnitFlag_Rover.lua`、`ImportFiles/TechAndCivicUnlockables_BS.lua`。
-   > 实测状态：这 6 个文件**都真的被部署进了 Mods 目录**（16 KB / 46 KB / 17 KB / 511 B / 3.3 KB / 2.3 KB，物理存在），但在构建产物的 Action 段里出现 **0 次** → **打进了包却从不执行**；而它们的同名 `.xml` 却在 `AddUserInterfaces` 里 → UI 上下文照建、lua 逻辑永不运行，且**全程无任何报错**。
-   > 对照：同工程正确登记的 `.lua` 在产物里出现 **2 次**（Action 段 1 次 + `<Files>` 1 次）。
+   > | `.lua` 的角色 | 判定依据 | 需要在哪里登记 |
+   > |---|---|---|
+   > | **① UI 上下文脚本** | 有一个**同名 `.xml`**（`<Context>`）被列进 `AddUserInterfaces` | ★ **只需在打包清单里**。引擎建上下文时会**自动加载同名 `.lua`**，**不必**再单列 Action |
+   > | **② include 扩展件 / 官方脚本替代件** | 文件名形如 `<官方名>_<后缀>.lua`，靠官方 `include("<官方名>_", true)` 通配拉入；或整体替换官方文件 | ★ **必须进 `ImportFiles`** —— 否则不在 UI 上下文的 `include()` 搜索路径里 |
+   > | **③ GamePlay 脚本** | 在 GP 侧运行 | **必须进 `AddGameplayScripts`** |
    >
-   > **自检方法**：把 `<Content Include>` 与全部 Action 的 `<File>` 做归一化（`\`→`/`）**差集**，再对构建后的 `.modinfo` 复核一遍 —— 差集里剩下的就是「打包了但不会加载」的文件。官方写法佐证：`DLC/Babylon/Babylon.modinfo` 的 `<AddUserInterfaces>` 列 `UI/Additions/HeroesPopup.xml`，`<ImportFiles>` **同时**列 `HeroesPopup.xml` 与 `HeroesPopup.lua`。
-   > 工具：示例工程 的 `workspace/_tools/check_proj_content.py` 即此差集检查器（见 project-setup.md）。
+   > **证据（官方 + 工坊 170 个 modinfo 全量统计）**：
+   > - `AddUserInterfaces` 区块内**只列 `.xml`** 的有 **128/130** 例 —— 这是标准写法；
+   > - 其同名 `.lua` **只出现在 `<Files>` 打包清单、不在任何 Action** 的有 **203 例**（其中 5 个 mod 整包**零个** Action 级 `.lua` 却正常工作，如 Sukritact's Relations Overview、Maple_Leaves_Music）→ **证明①的自动加载确实存在**；
+   > - 而 Firaxis 官方 DLC 的 `UI/Additions/*.lua`、`UI/Replacements/*.lua`（Expansion2 有 138 个）**全部登记在 `ImportFiles`**；`Ethiopia.modinfo` 的 `UI/Loaders/TechAndCivicUnlockables_Ethiopia.lua` 也在 `ImportFiles` → **证明②确实需要 ImportFiles**。
+   >
+   > **⚠ 曾经写反过**：早期版本把「`AddUserInterfaces` 只列 xml + `.lua` 不在任何 Action」直接判为"打包了却从不执行"——
+   > 那是**错的**，对①类文件引擎会自动加载。**只有②类文件漏登记才真的不生效。**
+   >
+   > **自检**：把 Action 段引用的文件与 `<Content Include>` 做归一化（`\`→`/`）差集，
+   > 逐个判断上表角色 —— ③类在差集里 = 真漏；①类在差集里 = 正常。参考实现：示例工程 `workspace/_tools/check_proj_content.py`。
 
 <!-- 4. **Mod ID must be a valid GUID.** Don't reuse GUIDs across mods. -->
 

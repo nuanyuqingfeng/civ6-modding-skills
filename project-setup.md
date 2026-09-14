@@ -588,22 +588,28 @@ XML / SQL / Lua 同步时的条目格式：
 > 💡 `.civ6proj` 是 ModBuddy 的项目台账 —— XML/SQL/Lua 缺失条目会导致文件不被打包；若残留指向不存在文件的条目，会编译报错。
 > `.modinfo` 的 `<Files>` 块是运行时打包清单 —— XML/SQL/Lua 缺失条目会导致文件不包含在最终模组里。
 
-#### ⚠ 两条轴要分清：`<Content Include>` 管打包，Action 段管加载
+#### ⚠ 两条轴：`<Content Include>` 管打包，Action 段管加载
 
 | 轴 | 来源 | 作用 | 漏了的后果 |
 |---|---|---|---|
 | **打包** | `.civ6proj` 的 `<Content Include>` → 构建时展平成 `.modinfo` 顶层 `<Files>` | 文件**是否被复制进 Mods 目录**（编译期） | 部署包里没有该文件 |
-| **加载** | `.civ6proj` 的 Action 段（`AddUserInterfaces` / `ImportFiles` / `AddGameplayScripts` / …） | 文件**在游戏里以什么身份被装载** | **文件在包里躺着，但永远不执行** |
+| **加载** | `.civ6proj` 的 Action 段（`AddUserInterfaces` / `ImportFiles` / `AddGameplayScripts` / …） | 文件**在游戏里以什么身份被装载** | 视文件角色而定，见下 |
 
-**两者都要写，且不是同一件事。** 判定"某文件是否被加载"，看的是 **Action 段有没有它**。
+**`.lua` 怎么登记 —— 按角色分三类，不要一刀切**：
 
-**实测事故**：某工程 6 个 `.lua` 只写进 `<Content Include>`、不在任何 Action 段
-→ 6/6 **都真的被部署进了 Mods 目录**（物理存在），但在构建产物的 Action 段里出现 **0 次** → **打包了却从不执行**，且**全程无任何报错**；
-它们的同名 `.xml` 却在 `AddUserInterfaces` 里 → UI 上下文照建、lua 逻辑永不运行。
-对照：正确登记的 `.lua` 在产物里出现 **2 次**（Action 段 1 次 + `<Files>` 1 次）。
+| 角色 | 判定 | 登记位置 |
+|---|---|---|
+| ① **UI 上下文脚本** | 有同名 `<Context>` `.xml` 被列进 `AddUserInterfaces` | **只需打包清单**；引擎会**自动加载同名 `.lua`** |
+| ② **include 扩展件 / 官方脚本替代件** | 文件名 `<官方名>_<后缀>.lua`，靠官方 `include("<官方名>_", true)` 拉入；或替换官方文件 | **必须进 `ImportFiles`** |
+| ③ **GamePlay 脚本** | 在 GP 侧运行 | **必须进 `AddGameplayScripts`** |
 
-**自检方法**：把 `<Content Include>` 与全部 Action 的 `<File>` 做归一化（`\`→`/`）**差集**，再对构建后的 `.modinfo` 复核一遍 ——
-差集里剩下的就是「打包了但不会加载」的文件。参考实现：示例工程 `workspace/_tools/check_proj_content.py`。
+**证据（官方 + 工坊 170 个 modinfo 全量统计）**：
+- `AddUserInterfaces` 内**只列 `.xml`** 的占 **128/130** —— 标准写法；
+- 同名 `.lua` **只在顶层 `<Files>`、不在任何 Action** 的有 **203 例**（含 5 个整包零 Action 级 lua 却正常工作的成品 mod）→ 证明①的自动加载存在；
+- Firaxis 官方 `UI/Additions/*.lua`、`UI/Replacements/*.lua`（Expansion2 共 138 个）**全部在 `ImportFiles`** → 证明②确实必需。
+
+**自检**：把 Action 段引用的文件与 `<Content Include>` 做归一化（`\`→`/`）差集，再按上表判角色 —— ③类落在差集里 = 真漏；①类落在差集里 = 正常。
+参考实现：示例工程 `workspace/_tools/check_proj_content.py`。
 
 ### 工程骨架：`.gitignore` 白名单 + `.gitattributes` 钉 LF
 
