@@ -2,7 +2,7 @@
 
 > 来源：3 个独立总督工程（工程 F / 工程 G / 工程 H）+ 2 个含总督的文明包（示例工程 / 工程 A）横向审查，
 > 所有 schema 结论均已用 skill 自带 `database/DebugGameplay.sqlite` 复核（标 ★）。
-> 美术侧规格见 **`civ6-asset-forge`** skill 的总督素材分册；本文只管**玩法注册链**。
+> 美术侧规格见 **`civ6-asset-forge`** skill 的 `reference/governor-art.md`；本文只管**玩法注册链**。
 
 ---
 
@@ -170,7 +170,7 @@ LOC_PEDIA_GOVERNORS_PAGE_<GovernorType|PromotionType>_CHAPTER_HISTORY_PARA_<n>
 
 > ★ 实测 62 个总督相关 `.tex` **全为 `PF_R8G8B8A8_UNORM` + `bUseMips=false`**、`m_ClassName`/`m_Tags = UserInterface`。
 > ⚠ 立绘**不是固定画布**：三工程实测 `PortraitImage` 有 200×208 / 208×208 / 206×208，`Selected` 有 325×339 / 339×331 / 325×339。
-> `civ6-asset-forge`（总督素材分册）里的 206×208 / 326×339 应视为**推荐值而非硬规格**。
+> `civ6-asset-forge` 的 `reference/governor-art.md` 里的 206×208 / 326×339 应视为**推荐值而非硬规格**。
 
 ### ⑪ `.civ6proj` 注册
 
