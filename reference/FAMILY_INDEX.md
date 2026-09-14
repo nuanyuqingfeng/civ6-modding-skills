@@ -14,7 +14,7 @@
 | `civ6-art-reference` | 1.3 | **引用原版美术素材**：ArtDef/XLP 四层引用链 + **cook 层**（pantry 解析→产物归一化→警告即静默降级→源/产物差异分级） | 1.45 MB |
 | `civ6-audio-pipeline` | 1.3 | **音频全流程**：素材整备→核验→按类别响度均衡→Wwise 工程直改→自动注册（语音 / BGM / 普通 sfx 三类路由） | 5.12 MB |
 | `civ6-tuner` | — | **FireTuner 运行时验证**（TCP 4318）：在运行中的对局里执行 Lua，回答"这个 API 实际行为是什么" | 0.10 MB |
-| **`civ6-asset-forge`** | — | **2D 美术素材总入口**：由原 `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` **四个 skill 合并而成**——忠诚度/宗教压力图标、单位晋升图标、总督素材、2D 领袖立绘注册 | — |
+| **`civ6-asset-forge`** | — | **2D 美术素材总入口**：由原 `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` **四个 skill 合并而成**——忠诚度/宗教压力图标、单位晋升图标、总督素材、2D 领袖立绘注册（各成一册 `reference/*.md`） | 3.45 MB |
 
 > **两条整合线**（2026-09）：
 > - `civ6-workshop-uploader` → 并入 **`civ6-modding/release.md`**（发布同属工程管理；脚本落在 `civ6-modding/release/scripts/`、模板 `release/templates/`、清单 `release/docs/`）。
