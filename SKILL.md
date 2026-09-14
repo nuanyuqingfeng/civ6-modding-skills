@@ -2,7 +2,7 @@
 name: civ6-modding
 description: "Civilization VI modding: Lua scripting (UI + GamePlay), ForgeUI XML layouts, .modinfo configuration, database XML. Covers UI Add/Replace, gameplay scripts, events, and full API reference. Includes decision trees, task workflows, XML templates, validation checklists, and deep database catalogs (907 ModifierTypes, 1987 Effects, 545 Requirements) with offline SQLite query tools for reliable code generation."
 version: "2.0"
-author: civ6-modding
+author: 千与千寻瀑
 license: MIT
 category: game-modding
 tags:
@@ -522,3 +522,10 @@ Reference: Civ6Docs.html (Civ6 root) + Civ VI Modding Companion 2.0.xlsx
 
 [Civ VI Modding Companion 2.0.xlsx] by ChimpanG, WildW
 枫叶佬的 Lua 教程: https://github.com/FYMapleLeaves/ml-civ6-lua-tutorial/tree/main
+
+---
+
+## 作者与致谢
+
+- 整理人：千与千寻瀑
+- 致谢：优妮、Hemmelfort、枫叶、夏凉凉凉、AWAW 等
