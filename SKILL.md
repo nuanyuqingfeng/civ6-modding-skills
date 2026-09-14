@@ -39,7 +39,7 @@ tags:
 3. bank 必须 Wwise 2015.1 编译（SoundbankVersion=113 / BKHD 布局 ver 24，与本地先例 mod 一致；官方原版 ver 20，引擎兼容两者）。禁止用新版 Wwise 迁移工程。
 4. 评估版许可**每 bank ≤200 媒体项**，大批量拆 bank。
 5. 事件引用全走 GUID；改名=只改 Name（引擎按 GUID 解析）。
-6. ini 写盘：无 BOM、CRLF、ASCII；modinfo/wwu/civ6proj：保持原编码与换行，写入前必须备份（脚本已内置）。
+6. ini 写盘：无 BOM、CRLF、ASCII；modinfo/civ6proj：保持原编码与换行。
 7. **注册校对**：所有物理文件（含 ini）必须出现在 `.modinfo` 的 `<Files>` 节 / `.civ6proj` 的 `<Content>` 清单；ini 除此之外还必须单独出现在 `<UpdateAudio>` 加载动作。交付前 `register_to_mod.py --verify` 必须 PASS（自动核对 UpdateAudio→ini、磁盘↔清单一致）。
 
 ## 1. 三类路由（用户提供分类后先走此表）
@@ -61,8 +61,6 @@ tags:
 1. **轮播背景音乐**：正常游玩时随机/按权重轮播的背景音乐。
 2. **外交背景音乐**：进入领袖外交界面时播放；按官方做法，**一个文明对应一首外交背景音乐**（`LeaderMusic_<Civ>` / `Play_Leader_Music_<Civ>`）。
 3. **主题音乐**：每次载入游戏时先播放当前时代的主题曲；建议按 4 个时代准备（远古/中古/工业/原子）。
-
-> 教程原文：“文明的音乐被分为三组：加入轮播的背景音乐；外交背景音乐；以及主题音乐，每次载入游戏都会先播放当前时代的主题音乐。”
 
 ### BGM 素材分类引导（skill 触发时必须执行）
 
@@ -111,11 +109,11 @@ BGM 制作触发时必须主动引导分类：
 
 ## 2.5 响度策略（校准基准 + 组内相对均衡）
 
-- **绝对响度**：以教程官方模板工程实测 + 本地实战为基准（`references/calibration.json`）：voice **-21** / quote **-23.5** / BGM 远古 **-28** / BGM 后世 **-25** / **sfx 普通音频默认 -27** LUFS（乐队多轨叠加实测确认，接近远古 BGM -28 且多轨并播整体更平衡）。已知替代风格：BS 系热母带（BGM ≈ -12，已入游戏验证），沿用该家族风格时用 `--i` 覆盖。
+- **绝对响度**：（`references/calibration.json`）：voice **-21** / quote **-23.5** / BGM 远古 **-28** / BGM 后世 **-25** / **sfx 普通音频默认 -27** LUFS（乐队多轨叠加实测确认，接近远古 BGM -28 且多轨并播整体更平衡）。已知替代风格：BS 系热母带（BGM ≈ -12，已入游戏验证），沿用该家族风格时用 `--i` 覆盖。
 - **BGM 时代响度分配（2026-09 用户定案）**：`-28`/`-25` 按**素材所属时代**分，不按播放时代分——远古时代素材**全部 -28**（远古主题曲即贯穿全局的主题曲，后续时代容器复用时保持 -28，**无需另做 -25 副本**）；中世纪及之后时代的素材**全部 -25**（含各自主题曲）。轮播曲跨时代复用只体现在 Wwise 容器权重配置，不改变文件响度。
-- **绝对响度与原始音量无关**：loudnorm 归一化 = 响度测量 + 增益补偿，最终 LUFS 与原始峰值/响度无关。原始差异只影响：① 越响余量越大（安全）；② 原始过静提增益后可能触发限幅/底噪放大；③ 已削波素材降增益也救不回失真。处理后音色与相对动态不变。
+- **绝对响度与原始音量无关**：loudnorm 归一化 = 响度测量 + 增益补偿，最终 LUFS 与原始峰值/响度无关。原始差异只影响：① 原始过静提增益后可能触发限幅/底噪放大；② 已削波素材降增益也救不回失真。处理后音色与相对动态不变。
 - **相对响度**（`--mode relative`）：同批次同用途素材以**批内中位数为锚**，`target_i = 锚点 + retain×(原值−锚点)`，retain 默认 **0.10**（90% 矫正、保留 10% 偏差）——从高往低压但不强行平均，保留排序与动态。（15 轨批实测：散布 3.2dB → 残余 0.3dB）
-- **声道中间件（实测修复 3dB 偏差）**：`audio_normalize.py` 对“源声道数 ≠ 目标声道数”的素材（如 voice 收立体声录屏、bgm 收单声道源）会先自动生成目标声道 PCM 中间件，再对中间件做 loudnorm 测量与均衡，保证测量对象 = 最终输出对象。此前“先测立体声、落盘再降混单声道”会让成品整体低 3dB（实测定量：立体声源 -21.0 测值 → 单声道成品 -24.0），现已在脚本内闭环，无需人工预降混。
+- **声道中间件（实测修复 3dB 偏差）**：`audio_normalize.py` 对“源声道数 ≠ 目标声道数”的素材（如 voice 收立体声录屏、bgm 收单声道源）会先自动生成目标声道 PCM 中间件，再对中间件做 loudnorm 测量与均衡，保证测量对象 = 最终输出对象。（旧流程成品整体低 3dB，脚本内已闭环，无需人工预降混。）
 - 若单轨**内部**乐器失衡（如混音里笛子偏响），per-track 响度无法修，需回源分轨重混。
 - **淘汰件与母带一律备份隔离，禁止直接删除**：查重淘汰件移入专用隔离目录，原始母带移入归档目录，由用户验收后自行清理。
 
@@ -136,7 +134,7 @@ python $S/audio_pack.py plainbank <wav目录> --bank <名>_Bank --out <Audio目�
 ```
 
 - ✅ **ShortID 规律（有效）**：Event ShortID = FNV-1(32)(小写事件名)，区分不同对象/音频靠唯一事件名前缀；媒体/声音/动作/容器 ID 从 `state/id_registry.json` 避让分配，杜绝不同内容 ID 撞车。`scan` 命令产出注册表，供 `new_bank_project.py` / `wwise_wire.py` 建 Wwise 工程时参考防冲突。
-- ⚠️ **编码（废弃）**：内嵌 ADPCM 会让游戏按 WWise 私有格式解码 → 噪音+闪退。正确做法是把素材按 **Stream（流式）→ WWise Vorbis wem** 生成（约 8-10% 体积），即 Wwise 路径。
+- ⚠️ **编码（废弃）**：不可用于交付（原因见本节首段）。
 - 模板 `assets/template_slim/template_speech.bnk` 现在仅作实验参考；正式交付用完整模板工程（`ensure_template.py` 拉取）。
 - 产物：实验产物 `.bnk/.xml/.txt` + `_Banks.ini` 仅用于研究，**不要**拿去 `register_to_mod.py` 注册交付。
 
@@ -220,7 +218,7 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 
 ## 6. 触发端速查（注册完成后接线用）
 
-- **Lua（仅 UI 上下文）**：`UI.PlaySound('Play_X')`；**无 StopSound API，停止=播放 `Stop_X` 事件**（媒体协调器 MediaStop 模式：播放前 MediaStop→Play_→Stop_ 转换播放，参考本地已交付 mod 的 UI 媒体协调器）。
+- **Lua（仅 UI 上下文）**：`UI.PlaySound('Play_X')`；**无 StopSound API，停止=播放 `Stop_X` 事件**（媒体协调器 MediaStop 模式：播放前 MediaStop→Play_→Stop_ 转换播放）。
 - **数据库列直接填事件名**：`UnitCommands.Sound` / `UnitOperations.Sound` / `Buildings.QuoteAudio` / `TechnologyQuotes|CivicQuotes|LeaderQuotes|Features.QuoteAudio` / `GreatWorks.Audio`（引擎自动加 Play_ 前缀）/ `TurnSegments.Sound` / `RandomEvent_Presentation.Sound` / `LoadingInfo.PlayDawnOfManAudio`。
 - **artdef**：Audio 集合（3D 位置音）+ 教程时间线 Sound 事件（领袖语音）。
 - 测试：civ6-tuner（FireTuner TCP:4318）执行 `UI.PlaySound('Play_X')`。
@@ -228,10 +226,10 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 ## 7. 已知边界
 
 - 交互音乐容器内部的素材不自动接线（由容器/switch 管理），`--scan` 会列出但需人工确认。
-- 语言本地化语音（语言夹 per-language bank）v1 由脚本按 `语言/<同名bank>` 约定铺文件，语言表以教程模板为准。
+- 语言本地化语音按 `语言/<同名bank>` 约定铺文件；语言列表见教程模板的 Speech 工作单元。
 - `.civ6proj` 的 Cooked 产物由 ModBuddy 构建生成，本管线只改源工程与运行目录，不模拟 ModBuddy 构建。
-- **纯 Python ADPCM 打包已废弃（实机验证记录）**：ffmpeg 标准 MS ADPCM 内嵌后游戏按 WWise 私有格式解码 → 噪音+闪退。`audio_pack.py` 的 speechbank/plainbank 仅作结构/ShortID 研究，**不得用于正式交付**。
-- **正式音频交付统一走 Wwise Vorbis 流式**：语音（Speech bank，Vorbis）与普通音频/BGM 都由 `new_bank_project.py` + `wwise_wire.py` → WwiseCLI 生成，流式 Vorbis wem 体积约 8-10%。纯 Python 路径也不做多语言 per-language bank。
+- **纯 Python ADPCM 打包已废弃**（原因与影响面见 §2.8）。
+- 纯 Python 路径不做多语言 per-language bank。
 
 ---
 
@@ -249,11 +247,10 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 - 可选 Python 依赖：`numpy`（`audio_dedupe.py` / `music_features.py`）、`pycryptodome`（`ncm_decrypt.py`），用到对应步骤时再 `pip install`。
 
 
-1. 脚本默认使用 skill 内置瘦身模板（`assets/template_slim/FelineJasperKitty`，无媒体、可直接生成 sfx bank）。
 2. 需要**完整模板**（voice/bgm 的 GUI 容器工作）而机器上没有时：**先询问用户**，确认后执行
    `python scripts/ensure_template.py --to <目标目录>`——从上述仓库 `git clone --depth 1` 拉取并复制 `WWiseProject/FelineJasperKitty`（含媒体）。
-3. 拉取后脚本会把新路径写入 skill 目录 `local_paths.json`（键 `template_full`），`ensure_template.py` 检测与 `audio_pack.py scan` 会自适应；调用完整模板时用 `new_bank_project.py --template <完整模板路径>` 或直接读取该键即可，无需改代码。
-4. **实验性纯 Python bank**（`audio_pack.py speechbank/plainbank`）默认使用 `assets/template_slim/template_speech.bnk`（20KB，纯结构、无成品音频）；**仅用于 ShortID/结构研究，正式交付请走 Wwise Vorbis**。
+3. 拉取后脚本会把新路径写入 skill 目录 `local_paths.json`（键 `template_full`），`ensure_template.py` 检测与 `audio_pack.py scan` 会自适应；调用完整模板时用 `new_bank_project.py --template <完整模板路径>` 或直接读取该键。
+4. **实验性纯 Python bank**（`audio_pack.py speechbank/plainbank`）默认使用 `assets/template_slim/template_speech.bnk`（20KB，纯结构、无成品音频）；
 5. **`state/id_registry.json` 是本机状态，不随 skill 分发**：接收方首次跑 `audio_pack.py scan`（或在 Wwise 打包前维护注册表）后开始累积自己的已用 ID 表。
 
 
