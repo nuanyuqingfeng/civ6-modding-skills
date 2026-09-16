@@ -2,9 +2,24 @@
 __pycache__/
 *.pyc
 
-# ---- 大型可再生成数据库（官方 SDK 拷贝快照，不入库）----
-database/*.sqlite
+# ---- 数据库纳管规则（2026-09-17 重构）----------------------------------------
+# 区分「可再生成的官方快照」与「不可再生的手工成果」：
+#   入库：api.sqlite           —— 含 2026-09-08 FireTuner 全量实测核验列
+#                                （verify_status/verify_note/runtime_gp/runtime_ui/
+#                                 true_name/corrected_from/suspect_type/audit_priority），
+#                                1854 条修正与标记是纯人工成果，丢了无法从游戏重建。
+#   入库：DebugLocalization.sqlite —— 除官方 LocalizedText 外还含 skill 自建侧表
+#                                SkillAnnotation_Colors / SkillAnnotation_Icons（手工配色与图标名）。
+#   忽略：其余 *.sqlite 均为官方 SDK 拷贝快照，可随时从游戏/SDK 重建，不入库。
+# 注意：具体忽略项写在下方「可再生成快照」段，勿用通配 `database/*.sqlite` 一刀切。
 *.sqlite
+!database/api.sqlite
+!database/DebugLocalization.sqlite
+
+# ---- 可再生成的官方快照（体积大且能从游戏/SDK 重建，不入库）----
+database/DebugGameplay.sqlite
+database/DebugConfiguration.sqlite
+database/source_index.sqlite
 
 # ---- 本地个人环境文件（不随仓库分享/覆盖他人）----
 local_paths.json
