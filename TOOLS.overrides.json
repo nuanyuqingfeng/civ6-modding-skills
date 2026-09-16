@@ -1,0 +1,24 @@
+{
+  "_comment": "docstring/argparse 抽不出人话的少数脚本在这里覆盖；覆盖值参与生成，重跑不会丢。键 = 相对 skill 根的路径。",
+  "scripts/art_copy_building.py": {
+    "usage": "python art_copy_building.py <src_building> <new_building> [--district <区域>] [--tag <token>] [--landmarks-out <path>] [--buildings-out <path>] [--dry-run]"
+  },
+  "scripts/compose.py": {
+    "purpose": "确定性合成器：白色图标 + 盾形模板 → 原版风格晋升图标（库函数 compose()，也被 build_icon_set 调用）",
+    "usage": "python compose.py <模板.png> <图标.png> <输出.png>"
+  },
+  "scripts/process_loyalty_icon.py": {
+    "usage": "python process_loyalty_icon.py --kind {loyalty|religion} (--icon <png> | --project <工程>) --suffix <后缀> [--out-dir <目录>] [--fit-mode {core,extent}]"
+  },
+  "scripts/recolor_template.py": {
+    "purpose": "旧晋升模板 → 四类金属（platinum/gold/silver/bronze）重着色，保留浮雕细节",
+    "usage": "python recolor_template.py <源模板.png> <输出目录>"
+  },
+  "scripts/vcheck_multi.py": {
+    "purpose": "多图视觉复核（把若干 PNG 一起丢给 Gemini 视觉模型问一个问题）",
+    "usage": "python vcheck_multi.py \"<问题>\" <图片1.png> [图片2.png ...]"
+  },
+  "scripts/tuner_exec.py": {
+    "usage": "python tuner_exec.py {check|exec|ports|logs} [...]  （exec 子命令执行 Lua；需游戏内开启 Tuner 且关闭 FireTuner GUI）"
+  }
+}
