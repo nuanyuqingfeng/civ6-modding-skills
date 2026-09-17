@@ -145,6 +145,25 @@
 
 42. **WB_SELECT_PLOT 瞄准模式时序三条铁律** — ① `UI.SetInterfaceMode()` **同步**触发 `Events.InterfaceModeChanged`：先切模式再读全局状态会拿到已清空值（如 UnitID=-1 导致请求静默失效），必须先缓存所需值再切模式。② 高亮在 `InterfaceModeChanged(newMode == WB_SELECT_PLOT)` 回调中显示，不要在 SetInterfaceMode 前直接 UILens（避免时序冲突被引擎清除）。③ 瞄准期间 `Events.UnitSelectionChanged` 会被"点击地块上的单位"触发，需特判：发起单位仍存在则不取消瞄准（点击单位应等同点击其所在地块）。
 
+## 本地化文本通道（.modinfo vs UpdateText）—— 放错就是"游戏里看不到字"
+
+一条 LOC tag 在**选 mod 界面**能显示，**不代表**游戏内取得到：这是两条互不相通的通道。
+
+| 用途 | 通道 | 生效范围 |
+|---|---|---|
+| **mod metadata** —— `Properties` 里的 `Name` / `Teaser` / `Description`（+ `Authors`） | `.civ6proj` 的 `<LocalizedTextData>` → `.modinfo` 的 `<LocalizedText>` | **仅"选择 mod / 额外内容"界面** |
+| **游戏内文本** —— 任何被 Lua `Locale.Lookup` 取用、或被 data 列（`Name`/`Description`/…）引用的 LOC | `<UpdateText>` 动作 + `Text/*.sql`（或 XML） | 游戏内（InGame） |
+| 配置界面文本 | FrontEnd 的 `<UpdateText>` | 仅 FrontEnd |
+
+规定原文见 `project-setup.md`：`<LocalizedTextData>` 一栏注的是 "Mod metadata text (title/teaser/desc/authors)"；
+"**游戏文本** (LocalizedText) → **InGame 仅** → `UpdateText`"。
+
+- **症状**：把游戏内 tag 写进 modinfo → 游戏内显示原始 `LOC_XXX` 键名或空白，而 mod 列表里一切正常。**静默、极易漏测**（开发时只开 mod 列表看一眼是发现不了的）。
+- **判定法**：写完自问"这条 tag 谁读？"—— Lua `Locale.Lookup` / data 列引用 → 必须 `UpdateText`；只有 `Properties` 的三个 metadata 字段才归 modinfo。
+- **更省事的做法**：先查原版有没有现成 tag（`database/DebugLocalization.sqlite` 逐 tag 查 + 确认八语言齐全），能复用就连 `Text/` 动作都不用加 —— 原版文案还自带全语言、与官方按钮完全一致。
+- 反面案例（2026-09-15，AllUnitsFoundCity v1–v3）：把自定义 tooltip / 失败提示两条游戏内 tag 写进了 modinfo 的 `<LocalizedText>`，
+  游戏内取不到；最终改为**全部复用原版 tag**（`LOC_UNITOPERATION_FOUND_CITY_DESCRIPTION` 等），自定义游戏内文本清零。
+
 ## Type Annotation Pitfalls
 
 19. **Havok Script type annotations** (`:number`, `:string`, `:boolean`, `:table`) are optional but help catch errors.
@@ -423,6 +442,160 @@
     | `INSERT OR IGNORE` | **只补缺，不夺权** | 与其他 mod 可能撞车的定义；属性标记 |
     | 裸 `INSERT INTO` | 写**没有 Types 注册**的纯数据表 | 该表不参与 Type 体系时 |
     裸 `INSERT` 出现得极少 —— 见到它通常是"该表不需要 Types"的信号。
+
+---
+
+## UI 显隐检定（"该隐没隐"的两类静默故障 · 2026-09 复盘）
+
+65. **检定内部抛错 = 显隐状态被冻在上一次结果上，极易误判成"判定规则写错"**
+    UI 按钮的检定函数若直接 `for _, id in ipairs(PlayerManager.GetAliveIDs()) do … pOther:GetCities():Members() …`，
+    只要某个玩家拿到 `nil` 的 `GetCities()`（或某接口在某个版本 / 上下文缺席），异常会顺着
+    `检定 → 刷新函数 → 事件回调` 抛出去：**刷新中途中止，控件保持上一次的 `SetHide` 状态**。
+    症状：按钮"偶尔/中后期一直亮着"，单位换位置也不更新（因为压根没重算完）。
+    处方（两条一起上）：
+    ```lua
+    -- ① 对外入口 fail-safe：检定额外抛错一律按"隐藏"处理
+    --    理由：按钮语义是"点了就能成"（GP 侧还会复核），宁可少显示，不给点了也不成的按钮
+    function MyIsButtonHidden(pUnit)
+        local ok, bHidden = pcall(MyEvaluateButtonHidden, pUnit);
+        return (not ok) or (bHidden == true);
+    end
+    -- ② 集合遍历判空 + pairs（见 #63），异常不外溢
+    for k, id in pairs(PlayerManager.GetAliveIDs() or {}) do
+        if type(k) == "number" then
+            local p = Players[id];
+            if p and p:IsAlive() then
+                local pCities = p:GetCities();
+                if pCities then for _, c in pCities:Members() do … end end
+            end
+        end
+    end
+    ```
+    排查手法：把检定拆成「内部实现 + 外层 `pcall` 包装」，就能一眼区分"判定确实返回了 true"与"检定额外抛错"。
+
+66. **"N 格内有无城市"这类判定：地块层判据比玩家枚举更可靠；`GetNeighborPlots` 的环语义已实测定案**
+    `Map.GetNeighborPlots(x, y, range)` 返回的是**含中心格的实心盘**（2026-09-16 FireTuner 实测：
+    r=1/2/3/4 → n=7/19/37/61，`含中心格数=1`，覆盖距离 0..r 的全部地块），**不是"正好第 r 环"**
+    （"正好第 r 环"是 GP 专有的 `Map.GetRingPlots`）。因此"半径内存在 X"直接按 `range` 取盘即可：
+    ```lua
+    local function HasCityWithin(x, y, ring)
+        for r = 0, ring do                       -- r=0 即中心格，逐层叠加，语义无关
+            for k, p in pairs(Map.GetNeighborPlots(x, y, r) or {}) do
+                if type(k) == "number" and p and p:IsCity() then return true end
+            end
+        end
+        return false
+    end
+    ```
+    `Plot:IsCity()` 是**地块数据**（双端实测可用），与城市归属无关 —— 自己的 / 其他文明 / 城邦 / 自由城市的城心
+    一律算数，不受 `Players` / `PlayerManager` 枚举是否完整影响；
+    `Map.GetPlotDistance()` 逐城比对（`Player:GetCities():Members()`，各自判空）留作兜底，
+    覆盖"地块标记与城市列表不同步"的边角。**两层同口径叠加，比单靠任一层都稳。**
+
+67. **建城地块的权威判据是引擎自己的 `IsValidFoundLocation`；`CITY_MIN_RANGE` 是"含端点的禁止半径"**
+    （2026-09-16 FireTuner 实测定案，别再用推断）
+
+    | 接口 | 端 | 语义 |
+    |---|---|---|
+    | `Plot:IsValidFoundLocation()` | **UI + GP 均可** | 一次调用覆盖 间距 / 地形 / 地貌 / 水域 / 已有城市·区域 / 领土 |
+    | `Player:GetCities():IsValidFoundLocation(x, y)` | 仅 GP | 同一口径；实测与上面**逐格结果完全一致** |
+
+    实测样本：首都为中心逐环扫 1..5 环（90 个地块），两端作对照 ——
+    **ring 1 / 2 / 3 全 false，ring 4 起才出现 true**（false 的那些是水域/山等本身不可建的地块）。
+
+    结论：`GameInfo.GlobalParameters["CITY_MIN_RANGE"]`（原版 **3**）是**禁止半径且含端点**，
+    即"距任意城市中心 **<= 3** 格不可建城"，**合法间距是 `距离 > CITY_MIN_RANGE`**（第 4 环才是第一个合法位）。
+    → 手写间距检定必须写 `<=`，写成 `<` 会**恰好放宽一格**（距城 3 格多显示按钮，点下去才被 GP 驳回、按钮静默消失）。
+    → 更稳的写法：把引擎裁定当主口径，手写规则只做它缺席时的兜底：
+    ```lua
+    local ok, bValid = pcall(function() return pPlot:IsValidFoundLocation() end);
+    if ok and bValid == false then return false end   -- 引擎说不行就不行
+    -- 引擎接口缺席 → 用本地自算（`<= CITY_MIN_RANGE`）兜底
+    ```
+    同类参数别按字面猜方向（"MIN_RANGE = 最小间距" 是错的读法）；**数值语义一律实机扫一遍边界再写死。**
+
+68. **换行分层铁律：资产类文本一律 LF，代码/配置类一律 CRLF**（2026-09-16 原版随机抽样定案）
+
+    原版实况（Base / DLC / SDK Assets 各随机 ≤40，非全量遍历）：
+
+    | 目标 | 扩展名 | 抽样实况 |
+    |---|---|---|
+    | **LF** | `.artdef` | 38/40 LF |
+    | **LF** | `.ast` `.mtl` `.geo` `.env` `.anm` `.xlp` `.lrg` `.tex` `.txt` | 25/25 文本，全 LF |
+    | **CRLF** | `.lua` / `.xml` / `.modinfo` | 40/40 CRLF |
+    | **CRLF** | `.sql` | 17/17 CRLF |
+
+    **成因**：AssetEditor / cooker 输出的资产类文本**恒为 LF**；而 Lua/SQL/XML 这类代码与配置原版**恒为 CRLF**。
+
+    **为什么必须钉死**（本机 `core.autocrlf=true`）：不在 `.gitattributes` 里钉死，
+    checkout 会把 LF 资产写成 CRLF，于是「源 ↔ Mods 副本 ↔ cook 产物」出现**永久伪差异**，
+    diff 噪声淹没真实改动（`.artdef` 早年正是因此被迫 `text eol=lf`，见 `civ6-art-reference/reference/cook-layer.md §2.3`）。
+
+    ★ **`.txt` 按目录分**：`Platforms/Windows/Audio/` 下原版是 `.txt`=LF(51) 但 `.xml`=**CRLF(63)**、`.ini`=**CRLF(1)**
+    —— 不能只看扩展名，音频目录要按「txt→LF、xml/ini→CRLF」分别对待。
+
+    ★ **真二进制绝不能按文本处理**：`.fgx`(25/25) 与 `.wig`(25/25) 实测含 **NUL 字节**，
+    所谓"换行"只是字节碰巧命中 `0x0A`，**语义上不存在换行**；`.dds` 同理。
+    归一化脚本必须**按扩展名排除 + 逐文件 NUL 探测双重把关**。
+
+    **施工与体检**：`python civ6-modding/scripts/normalize_eol.py <工程目录>`（默认只报告，`--fix` 才写盘）。
+    工程侧在 `.gitattributes` 落实：
+
+    ```gitattributes
+    *.lua  text eol=crlf
+    *.sql  text eol=crlf
+    *.xml  text eol=crlf
+    *.artdef text eol=lf
+    *.xlp    text eol=lf
+    *.txt    text eol=lf
+    *.fgx  -text -diff -merge binary   # 真二进制
+    ```
+
+    **验收口径**：改完换行后 `git diff <文件>` 应当**为空**（`core.autocrlf` 下 CRLF/LF 归一为同一 blob）
+    —— 若出现内容 diff，说明改动**不止换行**，必须回头查。
+    另注意：工作区被重写后 `git status` 可能因 **stat 缓存过期**列出大量 `M`；
+    用
+    ```bash
+    git add -A && git diff --cached --numstat   # 只有换行时这里应无输出
+    git reset -q
+    ```
+    判定真实内容变更（实测：`status` 报 48 个 `M`，而 `--cached` 与逐文件 `git diff` 均为 0）。
+
+
+
+69. **`luac -p` 对 Civ6 的 Lua 是「部分可信」：类型标注语法必报假错，必须差分判定**（2026-09-16 实测）
+
+    Civ6 的 Lua 含 **Lua 5.1 不认识的类型标注**，例如：
+
+    ```lua
+    local kDiscoveredImages:table = {};      -- vanilla 全量替换文件里就有这句
+    ```
+
+    `luac -p` 会报 `unexpected symbol near ':'`。**这不是文件坏，是方言比 5.1 新。**
+
+    ★ **要害：源文件与 Mods 副本同样报错**。所以任何"剥离/改写后跑 `luac -p` 自检"的流程，
+    若只看**结果**不过就判失败，会对这类文件**每次都误报**——
+    本项目实测：`strip_comments.py` 因 `ImportFiles/OfficialOverrides/SecretSocietyPopup.lua`
+    恒定 `exit 1`，**真失败会被淹没在噪声里**（发布流程长期带着一个假红灯）。
+
+    **正确做法 —— 差分判定**：先验原文、再验结果，只在「原文能过 → 结果不过」时报错：
+
+    ```python
+    ok_before = luac_check_text(raw)
+    ok_after  = luac_check_text(stripped)
+    if ok_before and not ok_after:      # 只有这个组合才是「我改坏了」
+        fail()
+    elif not ok_before:                 # 既存方言问题，跳过并计数提示
+        preexisting += 1
+    ```
+
+    实测该项目：47 个 `.lua` 通过、1 个既存误报（`SecretSocietyPopup.lua`）、真失败 0
+    —— 与源工程同口径（源也是 47 通过 / 1 误报），据此确认剥离无副作用。
+
+    **同类判断**：本机唯一可用版本是 `E:\SoftWares\Lua\5.1\luac.exe`（`_paths.py` 的 `luac` 键）。
+    任何"用 luac 当质量门"的脚本都要先确认它对目标文件**在改动前**是过的，
+    否则把工具自身的方言局限当成了代码缺陷。
+
 
 
 
