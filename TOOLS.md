@@ -11,19 +11,19 @@
 |---|---|---|
 | `scripts/audio_check.py` | audio_check.py -- Civ6 音频素材核验 | `python audio_check.py <文件或目录...> [--category voice\|bgm\|sfx] [--era ancient\|later] [--fix]` |
 | `scripts/audio_dedupe.py` | audio_dedupe.py -- 跨目录音频指纹查重: 同曲判定 -> 组内质量排序 -> 淘汰件备份隔离(默认只报告) | `python audio_dedupe.py <文件或目录...> [--auto 0.975 --env 0.985 --dur 0.99]` |
-| `scripts/audio_normalize.py` | audio_normalize.py -- Civ6 audio loudness normalization (ffmpeg loudnorm 2-pass, linear) | `audio_normalize.py -- Civ6 audio loudness normalization (ffmpeg loudnorm 2-pass, linear)` |
+| `scripts/audio_normalize.py` | audio_normalize.py -- Civ6 audio loudness normalization (ffmpeg loudnorm 2-pass, linear) | `python audio_normalize.py <文件或目录...> [--category voice\|quote\|bgm\|sfx] [--era ancient\|later] [--mode absolute\|relative\|shortterm] [--i <目标LUFS>] [--out DIR] [--filelist F]` |
 | `scripts/audio_pack.py` | audio_pack.py - ShortID 注册表 + 纯 Python bank 结构实验（历史独立打包器内化） | `python audio_pack.py scan<br>[实验] python audio_pack.py speechbank <wav目录> --out <Audio目录> [--bank 名] [--template 模板bnk]` |
 | `scripts/build_combination_bank.py` | build_combination_bank.py -- 组合式 bank 构建器（乐队/分层音频专用） | `python build_combination_bank.py --proj <工程目录> --bank <Bank名>       --stems a.wav b.wav c.wav d.wav --codes C,D,H,L [--prefix Play_] [--dry]` |
 | `scripts/ensure_template.py` | ensure_template.py -- 模板自适应保障 | `python ensure_template.py [--to <目录>] [--repo https://github.com/dwughjsd/Civ6_Modding_Textbook]` |
-| `scripts/leader_timeline.py` | leader_timeline.py -- 领袖 2D 行为资产(.ast)的语音时间线自动配置 | `patch <ast路径\|目录> --media <语音wav目录\|文件...> [--pad 0.5] [--map 槽位关键字=事件名 ...] [--dry]` |
+| `scripts/leader_timeline.py` | leader_timeline.py -- 领袖 2D 行为资产(.ast)的语音时间线自动配置 | `python leader_timeline.py patch <ast路径\|目录> --media <语音wav目录\|文件...> [--pad 0.5] [--map 槽位关键字=事件名 ...] [--dry]（另一子命令：check <ast路径\|目录>）` |
 | `scripts/music_features.py` | music_features.py -- BGM 音乐特征分析: BPM/响度/动态/亮度/打击密度 + 唤醒度评分 | `python music_features.py <文件或目录...> [--out features.csv] [--jobs 4] [--cache DIR]` |
-| `scripts/music_wire.py` | music_wire.py -- 交互音乐工程接线 (BGM 半自动流程的自动化部分) | `music_wire.py -- 交互音乐工程接线 (BGM 半自动流程的自动化部分)` |
+| `scripts/music_wire.py` | music_wire.py -- 交互音乐工程接线 (BGM 半自动流程的自动化部分) | `python music_wire.py {fade\|exitcustom\|weights} [...]（fade <wav>；exitcustom <工程目录>；weights <工程目录> --civ-prefix X）` |
 | `scripts/ncm_decrypt.py` | ncm_decrypt.py -- 网易云 .ncm 解密为裸流 (flac/mp3/wav/ogg) | `python ncm_decrypt.py <ncm文件或目录...> [--out DIR] [--delete-source] [--selftest]` |
 | `scripts/new_bank_project.py` | new_bank_project.py -- 克隆模板工程 -> 独立 bank 工程 (素材导入 + work unit 注入 + 可选生成) | `python new_bank_project.py --proj <新工程目录> --bank <Bank名> --media <素材目录\|文件...>` |
-| `scripts/paths.py` | Skill 路径配置中心（本机私有，不随 skill 分发）。 | `读取 skill 根目录 `local_paths.json`；也支持同名 `CIV6_*` 环境变量覆盖，<br>`local_paths.json` 示例：` |
+| `scripts/paths.py` | Skill 路径配置中心（本机私有，不随 skill 分发）。 | `读取 skill 根目录 local_paths.json；也支持同名 CIV6_* 环境变量覆盖，<br>local_paths.json 示例：` |
 | `scripts/register_to_mod.py` | register_to_mod.py -- bank 产物注册到 mod (P1 源工程 .civ6proj / P2 运行目录 .modinfo 双注册) | `python register_to_mod.py --bank-dir <工程>\GeneratedSoundBanks\Windows --bank <Bank名>       (--find <mod名> \| --mod <mod目录>) [--section ingame\|global\|menu] [--civ6proj <路径>] [--dry-run]` |
 | `scripts/unregister_audio.py` | unregister_audio.py -- 从 mod 注册点移除音频注册 (与 register_to_mod.py 互逆) | `python unregister_audio.py --audio-id <id> [--find <mod名> \| --mod <目录> \| --civ6proj <路径>]` |
-| `scripts/wwise_shortid.py` | wwise_shortid.py - WWise ShortID 核心规律 + 纯 Python bank 打包核心库。 | `wwise_shortid.py - WWise ShortID 核心规律 + 纯 Python bank 打包核心库。` |
+| `scripts/wwise_shortid.py` | wwise_shortid.py - WWise ShortID 核心规律 + 纯 Python bank 打包核心库。 | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/wwise_wire.py` | wwise_wire.py -- Wwise 工程直改工具 (Wwise 2015.x, Yuni 谱系工程实测) | `扫描   python wwise_wire.py <工程目录> --scan<br>接线   python wwise_wire.py <工程目录> --wire <BANK名> [--events-wu <名称>]` |
 
 共 16 个脚本。

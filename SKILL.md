@@ -120,6 +120,7 @@ BGM 制作触发时必须主动引导分类：
 ## 2.5 响度策略（校准基准 + 组内相对均衡）
 
 - **绝对响度**：（`references/calibration.json`）：voice **-21** / quote **-23.5** / BGM 远古 **-28** / BGM 后世 **-25** / **sfx 普通音频默认 -27** LUFS（乐队多轨叠加实测确认，接近远古 BGM -28 且多轨并播整体更平衡）。已知替代风格：BS 系热母带（BGM ≈ -12，已入游戏验证），沿用该家族风格时用 `--i` 覆盖。
+- **数据来源（基准的出处）**：脚本读的生效值是 `references/calibration.json`；该文件的基准由 `references/calibration_raw.json`（原始响度实测记录）推导而来 —— 改基准或复核某个数值时两个文件对照着看。
 - **BGM 时代响度分配（2026-09 用户定案）**：`-28`/`-25` 按**素材所属时代**分，不按播放时代分——远古时代素材**全部 -28**（远古主题曲即贯穿全局的主题曲，后续时代容器复用时保持 -28，**无需另做 -25 副本**）；中世纪及之后时代的素材**全部 -25**（含各自主题曲）。轮播曲跨时代复用只体现在 Wwise 容器权重配置，不改变文件响度。
 - **⚠ 同一播放容器内严禁混排两档基准**：上一条是**文件层**的规则；而轮播机制（§1.5）会把**本时代素材 + 上一时代素材**塞进同一个时代容器，-28 与 -25 一旦同容器就是**逐曲跳 3 dB 台阶**（听感：忽大忽小）。定案：**同一容器（同一时代列表）内所有曲目必须落在同一基准上**——沿用 -28/-25 时代分配时，跨时代复用进同一容器的素材也要归到该容器的基准。验收靠 `audio_check.py` 的 `[POOL]` 段，它会直接点出"疑似双基准混排 + 两簇中心与间隔"（实机教训：某 BGM 包 97 首被判出 低簇 n=24 中心 -28.00 / 高簇 n=73 中心 -25.00 / 间隔 2.80 dB）。
 - **短时响度锚（`--mode shortterm`）**：轮播池（BGM 轮播组）**不要用纯积分 LUFS 对齐**。积分响度相等 ≠ 听感相等——实测同一批交付 BGM 积分极差仅 **3.10 dB** 时，中位短时响度 S_p50 极差高达 **7.60 dB**，`corr(LRA, S_p50−I) = -0.555`（动态越大的曲子，典型听感越低于它自己的积分值）。`--mode shortterm` 以 S_p50 为目标、用**恒定增益**（`volume=` 滤波器）对齐，结构上不可能产生泵浦，并自带真峰夹紧（不越 `--tp`）。
@@ -219,6 +220,16 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 
 ```
 
+> **`.bak_*` 口径（与家族「不静默备份」的差异，如实记录）**：就地写模式会在原文件旁留一份 `.bak_*` 副本，
+> 分布在两类文件上，处理方式不同：
+> - **素材 / 母带 / 工程内部文件（有意例外，改坏可回退）**：`audio_check.py --fix` → `.bak_check`、
+>   `audio_normalize.py` → `.bak_norm`、`leader_timeline.py` → `.bak_ast`、`wwise_wire.py` / `music_wire.py`
+>   → `.bak_wire`、`build_combination_bank.py` → `.bak_rebuild`。这些副本**不入库、不进交付包**，
+>   验收后自行清理（同 §2.5 的「淘汰件与母带备份隔离」口径）。
+> - **项目主体文件（历史只交给 git）**：`register_to_mod.py` → `.bak_reg`、`unregister_audio.py`
+>   → `.bak_unreg` 落在 `.modinfo` / `.civ6proj` 旁边，而这两个文件是 git 管理的项目主体，
+>   家族与工程口径均为「默认不建立备份副本」。→ **提交 / 交付前删掉这两类副本**，不要随包分发。
+
 ## 4. 脚本清单
 
 | 脚本 | 职责 | 依据 |
@@ -238,6 +249,7 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 | `ensure_template.py` | 模板缺失时询问用户并从教程仓库拉取，写 local_paths.json 自适应 | 致谢章节同源 |
 | `wwise_shortid.py` | WWise ShortID 核心库：FNV-1 事件哈希 / .bnk 解析 / 字节模板重建 / ID 注册表 / WAV→WEM 编码 | 内化自早期独立打包库（8/8 事件 ID 与成品一致实证）；ShortID 机制有效，编码部分不用于交付 |
 | `audio_pack.py` | ShortID 注册表刷新（scan，有效）+ 实验性纯 Python bank（speechbank/plainbank，⚠️ ADPCM 已实证废弃，勿交付） | 内化自早期独立打包 CLI；正式交付走 Wwise Vorbis |
+| `paths.py` | **库**（无独立子命令，被本 skill 其余脚本 `import`）：读 skill 根目录 `local_paths.json`，支持 `CIV6_*` 环境变量覆盖；直接运行 = 打印本机路径配置自查（各键缺失时会指出写哪、写什么） | 本 skill 自有的路径解析器（**不是** `civ6-modding/tools/_paths.py`） |
 
 ## 5. 注册产物基线（缺一不可）
 
@@ -274,18 +286,18 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 
 ## 模板自适应（分享后在新机器上运行）
 
-全新机器首次使用前先确认：
-- `ffmpeg` / `ffprobe` 已加入 PATH（素材核验/响度均衡/时长探测依赖；缺失时脚本会报找不到，请先安装）。
-- Wwise 2015.1.9 已安装，且 `local_paths.json` 的 `wwcli` 指向 `WwiseCLI.exe`（脚本缺失时给出明确提示）。
-- `git` 可用于 `ensure_template.py` 自动拉取完整模板；没有 git/网络时手动下载教程仓库并配置 `template_full`。
-- 可选 Python 依赖：`numpy`（`audio_dedupe.py` / `music_features.py`）、`pycryptodome`（`ncm_decrypt.py`），用到对应步骤时再 `pip install`。
+1. **全新机器首次使用前先确认**：
+   - `ffmpeg` / `ffprobe` 已加入 PATH（素材核验/响度均衡/时长探测依赖；缺失时脚本会报找不到，请先安装）。
+   - Wwise 2015.1.9 已安装，且 `local_paths.json` 的 `wwcli` 指向 `WwiseCLI.exe`（脚本缺失时给出明确提示）。
+   - `git` 可用于 `ensure_template.py` 自动拉取完整模板；没有 git/网络时手动下载教程仓库并配置 `template_full`。
+   - 可选 Python 依赖：`numpy`（`audio_dedupe.py` / `music_features.py`）、`pycryptodome`（`ncm_decrypt.py`），用到对应步骤时再 `pip install`。
 
 
 2. 需要**完整模板**（voice/bgm 的 GUI 容器工作）而机器上没有时：**先询问用户**，确认后执行
    `python scripts/ensure_template.py --to <目标目录>`——从上述仓库 `git clone --depth 1` 拉取并复制 `WWiseProject/FelineJasperKitty`（含媒体）。
 3. 拉取后脚本会把新路径写入 skill 目录 `local_paths.json`（键 `template_full`），`ensure_template.py` 检测与 `audio_pack.py scan` 会自适应；调用完整模板时用 `new_bank_project.py --template <完整模板路径>` 或直接读取该键。
 4. **实验性纯 Python bank**（`audio_pack.py speechbank/plainbank`）默认使用 `assets/template_slim/template_speech.bnk`（20KB，纯结构、无成品音频）；
-5. **`state/id_registry.json` 是本机状态，不随 skill 分发**：接收方首次跑 `audio_pack.py scan`（或在 Wwise 打包前维护注册表）后开始累积自己的已用 ID 表。
+5. **`state/id_registry.json` 是本机状态，不随 skill 分发**：接收方首次跑 `audio_pack.py scan`（或在 Wwise 打包前维护注册表）后开始累积自己的已用 ID 表；字段含义与维护规则见 `state/README.md`。
 
 
 ---

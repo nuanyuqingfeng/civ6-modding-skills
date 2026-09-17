@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Skill 路径配置中心（本机私有，不随 skill 分发）。
 
-读取 skill 根目录 `local_paths.json`；也支持同名 `CIV6_*` 环境变量覆盖，
+读取 skill 根目录 local_paths.json；也支持同名 CIV6_* 环境变量覆盖，
 方便在没有配置文件的 CI/新机器上临时指定：
 
     CIV6_WWCLI        WwiseCLI.exe 绝对路径
@@ -9,7 +9,7 @@
     CIV6_P1           ModBuddy 源工程根目录
     CIV6_P2           Civ6 运行 Mods 目录
 
-`local_paths.json` 示例：
+local_paths.json 示例：
     {
         "wwcli": "D:/Wwise_v2015.1.9/.../WwiseCLI.exe",
         "template_full": "D:/.../WWiseProject/FelineJasperKitty",
