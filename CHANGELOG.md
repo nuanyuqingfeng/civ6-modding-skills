@@ -1,5 +1,65 @@
 # CHANGELOG — civ6-asset-forge
 
+## 2026-09-17/18 · 类别③「单位晋升图标」生成管线作废（仅保留尺寸说明）
+
+**来源**：用户裁决 —— 类别③（promotion icon）的整条**生成管线**是**失败尝试的遗留**，不再需要；
+**只保留一份"尺寸说明"**。本次只改本 skill，其它 4 个 skill 未动。
+
+### 新增
+
+| 文件 | 说明 |
+|---|---|
+| `reference/promotion-icon-sizes.md` | **唯一保留**的类别③文档：只写尺寸/格式事实（`Promotions32.dds` 32px 图集 / `Promotion_Button*` 106×106×5 / 占幅 75%·12.5%·6% / glyph 参数 / 四类金属配色 / 40 格分类 / 注册目标 / `.tex` 约束），**不含**管线步骤、提示词与脚本用法 |
+
+### 删除（逐文件已 grep 证明"引用它的地方只有类别③"）
+
+| 文件 | 依据 |
+|---|---|
+| `scripts/compose.py` | `SKILL.md` / `TOOLS.md` / `TOOLS.overrides.json` / `reference/promotion-icon.md` / `prompts-metal-recolor.md` —— 全部类别③；**实测未被 `build_icon_set.py` import**（`TOOLS.md` 原注"也被 build_icon_set 调用"系误，一并随重跑消失） |
+| `scripts/recolor_template.py` | 同上 5 处，全部类别③ |
+| `scripts/slice_atlas.py` | `SKILL.md` / `TOOLS.md` / 自身 docstring，全部类别③ |
+| `scripts/verify.py` | `SKILL.md` / `TOOLS.md` / `reference/promotion-icon.md` / `reference/promotion-icon/prompts.md` |
+| `scripts/vcheck_multi.py` | `SKILL.md` / `TOOLS.md` / `TOOLS.overrides.json` / `reference/promotion-icon.md` |
+| `scripts/__pycache__/vcheck_multi.cpython-314.pyc` | 已删模块的编译产物（`.gitignore` 已忽略，可再生） |
+| `assets/TEMPLATE_{platinum,gold,silver,bronze}_{gt32,gt512,gt1024,1024}.png`（16 个） | 类别③ 生图模板与像素级 ground truth |
+| `assets/white_glyph_samples/`（5 个：BATTLECRY / HOLD_THE_LINE / MARKSMAN / RANGER / VOLLEY） | 类别③ 白剪影样例（文件名全部属 `Promotions32` 的晋升） |
+| `assets/vanilla_promotion_sheet.png` | 类别③ 原版盾形整表（840×150，五边形盾形金属底） |
+| `reference/promotion-icon.md` | 类别③ 分册（原 `civ6-promotion-icon` 的 `SKILL.md`） |
+| `reference/promotion-icon/specs.md`、`prompts.md`、`prompts-metal-recolor.md` | 类别③ 实测规格 / 提示词手册（`prompts-metal-recolor.md` 系 2026-09-17 当天新增，同属作废管线） |
+
+删除后 `reference/promotion-icon/` 已空，目录一并移除。
+
+### 保留（经证据核验**不属**类别③，未删）
+
+| 文件 | 依据 |
+|---|---|
+| `scripts/verify_badge.py` | **类别① 总督**：八边形 24px 徽章验证器（`OFFICIAL_SPANS` y=3..20 共 18 行、最宽 18px），被 `SKILL.md` ① 行与 `reference/governor-art.md` 引用 |
+| `assets/TEMPLATE_badge24_canonical.png` | **类别①**：24×24，逐行跨度与 `verify_badge.py` 的 `OFFICIAL_SPANS` **1:1 零差异**（八边形暖橄榄金） |
+| `assets/TEMPLATE_badge24_canonical_x16.png` | **类别①**：上者的放大对照图（512×512，最近邻 **512/24 ≈ 21.3×** 铺满画布，内容 bbox 426×426）——**文件名里的 `x16` 与实测倍率无关**，勿按字面理解 |
+| `assets/REF_official_promotions24_x6.png` | **类别①**：1152×144 = **8×1 @24px × 6 倍放大**。逐格按 6×6 块中心取样还原成 24px 后，**第 1~7 格与 `verify_badge.py` 的 `OFFICIAL_SPANS` 逐行完全一致**（第 0 格是 21 行的 generic 变体）；与 `governor-art/specs.md` §2.3「`XP1/XP2_GovernorPromotions24.dds` 24px **8×1**」、`governor-art.md` §一 第 3 行完全吻合 → 是官方**总督**晋升徽章图集（`GovernorPromotions24` 属类别①） |
+
+> 上表 4 个文件均**无任何文本引用**（属素材级引用），归类依据是**内容 + 尺寸实测**，非文本引用。
+
+### 改动
+
+| 文件 | 说明 |
+|---|---|
+| `SKILL.md` | 「六类」→「五类」（description / §一 标题 / §二 路由判定 / §三 标题 / §六 标题与 §6.1 标题 / §七 标题 / §八 目录树 / §九 标题）；**删除类别③ 行**（§一 分类表、§三 素材询问表、§6.1 声明层落点、§七 校验表）；§二 路由表 ③ 行改指 `reference/promotion-icon-sizes.md` 并注明"仅尺寸规格，管线已废"；§八 脚本表删 5 行（18 → 13）；§一 表下与 §6.1 表下补作废说明 |
+| `TOOLS.overrides.json` | 删 `scripts/compose.py` / `scripts/recolor_template.py` / `scripts/vcheck_multi.py` 三条覆盖 |
+| `reference/governor-art.md` | 「边界」节 ③ 指向改为 `reference/promotion-icon-sizes.md`（**CRLF 保持**） |
+| `reference/governor-art/specs.md` | §2.3 结论行同样改指 `reference/promotion-icon-sizes.md`（**CRLF 保持**） |
+
+### 待办（落在其它 skill / 生成器侧，本次未动）
+
+- `civ6-modding/tools/skill_manifest.py` 的 `THIRD_PARTY["civ6-asset-forge"]` 仍列
+  `compose.py` / `recolor_template.py` / `slice_atlas.py` / `verify.py` 四条 —— 该节由表**逐条原样输出**（不校验文件是否存在），
+  **不清理则重跑生成器会把已删脚本写回 `TOOLS.md` 的「第三方依赖」节**。
+- `civ6-modding/art/survey_icon_atlas.py`（"与 `slice_atlas.py` 的分工"节）与
+  `civ6-modding/reference/FAMILY_INDEX.md`（第 55 / 61 行）仍指向已删的 `promotion-icon.md` / `slice_atlas.py`。
+- 本 skill `TOOLS.md` 的工具表与依赖节按文件内"**勿手改表格**"约定**未手改**，待重跑 `skill_manifest.py` 刷新。
+
+---
+
 ## 2026-09-17 · 新增类别⑥「历史时刻插画」（MomentIllustrations）
 
 **来源**：用户提供官方历史时刻模板（`历史图片模板（新）/1..18.psd`）+ 用户既定 PS 工作流

@@ -1,7 +1,8 @@
 # 总督（Governor）素材实测规格
 
 数据来源：`Sid Meier's Civilization VI SDK Assets` 散装 DDS（pantry，禁止解包）→
-`F:\CivNexus6\texconv.exe -ft png` 纯格式转换 → 1:1 像素测量。
+**`civ6-modding` 的 texconv**（随包内置 `civ6-modding/art/bin/texconv.exe`，定位真源
+`civ6-modding/art/_texconv.py`）`-ft png` 纯格式转换 → 1:1 像素测量。
 全量清单见 `reference/governor-art/inventory.md`，配色表见 `reference/governor-art/palette.json`。
 
 ---
@@ -104,7 +105,7 @@ y=21..23 : 空
 | 四大金属类 | 白金/黄金/白银/青铜 | **单一暖橄榄金**（无四类） |
 | 图形色 | (18,8,4) 近黑暖褐 | (73,69,41) 深橄榄 |
 
-→ 单位晋升一律走 `reference/promotion-icon.md`，**不要**套用到总督。
+→ 单位晋升（原类别③，**生成管线已作废**）的尺寸规格见 `reference/promotion-icon-sizes.md`，**不要**套用到总督。
 
 ---
 

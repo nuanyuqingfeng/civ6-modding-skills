@@ -112,9 +112,14 @@ def _local_paths_candidates():
 
 
 def resolve_template_dir(cli_value):
-    """--template-dir 缺省时的探测链：local_paths.json → 作者机历史默认值 → 当前工作目录。"""
+    """--template-dir 缺省时的探测链：**随包内置模板** → local_paths.json → 作者机历史默认值 → 当前工作目录。"""
     if cli_value:
         return cli_value
+    # 1) 随包内置（templates/moment_illustration/，18 张 PSD 已随仓库分发）
+    bundled = os.path.join(os.path.dirname(_HERE), "templates", "moment_illustration")
+    if os.path.isdir(bundled) and glob.glob(os.path.join(bundled, "*.psd")):
+        return bundled
+    # 2) 个人环境配置
     for lp in _local_paths_candidates():
         try:
             with open(lp, encoding="utf-8") as f:
@@ -124,8 +129,10 @@ def resolve_template_dir(cli_value):
         if v and os.path.isdir(v):
             print("模板目录取自 %s：%s" % (lp, v))
             return v
+    # 3) 作者机历史默认值（仅作者本机存在）
     if os.path.isdir(LEGACY_TEMPLATE_DIR):
         return LEGACY_TEMPLATE_DIR
+    # 4) 当前工作目录下的同名目录
     cwd_cand = os.path.join(os.getcwd(), "模板", "历史图片模板（新）")
     if os.path.isdir(cwd_cand):
         return cwd_cand

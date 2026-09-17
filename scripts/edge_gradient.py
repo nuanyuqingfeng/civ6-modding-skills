@@ -37,7 +37,7 @@ try:
     import numpy as np
     from scipy import ndimage
 except ImportError:
-    sys.exit("需要 Pillow 与 numpy: pip install pillow numpy")
+    sys.exit("需要 Pillow、numpy 与 scipy: pip install pillow numpy scipy")
 
 
 def _f32(a):

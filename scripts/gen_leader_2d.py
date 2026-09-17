@@ -6,7 +6,7 @@ gen_leader_2d.py — Civ6 2D 领袖（立绘纸片人）注册文件生成器
 
 用法:
   python gen_leader_2d.py --project <工程路径> [--pack 包名] [--abbr 缩写] \
-      --leaders "Cartethyia:CTTH,Fleurdelys:FDL,Cantarella:CTRL,Ciaccona:CCN,Phoebe:PHB,Roccia:ROC"
+      --leaders "Cartethyia:CTTH,Fleurdelys:FDL,Cantarella:CTRL,Ciaccona:CCN,Phoebe:PHB,Roccia:RCC"
 
   --project   Civ6 mod 工程根目录（含 XLPs/ ArtDefs/ Geometries/ 等子目录）
   --pack      包名，默认取工程目录名小写（如 示例工程 -> ragumna_pack）

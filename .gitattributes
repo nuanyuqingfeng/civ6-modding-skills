@@ -5,8 +5,11 @@
 # 二进制资产：禁止任何换行/编码转换
 *.png binary
 *.jpg binary
+*.psd binary
+*.tga binary
 *.gz  binary
 *.bnk binary
 *.wwu binary
 *.wproj binary
 *.sqlite binary
+*.exe binary

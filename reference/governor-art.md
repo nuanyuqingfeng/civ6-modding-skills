@@ -55,7 +55,8 @@ languages:
 - **美术素材只允许在** `F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK Assets` 内查找。
   总督素材在 `Civ6\DLC\Shared\pantry\Textures`（142 个文件）与 `Civ6\DLC\Expansion2\pantry\Textures`。
 - **任何情况下不允许解包**（.blp 不碰）。需要原版图就用 pantry 散装 DDS，
-  `F:\CivNexus6\texconv.exe -ft png -m 1 -o <dir> <file.dds>` 做纯格式转换。
+  用 **`civ6-modding` 的 texconv**（随包内置 `civ6-modding/art/bin/texconv.exe`，定位真源 `art/_texconv.py`）
+  跑 `texconv -ft png -m 1 -o <dir> <file.dds>` 做纯格式转换。
 - 游戏安装目录只读 XML/Lua 定义，不作素材来源。
 - 交付产物一律写到用户指定目录；**不修改游戏文件**。
 - 视觉评审：视觉评审不可用（模型侧 429 / 配额耗尽）时不要反复重试，改用本地像素度量（`scripts/verify_badge.py`）
@@ -200,6 +201,10 @@ python scripts/verify_badge.py <生成的24px徽章.png> [官方对应格.png]
 
 ## 五、进游戏注册（要点）
 
+> ⚠ **注册链的单一真源在 `civ6-modding/governor-authoring.md` ⑩「图标与立绘」**（另一入口是
+> `civ6-modding/SKILL.md` 的 Task Routing「总督」行）。本节只补**美术侧**要点（`.tex` 类别 / XLP / 规格），
+> SQL 与 XML 片段与那边**必须一致**；改注册写法时**两处一起改**（或直接以 `governor-authoring.md` 为准）。
+
 **数据库**（照抄原版列名，注意 `Image` 不是 `Icon`）：
 
 ```sql
@@ -250,5 +255,5 @@ OPACITY 用单通道 `PF_R8_UNORM`。项目既有 `.tex` 模板可直接照抄�
 - 不修改 `GovernorPanel.lua` 的图标查找逻辑（即"每阶一张图"需要自行改 UI）。
 - 官方 PSD 源文件在 `.tex` 的 `m_SourceFilePath` 里有路径记录，但 SDK 与游戏目录**均无 PSD**，
   只能以 DDS 为唯一真值；不要去找 PSD。
-- 单位晋升图标走 `reference/promotion-icon.md`（五边形盾形、四类金属），
+- 单位晋升图标（原类别③）的**生成管线已作废**，尺寸规格见 `reference/promotion-icon-sizes.md`（五边形盾形、四类金属），
   **不要**把总督的八边形徽章套到单位晋升上。

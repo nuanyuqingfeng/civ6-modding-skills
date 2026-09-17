@@ -4,7 +4,8 @@
 - `...\SDK Assets\Civ6\DLC\Shared\pantry\Textures`  ← 142 个总督相关文件（立绘 + UI 组件 + 徽章）
 - `...\SDK Assets\Civ6\DLC\Expansion2\pantry\Textures`  ← 18 个（`XP1_*` / `XP2_*` 图集）
 
-转换：`F:\CivNexus6\texconv.exe -ft png -m 1 -o <outdir> <file.dds>`
+转换：`civ6-modding` 的 texconv（随包内置 `civ6-modding/art/bin/texconv.exe`，定位真源 `art/_texconv.py`）
+`texconv -ft png -m 1 -o <outdir> <file.dds>`
 
 > 注意：文件名带空格的（如 `Governors_PromotionOff_Group 143.dds`）在 shell 里要加引号。
 

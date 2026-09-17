@@ -1,8 +1,8 @@
 ← 返回 `SKILL.md` 路由
 
-> **来源**：2026-09-17 由用户提供的官方历史时刻模板（`历史图片模板（新）/1..18.psd`）+
-> 用户既定 PS 工作流 + 对原版 240 张时刻图的实测反推，固化为此分册。
-> 实测数据与脚本：`scripts/apply_moment_template.py`、`scripts/verify_moment.py`。
+> **来源**：2026-09-17 由用户提供的官方历史时刻模板（**已随 skill 内置**：`templates/moment_illustration/1..18.psd`）
+> + 用户既定 PS 工作流 + 对原版 240 张时刻图的实测反推，固化为此分册。
+> 实测数据与脚本：`scripts/apply_moment_template.py`、`scripts/verify_moment.py`；模板用法见同目录 `README.md`。
 
 # 历史时刻插画（Historical Moment Illustration）
 
@@ -45,9 +45,11 @@ Civ6 的**历史时刻**（Historic Moment）在触发时会弹出一张**插画
 > 成品覆盖率远低于门槛时（实测漏套模板的案例仅 **14.5% / 15.3%**），
 > 说明**没有套模板**——卡片在 UI 里会形状不对、该透明处不透明，像贴了块方形补丁。
 
-## 三、官方形状模板（18 张 PSD）
+## 三、官方形状模板（18 张 PSD，**已随 skill 内置**）
 
-用户提供的模板目录：`D:\desktop\模板\历史图片模板（新）\1.psd … 18.psd`
+模板目录：**`templates/moment_illustration/1.psd … 18.psd`**（随仓库分发，见该目录 `README.md`）。
+脚本默认就取这一份；换成自己的模板时用 `--template-dir`，或在 `local_paths.json` 写
+`{"moment_template_dir": "<目录>"}`。
 
 **结构**：每个 PSD 是 456×332，含
 - `图层 1`：**全画布黑底**（不透明，opacity 110，用于压暗/预览）
