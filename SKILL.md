@@ -13,6 +13,11 @@ tags:
   - modding
 ---
 
+> 🧰 **工具先查名录（硬性）**：要写脚本做某件事之前，先看本 skill 的 [`TOOLS.md`](TOOLS.md)
+> —— 本 skill 全部脚本的用途 / 用法 / 路径清单，外加本机**路径收纳**表。
+> **有能用的就改它，不要重建。** 新增或改名脚本后，跑一次
+> `python "<skills>/civ6-modding/tools/skill_manifest.py" civ6-audio-pipeline` 刷新名录（`--check` 可做漂移检测）。
+
 # Civ6 音频管线（civ6-audio-pipeline）
 
 从素材到游戏内发声的全自动/半自动管线。（证据清单见 `references/mechanism.md` §7），机制细节见 `references/mechanism.md`，工作史与关键决策记录见 `references/history.md`，动手前先扫一遍"铁律"。
