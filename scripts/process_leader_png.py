@@ -116,15 +116,32 @@ def render_tex(template_path, stem, source_png):
 
 
 def find_texconv():
-    """只做简单固定查找：PATH 或 WinGet Links 固定路径，不递归扩大搜索。"""
-    p = shutil.which("texconv")
-    if p:
-        return p
-    local = os.environ.get("LOCALAPPDATA", "")
-    links = os.path.join(local, "Microsoft", "WinGet", "Links", "texconv.exe")
-    if os.path.isfile(links):
-        return links
-    return None
+    """定位 texconv。
+
+    复用 `civ6-modding/art/_texconv.py` 的单一真源，但**显式取 recursive=False**：
+    本脚本面向用户交互使用，遵循 `reference/leader-2d.md` 的
+    「仅简单查找，不自动安装、不扩大搜索」——只查 PATH 与 WinGet Links 固定位，
+    不递归扫 Packages（那是无人值守管线才需要的兜底）。
+    """
+    import sys as _sys
+    _here = os.path.dirname(os.path.abspath(__file__))
+    for _c in (os.path.join(_here, "..", "..", "civ6-modding", "art"),
+               os.path.join(os.path.expanduser("~"), ".agents", "skills",
+                            "civ6-modding", "art")):
+        if os.path.isfile(os.path.join(_c, "_texconv.py")):
+            _sys.path.insert(0, os.path.abspath(_c))
+            break
+    try:
+        from _texconv import find_texconv as _find
+    except ImportError:
+        # 退化：与 _texconv 的 non-recursive 行为一致
+        p = shutil.which("texconv")
+        if p:
+            return p
+        links = os.path.join(os.environ.get("LOCALAPPDATA", ""),
+                             "Microsoft", "WinGet", "Links", "texconv.exe")
+        return links if os.path.isfile(links) else None
+    return _find(recursive=False)
 
 
 def find_leader_type(project, leader_name):

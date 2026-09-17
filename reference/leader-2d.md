@@ -238,6 +238,36 @@ python %USERPROFILE%\.agents\skills\civ6-asset-forge\scripts\process_leader_png.
 | 工程 C | `D:\documents\Firaxis ModBuddy\Civilization VI\工程 C\工程 C` |
 | 工程 B | `D:\documents\Firaxis ModBuddy\Civilization VI\工程 B\工程 B` |
 
+### 6.1 第三方交叉验证源（《Civ6 Modding Textbook》）
+
+第三方中文教程 **《Civ6 Modding Textbook》**（小优妮）附带 10 个渐进参考工程
+（`snapshot02..10` + `final`），可作本 skill 论断的**独立交叉验证源**：
+
+```
+<上游教程仓库本地副本>\
+├─ Textbook\            12 章正文（225 KB）+ 221 张配图
+├─ Project\             10 个可构建参考工程（Feline_JasperKitty）
+└─ Assets\              图标/立绘 PSD 模板/纸片人模板/语音/WWise 工程
+```
+
+**已验证的吻合点（2026-09-17 实测，非引用其结论）**：
+
+| 本 skill 的论断 | 教程工程的证据 | 结果 |
+|---|---|---|
+| `.fgx` / `.wig` 平面模型**跨工程逐字节一致**（通用资产） | `Assets/领袖纸片模板/Geometries/LEAD_FELI_JasperKitty.fgx` MD5 `D13E5D86…E0DD4`、`.wig` `B9C116E0…9C0B5`、Camera `.fgx` `7F831992…4E4E19`、Camera `.wig` `C1F6B44B…CD53E` | **4/4 与本文档记录相同** |
+| `{Name}_Environment.dds` 是**通用环境光**（Hojo，MD5 `100A9AF5…54F1A6`） | `Assets/领袖纸片模板/EnvironmentLights/JasperKitty_Environment.dds` 同 MD5 | **1/1 相同** |
+| `background` role = **1920×960** | `LEADER_JASPER_KITTY_BACKGROUND.tex` = 1920×960 | 一致 |
+| `diplomacy_layer1..3` = **960×505** | `JASPER_KITTY_1..3.tex` = 960×505 | 一致 |
+| 层 4 用**别名条目**指向官方资产 | `UI_LeaderScenes.xlp`：`<m_EntryID text="JASPER_KITTY_4"/>` + `<m_ObjectName text="BARBAROSSA_4"/>` | 一致 |
+| UI 立绘应为 **`UserInterface`**、`Leader_Fallback` 是 3D 回退 | 其 34 个 `.tex`：`LEADER_JASPER_KITTY_NEUTRAL` = `UserInterface`、`FALLBACK_NEUTRAL_JASPER_KITTY` = `Leader_Fallback` | 一致 |
+
+**用法**：需要独立复核某个尺寸/类别/链路的论断时，可对照该工程；
+**但不要把它的素材整包搬进项目**（体积 960 MB、版权不明），只作**证据比对**。
+
+> ⚠ 该教程亦有**未证实内容**：其素材包 `模组参数生成器.xlsx` 里的
+> `CustomParameter`/`$VAR$` 模板变量机制，经全量核查在本机 ModBuddy 中**无实现**
+> （详见 `civ6-modding/project-setup.md` 对应小节）。**教程内容需逐条核实后采信。**
+
 ## 七、交付要求
 
 - 交付说明中包含：生成的文件清单、素材复制清单（哈希验证结果）、"待用户提供素材"清单、civ6proj 改动说明
