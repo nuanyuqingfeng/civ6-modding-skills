@@ -27,6 +27,13 @@ languages:
   - zh
 ---
 
+> 🧰 **工具先查名录（硬性）**：要写脚本做某件事之前，先看本 skill 的 [`TOOLS.md`](TOOLS.md)
+> —— 本 skill 全部脚本的用途 / 用法 / 路径清单，外加本机**路径收纳**表。
+> **有能用的就改它，不要重建。** 新增或改名脚本后，跑一次
+> `python "<skills>/civ6-modding/tools/skill_manifest.py" civ6-modding` 刷新名录（`--check` 可做漂移检测）。
+> 跨 skill 找工具先看 [`reference/FAMILY_INDEX.md`](reference/FAMILY_INDEX.md)（家族路由）；
+> `tools/` 的用法细节、推荐顺序与踩坑记录见 [`tools/README.md`](tools/README.md)。
+
 ## 环境路径总表（必读 · 分享自举）
 
 > **使用顺序：`<skill目录>\local_paths.json`（若存在）＞ 下表硬编码值。**
@@ -50,7 +57,7 @@ languages:
 
 ```
 L1  skill 自带参考库（最先，零许可）
-    database\DebugGameplay.sqlite(427表) / database\api.sqlite(5075函数) /
+    database\DebugGameplay.sqlite(427表) / database\api.sqlite(4857函数) /
     database\DebugLocalization.sqlite / database\DebugConfiguration.sqlite /
     reference\*.json / 各 *.md
     ⚙ 先路径自检：引用的库文件必须存在且非 0 字节，异常先修复再查
@@ -211,14 +218,22 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 
 ```
 查了 → 写
-没查 → SELECT * FROM api_functions WHERE func_name LIKE '%Key%' OR sub_func_name LIKE '%Key%' (database\api.sqlite)
-       需要参数签名 → SELECT a.* FROM api_args a JOIN api_functions f ON a.func_id=f.id
-                       WHERE f.func_name='X' OR f.sub_func_name='X'
-       需要示例/注释 → grep "FuncName" reference/api_enhanced.json
+没查 → python database/scripts/query_api.py --search <Key>     # 已同时搜 table/func/sub_func/true_name/id
+       （等价的裸 SQL：WHERE func_name LIKE '%Key%' OR sub_func_name LIKE '%Key%'）
+       查详情 → --show Table.Func[.Sub]   # 父项会附带列出其全部子项
+       列整表 → --object Table            # 或 --object Table.Func 看某方法的所有子项
+       需要示例/注释 → --show 会自动合并 reference/api_enhanced.json 的 exampleCode/notes
        需要「运行时是否真有 / UI 还是 GP」→ 看 verify_status + verify_scope + runtime_gp/runtime_ui（见「API 核验字段」）
 ```
 
 **铁律：严禁凭经验猜测 API 名称或参数** — `database\api.sqlite` 有 4857 行 API，猜错即返工。
+
+> **⚠ 子项务必用 `sub_func_name` 一起搜**：`api_functions` 里父项与子项是**两列**
+> （`func_name` = 父方法/遍历器，`sub_func_name` = 真正要调的方法）。
+> 只搜 `func_name` 会漏掉全部 1044 条子项，且 `--search` 命中时若只显示父项名会
+> 被误读成"父项才是该方法"。典型：`GetHolyCityID` 是 `Player:GetReligion()` 的子项、
+> `CurrentlyBuilding` 是 `City:GetBuildQueue()` 的子项、`IsValidFoundLocation` 同名的两条
+> （`Plot` 版 Both / `Player:GetCities()` 版仅 GP）可用 `--sub-only` 区分。
 
 > **核验优先**：`verify_status` 三档语义与计数见下文「API 核验字段」（2026-09-08 FireTuner 全量实测）；
 > `='存疑'` 必按 `verify_note` / `true_name` / `true_path` 改用真身，勿照抄。
@@ -387,7 +402,7 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | API 运行时是否真有 / UI-GP 范围 | `SELECT id,availability,verify_status,verify_scope,runtime_gp,runtime_ui,true_path FROM api_functions WHERE func_name LIKE '%Key%'` |
 | 只取已核验 API | `... WHERE verify_status='已核验' AND availability IN ('Both','UI')` |
 | 查存疑项与真身 | `SELECT id,availability,suspect_type,true_name,true_path,verify_note FROM api_functions WHERE verify_status='存疑' AND table_name='X'` |
-| 命令行查（含核验标记） | `python database/scripts/query_api.py --search Key [--verified|--suspect|--pending]` |
+| 命令行查（含核验标记） | `python database/scripts/query_api.py --search Key [--verified\|--suspect\|--pending] [--sub-only]`<br>`--show Table.Func[.Sub]` 查详情（父项会附带列出全部子项）；`--object Table[.Func]` 列整表/某方法的子项 |
 | 列定义 / NotNull / Default | `PRAGMA table_info(TableName)` (DebugGameplay.sqlite) |
 | 中英文游戏文本 | `SELECT Text FROM LocalizedText WHERE Tag='LOC_X' AND Language='zh_Hans_CN'` (DebugLocalization.sqlite) |
 | 颜色/图标名 | `SELECT * FROM SkillAnnotation_Colors` / `SELECT * FROM SkillAnnotation_Icons` (DebugLocalization.sqlite；skill 自带查询表，非游戏表) |
@@ -472,7 +487,7 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | `database/modifiers-guide.md` | Modifier 系统指南 |
 | `database/scripts/sql_query_templates.sql` | SQL 查询模板 |
 | `database/scripts/query_events.py` | 事件查询工具（查参数/签名/示例） |
-| `database/scripts/query_api.py` | API 查询工具（查 signature/exampleCode/availability） |
+| `database/scripts/query_api.py` | API 查询工具（主源 `api.sqlite`，**父项与子项一并查**；含 availability/核验字段，示例/注释来自 JSON 富化） |
 | `database/scripts/requirement_reference.sql` | RequirementType 分类 |
 
 ### 数据库文件
