@@ -22,6 +22,14 @@
 
 > **家族外的依赖**：`（外部翻译 skill，已不作为依赖）`（翻译总 skill）位于 `~/.config/opencode/skills/`，**不在 DSH 的 `.agents/skills` 目录** —— DSH 会话无法用 `skill` 工具加载它，只能按绝对路径调用其脚本。见 §四。
 
+> 🧰 **每个 skill 都有 `TOOLS.md`（可复用工具名录）** —— 要写脚本做某件事之前先查它：
+> 本 skill 全部脚本的用途 / 用法 / 路径 + 本机**路径收纳**表。**有能用的就改它，不要重建。**
+> 新增/改名脚本后跑 `python "<skills>/civ6-modding/tools/skill_manifest.py" <skill>` 刷新名录。
+>
+> 跨 skill 的通用工具（构建 `.modinfo`、交付包体检、工坊元数据、封面合成、本地生图）
+> 集中在 **`civ6-modding/tools/`**，用法与踩坑见 `civ6-modding/tools/README.md`；
+> 本机路径单一真源是 `civ6-modding/tools/_paths.py`（`python _paths.py` 自检）。
+
 ---
 
 ## 二、路由表：任务 → skill

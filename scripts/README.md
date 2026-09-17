@@ -1,5 +1,9 @@
 # scripts/ —— 离线工具集
 
+> 🧰 **先看总名录**：本 skill 全部脚本（含 `tools/`、`art/`、`release/scripts/`）的用途/用法索引在
+> [`../TOOLS.md`](../TOOLS.md)；构建与发布流程工具在 [`../tools/README.md`](../tools/README.md)。
+> **要写脚本前先查名录 —— 有能用的就改它，不要重建。**
+
 所有工具：**零第三方依赖**（只用 Python 标准库 / Node 内置）、支持参数化根目录、**带退出码**（可直接接 CI / 提交前钩子）。
 基础库默认指向 `<本skill>/database/DebugGameplay.sqlite`，**原库只读**（需要写入时先复制到临时文件）。
 
