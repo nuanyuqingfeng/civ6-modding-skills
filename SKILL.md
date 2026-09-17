@@ -19,8 +19,8 @@ description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局
 1. 游戏启动且 Options 已勾选 **Tuner**（禁成就；或 `AppOptions.txt` 设 `EnableTuner 1`）
 2. **FireTuner GUI 已关闭**——游戏只允许一个 tuner 连接，GUI 占着脚本就连不上
 3. **处于进行中的对局**——主菜单没有 GameCore_Tuner/InGame 状态
-4. 直启命令：
-   `& "F:\Steam\steamapps\common\Sid Meier's Civilization VI\Base\Binaries\Win64Steam\CivilizationVI.exe"`
+4. 直启命令（`<Civ6 安装根>` 的本机取值由 `civ6-modding/tools/_paths.py` 解析）：
+   `& "<Civ6 安装根>\Base\Binaries\Win64Steam\CivilizationVI.exe"`
 
 ## ★ 七条铁律（全部为实测结论）
 
@@ -143,7 +143,7 @@ python $T ports
 
 # ③ 尾随日志；或按标记+正则精准提取（避开旧会话噪声）
 python $T logs -n 80
-python $T logs --since-mark "打点版已加载" --grep "QJ|Runtime Error" -n 0
+python $T logs --since-mark "<你的打点标记>" --grep "<你的前缀>|Runtime Error" -n 0
 python $T logs --log-file Database.log -n 50
 ```
 
@@ -182,6 +182,8 @@ python $T logs --log-file Database.log -n 50
 | `member_enum.lua` | 摸清某对象的真实成员（对抗"测错对象"与文档不可信） | 双端 |
 | `prop_ab.lua` | **PROPERTY 开关 A/B**：验证属性是否立即生效且可逆 | gamecore |
 | `property_check.lua` | 玩家/地块 PROPERTY + 金币信仰时代分 | gamecore |
+| `dump_props.lua` | **按 `GameInfo` 权威清单批量转储实体属性**（不手写 key，避免漏项）：清单来源可切 `sword`/`list`，目标实体可切 plot/player/game，并反查某前缀下已置位的残留 | 双端（`exec --both`，比对「mod 写的」与「引擎写的」是否一致） |
+| `settle_read.lua` | **对抗「重算延迟」的稳定读数**：连读 N 次、两次一致才算稳定（复位未必同帧被下游重算，批量跑会带上一条残留） | gamecore |
 | `modifier_probe.lua` | Modifier/RequirementSet 是否入库及挂载链 | gamecore |
 | `event_trigger.lua` | 手动触发 LuaEvents 验证通知链路 | ingame |
 | `bridge_probe_1_register.lua` → `_2_dispatch.lua` → `_3_read.lua` | **UI→GP 派发可达性三连测**（确认 `EXECUTE_SCRIPT` 的 `OnStart` 是否到达你注册的那个 GP 态） | gamecore → ingame → gamecore |
@@ -190,6 +192,11 @@ python $T logs --log-file Database.log -n 50
 | `sql_like_trap.lua` | **SQL `LIKE ('%A%' OR '%B%')` 陷阱实机复核** —— 等价 `LIKE 0` → 只命中字面量 `'0'` 的行（2026-09 实机复核 627 vs 0）。顺带示范 `DB.Query` 在 gamecore 的用法（逐条 `pcall` 包住） | gamecore |
 | `aufc_found_range_probe.lua` | **建城间距检定总探针**：读 `CITY_MIN_RANGE`、`GetNeighborPlots` 环语义（实心盘 n=7/19/37…）、以最近城为中心逐环扫 `IsValidFoundLocation`、逐单位 mod 裁定矩阵 | mod UI 上下文（`--state AllUnitsFoundCity`）；GP 态可跑（UI 段自动跳过） |
 | `aufc_verify_button.lua` | **按钮显隐端到端验证**：打印选中单位位置 / 最近城距 / 引擎裁定 / 刷新前后 `Grid.IsHidden`；配 GP 侧 `UnitManager.PlaceUnit(Unit,x,y)` 搬单位即可逐距离段验证 | mod UI 上下文 |
+
+> ⚠ `aufc_found_range_probe.lua` / `aufc_verify_button.lua` 绑定**第三方 mod `AllUnits Found City`**：
+> `--state AllUnitsFoundCity` 是它自己的 UI 上下文名，`AUFCIsButtonHidden` / `Controls.AUFCGrid` 也由它提供。
+> 没装该 mod 时这两个片段只会打印「不在 mod UI 上下文」而空过（`AllUnitsFoundCity` 不随本 skill 分发、无来源链接）；
+> 其余片段与本 skill 全部功能不受影响。
 
 片段中标注【待实测】的 API 未经验证，失败时换方案，勿当作已证实结论上报。
 ## 坑位清单
