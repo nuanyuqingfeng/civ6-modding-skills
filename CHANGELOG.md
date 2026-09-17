@@ -1,5 +1,34 @@
 # CHANGELOG — civ6-asset-forge
 
+## 2026-09-17 · 新增类别⑤「UI 领袖立绘 / 选人界面背景」（Suk 适配）
+
+**来源**：在 `示例工程` 上首次落地并实测通过的 Sukritact's Civ Selection Screen 适配流程，
+用户确认「实测效果很好」后要求固化为备选管线。
+
+### 新增
+
+| 文件 | 说明 |
+|---|---|
+| `reference/ui-leader-portrait.md` | 类别⑤ 完整分册：触发判定 / 素材询问模板 / 实测规格 / **类别陷阱** / 接线 / 验证顺序 |
+| `scripts/gen_suk_portrait.py` | 素材 + `UPDATE Players` + XLP + `civ6proj` 接线一体生成器（幂等，`--check`/`--write`） |
+| `scripts/verify_suk_portrait.py` | 只读校验器（类别陷阱 / 尺寸对齐 / XLP 登记 / 悬空引用 / 行尾） |
+
+### 改动
+
+| 文件 | 说明 |
+|---|---|
+| `SKILL.md` | frontmatter description 与触发词加 Suk 系列；「四类」→「五类」；路由表 / 素材询问表 / 声明层落点 / 校验表 / 目录结构均补类别⑤ |
+| `civ6-modding/art/dds_io.py` | **新增**：Civ6 单 mip RGBA8 DDS 读写（纯 Python，带 `--selftest` 往返自检）。原 `regen_atlas_tiers.py` 内的头构造逻辑抽为共享模块 |
+| `civ6-modding/art/gen_tex.py` | **修正 P0 类别陷阱**：`is_fallback()` 原为纯前缀判断，会把 `FALLBACK_NEUTRAL_*_Suk` 误判成 `Leader_Fallback`（它是 `UITexture` XLP 里的 UI 立绘，应为 `UserInterface`），导致 cooker「类别与参数不匹配」→ 静默变 error asset。现由 `_UI_PORTRAIT_SUFFIXES` 显式排除 |
+
+### 已验证
+
+- 生成器对 `示例工程` 既有 12 组交付物 **逐字节复现**（6 立绘 + 6 背景，含 DDS 头）；
+- 校验器在真实工程 PASS，且在注入 10 类缺陷的最小工程上**全部命中**（非空跑）；
+- `gen_tex.py` 修正后：`_Suk` → `UserInterface`，真 3D 回退 `FALLBACK_NEUTRAL_X` → 仍为 `Leader_Fallback`。
+
+---
+
 ## 2026-09-14 · v1.0 · 由 4 个 skill 合并而来（初始版本）
 
 本 skill 由 4 个「美术素材合成类」skill 合并而成。四者**同一骨架换参数**：
