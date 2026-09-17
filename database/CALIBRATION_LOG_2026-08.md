@@ -148,3 +148,20 @@
 
 ### 备份
 - ⚠️ 历史打包 `civ6-modding*.zip`（3 个）内含修复前的 `DebugGameplay.sqlite`（含 `IsDlcDependency`，且 `PlayerColors` 缺 Alt 列），仅作历史归档；**不要直接覆盖现库**，如恢复必须先跑 `python database/scripts/audit_schema_drift.py`
+
+---
+
+## 追加修复：api.sqlite 两行 id 损坏（2026-09-17）
+
+**背景**：`api_functions` 有 2 行 `id` 与 `sub_func_name` 混入了邻行 id 残留，此前仅以 `suspect_type` 标记存疑、未订正（原注释即写"人工订正名称后重测"）。
+
+| 原值（损坏） | 修正后 | 依据 |
+|---|---|---|
+| `id=Q-MapGetCityPlotsGetWorkingCityIDQ-MapGetCityPlots`<br>`sub=GetWorkingCityIDQ-MapGetCityPlots` | `id=Q-MapGetCityPlotsGetWorkingCityID`<br>`sub=GetWorkingCityID`（= `true_name`） | 该行 `true_name` 已由 FireTuner 实测核出真名 `GetWorkingCityID`；`api_enhanced.json` 同 id 条目 `functionB=GetWorkingCityID` 佐证 |
+| `id=Q-MapGetContinentCoastalPlotsQ-MapGetCityPlotsGetPurchasedByCity`<br>`sub=Q-MapGetCityPlotsGetPurchasedByCity` | `id=Q-MapGetContinentCoastalPlots`<br>`sub=NULL` | 该 API 是 `Map` 顶层函数（JSON 条目 `functionA=GetContinentCoastalPlots`、`functionB` 为空）；尾部是邻行 id 串入 |
+
+- **影响面**：仅这 2 行。全表 161 条 `id` 与 `table+func+sub` 不自洽均为 GameInfo 命名约定（`Q-GameInfo<Table>`，`func_name` 本为空），属正常，未改动。
+- **前置校验**：目标 id 均未被占用（0 冲突）；两行在 `api_args`/`api_returns` 均无关联行，故改 id 无外键孤儿。
+- **处理方式**：改 `id` 与 `sub_func_name`，并在 `verify_note` 追加修复说明；`availability`/`verify_status`/`runtime_*` 等核验结论**原样保留**（`GetContinentCoastalPlots` 仍为"存疑"，因其 GP/UI 实测均为 ERR，属独立问题，不因改名而消失）。
+- **验证**：两行 `id` 现已自洽；总行数保持 4857；子项数 1045→1044（第二行正确不再算子项）；`query_api.py --show Map.GetCityPlots.GetWorkingCityID` 与 `--show Map.GetContinentCoastalPlots` 均可直接命中。
+- **连带**：`SKILL.md` 中过时的 `api.sqlite(5075函数)` 计数一并订正为 4857（现库实测值）。
