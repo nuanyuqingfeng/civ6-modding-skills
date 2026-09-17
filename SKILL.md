@@ -4,6 +4,11 @@ author: 千与千寻瀑
 description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局里执行任意 Lua，用于接口行为/参数/PROPERTY/modifier 的运行时验证、游戏内快速测试、复现脚本报错。当静态校验(rgn_validate)无法回答"这个 API 实际行为是什么"、需要查询运行时状态或验证 GP/UI 链路时使用。
 ---
 
+> 🧰 **工具先查名录（硬性）**：要写脚本做某件事之前，先看本 skill 的 [`TOOLS.md`](TOOLS.md)
+> —— 本 skill 全部脚本的用途 / 用法 / 路径清单，外加本机**路径收纳**表。
+> **有能用的就改它，不要重建。** 新增或改名脚本后，跑一次
+> `python "<skills>/civ6-modding/tools/skill_manifest.py" civ6-tuner` 刷新名录（`--check` 可做漂移检测）。
+
 # civ6-tuner：游戏内 Lua 快速测试
 
 ## 前置条件
@@ -26,6 +31,16 @@ GameEvents.某个mod注册过的事件:Count()               = 0     ← 不同�
 - ❌ **不能用 tuner 调用 mod 的函数**；`GameEvents.X:Call(...)` 也到不了 mod。
 - ✅ tuner 只能：读引擎态（`GameInfo`、PROPERTY、单位/城市字段）、写引擎态、读日志。
 - ✅ 要观察 mod 内部行为 → **改 Mods 副本加 `print()` 打点**，再 `logs --grep` 提取。
+- ✅✅ **例外（2026-09-16 实测）：mod 自有的 UI 上下文里，mod 的全局函数是可调的。**
+  `LSQ:` 列表里那些带 Context 名的条目（如 `AllUnitsFoundCity`）就是 mod 自己那份 UI Lua 的 VM；
+  用 `exec --state <Context 名>` 直接投递，`type(ModGlobalFunction)` = **function**、`Controls` 是 mod 的控件表。
+  ```powershell
+  # 在 mod 的 UI 上下文里直接调用它自己的检定函数 + 读它的控件状态
+  python $T exec --state AllUnitsFoundCity --code "print(tostring(AUFCIsButtonHidden(UI.GetHeadSelectedUnit())))"
+  ```
+  铁律"call 不到 mod"只适用于 `gamecore` / `ingame` 两个沙箱态；能省掉"改 Mods 加 print + 等热重载"的整轮往返。
+  ⚠ 反例：GP 态探针里 `UI = nil`（`UI.GetHeadSelectedUnit()` 直接报 `attempt to index a nil value`）→
+  跨端通用的探针必须 `UI and UI.GetHeadSelectedUnit()` 这样判空。
 
 ### 2. 两端**总线可见性不同**：`GameEvents` 在 UI 侧整条不存在
 
@@ -113,6 +128,10 @@ python $T check          # 等价简写: python $T --check
 python $T exec --context gamecore --code "print(Game.GetCurrentGameTurn())"
 python $T exec --context ingame  --file <skill>/snippets/end_turn.lua
 
+# ②a' 投递到 mod 自有的 UI 上下文（名字或索引都行；那里 mod 全局可调，见铁律 1 的例外）
+python $T exec --state AllUnitsFoundCity --file <skill>/snippets/aufc_verify_button.lua
+python $T exec --state 169 --code "print(type(AUFCIsButtonHidden))"
+
 # ②b 两端对跑（同脚本各跑一次，输出带 GP/UI 标签，便于直接比对）
 python $T exec --both --file <skill>/snippets/port_matrix.lua
 
@@ -166,6 +185,8 @@ python $T logs --log-file Database.log -n 50
 | `cheat_setup.lua` | 造测试条件（金币/信仰/刷兵/科技进度） | ingame |
 | `end_turn.lua` | 结束回合观察跨回合结算 | ingame |
 | `sql_like_trap.lua` | **SQL `LIKE ('%A%' OR '%B%')` 陷阱实机复核** —— 等价 `LIKE 0` → 只命中字面量 `'0'` 的行（2026-09 实机复核 627 vs 0）。顺带示范 `DB.Query` 在 gamecore 的用法（逐条 `pcall` 包住） | gamecore |
+| `aufc_found_range_probe.lua` | **建城间距检定总探针**：读 `CITY_MIN_RANGE`、`GetNeighborPlots` 环语义（实心盘 n=7/19/37…）、以最近城为中心逐环扫 `IsValidFoundLocation`、逐单位 mod 裁定矩阵 | mod UI 上下文（`--state AllUnitsFoundCity`）；GP 态可跑（UI 段自动跳过） |
+| `aufc_verify_button.lua` | **按钮显隐端到端验证**：打印选中单位位置 / 最近城距 / 引擎裁定 / 刷新前后 `Grid.IsHidden`；配 GP 侧 `UnitManager.PlaceUnit(Unit,x,y)` 搬单位即可逐距离段验证 | mod UI 上下文 |
 
 片段中标注【待实测】的 API 未经验证，失败时换方案，勿当作已证实结论上报。
 ## 坑位清单
@@ -173,11 +194,17 @@ python $T logs --log-file Database.log -n 50
 ```
 ⚠ 单连接限制：跑脚本前必须关 FireTuner GUI，否则连接被拒
 ⚠ 坏握手挂死：连接异常后 tuner 可能不恢复——重启游戏是唯一解，及时叫用户
+⚠ **`ContextPtr:Reload()`（mod UI 热重载）会把 tuner 连接一起打挂**（2026-09-16 实测：
+   在 mod 上下文里投递 `ContextPtr:Reload()` 后，客户端收不到哨兵，
+   随后 4318 监听端口**整个从 netstat 消失**，重连一律 `WinError 10061`，游戏本体仍存活。
+   → **顺序很重要：先跑完所有 tuner 测试，最后才考虑热重载**；
+     或干脆让用户重载对局 / 重启游戏来加载改动。别把热重载夹在两次探针之间。）
 ⚠ 必须在对局内：check 显示缺 GameCore_Tuner/InGame 即在主菜单
 ⚠ 成就禁用：Tuner 开启期间该配置不拿成就，仅测试环境使用
 ⚠ 日志持久化：%LOCALAPPDATA%\Firaxis Games\Sid Meier's Civilization VI\Logs
    保留上次游玩记录直到下次启动覆盖
    → 用 `logs --since-mark "<打点加载标志>" --grep "<前缀>"` 精准取本次会话
+   （连接挂了之后 `logs` 仍可用 —— 它是纯文件读取，最后一条证据从这里取）
 ⚠ 跑 Lua 报错会丢 stdout：chunk 内抛错时已 print 的内容不回传 →
    探针一律用顶层 pcall 包住主逻辑，并把 pcall 结果打出来
 ⚠ chunk 报错的定位行号 = 你提交的代码行号，但 --file 会带上 BOM/换行差异，

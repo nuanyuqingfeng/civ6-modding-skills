@@ -14,6 +14,12 @@
     2. 必须关闭 FireTuner GUI（游戏只允许一个 tuner 连接）
     3. 必须处于进行中的对局（主菜单没有 GameCore_Tuner/InGame 状态）
 
+状态选择（exec）：
+    --context gamecore|ingame  两个引擎沙箱态（mod 全局函数在这两态里为 nil）
+    --state <名字|索引>        直接指定状态，用来投递到 **mod 自有的 UI 上下文**
+                              （LSQ 列表里带 Context 名的条目，如 AllUnitsFoundCity）——
+                              那里 mod 的全局函数是可调的，`Controls` 也是 mod 的控件表
+
 退出码：0 成功；1 连接失败；2 Lua 执行错误；3 超时无响应
 """
 
@@ -189,12 +195,42 @@ def cmd_check(args: argparse.Namespace) -> int:
         sock.close()
 
 
+def _resolve_state(states: dict[str, int], key: str | None) -> int | None:
+    """把状态名或索引解析成索引；未命中返回 None。
+
+    支持 mod 自有 UI 上下文（如 AllUnitsFoundCity）：铁律 1 的
+    "gamecore/ingame 里 mod 全局为 nil" 只适用于那两个沙箱态 ——
+    mod 自己的上下文（LSQ 列表里带 Context 名的条目）里 mod 全局**是在的**，
+    直接按名或索引投递即可。
+    """
+    if key is None:
+        return None
+    if key in states:
+        return states[key]
+    if key.isdigit():
+        idx = int(key)
+        if idx in states.values():
+            return idx
+    return None
+
+
+def _suggest_states(states: dict[str, int], key: str) -> str:
+    """列几个名字里含 key 片段的状态，帮用户找对上下文。"""
+    needle = (key or "").lower()
+    hits = [(n, i) for n, i in states.items() if needle and needle in n.lower()]
+    if not hits:
+        return ""
+    txt = "，".join(f"{n}({i})" for n, i in sorted(hits, key=lambda kv: kv[1])[:8])
+    return f" 名字相近的状态：{txt}"
+
+
 def _run_in_context(sock: socket.socket, states: dict[str, int], key: str,
                     code: str, timeout: float) -> tuple[int, list[str]]:
     """在指定状态 VM 执行，返回 (退出码, 输出行)。"""
-    idx = states.get(key)
+    idx = _resolve_state(states, key)
     if idx is None:
-        return 1, [f"[FAIL] 未找到状态 {key}。若在主菜单请先读档进对局。"]
+        return 1, [f"[FAIL] 未找到状态 {key}。若在主菜单请先读档进对局。"
+                   + _suggest_states(states, key)]
     try:
         return 0, execute(sock, idx, code, timeout=timeout)
     except LuaError as e:
@@ -230,7 +266,10 @@ def cmd_exec(args: argparse.Namespace) -> int:
     try:
         identity, states = handshake(sock)
         if not args.both:
-            key = "GameCore_Tuner" if args.context == "gamecore" else "InGame"
+            if args.state:
+                key = args.state
+            else:
+                key = "GameCore_Tuner" if args.context == "gamecore" else "InGame"
             rc, lines = _run_in_context(sock, states, key, code, args.timeout)
             for ln in lines:
                 (sys.stderr if rc else sys.stdout).write(ln + "\n")
@@ -319,6 +358,10 @@ def main() -> int:
                              "ingame=UI层读写(UI.*/CityManager/UnitManager)")
     p_exec.add_argument("--code", help="单行/多行 Lua 代码字符串")
     p_exec.add_argument("--file", help="Lua 文件路径（UTF-8）")
+    p_exec.add_argument("--state", dest="state", default=None,
+                        help="直接指定状态名或索引（覆盖 --context）。用来投递到 "
+                             "mod 自有的 UI 上下文，如 --state AllUnitsFoundCity；"
+                             "这类态里 mod 的全局函数是可调的")
     p_exec.add_argument("--both", action="store_true",
                         help="两端各跑一次（GP 先、UI 后），输出带标签便于直接对比")
     p_exec.add_argument("--timeout", type=float, default=10.0,
