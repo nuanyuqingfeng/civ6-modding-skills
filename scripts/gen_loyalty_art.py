@@ -646,6 +646,22 @@ def patch_civ6proj(civ6proj: Path, content_files: list[str], results: list[str])
     results.append(f"  更新   {civ6proj.name}（新增 {len(missing)} 条 Content）")
 
 
+def _find_project_files(project: Path):
+    """定位工程根下的 .Art.xml / .civ6proj；找不到时明确报错（原来会裸抛 StopIteration）。
+
+    取候选列表的第一个，与改造前 next(glob(...)) 的取值完全一致。
+    """
+    art_xml_cands = list(project.glob("*.Art.xml"))
+    if not art_xml_cands:
+        raise SystemExit(f"{project} 下未找到 .Art.xml；请把 --project 指向 ModBuddy 工程根"
+                         "（含 .civ6proj / .Art.xml 的目录）")
+    proj_cands = [p for p in project.glob("*.civ6proj") if not p.name.endswith(".Art.xml")]
+    if not proj_cands:
+        raise SystemExit(f"{project} 下未找到 .civ6proj；请把 --project 指向 ModBuddy 工程根"
+                         "（含 .civ6proj / .Art.xml 的目录）")
+    return art_xml_cands[0], proj_cands[0]
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="文明6 忠诚度图标注册链生成")
     ap.add_argument("--project", required=True, help="工程根目录（含 .Art.xml / .civ6proj）")
@@ -655,8 +671,7 @@ def main() -> None:
 
     project = Path(args.project)
     civs = [c.strip() for c in args.civ_types.split(",") if c.strip()]
-    art_xml = next(project.glob("*.Art.xml"))
-    civ6proj = next(p for p in project.glob("*.civ6proj") if not p.name.endswith(".Art.xml"))
+    art_xml, civ6proj = _find_project_files(project)
     xlp_dir = project / ("XLPs" if (project / "XLPs").is_dir() else "Xlps")
     results: list[str] = []
 
