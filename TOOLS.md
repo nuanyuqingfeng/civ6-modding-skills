@@ -9,6 +9,7 @@
 
 | 工具 | 干什么 | 用法 |
 |---|---|---|
+| `art/_texconv.py` | _texconv.py — texconv（外部 DDS 转换器）定位的单一真源 | `python _texconv.py                     # 自检：打印实际解析结果` |
 | `art/align_tex_format.py` | align_tex_format.py — 把工程 `.tex` 的**格式类字段**对齐官方 pantry 约定 | `python align_tex_format.py <projectRoot> --check     # 体检，只报告<br>python align_tex_format.py <projectRoot> --write     # 实际改写` |
 | `art/apply_fow.py` | apply_fow.py — 给图标/图集 PNG 套上原版风格的迷雾（FOW）蒙版。v4 模型。 | `python apply_fow.py --input <图标.png\|dds> [--output <路径>]` |
 | `art/convert_art.ps1` | convert_art.ps1 — Civ6 素材通用转换器（读 art_manifest.json 执行） | `pwsh -File convert_art.ps1 [-Manifest <path>] [-ProjectRoot <path>]` |
@@ -19,8 +20,9 @@
 | `art/merge_icon_registration.py` | merge_icon_registration.py — 把 make_atlas.py 产出的注册片段幂等并入项目 | `python merge_icon_registration.py <projectRoot> --fragment <...>_registration.xml` |
 | `art/normalize_icon.py` | normalize_icon.py — Civ6 图标规范化预处理（art-pipeline「图标规范化」专属章节的引擎） | `python normalize_icon.py <in.png> [out.png] [--canvas 256] [--content 224] [--color 255]<br>python normalize_icon.py <in.png> --role unit_icon        # 用 registry 内置规范` |
 | `art/regen_atlas_tiers.py` | regen_atlas_tiers.py — 图集中间档「母版重出」工具（修复被压对比/锐化的档位） | `python regen_atlas_tiers.py <projectRoot> --report<br>python regen_atlas_tiers.py <projectRoot> --atlas ATLAS_X --master 256 --sizes 32,50,80` |
+| `art/survey_icon_atlas.py` | survey_icon_atlas.py — 按 `art-pipeline.md` §4.7 流程，「量出」某图标类别的规范 | `python survey_icon_atlas.py --atlas "<pantry>/Buildings256.dds" --role building_icon<br>python survey_icon_atlas.py --atlas Dist256.dds --grid 4x4 --min-px 20` |
 | `art/verify_icon_atlas.py` | verify_icon_atlas.py — 图标图集落地自查（art-pipeline 第八节「完成标准」的可执行版） | `python verify_icon_atlas.py <projectRoot> [--icons a.xml b.xml] [--xlp a.xlp b.xlp]` |
-| `art/verify_tex_class.py` | verify_tex_class.py — 校验「.tex 的 m_ClassName」与其「XLP 注册类」是否匹配 | `python verify_tex_class.py --project <工程根>          # 只读校验<br>python verify_tex_class.py --project <工程根> --all    # 连 pantry 一起当基线统计（较慢）` |
+| `art/verify_tex_class.py` | verify_tex_class.py — 校验「.tex 的 m_ClassName」与其「XLP 注册类」是否匹配 | `python verify_tex_class.py --project <工程根>              # 只查类别匹配<br>python verify_tex_class.py --project <工程根> --full        # 全量贴图体检（见下）` |
 | `release/scripts/build.ps1` | 构建非 Trimmed 版 Civ6WorkshopUploader（勿用 PublishTrimmed，会卡 PreparingContent） | `powershell -File build.ps1（内部 dotnet publish -c Release -r win-x64）` |
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） | `powershell -File clash_api.ps1 -Method GET -Path "/proxies" -OutFile resp.txt` |
 | `release/scripts/clash_proxy.py` | Clash Verge 代理节点测速与自动选优（上传工坊网络差时用） | `python clash_proxy.py [--url <工坊链接>] [--top N]（详见脚本 argparse）` |
@@ -50,7 +52,7 @@
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 40 个脚本。
+共 42 个脚本。
 
 ## 路径收纳（本机绝对路径，勿写死进脚本）
 

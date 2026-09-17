@@ -89,19 +89,10 @@ def resolve_sizes(entry):
 
 
 def find_texconv():
-    """与 convert_art.ps1 同一探测顺序：PATH → WinGet Links → WinGet Packages 递归。"""
-    from shutil import which
-    found = which("texconv")
-    if found:
-        return found
-    links = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/WinGet/Links/texconv.exe"
-    if links.is_file():
-        return str(links)
-    pkgs = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/WinGet/Packages"
-    if pkgs.is_dir():
-        for p in pkgs.rglob("texconv.exe"):
-            return str(p)
-    return None
+    """定位 texconv（复用 art/_texconv.py 的单一真源；recursive=True：管线内部宁可多找一层）。"""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _texconv import find_texconv as _find
+    return _find(recursive=True)
 
 
 def compose_grid(member_images, cols, rows, size):
