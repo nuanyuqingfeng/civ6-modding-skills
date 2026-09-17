@@ -1,0 +1,515 @@
+EK|Achievements|table|prot=1|mt=boolean|0|
+EK|Adjacency_YieldChanges|nil|prot=0|mt=nil|0|
+EK|AiFavoredItems|nil|prot=0|mt=nil|0|
+EK|AiListTypes|nil|prot=0|mt=nil|0|
+EK|AiLists|nil|prot=0|mt=nil|0|
+EK|Alliances|nil|prot=0|mt=nil|0|
+EK|AppealHousingChanges|nil|prot=0|mt=nil|0|
+EK|AreaBuilder|nil|prot=0|mt=nil|0|
+EK|Areas|nil|prot=0|mt=nil|0|
+EK|AssetPreview|table|prot=0|mt=nil|0|
+EK|AutoProfiler|table|prot=1|mt=boolean|0|
+EK|Automation|table|prot=0|mt=nil|0|
+EK|AutoplayManager|table|prot=0|mt=nil|0|
+EK|BeliefModifiers|nil|prot=0|mt=nil|0|
+EK|Beliefs|nil|prot=0|mt=nil|0|
+EK|Benchmark|table|prot=1|mt=boolean|0|
+EK|Boosts|nil|prot=0|mt=nil|0|
+EK|BuildingModifiers|nil|prot=0|mt=nil|0|
+EK|BuildingPrereqs|nil|prot=0|mt=nil|0|
+EK|BuildingReplaces|nil|prot=0|mt=nil|0|
+EK|Building_CitizenYieldChanges|nil|prot=0|mt=nil|0|
+EK|Building_GreatPersonPoints|nil|prot=0|mt=nil|0|
+EK|Building_GreatWorks|nil|prot=0|mt=nil|0|
+EK|Building_YieldChanges|nil|prot=0|mt=nil|0|
+EK|Buildings|nil|prot=0|mt=nil|0|
+EK|Buildings_XP2|nil|prot=0|mt=nil|0|
+EK|Calendar|table|prot=0|mt=nil|0|
+EK|Cities|table|prot=0|mt=nil|0|
+EK|City|nil|prot=0|mt=nil|0|
+EK|CityManager|table|prot=0|mt=nil|0|
+EK|CityNames|nil|prot=0|mt=nil|0|
+EK|Civics|nil|prot=0|mt=nil|0|
+EK|Civics_XP2|nil|prot=0|mt=nil|0|
+EK|CivilizationCitizenNames|nil|prot=0|mt=nil|0|
+EK|CivilizationLevels|nil|prot=0|mt=nil|0|
+EK|CivilizationTraits|nil|prot=0|mt=nil|0|
+EK|Civilizations|nil|prot=0|mt=nil|0|
+EK|CodeBuddyFuncs|nil|prot=0|mt=nil|0|
+EK|CodeBuddyFuncsRaw|nil|prot=0|mt=nil|0|
+EK|Colors|nil|prot=0|mt=nil|0|
+EK|CombatManager|table|prot=0|mt=nil|0|
+EK|CommemorationBonuses|nil|prot=0|mt=nil|0|
+EK|ContextPtr|table|prot=0|mt=table|0|
+EK|Control|nil|prot=0|mt=nil|0|
+EK|Controls|table|prot=0|mt=nil|0|
+EK|CorporationNames|nil|prot=0|mt=nil|0|
+EK|DB|table|prot=1|mt=boolean|0|
+EK|DealManager|table|prot=0|mt=nil|0|
+EK|Definitions|table|prot=0|mt=nil|0|
+EK|DiplomacyActions|nil|prot=0|mt=nil|0|
+EK|DiplomacyDeal|nil|prot=0|mt=nil|0|
+EK|DiplomacyDealItem|nil|prot=0|mt=nil|0|
+EK|DiplomacyInfo|nil|prot=0|mt=nil|0|
+EK|DiplomacyManager|table|prot=0|mt=nil|0|
+EK|DiplomacySelections|nil|prot=0|mt=nil|0|
+EK|DiplomacyStatements|nil|prot=0|mt=nil|0|
+EK|DirtyComponents|nil|prot=0|mt=nil|0|
+EK|DirtyComponentsManager|table|prot=0|mt=nil|0|
+EK|DistrictBuildings|nil|prot=0|mt=nil|0|
+EK|District_Adjacencies|nil|prot=0|mt=nil|0|
+EK|District_CitizenYieldChanges|nil|prot=0|mt=nil|0|
+EK|Districts|nil|prot=0|mt=nil|0|
+EK|DualHeroes|nil|prot=0|mt=nil|0|
+EK|DynamicModifiers|nil|prot=0|mt=nil|0|
+EK|EffectsManager|table|prot=0|mt=table|0|
+EK|EmergencyRewards|nil|prot=0|mt=nil|0|
+EK|Eras|nil|prot=0|mt=nil|0|
+EK|Eras_XP2|nil|prot=0|mt=nil|0|
+EK|Events|table|prot=0|mt=table|0|
+EK|FavoredReligions|nil|prot=0|mt=nil|0|
+EK|FeatureGenerator|table|prot=0|mt=nil|0|
+EK|Features|nil|prot=0|mt=nil|0|
+EK|FiraxisLive|table|prot=1|mt=boolean|0|
+EK|Fractal|nil|prot=0|mt=nil|0|
+EK|FreeCities|nil|prot=0|mt=nil|0|
+EK|Game|table|prot=0|mt=nil|0|
+EK|GameCapabilities|table|prot=0|mt=nil|0|
+EK|GameClimate|table|prot=0|mt=nil|0|
+EK|GameConfiguration|table|prot=0|mt=nil|0|
+EK|GameEffects|table|prot=0|mt=nil|0|
+EK|GameEvents|nil|prot=0|mt=nil|0|
+EK|GameInfo|table|prot=1|mt=boolean|0|
+EK|GameRandomEvents|table|prot=0|mt=nil|0|
+EK|GameSpeed_Turns|nil|prot=0|mt=nil|0|
+EK|GameSpeeds|nil|prot=0|mt=nil|0|
+EK|GameSummary|table|prot=0|mt=nil|0|
+EK|GenerationalInstanceManager|table|prot=0|mt=nil|0|
+EK|GlobalParameters|table|prot=1|mt=boolean|0|
+EK|GoodyHutSubTypes|nil|prot=0|mt=nil|0|
+EK|GoodyHutTypes|nil|prot=0|mt=nil|0|
+EK|GoodyHuts|nil|prot=0|mt=nil|0|
+EK|GovernmentSlots|nil|prot=0|mt=nil|0|
+EK|Government_SlotCounts|nil|prot=0|mt=nil|0|
+EK|Governments|nil|prot=0|mt=nil|0|
+EK|GovernorPromotionModifiers|nil|prot=0|mt=nil|0|
+EK|GovernorPromotionSets|nil|prot=0|mt=nil|0|
+EK|GovernorPromotions|nil|prot=0|mt=nil|0|
+EK|Governors|nil|prot=0|mt=nil|0|
+EK|GreatPersonClasses|nil|prot=0|mt=nil|0|
+EK|GreatPersonIndividualActionModifiers|nil|prot=0|mt=nil|0|
+EK|GreatPersonIndividualBirthModifiers|nil|prot=0|mt=nil|0|
+EK|GreatPersonIndividuals|nil|prot=0|mt=nil|0|
+EK|GreatWork_RelicData|nil|prot=0|mt=nil|0|
+EK|GreatWorks|nil|prot=0|mt=nil|0|
+EK|HallofFame|table|prot=1|mt=boolean|0|
+EK|HeroAbilities|nil|prot=0|mt=nil|0|
+EK|HeroActions|nil|prot=0|mt=nil|0|
+EK|HeroDefinitions|nil|prot=0|mt=nil|0|
+EK|Hero_AccumulatedXp|nil|prot=0|mt=nil|0|
+EK|Hero_Attributes|nil|prot=0|mt=nil|0|
+EK|Hero_XpNeeded|nil|prot=0|mt=nil|0|
+EK|HistoricalAgendas|nil|prot=0|mt=nil|0|
+EK|IconDefinitions|nil|prot=0|mt=nil|0|
+EK|IconManager|table|prot=0|mt=table|0|
+EK|Icons|nil|prot=0|mt=nil|0|
+EK|Icons_FontIcons|nil|prot=0|mt=nil|0|
+EK|ImprovementBuilder|nil|prot=0|mt=nil|0|
+EK|Improvement_Adjacencies|nil|prot=0|mt=nil|0|
+EK|Improvement_BonusYieldChanges|nil|prot=0|mt=nil|0|
+EK|Improvement_ValidBuildUnits|nil|prot=0|mt=nil|0|
+MK|C_City|43|CanRaze:function,GetAllAssignedGovernors:function,GetAmenityAdvice:function,GetAssignedGovernor:function,GetBuildQueue:function,GetBuildingPotentialYield:function,GetBuildingYield:function,GetBuildings:function,GetCitizens:function,GetCityAI:function,GetComponentID:function,GetCulturalIdentity:function,GetCulture:function,GetDistrictID:function,GetDistricts:function,GetGold:function,GetGrowth:function,GetHousingAdvice:function,GetID:function,GetJustConqueredFrom:function,GetLastTransferType:function,GetLocation:function,GetLoyaltyAdvice:function,GetName:function,GetOriginalOwner:function,GetOwner:function,GetOwnerBeforeOccupation:function,GetPopulation:function,GetPower:function,GetPowerAdvice:function,GetProperties:function,GetProperty:function,GetReligion:function,GetTrade:function,GetX:function,GetY:function,GetYield:function,GetYieldToolTip:function,IsCapital:function,IsOccupied:function,IsOriginalCapital:function,TypeName:string,__instances:table
+MK|C_City_P_GetBuildQueue|27|CanProduce:function,GetAt:function,GetBuildingCost:function,GetBuildingProgress:function,GetCity:function,GetConstructionPlot:function,GetConstructionsAtLocation:function,GetCurrentProductionTypeHash:function,GetCurrentProductionTypeModifier:function,GetDistrictCost:function,GetDistrictProgress:function,GetNumEntriesOfProductionTypeHash:function,GetPreviousProductionTypeHash:function,GetProductionYield:function,GetProjectCost:function,GetProjectProgress:function,GetSize:function,GetTurnsLeft:function,GetUnitArmyCost:function,GetUnitCorpsCost:function,GetUnitCost:function,GetUnitProgress:function,GetUnitResourceCost:function,HasBeenPlaced:function,HasProductionProgress:function,TypeName:string,__instances:table
+MK|C_City_P_GetBuildings|18|GetBuildingMaintenance:function,GetBuildingNameOverride:function,GetBuildingTourismFromGreatWorks:function,GetBuildingYieldFromGreatWorks:function,GetBuildingsAtLocation:function,GetCity:function,GetCreatorNameFromIndex:function,GetGreatWorkInSlot:function,GetGreatWorkSlotType:function,GetGreatWorkTypeFromIndex:function,GetNumGreatWorkSlots:function,GetPlayerFromIndex:function,GetTurnFromIndex:function,HasBuilding:function,IsBuildingThemedCorrectly:function,IsPillaged:function,TypeName:string,__instances:table
+MK|C_City_P_GetCitizens|5|IsDisfavoredYield:function,IsFavoredYield:function,IsPlotWorked:function,TypeName:string,__instances:table
+MK|C_City_P_GetCityAI|5|GetBuildRecommendations:function,GetImprovementRecommendations:function,GetImprovementRecommendationsForBuilder:function,TypeName:string,__instances:table
+MK|C_City_P_GetCulturalIdentity|17|GetCityIdentityPressures:function,GetConversionOutcome:function,GetGovernorIdentityPressures:function,GetIdentitySourcesBreakdown:function,GetIdentitySourcesDetailedBreakdown:function,GetLoyalty:function,GetLoyaltyLevel:function,GetLoyaltyPerTurn:function,GetLoyaltyPerTurnFromIdentityPressureRatio:function,GetLoyaltyPerTurnStatus:function,GetMaxLoyalty:function,GetPlayerIdentitiesInCity:function,GetPotentialTransferPlayer:function,GetTurnsToConversion:function,IsAlwaysFullyLoyal:function,TypeName:string,__instances:table
+MK|C_City_P_GetCulture|9|GetCity:function,GetCultureYield:function,GetCurrentCulture:function,GetNextPlot:function,GetNextPlotCultureCost:function,GetTourism:function,GetTurnsUntilExpansion:function,TypeName:string,__instances:table
+MK|C_City_P_GetDistricts|13|FindID:function,GetCount:function,GetDistrict:function,GetNumAllowedDistrictsRequiringPopulation:function,GetNumDistricts:function,GetNumZonedDistrictsRequiringPopulation:function,HasDistrict:function,IsComplete:function,IsContaminated:function,IsPillaged:function,Members:function,TypeName:string,__instances:table
+MK|C_City_P_GetGold|7|CanPlaceUnit:function,GetPlotPurchaseCost:function,GetPurchaseCost:function,IsBuildingFaithPurchaseEnabled:function,IsUnitFaithPurchaseEnabled:function,TypeName:string,__instances:table
+MK|C_City_P_GetGrowth|42|GetAmenities:function,GetAmenitiesFromCityStates:function,GetAmenitiesFromCivics:function,GetAmenitiesFromDistricts:function,GetAmenitiesFromEntertainment:function,GetAmenitiesFromGovernors:function,GetAmenitiesFromGreatPeople:function,GetAmenitiesFromImprovements:function,GetAmenitiesFromLuxuries:function,GetAmenitiesFromNationalParks:function,GetAmenitiesFromNaturalWonders:function,GetAmenitiesFromReligion:function,GetAmenitiesFromStartingEra:function,GetAmenitiesFromTraits:function,GetAmenitiesLostFromBankruptcy:function,GetAmenitiesLostFromWarWeariness:function,GetAmenitiesNeeded:function,GetCity:function,GetFood:function,GetFoodSurplus:function,GetGrowthThreshold:function,GetHappiness:function,GetHappinessGrowthModifier:function,GetHappinessNonFoodYieldModifier:function,GetHousing:function,GetHousingFromBuildings:function,GetHousingFromCivics:function,GetHousingFromDistricts:function,GetHousingFromGreatPeople:function,GetHousingFromGreatWorks:function,GetHousingFromImprovements:function,GetHousingFromStartingEra:function,GetHousingFromWater:function,GetHousingGrowthModifier:function,GetLoyaltyGrowthModifier:function,GetOccupationGrowthModifier:function,GetOtherGrowthModifier:function,GetOverallGrowthModifier:function,GetTurnsUntilGrowth:function,GetTurnsUntilStarvation:function,TypeName:string,__instances:table
+MK|C_City_P_GetPower|14|GetFreePower:function,GetFreePowerSources:function,GetGeneratedPowerSources:function,GetMissingPower:function,GetPlotsCoveredByRegionalPower:function,GetPlotsProvidingPower:function,GetRequiredPower:function,GetRequiredPowerSources:function,GetTemporaryPower:function,GetTemporaryPowerSources:function,IsFullyPowered:function,IsFullyPoweredByActiveProject:function,TypeName:string,__instances:table
+MK|C_City_P_GetReligion|11|GetActivePantheon:function,GetCity:function,GetMajorityReligion:function,GetNextReligion:function,GetPressureFromCity:function,GetReligionsInCity:function,GetReligiousPressureSources:function,GetTotalPressureOnCity:function,GetTurnsToNextReligion:function,TypeName:string,__instances:table
+MK|C_City_P_GetTrade|8|GetCity:function,GetIncomingRoutes:function,GetOutgoingRoutes:function,HasActiveTradingPost:function,HasInactiveTradingPost:function,HasTradeRouteFrom:function,TypeName:string,__instances:table
+MK|C_ContextPtr|0|<non-enumerable CTypeName=LuaContext pairs=2>
+MK|C_Control|0|<non-enumerable CTypeName=ControlBase pairs=1>
+MK|C_EffectsManager|0|<non-enumerable CTypeName=EffectsManager pairs=1>
+MK|C_FeatureGenerator|0|<non-enumerable CTypeName=n/a pairs=9>
+MK|C_Game|0|<non-enumerable CTypeName=n/a pairs=53>
+MK|C_Game_P_GetBarbarianManager|17|GetTribeBribeTurnsRemaining:function,GetTribeCampLocation:function,GetTribeConversionDisabledHelp:function,GetTribeConversionPercent:function,GetTribeConversionPoints:function,GetTribeConversionPointsRequired:function,GetTribeInciteCost:function,GetTribeInciteSourcePlayer:function,GetTribeInciteTargetPlayer:function,GetTribeInciteTargets:function,GetTribeIndexAtLocation:function,GetTribeNameType:function,GetTribeRansomUnit:function,GetTribeType:function,IsClanExcludeUnitType:function,TypeName:string,__instances:table
+MK|C_Game_P_GetCulture|3|GetActiveCivicNodes:function,TypeName:string,__instances:table
+MK|C_Game_P_GetEconomicManager|15|CanHaveCorporation:function,CanHaveIndustry:function,GetCorporationName:function,GetMapResources:function,GetNumControlledResources:function,GetPlayerCorporations:function,GetPlayerIndustries:function,GetResourceMonopolyPlayer:function,HasCorporation:function,HasCorporationOf:function,HasIndustry:function,HasIndustryOf:function,IsResourceMonopoly:function,TypeName:string,__instances:table
+MK|C_Game_P_GetEmergencyManager|5|GetEmergencyInfoTable:function,GetNextBlockingEmergency:function,GetSingleEmergency:function,TypeName:string,__instances:table
+MK|C_Game_P_GetEras|29|GetCurrentEra:function,GetCurrentEraMaximumEndTurn:function,GetCurrentEraMinimumEndTurn:function,GetCurrentEraNumPlayersAsOrLessAdvanced:function,GetCurrentEraNumPlayersMoreAdvanced:function,GetCurrentEraStartTurn:function,GetFinalEra:function,GetNextEraCountdown:function,GetPlayerActiveCommemorations:function,GetPlayerCommemorateChoices:function,GetPlayerComplimentChoices:function,GetPlayerCurrentEraScoreBreakdown:function,GetPlayerCurrentScore:function,GetPlayerDarkAgeThreshold:function,GetPlayerDarkAgeThresholdBreakdown:function,GetPlayerGoldenAgeThreshold:function,GetPlayerGoldenAgeThresholdBreakdown:function,GetPlayerNumAllowedCommemorations:function,GetPlayerPreviousDarkAgeThreshold:function,GetPlayerPreviousEraScoreBreakdown:function,GetPlayerPreviousGoldenAgeThreshold:function,GetPlayerPreviousScore:function,GetPlayerThresholdBaseline:function,HasDarkAge:function,HasGoldenAge:function,HasHeroicGoldenAge:function,IsPlayerAlwaysAllowedCommemorationQuest:function,TypeName:string,__instances:table
+MK|C_Game_P_GetFalloutManager|10|GetFalloutDamageOverride:function,GetFalloutPreventsWork:function,GetFalloutTurnsRemaining:function,GetReactorAccidentThreshold:function,GetReactorAge:function,GetReactorByIndex:function,GetReactorCount:function,HasFallout:function,TypeName:string,__instances:table
+MK|C_Game_P_GetGameDiplomacy|8|GetAllianceBenefitsString:function,GetDenounceTimeLimit:function,GetGrievanceChangePerTurn:function,GetGrievanceChangeTooltip:function,GetGrievanceLogEntries:function,GetMinPeaceDuration:function,TypeName:string,__instances:table
+MK|C_Game_P_GetGossipManager|3|GetRecentVisibleGossipStrings:function,TypeName:string,__instances:table
+MK|C_Game_P_GetGreatPeople|12|CanPatronizePerson:function,CanRecruitPerson:function,CanRejectPerson:function,CountPeopleReceivedByPlayer:function,GetEarnConditionsText:function,GetPastTimeline:function,GetPatronizeCost:function,GetRecruitCost:function,GetRejectCost:function,GetTimeline:function,TypeName:string,__instances:table
+MK|C_Game_P_GetHeroesManager|8|GetHeroClaimPlayer:function,GetHeroClassBaseCharges:function,GetHeroOriginCityID:function,GetPlayerHeroOriginBuildingType:function,GetUnitHeroClass:function,IsHeroDiscovered:function,TypeName:string,__instances:table
+MK|C_Game_P_GetHistoryManager|8|GetAllMomentsData:function,GetMomentCount:function,GetMomentData:function,GetMomentType:function,HasPrideMoments:function,TypeName:string,WritePrideMomentInfo:function,__instances:table
+MK|C_Game_P_GetNationalParks|9|EnumerateNationalParks:function,GetAtIndex:function,GetAtLocation:function,GetCount:function,GetNationalParkName:function,GetPossibleParkTiles:function,IsNationalPark:function,TypeName:string,__instances:table
+MK|C_Game_P_GetQuestsManager|6|GetActiveQuestDescription:function,GetActiveQuestName:function,GetActiveQuestReward:function,HasActiveQuestFromPlayer:function,TypeName:string,__instances:table
+MK|C_Game_P_GetReligion|11|GetMinimumFaithNextPantheon:function,GetName:function,GetReligions:function,HasBeenFounded:function,HasBeliefEachType:function,IsInSomePantheon:function,IsInSomeReligion:function,IsNewTypeForReligion:function,IsTooManyForReligion:function,TypeName:string,__instances:table
+MK|C_Game_P_GetTechs|3|GetActiveTechNodes:function,TypeName:string,__instances:table
+MK|C_Game_P_GetTradeManager|26|CalculateDestinationReligiousPressureFromPotentialRoute:function,CalculateDestinationYieldFromAttachingResource:function,CalculateDestinationYieldFromModifiers:function,CalculateDestinationYieldFromPath:function,CalculateDestinationYieldFromPotentialRoute:function,CalculateDestinationYieldsFromAttachingResource:function,CalculateDestinationYieldsFromModifiers:function,CalculateDestinationYieldsFromPath:function,CalculateDestinationYieldsFromPotentialRoute:function,CalculateOriginReligiousPressureFromPotentialRoute:function,CalculateOriginYieldFromAttachingResource:function,CalculateOriginYieldFromModifiers:function,CalculateOriginYieldFromPath:function,CalculateOriginYieldFromPotentialRoute:function,CalculateOriginYieldsFromAttachingResource:function,CalculateOriginYieldsFromModifiers:function,CalculateOriginYieldsFromPath:function,CalculateOriginYieldsFromPotentialRoute:function,CalculateYieldFromIncomingRoutes:function,CalculateYieldFromOutgoingRoutes:function,CanStartRoute:function,CanStartRouteWithResource:function,GetTradeRoutePath:function,IsRouteAllowed:function,TypeName:string,__instances:table
+MK|C_Game_P_GetWorldCongress|11|GetEmergencies:function,GetMeetingStatus:function,GetPreviousVotesOnResolution:function,GetProposals:function,GetResolutions:function,GetReview:function,GetTurnsUntilSpecialSessionAllowed:function,GetVotesandFavorCost:function,IsInSession:function,TypeName:string,__instances:table
+MK|C_GenerationalInstanceManager|0|<non-enumerable CTypeName=n/a pairs=5>
+MK|C_IconManager|0|<non-enumerable CTypeName=IconManager pairs=1>
+MK|C_InstanceManager|0|<non-enumerable CTypeName=n/a pairs=12>
+MK|C_NaturalWonderGenerator|0|<non-enumerable CTypeName=n/a pairs=5>
+MK|C_Player|47|CanUnreadyTurn:function,GetAgendaTypes:function,GetAgendasAndVisibilities:function,GetCategoryScore:function,GetCities:function,GetCivilianLoyalty:function,GetComponentID:function,GetCulture:function,GetDiplomacy:function,GetDiplomaticAI:function,GetDistricts:function,GetEra:function,GetFavor:function,GetFavorEnteringCongress:function,GetFavorPerTurn:function,GetFavorPerTurnToolTip:function,GetGovernors:function,GetGrandStrategicAI:function,GetGreatPeoplePoints:function,GetID:function,GetImprovements:function,GetInfluence:function,GetInfluenceMap:function,GetProperties:function,GetProperty:function,GetReligion:function,GetResources:function,GetScore:function,GetStats:function,GetTeam:function,GetTechs:function,GetTrade:function,GetTreasury:function,GetUnits:function,GetWMDs:function,IsAI:function,IsAlive:function,IsBarbarian:function,IsFreeCities:function,IsHuman:function,IsMajor:function,IsMinor:function,IsTurnActive:function,IsTurnActiveComplete:function,TypeName:string,WasEverAlive:function,__instances:table
+MK|C_PlayerConfiguration|0|<non-enumerable CTypeName=n/a pairs=55>
+MK|C_Player_P_GetCities|11|FindClosest:function,FindID:function,GetCapitalCity:function,GetCount:function,GetFirstRangedAttackCity:function,GetNextCapturedCity:function,GetNextRebelledCity:function,IsCityWithinRange:function,Members:function,TypeName:string,__instances:table
+MK|C_Player_P_GetCulture|69|CanChangeGovernment:function,CanChangeGovernmentAtAll:function,CanPolicyBeSlotted:function,CanProgress:function,CanSlotPolicy:function,CanTriggerBoost:function,CivicCompletedThisTurn:function,CivicUnlocksGovernment:function,GetAnarchyEndTurn:function,GetAnarchyTurns:function,GetAutoThemedBuilding:function,GetCivicCompletedThisTurn:function,GetCivicPath:function,GetCivicQueue:function,GetCostToUnlockPolicies:function,GetCulturalProgress:function,GetCultureCost:function,GetCultureYield:function,GetCultureYieldToolTip:function,GetCurrentGovernment:function,GetEnactPolicyCost:function,GetExtraTradeRouteTourismModifier:function,GetFlatBonus:function,GetGreatWorksInCity:function,GetIncrementingBonus:function,GetIncrementingBonusIncrement:function,GetIncrementingBonusInterval:function,GetIncrementingBonusTurnsUntilNext:function,GetLifetimeCulture:function,GetNumPoliciesUnlocked:function,GetNumPolicySlots:function,GetNumPolicySlotsOpen:function,GetPolicyToUnlock:function,GetProgressingCivic:function,GetSlotPolicy:function,GetSlotType:function,GetStaycationers:function,GetTourismAt:function,GetTourismTooltipAt:function,GetTouristsAt:function,GetTouristsFrom:function,GetTouristsFromTooltip:function,GetTouristsTo:function,GetTurnsLeft:function,GetTurnsToProgressCivic:function,GetTurnsUntilDominant:function,GetTurnsUntilVictory:function,GovernmentChangeConsidered:function,GovernmentChangeMade:function,HasBoostBeenTriggered:function,HasCivic:function,IsAutoThemedEligible:function,IsCivicRevealed:function,IsDominantOver:function,IsEverAutoThemable:function,IsGovernmentUnlocked:function,IsInAnarchy:function,IsPolicyActive:function,IsPolicyBanned:function,IsPolicyObsolete:function,IsPolicyUnlocked:function,PolicyChangeMade:function,RequestChangeGovernment:function,RequestClearSlot:function,RequestEnactPolicy:function,RequestPolicyChanges:function,SetGovernmentChangeConsidered:function,TypeName:string,__instances:table
+MK|C_Player_P_GetDiplomacy|50|CalcFavorPerTurnFromAlliances:function,CanDeclareWarOn:function,CanLiberateCityTo:function,CanMakePeaceWith:function,ComputeCityWarmongerPoints:function,ComputeDOWWarmongerPoints:function,ComputeResearchAgreementTurns:function,GetAllianceLevel:function,GetAlliancePointsPerTurn:function,GetAlliancePointsTooltip:function,GetAllianceTurnsThisLevel:function,GetAllianceTurnsToNextLevel:function,GetAllianceTurnsUntilExpiration:function,GetAllianceType:function,GetAtWarChangeTurn:function,GetDeclaredFriendshipTurn:function,GetDenounceTurn:function,GetDiplomaticActionCost:function,GetGrievancesAgainst:function,GetMetTurn:function,GetMission:function,GetNextEscapingSpyID:function,GetNextPursuedSpyID:function,GetNthCapturedSpy:function,GetNthOffMapSpy:function,GetNumPlayersMet:function,GetNumSpiesCaptured:function,GetNumSpiesOffMap:function,GetPlayersMet:function,GetPlayersMetIDs:function,GetRecentMissions:function,GetResearchAgreementTech:function,GetSourceTurnsRemaining:function,GetSpyCapacity:function,GetVisibilityOn:function,GetWarmongerLevel:function,HasDefensivePact:function,HasDelegationAt:function,HasEmbassyAt:function,HasMet:function,HasOpenBordersFrom:function,IsAtWarWith:function,IsAtWarWithHumans:function,IsDiplomaticActionValid:function,IsFightingAnyJointWarWith:function,IsFightingJointWarAgainst:function,IsPromiseMade:function,IsVisibilitySourceActive:function,TypeName:string,__instances:table
+MK|C_Player_P_GetDiplomaticAI|11|GetDealItemDesirability:function,GetDealItemDesirabilityString:function,GetDiplomaticModifiers:function,GetDiplomaticScore:function,GetDiplomaticStateIndex:function,GetThreatFrom:function,GetThreatString:function,GetTrustFrom:function,GetTrustString:function,TypeName:string,__instances:table
+MK|C_Player_P_GetDistricts|5|FindID:function,GetCount:function,Members:function,TypeName:string,__instances:table
+MK|C_Player_P_GetGovernors|23|CanAppoint:function,CanAppointGovernor:function,CanAssignGovernor:function,CanEarnPromotion:function,CanEverAppointGovernor:function,CanPromote:function,CanPromoteGovernor:function,GetAssignedCity:function,GetAssignedGovernor:function,GetBaseTurnsUntilEstablished:function,GetGovernor:function,GetGovernorList:function,GetGovernorPoints:function,GetGovernorPointsSpent:function,GetSecretSociety:function,GetTurnsToEstablish:function,HasGovernor:function,HasTitleBeenConsidered:function,IsAwareOfSecretSociety:function,IsGovernorEstablished:function,SetTitleConsidered:function,TypeName:string,__instances:table
+MK|C_Player_P_GetGrandStrategicAI|5|GetCivicsRecommendations:function,GetSettlementRecommendations:function,GetTechRecommendations:function,TypeName:string,__instances:table
+MK|C_Player_P_GetGreatPeoplePoints|5|GetPointsPerTurn:function,GetPointsTotal:function,IsNoPatronageWith:function,TypeName:string,__instances:table
+MK|C_Player_P_GetImprovements|3|GetImprovementPlots:function,TypeName:string,__instances:table
+MK|C_Player_P_GetInfluence|20|CanGiveInfluence:function,CanGiveTokensToPlayer:function,CanLevyMilitary:function,CanReceiveInfluence:function,GetLevyMilitaryCost:function,GetLevyTurnCounter:function,GetLevyTurnLimit:function,GetMostTokensReceived:function,GetPointsEarned:function,GetPointsPerTurn:function,GetPointsThreshold:function,GetSuzerain:function,GetTokensPerThreshold:function,GetTokensReceived:function,GetTokensToGive:function,IsGivingTokensConsidered:function,IsSuzerainUniqueBonusDisabled:function,SetGivingTokensConsidered:function,TypeName:string,__instances:table
+MK|C_Player_P_GetInfluenceMap|3|Find:function,TypeName:string,__instances:table
+MK|C_Player_P_GetReligion|14|CanAfford:function,CanCreatePantheon:function,GetFaithBalance:function,GetFaithYield:function,GetFaithYieldToolTip:function,GetHolyCityID:function,GetNumBeliefsEarned:function,GetPantheon:function,GetReligionInMajorityOfCities:function,GetReligionTypeCreated:function,HasLaunchedInquisition:function,HasReligiousFoundingUnit:function,TypeName:string,__instances:table
+MK|C_Player_P_GetResources|19|GetBonusResourcePerTurn:function,GetCityResourceAllocations:function,GetExportedResourceAmount:function,GetPowerResourceDemandPerTurn:function,GetReservedResourceAmount:function,GetResourceAccumulationPerTurn:function,GetResourceAllocationCities:function,GetResourceAmount:function,GetResourceImportPerTurn:function,GetResourceStockpileCap:function,GetResourcesExtractedByCity:function,GetUnitResourceDemandPerTurn:function,HasExportedResource:function,HasResource:function,IsResourceBanned:function,IsResourceExtractableAt:function,IsResourceVisible:function,TypeName:string,__instances:table
+MK|C_Player_P_GetStats|17|GetDiplomaticVictoryPoints:function,GetDiplomaticVictoryPointsTooltip:function,GetHasRevivedPlayer:function,GetMilitaryStrength:function,GetMilitaryStrengthWithoutTreasury:function,GetNumBuildingsOfType:function,GetNumCitiesFollowingReligion:function,GetNumCivicsCompleted:function,GetNumProjectsAdvanced:function,GetNumTechsResearched:function,GetScienceVictoryPoints:function,GetScienceVictoryPointsPerTurn:function,GetScienceVictoryPointsTotalNeeded:function,GetTourism:function,GetTourismToolTip:function,TypeName:string,__instances:table
+MK|C_Player_P_GetTechs|19|CanResearch:function,CanTriggerBoost:function,GetResearchCost:function,GetResearchPath:function,GetResearchProgress:function,GetResearchQueue:function,GetResearchingTech:function,GetScienceYield:function,GetScienceYieldToolTip:function,GetTurnsLeft:function,GetTurnsToResearch:function,HasBoostBeenTriggered:function,HasTech:function,IsResearchingTech:function,IsTechRevealed:function,ResearchQueue:function,ResearchQueueAux:function,TypeName:string,__instances:table
+MK|C_Player_P_GetTrade|8|CalcFavorPerTurnFromTradePartners:function,GetInternationalYieldModifier:function,GetLandRangeRefuel:function,GetNumOutgoingRoutes:function,GetOutgoingRouteCapacity:function,GetWaterRangeRefuel:function,TypeName:string,__instances:table
+MK|C_Player_P_GetTreasury|13|CanAfford:function,GetBuildingMaintenance:function,GetDistrictMaintenance:function,GetGoldBalance:function,GetGoldYield:function,GetGoldYieldToolTip:function,GetMaintDiscountPerUnit:function,GetTotalMaintenance:function,GetTotalMaintenanceToolTip:function,GetUnitMaintenance:function,GetWMDMaintenance:function,TypeName:string,__instances:table
+MK|C_Player_P_GetUnits|8|FindID:function,GetCount:function,GetFirstReadyUnit:function,GetNextExtractingArchaeologist:function,GetProcessingState:function,Members:function,TypeName:string,__instances:table
+MK|C_Player_P_GetWMDs|4|CanDeployWMD:function,GetWeaponCount:function,TypeName:string,__instances:table
+MK|C_Plot|90|CanHaveDistrict:function,CanHaveWonder:function,GetAdjacencyBonusTooltip:function,GetAdjacencyBonusType:function,GetAdjacencyYield:function,GetAirUnits:function,GetAppeal:function,GetArea:function,GetAreaID:function,GetComponentID:function,GetContinentType:function,GetDefenseModifier:function,GetDistrictID:function,GetDistrictType:function,GetFeature:function,GetFeatureType:function,GetImprovementOwner:function,GetImprovementType:function,GetIndex:function,GetMovementCost:function,GetNationalParkName:function,GetNearestLandArea:function,GetNearestLandPlot:function,GetOwner:function,GetProperty:function,GetResourceCount:function,GetResourceType:function,GetResourceTypeHash:function,GetRiverCrossingCount:function,GetRiverEFlowDirection:function,GetRiverSEFlowDirection:function,GetRiverSWFlowDirection:function,GetRouteType:function,GetTerrainClassType:function,GetTerrainType:function,GetUnitCount:function,GetWonderType:function,GetWorkerCount:function,GetX:function,GetY:function,GetYield:function,HasFeatureBeenAdded:function,IsAdjacentOwned:function,IsAdjacentPlayer:function,IsAdjacentToArea:function,IsAdjacentToLand:function,IsAdjacentToShallowWater:function,IsAt:function,IsCanyon:function,IsChokepoint:function,IsCity:function,IsCoastalLand:function,IsFlatlands:function,IsFreshWater:function,IsHills:function,IsImpassable:function,IsImprovementPillaged:function,IsInternalOnlyDistrict:function,IsLake:function,IsMountain:function,IsNEOfCliff:function,IsNEOfRiver:function,IsNWOfCliff:function,IsNWOfRiver:function,IsNationalPark:function,IsNaturalWonder:function,IsNone:function,IsOpenGround:function,IsOwned:function,IsRiver:function,IsRiverAdjacent:function,IsRiverConnection:function,IsRiverCrossing:function,IsRiverCrossingFlowClockwise:function,IsRiverCrossingToPlot:function,IsRiverSide:function,IsRoughGround:function,IsRoute:function,IsRoutePillaged:function,IsShallowWater:function,IsStartingPlot:function,IsUnit:function,IsValidFoundLocation:function,IsWOfCliff:function,IsWOfRiver:function,IsWater:function,IsWonderComplete:function,SharesAdjacentArea:function,TypeName:string,__instances:table
+MK|C_Plot_P_GetArea|16|GetBoundaries:function,GetID:function,GetImprovementCount:function,GetPlotCount:function,GetResourceCount:function,GetRiverEdgeCount:function,GetTotalImprovements:function,GetTotalNaturalWonders:function,GetTotalResources:function,HasNoFlatCoast:function,IsCanyons:function,IsMountains:function,IsNone:function,IsWater:function,TypeName:string,__instances:table
+MK|C_Plot_P_GetFeature|5|GetDirection:function,GetPlots:function,GetType:function,TypeName:string,__instances:table
+MK|C_PopupDialog|0|<non-enumerable CTypeName=n/a pairs=37>
+MK|C_PopupDialogInGame|0|<non-enumerable CTypeName=n/a pairs=14>
+MK|C_PullDownInstanceManager|5|BuildInstance:function,GetInstance:function,ResetInstances:function,__index:table,new:function
+MK|C_TTManager|0|<non-enumerable CTypeName=ToolTipManager pairs=1>
+MK|C_Territories|0|<non-enumerable CTypeName=n/a pairs=5>
+MK|C_Territories_P_GetTerritoryAt|15|GetBoundaries:function,GetCentroid:function,GetFeatureCount:function,GetID:function,GetName:function,GetPlotCount:function,GetRiverEdgeCount:function,GetTerrainClass:function,GetTotalFeatures:function,GetTotalNaturalWonders:function,IsLake:function,IsNone:function,IsSea:function,TypeName:string,__instances:table
+MK|C_TouchManager|0|<non-enumerable CTypeName=TouchManager pairs=1>
+MK|C_TunerUtilities|0|<non-enumerable CTypeName=n/a pairs=58>
+MK|C_UI|0|<non-enumerable CTypeName=n/a pairs=0>
+MK|C_UIManager|0|<non-enumerable CTypeName=UIManager pairs=1>
+MK|C_UITutorialManager|0|<non-enumerable CTypeName=TutorialManager pairs=1>
+MK|C_UI_P_GetGameParameters|7|Add:function,Get:function,GetValue:function,Remove:function,SetValue:function,TypeName:string,__instances:table
+MK|C_Unit|73|GetAbility:function,GetActionCharges:function,GetAirSlots:function,GetAirUnits:function,GetAntiAirCombat:function,GetArchaeology:function,GetArchaeologyHomeCity:function,GetAttacksRemaining:function,GetBarbarianTargetPlayer:function,GetBarbarianTribeIndex:function,GetBombardCombat:function,GetBuildCharges:function,GetCombat:function,GetComponentID:function,GetDamage:function,GetDisasterCharges:function,GetExperience:function,GetFormationClass:function,GetFormationID:function,GetFormationMaxMoves:function,GetFormationMovesRemaining:function,GetFormationUnitCount:function,GetFortifyTurns:function,GetGreatPerson:function,GetGreatWorkIndex:function,GetHeroClassType:function,GetID:function,GetLocation:function,GetLootName:function,GetMaxDamage:function,GetMaxMoves:function,GetMilitaryFormation:function,GetMovementMovesRemaining:function,GetMovesRemaining:function,GetName:function,GetOriginalOwner:function,GetOwner:function,GetParkCharges:function,GetPlotId:function,GetProperties:function,GetProperty:function,GetPursuingSpyName:function,GetRange:function,GetRangedCombat:function,GetReligionType:function,GetReligiousHealCharges:function,GetReligiousStrength:function,GetRockBand:function,GetSpreadCharges:function,GetSpyOperation:function,GetSpyOperationEndTurn:function,GetTrade:function,GetType:function,GetUnitType:function,GetUpgradeCost:function,GetUpgradeResourceCost:function,GetX:function,GetY:function,HasHiddenVisibility:function,HasMovedIntoZOC:function,HasPendingOperations:function,IgnoresZOC:function,IsAutomated:function,IsCannotAttack:function,IsDead:function,IsDelayedDeath:function,IsEmbarked:function,IsHuman:function,IsReadyToAutomate:function,IsReadyToMove:function,IsReadyToSelect:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetAbility|3|GetAbilities:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetArchaeology|9|GetActivationHighlightPlots:function,GetAreaHighlightPlots:function,GetArtifactIndex:function,GetGreatWorkIndex:function,GetHomeBuilding:function,GetHomeCityID:function,GetUnit:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetExperience|9|GetExperienceForNextLevel:function,GetExperiencePoints:function,GetLevel:function,GetPromotions:function,GetUnit:function,GetVeteranName:function,HasPromotion:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetGreatPerson|12|GetActionCharges:function,GetActivationHighlightPlots:function,GetAreaHighlightPlots:function,GetClass:function,GetIndividual:function,GetPassiveEffectText:function,GetPassiveNameText:function,GetUnit:function,HasPassiveEffect:function,IsGreatPerson:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetRockBand|9|GetActivationHighlightPlots:function,GetAlbumSales:function,GetAreaHighlightPlots:function,GetRockBandLevel:function,GetUnit:function,IsMaxLevel:function,IsMaxPromotions:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetTrade|4|GetLastDestinationTradeCityComponentID:function,GetLastOriginTradeCityComponentID:function,TypeName:string,__instances:table
+MK|C_WorldBuilder|0|<non-enumerable CTypeName=n/a pairs=1>
+EK|Improvement_ValidFeatures|nil|prot=0|mt=nil|0|
+EK|Improvement_ValidResources|nil|prot=0|mt=nil|0|
+EK|Improvement_ValidTerrains|nil|prot=0|mt=nil|0|
+EK|Improvement_YieldChanges|nil|prot=0|mt=nil|0|
+EK|Improvements|nil|prot=0|mt=nil|0|
+EK|Input|table|prot=1|mt=boolean|0|
+EK|InputStruct|nil|prot=0|mt=nil|0|
+EK|InstanceManager|table|prot=0|mt=nil|0|
+EK|Kinds|nil|prot=0|mt=nil|0|
+EK|LeaderQuotes|nil|prot=0|mt=nil|0|
+EK|LeaderTraits|nil|prot=0|mt=nil|0|
+EK|Leaders|nil|prot=0|mt=nil|0|
+EK|LoadingInfo|nil|prot=0|mt=nil|0|
+EK|Locale|table|prot=1|mt=boolean|0|
+EK|Map|table|prot=0|mt=nil|0|
+EK|MapConfiguration|table|prot=0|mt=nil|0|
+EK|MapFeatureManager|table|prot=0|mt=nil|0|
+EK|MapPinConfiguration|nil|prot=0|mt=nil|0|
+EK|MapRoutes|table|prot=0|mt=nil|0|
+EK|Map_GreatPersonClasses|nil|prot=0|mt=nil|0|
+EK|Map_GreatPersonPoints|nil|prot=0|mt=nil|0|
+EK|Map_TradeRoutes|nil|prot=0|mt=nil|0|
+EK|Matchmaking|table|prot=1|mt=boolean|0|
+EK|Modding|table|prot=1|mt=boolean|0|
+EK|ModifierArguments|nil|prot=0|mt=nil|0|
+EK|ModifierStrings|nil|prot=0|mt=nil|0|
+EK|Modifiers|nil|prot=0|mt=nil|0|
+EK|Moments|nil|prot=0|mt=nil|0|
+EK|NamedLakes|nil|prot=0|mt=nil|0|
+EK|NaturalWonderAdjacencies|nil|prot=0|mt=nil|0|
+EK|NaturalWonderGenerator|table|prot=0|mt=nil|0|
+EK|NaturalWonderTypeAdjacencies|nil|prot=0|mt=nil|0|
+EK|Network|table|prot=1|mt=boolean|0|
+EK|Notification|nil|prot=0|mt=nil|0|
+EK|NotificationManager|table|prot=0|mt=nil|0|
+EK|Notifications|nil|prot=0|mt=nil|0|
+EK|ObsoletePolicies|nil|prot=0|mt=nil|0|
+EK|Options|table|prot=1|mt=boolean|0|
+EK|Path|table|prot=1|mt=boolean|0|
+EK|Player|nil|prot=0|mt=nil|0|
+EK|PlayerColors|nil|prot=0|mt=nil|0|
+EK|PlayerConfiguration|table|prot=0|mt=nil|0|
+EK|PlayerManager|table|prot=0|mt=nil|0|
+EK|PlayerVisibility|nil|prot=0|mt=nil|0|
+EK|PlayerVisibilityManager|table|prot=0|mt=nil|0|
+EK|Players|table|prot=0|mt=nil|0|
+EK|Plot|table|prot=0|mt=nil|0|
+EK|Policies|nil|prot=0|mt=nil|0|
+EK|Policies_XP1|nil|prot=0|mt=nil|0|
+EK|PolicyModifiers|nil|prot=0|mt=nil|0|
+EK|PopupDialog|table|prot=0|mt=nil|0|
+EK|PopupDialogInGame|table|prot=0|mt=nil|0|
+EK|Project_GreatPersonPoints|nil|prot=0|mt=nil|0|
+EK|Project_YieldConversions|nil|prot=0|mt=nil|0|
+EK|Projects|nil|prot=0|mt=nil|0|
+EK|Projects_XP1|nil|prot=0|mt=nil|0|
+EK|PseudoYields|nil|prot=0|mt=nil|0|
+EK|PullDownInstanceManager|table|prot=0|mt=table|0|
+EK|RandomAgendas|nil|prot=0|mt=nil|0|
+EK|Relationship|nil|prot=0|mt=nil|0|
+EK|Religions|nil|prot=0|mt=nil|0|
+EK|ReportingEvents|table|prot=0|mt=nil|0|
+EK|RequirementArguments|nil|prot=0|mt=nil|0|
+EK|RequirementSetRequirements|nil|prot=0|mt=nil|0|
+EK|RequirementSets|nil|prot=0|mt=nil|0|
+EK|RequirementStrings|nil|prot=0|mt=nil|0|
+EK|Requirements|nil|prot=0|mt=nil|0|
+EK|ResourceBuilder|nil|prot=0|mt=nil|0|
+EK|Resource_Consumption|nil|prot=0|mt=nil|0|
+EK|Resource_Harvests|nil|prot=0|mt=nil|0|
+EK|Resource_YieldChanges|nil|prot=0|mt=nil|0|
+EK|Resources|nil|prot=0|mt=nil|0|
+EK|RiverManager|table|prot=0|mt=nil|0|
+EK|RouteBuilder|nil|prot=0|mt=nil|0|
+EK|Routes|nil|prot=0|mt=nil|0|
+EK|Routes_XP2|nil|prot=0|mt=nil|0|
+EK|ScoringCategories|nil|prot=0|mt=nil|0|
+EK|ScoringLineItems|nil|prot=0|mt=nil|0|
+EK|Search|table|prot=1|mt=boolean|0|
+EK|SimUnitSystem|table|prot=0|mt=nil|0|
+EK|StartBiasFeatures|nil|prot=0|mt=nil|0|
+EK|StartBiasResources|nil|prot=0|mt=nil|0|
+EK|StartBiasTerrains|nil|prot=0|mt=nil|0|
+EK|StartEras|nil|prot=0|mt=nil|0|
+EK|StartPositioner|nil|prot=0|mt=nil|0|
+EK|StartingBuildings|nil|prot=0|mt=nil|0|
+EK|Steam|table|prot=1|mt=boolean|0|
+EK|Strategies|nil|prot=0|mt=nil|0|
+EK|StrategyConditions|nil|prot=0|mt=nil|0|
+EK|Strategy_Priorities|nil|prot=0|mt=nil|0|
+EK|TTManager|table|prot=0|mt=table|0|
+EK|Tags|nil|prot=0|mt=nil|0|
+EK|Technologies|nil|prot=0|mt=nil|0|
+EK|Technologies_XP2|nil|prot=0|mt=nil|0|
+EK|TechnologyModifiers|nil|prot=0|mt=nil|0|
+EK|TechnologyPrereqs|nil|prot=0|mt=nil|0|
+EK|TechnologyQuotes|nil|prot=0|mt=nil|0|
+EK|TerrainBuilder|nil|prot=0|mt=nil|0|
+EK|TerrainManager|table|prot=0|mt=nil|0|
+EK|Terrains|nil|prot=0|mt=nil|0|
+EK|Territories|table|prot=0|mt=nil|0|
+EK|Tests|nil|prot=0|mt=nil|0|
+EK|ToolTipHelper|table|prot=0|mt=nil|0|
+EK|Tools|nil|prot=0|mt=nil|0|
+EK|TouchManager|table|prot=0|mt=table|0|
+EK|TraitModifiers|nil|prot=0|mt=nil|0|
+EK|Traits|nil|prot=0|mt=nil|0|
+EK|TreeData|nil|prot=0|mt=nil|0|
+EK|TunerUtilities|table|prot=0|mt=nil|0|
+EK|TypeProperties|nil|prot=0|mt=nil|0|
+EK|TypeTags|nil|prot=0|mt=nil|0|
+EK|Types|nil|prot=0|mt=nil|0|
+EK|UI|table|prot=1|mt=boolean|0|
+EK|UILens|table|prot=1|mt=boolean|0|
+EK|UIManager|table|prot=0|mt=table|0|
+EK|UITree|table|prot=1|mt=boolean|0|
+EK|UITutorialManager|table|prot=0|mt=table|0|
+EK|Unit|nil|prot=0|mt=nil|0|
+EK|UnitAbilities|nil|prot=0|mt=nil|0|
+EK|UnitAbilityModifiers|nil|prot=0|mt=nil|0|
+MK|C_City|43|CanRaze:function,GetAllAssignedGovernors:function,GetAmenityAdvice:function,GetAssignedGovernor:function,GetBuildQueue:function,GetBuildingPotentialYield:function,GetBuildingYield:function,GetBuildings:function,GetCitizens:function,GetCityAI:function,GetComponentID:function,GetCulturalIdentity:function,GetCulture:function,GetDistrictID:function,GetDistricts:function,GetGold:function,GetGrowth:function,GetHousingAdvice:function,GetID:function,GetJustConqueredFrom:function,GetLastTransferType:function,GetLocation:function,GetLoyaltyAdvice:function,GetName:function,GetOriginalOwner:function,GetOwner:function,GetOwnerBeforeOccupation:function,GetPopulation:function,GetPower:function,GetPowerAdvice:function,GetProperties:function,GetProperty:function,GetReligion:function,GetTrade:function,GetX:function,GetY:function,GetYield:function,GetYieldToolTip:function,IsCapital:function,IsOccupied:function,IsOriginalCapital:function,TypeName:string,__instances:table
+MK|C_City_P_GetBuildQueue|27|CanProduce:function,GetAt:function,GetBuildingCost:function,GetBuildingProgress:function,GetCity:function,GetConstructionPlot:function,GetConstructionsAtLocation:function,GetCurrentProductionTypeHash:function,GetCurrentProductionTypeModifier:function,GetDistrictCost:function,GetDistrictProgress:function,GetNumEntriesOfProductionTypeHash:function,GetPreviousProductionTypeHash:function,GetProductionYield:function,GetProjectCost:function,GetProjectProgress:function,GetSize:function,GetTurnsLeft:function,GetUnitArmyCost:function,GetUnitCorpsCost:function,GetUnitCost:function,GetUnitProgress:function,GetUnitResourceCost:function,HasBeenPlaced:function,HasProductionProgress:function,TypeName:string,__instances:table
+MK|C_City_P_GetBuildings|18|GetBuildingMaintenance:function,GetBuildingNameOverride:function,GetBuildingTourismFromGreatWorks:function,GetBuildingYieldFromGreatWorks:function,GetBuildingsAtLocation:function,GetCity:function,GetCreatorNameFromIndex:function,GetGreatWorkInSlot:function,GetGreatWorkSlotType:function,GetGreatWorkTypeFromIndex:function,GetNumGreatWorkSlots:function,GetPlayerFromIndex:function,GetTurnFromIndex:function,HasBuilding:function,IsBuildingThemedCorrectly:function,IsPillaged:function,TypeName:string,__instances:table
+MK|C_City_P_GetCitizens|5|IsDisfavoredYield:function,IsFavoredYield:function,IsPlotWorked:function,TypeName:string,__instances:table
+MK|C_City_P_GetCityAI|5|GetBuildRecommendations:function,GetImprovementRecommendations:function,GetImprovementRecommendationsForBuilder:function,TypeName:string,__instances:table
+MK|C_City_P_GetCulturalIdentity|17|GetCityIdentityPressures:function,GetConversionOutcome:function,GetGovernorIdentityPressures:function,GetIdentitySourcesBreakdown:function,GetIdentitySourcesDetailedBreakdown:function,GetLoyalty:function,GetLoyaltyLevel:function,GetLoyaltyPerTurn:function,GetLoyaltyPerTurnFromIdentityPressureRatio:function,GetLoyaltyPerTurnStatus:function,GetMaxLoyalty:function,GetPlayerIdentitiesInCity:function,GetPotentialTransferPlayer:function,GetTurnsToConversion:function,IsAlwaysFullyLoyal:function,TypeName:string,__instances:table
+MK|C_City_P_GetCulture|9|GetCity:function,GetCultureYield:function,GetCurrentCulture:function,GetNextPlot:function,GetNextPlotCultureCost:function,GetTourism:function,GetTurnsUntilExpansion:function,TypeName:string,__instances:table
+MK|C_City_P_GetDistricts|13|FindID:function,GetCount:function,GetDistrict:function,GetNumAllowedDistrictsRequiringPopulation:function,GetNumDistricts:function,GetNumZonedDistrictsRequiringPopulation:function,HasDistrict:function,IsComplete:function,IsContaminated:function,IsPillaged:function,Members:function,TypeName:string,__instances:table
+MK|C_City_P_GetGold|7|CanPlaceUnit:function,GetPlotPurchaseCost:function,GetPurchaseCost:function,IsBuildingFaithPurchaseEnabled:function,IsUnitFaithPurchaseEnabled:function,TypeName:string,__instances:table
+MK|C_City_P_GetGrowth|42|GetAmenities:function,GetAmenitiesFromCityStates:function,GetAmenitiesFromCivics:function,GetAmenitiesFromDistricts:function,GetAmenitiesFromEntertainment:function,GetAmenitiesFromGovernors:function,GetAmenitiesFromGreatPeople:function,GetAmenitiesFromImprovements:function,GetAmenitiesFromLuxuries:function,GetAmenitiesFromNationalParks:function,GetAmenitiesFromNaturalWonders:function,GetAmenitiesFromReligion:function,GetAmenitiesFromStartingEra:function,GetAmenitiesFromTraits:function,GetAmenitiesLostFromBankruptcy:function,GetAmenitiesLostFromWarWeariness:function,GetAmenitiesNeeded:function,GetCity:function,GetFood:function,GetFoodSurplus:function,GetGrowthThreshold:function,GetHappiness:function,GetHappinessGrowthModifier:function,GetHappinessNonFoodYieldModifier:function,GetHousing:function,GetHousingFromBuildings:function,GetHousingFromCivics:function,GetHousingFromDistricts:function,GetHousingFromGreatPeople:function,GetHousingFromGreatWorks:function,GetHousingFromImprovements:function,GetHousingFromStartingEra:function,GetHousingFromWater:function,GetHousingGrowthModifier:function,GetLoyaltyGrowthModifier:function,GetOccupationGrowthModifier:function,GetOtherGrowthModifier:function,GetOverallGrowthModifier:function,GetTurnsUntilGrowth:function,GetTurnsUntilStarvation:function,TypeName:string,__instances:table
+MK|C_City_P_GetPower|14|GetFreePower:function,GetFreePowerSources:function,GetGeneratedPowerSources:function,GetMissingPower:function,GetPlotsCoveredByRegionalPower:function,GetPlotsProvidingPower:function,GetRequiredPower:function,GetRequiredPowerSources:function,GetTemporaryPower:function,GetTemporaryPowerSources:function,IsFullyPowered:function,IsFullyPoweredByActiveProject:function,TypeName:string,__instances:table
+MK|C_City_P_GetReligion|11|GetActivePantheon:function,GetCity:function,GetMajorityReligion:function,GetNextReligion:function,GetPressureFromCity:function,GetReligionsInCity:function,GetReligiousPressureSources:function,GetTotalPressureOnCity:function,GetTurnsToNextReligion:function,TypeName:string,__instances:table
+MK|C_City_P_GetTrade|8|GetCity:function,GetIncomingRoutes:function,GetOutgoingRoutes:function,HasActiveTradingPost:function,HasInactiveTradingPost:function,HasTradeRouteFrom:function,TypeName:string,__instances:table
+MK|C_ContextPtr|0|<non-enumerable CTypeName=LuaContext pairs=2>
+MK|C_Control|0|<non-enumerable CTypeName=ControlBase pairs=1>
+MK|C_EffectsManager|0|<non-enumerable CTypeName=EffectsManager pairs=1>
+MK|C_FeatureGenerator|0|<non-enumerable CTypeName=n/a pairs=9>
+MK|C_Game|0|<non-enumerable CTypeName=n/a pairs=53>
+MK|C_Game_P_GetBarbarianManager|17|GetTribeBribeTurnsRemaining:function,GetTribeCampLocation:function,GetTribeConversionDisabledHelp:function,GetTribeConversionPercent:function,GetTribeConversionPoints:function,GetTribeConversionPointsRequired:function,GetTribeInciteCost:function,GetTribeInciteSourcePlayer:function,GetTribeInciteTargetPlayer:function,GetTribeInciteTargets:function,GetTribeIndexAtLocation:function,GetTribeNameType:function,GetTribeRansomUnit:function,GetTribeType:function,IsClanExcludeUnitType:function,TypeName:string,__instances:table
+MK|C_Game_P_GetCulture|3|GetActiveCivicNodes:function,TypeName:string,__instances:table
+MK|C_Game_P_GetEconomicManager|15|CanHaveCorporation:function,CanHaveIndustry:function,GetCorporationName:function,GetMapResources:function,GetNumControlledResources:function,GetPlayerCorporations:function,GetPlayerIndustries:function,GetResourceMonopolyPlayer:function,HasCorporation:function,HasCorporationOf:function,HasIndustry:function,HasIndustryOf:function,IsResourceMonopoly:function,TypeName:string,__instances:table
+MK|C_Game_P_GetEmergencyManager|5|GetEmergencyInfoTable:function,GetNextBlockingEmergency:function,GetSingleEmergency:function,TypeName:string,__instances:table
+MK|C_Game_P_GetEras|29|GetCurrentEra:function,GetCurrentEraMaximumEndTurn:function,GetCurrentEraMinimumEndTurn:function,GetCurrentEraNumPlayersAsOrLessAdvanced:function,GetCurrentEraNumPlayersMoreAdvanced:function,GetCurrentEraStartTurn:function,GetFinalEra:function,GetNextEraCountdown:function,GetPlayerActiveCommemorations:function,GetPlayerCommemorateChoices:function,GetPlayerComplimentChoices:function,GetPlayerCurrentEraScoreBreakdown:function,GetPlayerCurrentScore:function,GetPlayerDarkAgeThreshold:function,GetPlayerDarkAgeThresholdBreakdown:function,GetPlayerGoldenAgeThreshold:function,GetPlayerGoldenAgeThresholdBreakdown:function,GetPlayerNumAllowedCommemorations:function,GetPlayerPreviousDarkAgeThreshold:function,GetPlayerPreviousEraScoreBreakdown:function,GetPlayerPreviousGoldenAgeThreshold:function,GetPlayerPreviousScore:function,GetPlayerThresholdBaseline:function,HasDarkAge:function,HasGoldenAge:function,HasHeroicGoldenAge:function,IsPlayerAlwaysAllowedCommemorationQuest:function,TypeName:string,__instances:table
+MK|C_Game_P_GetFalloutManager|10|GetFalloutDamageOverride:function,GetFalloutPreventsWork:function,GetFalloutTurnsRemaining:function,GetReactorAccidentThreshold:function,GetReactorAge:function,GetReactorByIndex:function,GetReactorCount:function,HasFallout:function,TypeName:string,__instances:table
+MK|C_Game_P_GetGameDiplomacy|8|GetAllianceBenefitsString:function,GetDenounceTimeLimit:function,GetGrievanceChangePerTurn:function,GetGrievanceChangeTooltip:function,GetGrievanceLogEntries:function,GetMinPeaceDuration:function,TypeName:string,__instances:table
+MK|C_Game_P_GetGossipManager|3|GetRecentVisibleGossipStrings:function,TypeName:string,__instances:table
+MK|C_Game_P_GetGreatPeople|12|CanPatronizePerson:function,CanRecruitPerson:function,CanRejectPerson:function,CountPeopleReceivedByPlayer:function,GetEarnConditionsText:function,GetPastTimeline:function,GetPatronizeCost:function,GetRecruitCost:function,GetRejectCost:function,GetTimeline:function,TypeName:string,__instances:table
+MK|C_Game_P_GetHeroesManager|8|GetHeroClaimPlayer:function,GetHeroClassBaseCharges:function,GetHeroOriginCityID:function,GetPlayerHeroOriginBuildingType:function,GetUnitHeroClass:function,IsHeroDiscovered:function,TypeName:string,__instances:table
+MK|C_Game_P_GetHistoryManager|8|GetAllMomentsData:function,GetMomentCount:function,GetMomentData:function,GetMomentType:function,HasPrideMoments:function,TypeName:string,WritePrideMomentInfo:function,__instances:table
+MK|C_Game_P_GetNationalParks|9|EnumerateNationalParks:function,GetAtIndex:function,GetAtLocation:function,GetCount:function,GetNationalParkName:function,GetPossibleParkTiles:function,IsNationalPark:function,TypeName:string,__instances:table
+MK|C_Game_P_GetQuestsManager|6|GetActiveQuestDescription:function,GetActiveQuestName:function,GetActiveQuestReward:function,HasActiveQuestFromPlayer:function,TypeName:string,__instances:table
+MK|C_Game_P_GetReligion|11|GetMinimumFaithNextPantheon:function,GetName:function,GetReligions:function,HasBeenFounded:function,HasBeliefEachType:function,IsInSomePantheon:function,IsInSomeReligion:function,IsNewTypeForReligion:function,IsTooManyForReligion:function,TypeName:string,__instances:table
+MK|C_Game_P_GetTechs|3|GetActiveTechNodes:function,TypeName:string,__instances:table
+MK|C_Game_P_GetTradeManager|26|CalculateDestinationReligiousPressureFromPotentialRoute:function,CalculateDestinationYieldFromAttachingResource:function,CalculateDestinationYieldFromModifiers:function,CalculateDestinationYieldFromPath:function,CalculateDestinationYieldFromPotentialRoute:function,CalculateDestinationYieldsFromAttachingResource:function,CalculateDestinationYieldsFromModifiers:function,CalculateDestinationYieldsFromPath:function,CalculateDestinationYieldsFromPotentialRoute:function,CalculateOriginReligiousPressureFromPotentialRoute:function,CalculateOriginYieldFromAttachingResource:function,CalculateOriginYieldFromModifiers:function,CalculateOriginYieldFromPath:function,CalculateOriginYieldFromPotentialRoute:function,CalculateOriginYieldsFromAttachingResource:function,CalculateOriginYieldsFromModifiers:function,CalculateOriginYieldsFromPath:function,CalculateOriginYieldsFromPotentialRoute:function,CalculateYieldFromIncomingRoutes:function,CalculateYieldFromOutgoingRoutes:function,CanStartRoute:function,CanStartRouteWithResource:function,GetTradeRoutePath:function,IsRouteAllowed:function,TypeName:string,__instances:table
+MK|C_Game_P_GetWorldCongress|11|GetEmergencies:function,GetMeetingStatus:function,GetPreviousVotesOnResolution:function,GetProposals:function,GetResolutions:function,GetReview:function,GetTurnsUntilSpecialSessionAllowed:function,GetVotesandFavorCost:function,IsInSession:function,TypeName:string,__instances:table
+MK|C_GenerationalInstanceManager|0|<non-enumerable CTypeName=n/a pairs=5>
+MK|C_IconManager|0|<non-enumerable CTypeName=IconManager pairs=1>
+MK|C_InstanceManager|0|<non-enumerable CTypeName=n/a pairs=12>
+MK|C_NaturalWonderGenerator|0|<non-enumerable CTypeName=n/a pairs=5>
+MK|C_Player|47|CanUnreadyTurn:function,GetAgendaTypes:function,GetAgendasAndVisibilities:function,GetCategoryScore:function,GetCities:function,GetCivilianLoyalty:function,GetComponentID:function,GetCulture:function,GetDiplomacy:function,GetDiplomaticAI:function,GetDistricts:function,GetEra:function,GetFavor:function,GetFavorEnteringCongress:function,GetFavorPerTurn:function,GetFavorPerTurnToolTip:function,GetGovernors:function,GetGrandStrategicAI:function,GetGreatPeoplePoints:function,GetID:function,GetImprovements:function,GetInfluence:function,GetInfluenceMap:function,GetProperties:function,GetProperty:function,GetReligion:function,GetResources:function,GetScore:function,GetStats:function,GetTeam:function,GetTechs:function,GetTrade:function,GetTreasury:function,GetUnits:function,GetWMDs:function,IsAI:function,IsAlive:function,IsBarbarian:function,IsFreeCities:function,IsHuman:function,IsMajor:function,IsMinor:function,IsTurnActive:function,IsTurnActiveComplete:function,TypeName:string,WasEverAlive:function,__instances:table
+MK|C_PlayerConfiguration|0|<non-enumerable CTypeName=n/a pairs=55>
+MK|C_Player_P_GetCities|11|FindClosest:function,FindID:function,GetCapitalCity:function,GetCount:function,GetFirstRangedAttackCity:function,GetNextCapturedCity:function,GetNextRebelledCity:function,IsCityWithinRange:function,Members:function,TypeName:string,__instances:table
+MK|C_Player_P_GetCulture|69|CanChangeGovernment:function,CanChangeGovernmentAtAll:function,CanPolicyBeSlotted:function,CanProgress:function,CanSlotPolicy:function,CanTriggerBoost:function,CivicCompletedThisTurn:function,CivicUnlocksGovernment:function,GetAnarchyEndTurn:function,GetAnarchyTurns:function,GetAutoThemedBuilding:function,GetCivicCompletedThisTurn:function,GetCivicPath:function,GetCivicQueue:function,GetCostToUnlockPolicies:function,GetCulturalProgress:function,GetCultureCost:function,GetCultureYield:function,GetCultureYieldToolTip:function,GetCurrentGovernment:function,GetEnactPolicyCost:function,GetExtraTradeRouteTourismModifier:function,GetFlatBonus:function,GetGreatWorksInCity:function,GetIncrementingBonus:function,GetIncrementingBonusIncrement:function,GetIncrementingBonusInterval:function,GetIncrementingBonusTurnsUntilNext:function,GetLifetimeCulture:function,GetNumPoliciesUnlocked:function,GetNumPolicySlots:function,GetNumPolicySlotsOpen:function,GetPolicyToUnlock:function,GetProgressingCivic:function,GetSlotPolicy:function,GetSlotType:function,GetStaycationers:function,GetTourismAt:function,GetTourismTooltipAt:function,GetTouristsAt:function,GetTouristsFrom:function,GetTouristsFromTooltip:function,GetTouristsTo:function,GetTurnsLeft:function,GetTurnsToProgressCivic:function,GetTurnsUntilDominant:function,GetTurnsUntilVictory:function,GovernmentChangeConsidered:function,GovernmentChangeMade:function,HasBoostBeenTriggered:function,HasCivic:function,IsAutoThemedEligible:function,IsCivicRevealed:function,IsDominantOver:function,IsEverAutoThemable:function,IsGovernmentUnlocked:function,IsInAnarchy:function,IsPolicyActive:function,IsPolicyBanned:function,IsPolicyObsolete:function,IsPolicyUnlocked:function,PolicyChangeMade:function,RequestChangeGovernment:function,RequestClearSlot:function,RequestEnactPolicy:function,RequestPolicyChanges:function,SetGovernmentChangeConsidered:function,TypeName:string,__instances:table
+MK|C_Player_P_GetDiplomacy|50|CalcFavorPerTurnFromAlliances:function,CanDeclareWarOn:function,CanLiberateCityTo:function,CanMakePeaceWith:function,ComputeCityWarmongerPoints:function,ComputeDOWWarmongerPoints:function,ComputeResearchAgreementTurns:function,GetAllianceLevel:function,GetAlliancePointsPerTurn:function,GetAlliancePointsTooltip:function,GetAllianceTurnsThisLevel:function,GetAllianceTurnsToNextLevel:function,GetAllianceTurnsUntilExpiration:function,GetAllianceType:function,GetAtWarChangeTurn:function,GetDeclaredFriendshipTurn:function,GetDenounceTurn:function,GetDiplomaticActionCost:function,GetGrievancesAgainst:function,GetMetTurn:function,GetMission:function,GetNextEscapingSpyID:function,GetNextPursuedSpyID:function,GetNthCapturedSpy:function,GetNthOffMapSpy:function,GetNumPlayersMet:function,GetNumSpiesCaptured:function,GetNumSpiesOffMap:function,GetPlayersMet:function,GetPlayersMetIDs:function,GetRecentMissions:function,GetResearchAgreementTech:function,GetSourceTurnsRemaining:function,GetSpyCapacity:function,GetVisibilityOn:function,GetWarmongerLevel:function,HasDefensivePact:function,HasDelegationAt:function,HasEmbassyAt:function,HasMet:function,HasOpenBordersFrom:function,IsAtWarWith:function,IsAtWarWithHumans:function,IsDiplomaticActionValid:function,IsFightingAnyJointWarWith:function,IsFightingJointWarAgainst:function,IsPromiseMade:function,IsVisibilitySourceActive:function,TypeName:string,__instances:table
+MK|C_Player_P_GetDiplomaticAI|11|GetDealItemDesirability:function,GetDealItemDesirabilityString:function,GetDiplomaticModifiers:function,GetDiplomaticScore:function,GetDiplomaticStateIndex:function,GetThreatFrom:function,GetThreatString:function,GetTrustFrom:function,GetTrustString:function,TypeName:string,__instances:table
+MK|C_Player_P_GetDistricts|5|FindID:function,GetCount:function,Members:function,TypeName:string,__instances:table
+MK|C_Player_P_GetGovernors|23|CanAppoint:function,CanAppointGovernor:function,CanAssignGovernor:function,CanEarnPromotion:function,CanEverAppointGovernor:function,CanPromote:function,CanPromoteGovernor:function,GetAssignedCity:function,GetAssignedGovernor:function,GetBaseTurnsUntilEstablished:function,GetGovernor:function,GetGovernorList:function,GetGovernorPoints:function,GetGovernorPointsSpent:function,GetSecretSociety:function,GetTurnsToEstablish:function,HasGovernor:function,HasTitleBeenConsidered:function,IsAwareOfSecretSociety:function,IsGovernorEstablished:function,SetTitleConsidered:function,TypeName:string,__instances:table
+MK|C_Player_P_GetGrandStrategicAI|5|GetCivicsRecommendations:function,GetSettlementRecommendations:function,GetTechRecommendations:function,TypeName:string,__instances:table
+MK|C_Player_P_GetGreatPeoplePoints|5|GetPointsPerTurn:function,GetPointsTotal:function,IsNoPatronageWith:function,TypeName:string,__instances:table
+MK|C_Player_P_GetImprovements|3|GetImprovementPlots:function,TypeName:string,__instances:table
+MK|C_Player_P_GetInfluence|20|CanGiveInfluence:function,CanGiveTokensToPlayer:function,CanLevyMilitary:function,CanReceiveInfluence:function,GetLevyMilitaryCost:function,GetLevyTurnCounter:function,GetLevyTurnLimit:function,GetMostTokensReceived:function,GetPointsEarned:function,GetPointsPerTurn:function,GetPointsThreshold:function,GetSuzerain:function,GetTokensPerThreshold:function,GetTokensReceived:function,GetTokensToGive:function,IsGivingTokensConsidered:function,IsSuzerainUniqueBonusDisabled:function,SetGivingTokensConsidered:function,TypeName:string,__instances:table
+MK|C_Player_P_GetInfluenceMap|3|Find:function,TypeName:string,__instances:table
+MK|C_Player_P_GetReligion|14|CanAfford:function,CanCreatePantheon:function,GetFaithBalance:function,GetFaithYield:function,GetFaithYieldToolTip:function,GetHolyCityID:function,GetNumBeliefsEarned:function,GetPantheon:function,GetReligionInMajorityOfCities:function,GetReligionTypeCreated:function,HasLaunchedInquisition:function,HasReligiousFoundingUnit:function,TypeName:string,__instances:table
+MK|C_Player_P_GetResources|19|GetBonusResourcePerTurn:function,GetCityResourceAllocations:function,GetExportedResourceAmount:function,GetPowerResourceDemandPerTurn:function,GetReservedResourceAmount:function,GetResourceAccumulationPerTurn:function,GetResourceAllocationCities:function,GetResourceAmount:function,GetResourceImportPerTurn:function,GetResourceStockpileCap:function,GetResourcesExtractedByCity:function,GetUnitResourceDemandPerTurn:function,HasExportedResource:function,HasResource:function,IsResourceBanned:function,IsResourceExtractableAt:function,IsResourceVisible:function,TypeName:string,__instances:table
+MK|C_Player_P_GetStats|17|GetDiplomaticVictoryPoints:function,GetDiplomaticVictoryPointsTooltip:function,GetHasRevivedPlayer:function,GetMilitaryStrength:function,GetMilitaryStrengthWithoutTreasury:function,GetNumBuildingsOfType:function,GetNumCitiesFollowingReligion:function,GetNumCivicsCompleted:function,GetNumProjectsAdvanced:function,GetNumTechsResearched:function,GetScienceVictoryPoints:function,GetScienceVictoryPointsPerTurn:function,GetScienceVictoryPointsTotalNeeded:function,GetTourism:function,GetTourismToolTip:function,TypeName:string,__instances:table
+MK|C_Player_P_GetTechs|19|CanResearch:function,CanTriggerBoost:function,GetResearchCost:function,GetResearchPath:function,GetResearchProgress:function,GetResearchQueue:function,GetResearchingTech:function,GetScienceYield:function,GetScienceYieldToolTip:function,GetTurnsLeft:function,GetTurnsToResearch:function,HasBoostBeenTriggered:function,HasTech:function,IsResearchingTech:function,IsTechRevealed:function,ResearchQueue:function,ResearchQueueAux:function,TypeName:string,__instances:table
+MK|C_Player_P_GetTrade|8|CalcFavorPerTurnFromTradePartners:function,GetInternationalYieldModifier:function,GetLandRangeRefuel:function,GetNumOutgoingRoutes:function,GetOutgoingRouteCapacity:function,GetWaterRangeRefuel:function,TypeName:string,__instances:table
+MK|C_Player_P_GetTreasury|13|CanAfford:function,GetBuildingMaintenance:function,GetDistrictMaintenance:function,GetGoldBalance:function,GetGoldYield:function,GetGoldYieldToolTip:function,GetMaintDiscountPerUnit:function,GetTotalMaintenance:function,GetTotalMaintenanceToolTip:function,GetUnitMaintenance:function,GetWMDMaintenance:function,TypeName:string,__instances:table
+MK|C_Player_P_GetUnits|8|FindID:function,GetCount:function,GetFirstReadyUnit:function,GetNextExtractingArchaeologist:function,GetProcessingState:function,Members:function,TypeName:string,__instances:table
+MK|C_Player_P_GetWMDs|4|CanDeployWMD:function,GetWeaponCount:function,TypeName:string,__instances:table
+MK|C_Plot|90|CanHaveDistrict:function,CanHaveWonder:function,GetAdjacencyBonusTooltip:function,GetAdjacencyBonusType:function,GetAdjacencyYield:function,GetAirUnits:function,GetAppeal:function,GetArea:function,GetAreaID:function,GetComponentID:function,GetContinentType:function,GetDefenseModifier:function,GetDistrictID:function,GetDistrictType:function,GetFeature:function,GetFeatureType:function,GetImprovementOwner:function,GetImprovementType:function,GetIndex:function,GetMovementCost:function,GetNationalParkName:function,GetNearestLandArea:function,GetNearestLandPlot:function,GetOwner:function,GetProperty:function,GetResourceCount:function,GetResourceType:function,GetResourceTypeHash:function,GetRiverCrossingCount:function,GetRiverEFlowDirection:function,GetRiverSEFlowDirection:function,GetRiverSWFlowDirection:function,GetRouteType:function,GetTerrainClassType:function,GetTerrainType:function,GetUnitCount:function,GetWonderType:function,GetWorkerCount:function,GetX:function,GetY:function,GetYield:function,HasFeatureBeenAdded:function,IsAdjacentOwned:function,IsAdjacentPlayer:function,IsAdjacentToArea:function,IsAdjacentToLand:function,IsAdjacentToShallowWater:function,IsAt:function,IsCanyon:function,IsChokepoint:function,IsCity:function,IsCoastalLand:function,IsFlatlands:function,IsFreshWater:function,IsHills:function,IsImpassable:function,IsImprovementPillaged:function,IsInternalOnlyDistrict:function,IsLake:function,IsMountain:function,IsNEOfCliff:function,IsNEOfRiver:function,IsNWOfCliff:function,IsNWOfRiver:function,IsNationalPark:function,IsNaturalWonder:function,IsNone:function,IsOpenGround:function,IsOwned:function,IsRiver:function,IsRiverAdjacent:function,IsRiverConnection:function,IsRiverCrossing:function,IsRiverCrossingFlowClockwise:function,IsRiverCrossingToPlot:function,IsRiverSide:function,IsRoughGround:function,IsRoute:function,IsRoutePillaged:function,IsShallowWater:function,IsStartingPlot:function,IsUnit:function,IsValidFoundLocation:function,IsWOfCliff:function,IsWOfRiver:function,IsWater:function,IsWonderComplete:function,SharesAdjacentArea:function,TypeName:string,__instances:table
+MK|C_Plot_P_GetArea|16|GetBoundaries:function,GetID:function,GetImprovementCount:function,GetPlotCount:function,GetResourceCount:function,GetRiverEdgeCount:function,GetTotalImprovements:function,GetTotalNaturalWonders:function,GetTotalResources:function,HasNoFlatCoast:function,IsCanyons:function,IsMountains:function,IsNone:function,IsWater:function,TypeName:string,__instances:table
+MK|C_Plot_P_GetFeature|5|GetDirection:function,GetPlots:function,GetType:function,TypeName:string,__instances:table
+MK|C_PopupDialog|0|<non-enumerable CTypeName=n/a pairs=37>
+MK|C_PopupDialogInGame|0|<non-enumerable CTypeName=n/a pairs=14>
+MK|C_PullDownInstanceManager|5|BuildInstance:function,GetInstance:function,ResetInstances:function,__index:table,new:function
+MK|C_TTManager|0|<non-enumerable CTypeName=ToolTipManager pairs=1>
+MK|C_Territories|0|<non-enumerable CTypeName=n/a pairs=5>
+MK|C_Territories_P_GetTerritoryAt|15|GetBoundaries:function,GetCentroid:function,GetFeatureCount:function,GetID:function,GetName:function,GetPlotCount:function,GetRiverEdgeCount:function,GetTerrainClass:function,GetTotalFeatures:function,GetTotalNaturalWonders:function,IsLake:function,IsNone:function,IsSea:function,TypeName:string,__instances:table
+MK|C_TouchManager|0|<non-enumerable CTypeName=TouchManager pairs=1>
+MK|C_TunerUtilities|0|<non-enumerable CTypeName=n/a pairs=58>
+MK|C_UI|0|<non-enumerable CTypeName=n/a pairs=0>
+MK|C_UIManager|0|<non-enumerable CTypeName=UIManager pairs=1>
+MK|C_UITutorialManager|0|<non-enumerable CTypeName=TutorialManager pairs=1>
+MK|C_UI_P_GetGameParameters|7|Add:function,Get:function,GetValue:function,Remove:function,SetValue:function,TypeName:string,__instances:table
+MK|C_Unit|73|GetAbility:function,GetActionCharges:function,GetAirSlots:function,GetAirUnits:function,GetAntiAirCombat:function,GetArchaeology:function,GetArchaeologyHomeCity:function,GetAttacksRemaining:function,GetBarbarianTargetPlayer:function,GetBarbarianTribeIndex:function,GetBombardCombat:function,GetBuildCharges:function,GetCombat:function,GetComponentID:function,GetDamage:function,GetDisasterCharges:function,GetExperience:function,GetFormationClass:function,GetFormationID:function,GetFormationMaxMoves:function,GetFormationMovesRemaining:function,GetFormationUnitCount:function,GetFortifyTurns:function,GetGreatPerson:function,GetGreatWorkIndex:function,GetHeroClassType:function,GetID:function,GetLocation:function,GetLootName:function,GetMaxDamage:function,GetMaxMoves:function,GetMilitaryFormation:function,GetMovementMovesRemaining:function,GetMovesRemaining:function,GetName:function,GetOriginalOwner:function,GetOwner:function,GetParkCharges:function,GetPlotId:function,GetProperties:function,GetProperty:function,GetPursuingSpyName:function,GetRange:function,GetRangedCombat:function,GetReligionType:function,GetReligiousHealCharges:function,GetReligiousStrength:function,GetRockBand:function,GetSpreadCharges:function,GetSpyOperation:function,GetSpyOperationEndTurn:function,GetTrade:function,GetType:function,GetUnitType:function,GetUpgradeCost:function,GetUpgradeResourceCost:function,GetX:function,GetY:function,HasHiddenVisibility:function,HasMovedIntoZOC:function,HasPendingOperations:function,IgnoresZOC:function,IsAutomated:function,IsCannotAttack:function,IsDead:function,IsDelayedDeath:function,IsEmbarked:function,IsHuman:function,IsReadyToAutomate:function,IsReadyToMove:function,IsReadyToSelect:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetAbility|3|GetAbilities:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetArchaeology|9|GetActivationHighlightPlots:function,GetAreaHighlightPlots:function,GetArtifactIndex:function,GetGreatWorkIndex:function,GetHomeBuilding:function,GetHomeCityID:function,GetUnit:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetExperience|9|GetExperienceForNextLevel:function,GetExperiencePoints:function,GetLevel:function,GetPromotions:function,GetUnit:function,GetVeteranName:function,HasPromotion:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetGreatPerson|12|GetActionCharges:function,GetActivationHighlightPlots:function,GetAreaHighlightPlots:function,GetClass:function,GetIndividual:function,GetPassiveEffectText:function,GetPassiveNameText:function,GetUnit:function,HasPassiveEffect:function,IsGreatPerson:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetRockBand|9|GetActivationHighlightPlots:function,GetAlbumSales:function,GetAreaHighlightPlots:function,GetRockBandLevel:function,GetUnit:function,IsMaxLevel:function,IsMaxPromotions:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetTrade|4|GetLastDestinationTradeCityComponentID:function,GetLastOriginTradeCityComponentID:function,TypeName:string,__instances:table
+MK|C_WorldBuilder|0|<non-enumerable CTypeName=n/a pairs=1>
+EK|UnitAiInfos|nil|prot=0|mt=nil|0|
+EK|UnitCaptures|nil|prot=0|mt=nil|0|
+EK|UnitCommands|nil|prot=0|mt=nil|0|
+EK|UnitManager|table|prot=0|mt=nil|0|
+EK|UnitNames|nil|prot=0|mt=nil|0|
+EK|UnitOperations|nil|prot=0|mt=nil|0|
+EK|UnitPromotionClasses|nil|prot=0|mt=nil|0|
+EK|UnitPromotionModifiers|nil|prot=0|mt=nil|0|
+EK|UnitPromotionPrereqs|nil|prot=0|mt=nil|0|
+EK|UnitPromotions|nil|prot=0|mt=nil|0|
+EK|UnitReplaces|nil|prot=0|mt=nil|0|
+EK|Units|table|prot=0|mt=nil|0|
+EK|Units_XP2|nil|prot=0|mt=nil|0|
+EK|UserConfiguration|table|prot=0|mt=nil|0|
+EK|Victories|nil|prot=0|mt=nil|0|
+EK|VotedEffects|nil|prot=0|mt=nil|0|
+EK|WMDs|nil|prot=0|mt=nil|0|
+EK|WorldBuilder|table|prot=0|mt=nil|0|
+EK|WorldBuilderResourceGenerator|nil|prot=0|mt=nil|0|
+EK|WorldView|table|prot=0|mt=nil|0|
+EK|Yields|nil|prot=0|mt=nil|0|
+EK|g_ToolTipGenerators|table|prot=0|mt=nil|0|
+EK|json|nil|prot=0|mt=nil|0|
+EK|math|table|prot=1|mt=boolean|0|
+EK|os|table|prot=1|mt=boolean|0|
+EK|serialize|table|prot=0|mt=nil|0|
+MK|C_City|43|CanRaze:function,GetAllAssignedGovernors:function,GetAmenityAdvice:function,GetAssignedGovernor:function,GetBuildQueue:function,GetBuildingPotentialYield:function,GetBuildingYield:function,GetBuildings:function,GetCitizens:function,GetCityAI:function,GetComponentID:function,GetCulturalIdentity:function,GetCulture:function,GetDistrictID:function,GetDistricts:function,GetGold:function,GetGrowth:function,GetHousingAdvice:function,GetID:function,GetJustConqueredFrom:function,GetLastTransferType:function,GetLocation:function,GetLoyaltyAdvice:function,GetName:function,GetOriginalOwner:function,GetOwner:function,GetOwnerBeforeOccupation:function,GetPopulation:function,GetPower:function,GetPowerAdvice:function,GetProperties:function,GetProperty:function,GetReligion:function,GetTrade:function,GetX:function,GetY:function,GetYield:function,GetYieldToolTip:function,IsCapital:function,IsOccupied:function,IsOriginalCapital:function,TypeName:string,__instances:table
+MK|C_City_P_GetBuildQueue|27|CanProduce:function,GetAt:function,GetBuildingCost:function,GetBuildingProgress:function,GetCity:function,GetConstructionPlot:function,GetConstructionsAtLocation:function,GetCurrentProductionTypeHash:function,GetCurrentProductionTypeModifier:function,GetDistrictCost:function,GetDistrictProgress:function,GetNumEntriesOfProductionTypeHash:function,GetPreviousProductionTypeHash:function,GetProductionYield:function,GetProjectCost:function,GetProjectProgress:function,GetSize:function,GetTurnsLeft:function,GetUnitArmyCost:function,GetUnitCorpsCost:function,GetUnitCost:function,GetUnitProgress:function,GetUnitResourceCost:function,HasBeenPlaced:function,HasProductionProgress:function,TypeName:string,__instances:table
+MK|C_City_P_GetBuildings|18|GetBuildingMaintenance:function,GetBuildingNameOverride:function,GetBuildingTourismFromGreatWorks:function,GetBuildingYieldFromGreatWorks:function,GetBuildingsAtLocation:function,GetCity:function,GetCreatorNameFromIndex:function,GetGreatWorkInSlot:function,GetGreatWorkSlotType:function,GetGreatWorkTypeFromIndex:function,GetNumGreatWorkSlots:function,GetPlayerFromIndex:function,GetTurnFromIndex:function,HasBuilding:function,IsBuildingThemedCorrectly:function,IsPillaged:function,TypeName:string,__instances:table
+MK|C_City_P_GetCitizens|5|IsDisfavoredYield:function,IsFavoredYield:function,IsPlotWorked:function,TypeName:string,__instances:table
+MK|C_City_P_GetCityAI|5|GetBuildRecommendations:function,GetImprovementRecommendations:function,GetImprovementRecommendationsForBuilder:function,TypeName:string,__instances:table
+MK|C_City_P_GetCulturalIdentity|17|GetCityIdentityPressures:function,GetConversionOutcome:function,GetGovernorIdentityPressures:function,GetIdentitySourcesBreakdown:function,GetIdentitySourcesDetailedBreakdown:function,GetLoyalty:function,GetLoyaltyLevel:function,GetLoyaltyPerTurn:function,GetLoyaltyPerTurnFromIdentityPressureRatio:function,GetLoyaltyPerTurnStatus:function,GetMaxLoyalty:function,GetPlayerIdentitiesInCity:function,GetPotentialTransferPlayer:function,GetTurnsToConversion:function,IsAlwaysFullyLoyal:function,TypeName:string,__instances:table
+MK|C_City_P_GetCulture|9|GetCity:function,GetCultureYield:function,GetCurrentCulture:function,GetNextPlot:function,GetNextPlotCultureCost:function,GetTourism:function,GetTurnsUntilExpansion:function,TypeName:string,__instances:table
+MK|C_City_P_GetDistricts|13|FindID:function,GetCount:function,GetDistrict:function,GetNumAllowedDistrictsRequiringPopulation:function,GetNumDistricts:function,GetNumZonedDistrictsRequiringPopulation:function,HasDistrict:function,IsComplete:function,IsContaminated:function,IsPillaged:function,Members:function,TypeName:string,__instances:table
+MK|C_City_P_GetGold|7|CanPlaceUnit:function,GetPlotPurchaseCost:function,GetPurchaseCost:function,IsBuildingFaithPurchaseEnabled:function,IsUnitFaithPurchaseEnabled:function,TypeName:string,__instances:table
+MK|C_City_P_GetGrowth|42|GetAmenities:function,GetAmenitiesFromCityStates:function,GetAmenitiesFromCivics:function,GetAmenitiesFromDistricts:function,GetAmenitiesFromEntertainment:function,GetAmenitiesFromGovernors:function,GetAmenitiesFromGreatPeople:function,GetAmenitiesFromImprovements:function,GetAmenitiesFromLuxuries:function,GetAmenitiesFromNationalParks:function,GetAmenitiesFromNaturalWonders:function,GetAmenitiesFromReligion:function,GetAmenitiesFromStartingEra:function,GetAmenitiesFromTraits:function,GetAmenitiesLostFromBankruptcy:function,GetAmenitiesLostFromWarWeariness:function,GetAmenitiesNeeded:function,GetCity:function,GetFood:function,GetFoodSurplus:function,GetGrowthThreshold:function,GetHappiness:function,GetHappinessGrowthModifier:function,GetHappinessNonFoodYieldModifier:function,GetHousing:function,GetHousingFromBuildings:function,GetHousingFromCivics:function,GetHousingFromDistricts:function,GetHousingFromGreatPeople:function,GetHousingFromGreatWorks:function,GetHousingFromImprovements:function,GetHousingFromStartingEra:function,GetHousingFromWater:function,GetHousingGrowthModifier:function,GetLoyaltyGrowthModifier:function,GetOccupationGrowthModifier:function,GetOtherGrowthModifier:function,GetOverallGrowthModifier:function,GetTurnsUntilGrowth:function,GetTurnsUntilStarvation:function,TypeName:string,__instances:table
+MK|C_City_P_GetPower|14|GetFreePower:function,GetFreePowerSources:function,GetGeneratedPowerSources:function,GetMissingPower:function,GetPlotsCoveredByRegionalPower:function,GetPlotsProvidingPower:function,GetRequiredPower:function,GetRequiredPowerSources:function,GetTemporaryPower:function,GetTemporaryPowerSources:function,IsFullyPowered:function,IsFullyPoweredByActiveProject:function,TypeName:string,__instances:table
+MK|C_City_P_GetReligion|11|GetActivePantheon:function,GetCity:function,GetMajorityReligion:function,GetNextReligion:function,GetPressureFromCity:function,GetReligionsInCity:function,GetReligiousPressureSources:function,GetTotalPressureOnCity:function,GetTurnsToNextReligion:function,TypeName:string,__instances:table
+MK|C_City_P_GetTrade|8|GetCity:function,GetIncomingRoutes:function,GetOutgoingRoutes:function,HasActiveTradingPost:function,HasInactiveTradingPost:function,HasTradeRouteFrom:function,TypeName:string,__instances:table
+MK|C_ContextPtr|0|<non-enumerable CTypeName=LuaContext pairs=2>
+MK|C_Control|0|<non-enumerable CTypeName=ControlBase pairs=1>
+MK|C_EffectsManager|0|<non-enumerable CTypeName=EffectsManager pairs=1>
+MK|C_FeatureGenerator|0|<non-enumerable CTypeName=n/a pairs=9>
+MK|C_Game|0|<non-enumerable CTypeName=n/a pairs=53>
+MK|C_Game_P_GetBarbarianManager|17|GetTribeBribeTurnsRemaining:function,GetTribeCampLocation:function,GetTribeConversionDisabledHelp:function,GetTribeConversionPercent:function,GetTribeConversionPoints:function,GetTribeConversionPointsRequired:function,GetTribeInciteCost:function,GetTribeInciteSourcePlayer:function,GetTribeInciteTargetPlayer:function,GetTribeInciteTargets:function,GetTribeIndexAtLocation:function,GetTribeNameType:function,GetTribeRansomUnit:function,GetTribeType:function,IsClanExcludeUnitType:function,TypeName:string,__instances:table
+MK|C_Game_P_GetCulture|3|GetActiveCivicNodes:function,TypeName:string,__instances:table
+MK|C_Game_P_GetEconomicManager|15|CanHaveCorporation:function,CanHaveIndustry:function,GetCorporationName:function,GetMapResources:function,GetNumControlledResources:function,GetPlayerCorporations:function,GetPlayerIndustries:function,GetResourceMonopolyPlayer:function,HasCorporation:function,HasCorporationOf:function,HasIndustry:function,HasIndustryOf:function,IsResourceMonopoly:function,TypeName:string,__instances:table
+MK|C_Game_P_GetEmergencyManager|5|GetEmergencyInfoTable:function,GetNextBlockingEmergency:function,GetSingleEmergency:function,TypeName:string,__instances:table
+MK|C_Game_P_GetEras|29|GetCurrentEra:function,GetCurrentEraMaximumEndTurn:function,GetCurrentEraMinimumEndTurn:function,GetCurrentEraNumPlayersAsOrLessAdvanced:function,GetCurrentEraNumPlayersMoreAdvanced:function,GetCurrentEraStartTurn:function,GetFinalEra:function,GetNextEraCountdown:function,GetPlayerActiveCommemorations:function,GetPlayerCommemorateChoices:function,GetPlayerComplimentChoices:function,GetPlayerCurrentEraScoreBreakdown:function,GetPlayerCurrentScore:function,GetPlayerDarkAgeThreshold:function,GetPlayerDarkAgeThresholdBreakdown:function,GetPlayerGoldenAgeThreshold:function,GetPlayerGoldenAgeThresholdBreakdown:function,GetPlayerNumAllowedCommemorations:function,GetPlayerPreviousDarkAgeThreshold:function,GetPlayerPreviousEraScoreBreakdown:function,GetPlayerPreviousGoldenAgeThreshold:function,GetPlayerPreviousScore:function,GetPlayerThresholdBaseline:function,HasDarkAge:function,HasGoldenAge:function,HasHeroicGoldenAge:function,IsPlayerAlwaysAllowedCommemorationQuest:function,TypeName:string,__instances:table
+MK|C_Game_P_GetFalloutManager|10|GetFalloutDamageOverride:function,GetFalloutPreventsWork:function,GetFalloutTurnsRemaining:function,GetReactorAccidentThreshold:function,GetReactorAge:function,GetReactorByIndex:function,GetReactorCount:function,HasFallout:function,TypeName:string,__instances:table
+MK|C_Game_P_GetGameDiplomacy|8|GetAllianceBenefitsString:function,GetDenounceTimeLimit:function,GetGrievanceChangePerTurn:function,GetGrievanceChangeTooltip:function,GetGrievanceLogEntries:function,GetMinPeaceDuration:function,TypeName:string,__instances:table
+MK|C_Game_P_GetGossipManager|3|GetRecentVisibleGossipStrings:function,TypeName:string,__instances:table
+MK|C_Game_P_GetGreatPeople|12|CanPatronizePerson:function,CanRecruitPerson:function,CanRejectPerson:function,CountPeopleReceivedByPlayer:function,GetEarnConditionsText:function,GetPastTimeline:function,GetPatronizeCost:function,GetRecruitCost:function,GetRejectCost:function,GetTimeline:function,TypeName:string,__instances:table
+MK|C_Game_P_GetHeroesManager|8|GetHeroClaimPlayer:function,GetHeroClassBaseCharges:function,GetHeroOriginCityID:function,GetPlayerHeroOriginBuildingType:function,GetUnitHeroClass:function,IsHeroDiscovered:function,TypeName:string,__instances:table
+MK|C_Game_P_GetHistoryManager|8|GetAllMomentsData:function,GetMomentCount:function,GetMomentData:function,GetMomentType:function,HasPrideMoments:function,TypeName:string,WritePrideMomentInfo:function,__instances:table
+MK|C_Game_P_GetNationalParks|9|EnumerateNationalParks:function,GetAtIndex:function,GetAtLocation:function,GetCount:function,GetNationalParkName:function,GetPossibleParkTiles:function,IsNationalPark:function,TypeName:string,__instances:table
+MK|C_Game_P_GetQuestsManager|6|GetActiveQuestDescription:function,GetActiveQuestName:function,GetActiveQuestReward:function,HasActiveQuestFromPlayer:function,TypeName:string,__instances:table
+MK|C_Game_P_GetReligion|11|GetMinimumFaithNextPantheon:function,GetName:function,GetReligions:function,HasBeenFounded:function,HasBeliefEachType:function,IsInSomePantheon:function,IsInSomeReligion:function,IsNewTypeForReligion:function,IsTooManyForReligion:function,TypeName:string,__instances:table
+MK|C_Game_P_GetTechs|3|GetActiveTechNodes:function,TypeName:string,__instances:table
+MK|C_Game_P_GetTradeManager|26|CalculateDestinationReligiousPressureFromPotentialRoute:function,CalculateDestinationYieldFromAttachingResource:function,CalculateDestinationYieldFromModifiers:function,CalculateDestinationYieldFromPath:function,CalculateDestinationYieldFromPotentialRoute:function,CalculateDestinationYieldsFromAttachingResource:function,CalculateDestinationYieldsFromModifiers:function,CalculateDestinationYieldsFromPath:function,CalculateDestinationYieldsFromPotentialRoute:function,CalculateOriginReligiousPressureFromPotentialRoute:function,CalculateOriginYieldFromAttachingResource:function,CalculateOriginYieldFromModifiers:function,CalculateOriginYieldFromPath:function,CalculateOriginYieldFromPotentialRoute:function,CalculateOriginYieldsFromAttachingResource:function,CalculateOriginYieldsFromModifiers:function,CalculateOriginYieldsFromPath:function,CalculateOriginYieldsFromPotentialRoute:function,CalculateYieldFromIncomingRoutes:function,CalculateYieldFromOutgoingRoutes:function,CanStartRoute:function,CanStartRouteWithResource:function,GetTradeRoutePath:function,IsRouteAllowed:function,TypeName:string,__instances:table
+MK|C_Game_P_GetWorldCongress|11|GetEmergencies:function,GetMeetingStatus:function,GetPreviousVotesOnResolution:function,GetProposals:function,GetResolutions:function,GetReview:function,GetTurnsUntilSpecialSessionAllowed:function,GetVotesandFavorCost:function,IsInSession:function,TypeName:string,__instances:table
+MK|C_GenerationalInstanceManager|0|<non-enumerable CTypeName=n/a pairs=5>
+MK|C_IconManager|0|<non-enumerable CTypeName=IconManager pairs=1>
+MK|C_InstanceManager|0|<non-enumerable CTypeName=n/a pairs=12>
+MK|C_NaturalWonderGenerator|0|<non-enumerable CTypeName=n/a pairs=5>
+MK|C_Player|47|CanUnreadyTurn:function,GetAgendaTypes:function,GetAgendasAndVisibilities:function,GetCategoryScore:function,GetCities:function,GetCivilianLoyalty:function,GetComponentID:function,GetCulture:function,GetDiplomacy:function,GetDiplomaticAI:function,GetDistricts:function,GetEra:function,GetFavor:function,GetFavorEnteringCongress:function,GetFavorPerTurn:function,GetFavorPerTurnToolTip:function,GetGovernors:function,GetGrandStrategicAI:function,GetGreatPeoplePoints:function,GetID:function,GetImprovements:function,GetInfluence:function,GetInfluenceMap:function,GetProperties:function,GetProperty:function,GetReligion:function,GetResources:function,GetScore:function,GetStats:function,GetTeam:function,GetTechs:function,GetTrade:function,GetTreasury:function,GetUnits:function,GetWMDs:function,IsAI:function,IsAlive:function,IsBarbarian:function,IsFreeCities:function,IsHuman:function,IsMajor:function,IsMinor:function,IsTurnActive:function,IsTurnActiveComplete:function,TypeName:string,WasEverAlive:function,__instances:table
+MK|C_PlayerConfiguration|0|<non-enumerable CTypeName=n/a pairs=55>
+MK|C_Player_P_GetCities|11|FindClosest:function,FindID:function,GetCapitalCity:function,GetCount:function,GetFirstRangedAttackCity:function,GetNextCapturedCity:function,GetNextRebelledCity:function,IsCityWithinRange:function,Members:function,TypeName:string,__instances:table
+MK|C_Player_P_GetCulture|69|CanChangeGovernment:function,CanChangeGovernmentAtAll:function,CanPolicyBeSlotted:function,CanProgress:function,CanSlotPolicy:function,CanTriggerBoost:function,CivicCompletedThisTurn:function,CivicUnlocksGovernment:function,GetAnarchyEndTurn:function,GetAnarchyTurns:function,GetAutoThemedBuilding:function,GetCivicCompletedThisTurn:function,GetCivicPath:function,GetCivicQueue:function,GetCostToUnlockPolicies:function,GetCulturalProgress:function,GetCultureCost:function,GetCultureYield:function,GetCultureYieldToolTip:function,GetCurrentGovernment:function,GetEnactPolicyCost:function,GetExtraTradeRouteTourismModifier:function,GetFlatBonus:function,GetGreatWorksInCity:function,GetIncrementingBonus:function,GetIncrementingBonusIncrement:function,GetIncrementingBonusInterval:function,GetIncrementingBonusTurnsUntilNext:function,GetLifetimeCulture:function,GetNumPoliciesUnlocked:function,GetNumPolicySlots:function,GetNumPolicySlotsOpen:function,GetPolicyToUnlock:function,GetProgressingCivic:function,GetSlotPolicy:function,GetSlotType:function,GetStaycationers:function,GetTourismAt:function,GetTourismTooltipAt:function,GetTouristsAt:function,GetTouristsFrom:function,GetTouristsFromTooltip:function,GetTouristsTo:function,GetTurnsLeft:function,GetTurnsToProgressCivic:function,GetTurnsUntilDominant:function,GetTurnsUntilVictory:function,GovernmentChangeConsidered:function,GovernmentChangeMade:function,HasBoostBeenTriggered:function,HasCivic:function,IsAutoThemedEligible:function,IsCivicRevealed:function,IsDominantOver:function,IsEverAutoThemable:function,IsGovernmentUnlocked:function,IsInAnarchy:function,IsPolicyActive:function,IsPolicyBanned:function,IsPolicyObsolete:function,IsPolicyUnlocked:function,PolicyChangeMade:function,RequestChangeGovernment:function,RequestClearSlot:function,RequestEnactPolicy:function,RequestPolicyChanges:function,SetGovernmentChangeConsidered:function,TypeName:string,__instances:table
+MK|C_Player_P_GetDiplomacy|50|CalcFavorPerTurnFromAlliances:function,CanDeclareWarOn:function,CanLiberateCityTo:function,CanMakePeaceWith:function,ComputeCityWarmongerPoints:function,ComputeDOWWarmongerPoints:function,ComputeResearchAgreementTurns:function,GetAllianceLevel:function,GetAlliancePointsPerTurn:function,GetAlliancePointsTooltip:function,GetAllianceTurnsThisLevel:function,GetAllianceTurnsToNextLevel:function,GetAllianceTurnsUntilExpiration:function,GetAllianceType:function,GetAtWarChangeTurn:function,GetDeclaredFriendshipTurn:function,GetDenounceTurn:function,GetDiplomaticActionCost:function,GetGrievancesAgainst:function,GetMetTurn:function,GetMission:function,GetNextEscapingSpyID:function,GetNextPursuedSpyID:function,GetNthCapturedSpy:function,GetNthOffMapSpy:function,GetNumPlayersMet:function,GetNumSpiesCaptured:function,GetNumSpiesOffMap:function,GetPlayersMet:function,GetPlayersMetIDs:function,GetRecentMissions:function,GetResearchAgreementTech:function,GetSourceTurnsRemaining:function,GetSpyCapacity:function,GetVisibilityOn:function,GetWarmongerLevel:function,HasDefensivePact:function,HasDelegationAt:function,HasEmbassyAt:function,HasMet:function,HasOpenBordersFrom:function,IsAtWarWith:function,IsAtWarWithHumans:function,IsDiplomaticActionValid:function,IsFightingAnyJointWarWith:function,IsFightingJointWarAgainst:function,IsPromiseMade:function,IsVisibilitySourceActive:function,TypeName:string,__instances:table
+MK|C_Player_P_GetDiplomaticAI|11|GetDealItemDesirability:function,GetDealItemDesirabilityString:function,GetDiplomaticModifiers:function,GetDiplomaticScore:function,GetDiplomaticStateIndex:function,GetThreatFrom:function,GetThreatString:function,GetTrustFrom:function,GetTrustString:function,TypeName:string,__instances:table
+MK|C_Player_P_GetDistricts|5|FindID:function,GetCount:function,Members:function,TypeName:string,__instances:table
+MK|C_Player_P_GetGovernors|23|CanAppoint:function,CanAppointGovernor:function,CanAssignGovernor:function,CanEarnPromotion:function,CanEverAppointGovernor:function,CanPromote:function,CanPromoteGovernor:function,GetAssignedCity:function,GetAssignedGovernor:function,GetBaseTurnsUntilEstablished:function,GetGovernor:function,GetGovernorList:function,GetGovernorPoints:function,GetGovernorPointsSpent:function,GetSecretSociety:function,GetTurnsToEstablish:function,HasGovernor:function,HasTitleBeenConsidered:function,IsAwareOfSecretSociety:function,IsGovernorEstablished:function,SetTitleConsidered:function,TypeName:string,__instances:table
+MK|C_Player_P_GetGrandStrategicAI|5|GetCivicsRecommendations:function,GetSettlementRecommendations:function,GetTechRecommendations:function,TypeName:string,__instances:table
+MK|C_Player_P_GetGreatPeoplePoints|5|GetPointsPerTurn:function,GetPointsTotal:function,IsNoPatronageWith:function,TypeName:string,__instances:table
+MK|C_Player_P_GetImprovements|3|GetImprovementPlots:function,TypeName:string,__instances:table
+MK|C_Player_P_GetInfluence|20|CanGiveInfluence:function,CanGiveTokensToPlayer:function,CanLevyMilitary:function,CanReceiveInfluence:function,GetLevyMilitaryCost:function,GetLevyTurnCounter:function,GetLevyTurnLimit:function,GetMostTokensReceived:function,GetPointsEarned:function,GetPointsPerTurn:function,GetPointsThreshold:function,GetSuzerain:function,GetTokensPerThreshold:function,GetTokensReceived:function,GetTokensToGive:function,IsGivingTokensConsidered:function,IsSuzerainUniqueBonusDisabled:function,SetGivingTokensConsidered:function,TypeName:string,__instances:table
+MK|C_Player_P_GetInfluenceMap|3|Find:function,TypeName:string,__instances:table
+MK|C_Player_P_GetReligion|14|CanAfford:function,CanCreatePantheon:function,GetFaithBalance:function,GetFaithYield:function,GetFaithYieldToolTip:function,GetHolyCityID:function,GetNumBeliefsEarned:function,GetPantheon:function,GetReligionInMajorityOfCities:function,GetReligionTypeCreated:function,HasLaunchedInquisition:function,HasReligiousFoundingUnit:function,TypeName:string,__instances:table
+MK|C_Player_P_GetResources|19|GetBonusResourcePerTurn:function,GetCityResourceAllocations:function,GetExportedResourceAmount:function,GetPowerResourceDemandPerTurn:function,GetReservedResourceAmount:function,GetResourceAccumulationPerTurn:function,GetResourceAllocationCities:function,GetResourceAmount:function,GetResourceImportPerTurn:function,GetResourceStockpileCap:function,GetResourcesExtractedByCity:function,GetUnitResourceDemandPerTurn:function,HasExportedResource:function,HasResource:function,IsResourceBanned:function,IsResourceExtractableAt:function,IsResourceVisible:function,TypeName:string,__instances:table
+MK|C_Player_P_GetStats|17|GetDiplomaticVictoryPoints:function,GetDiplomaticVictoryPointsTooltip:function,GetHasRevivedPlayer:function,GetMilitaryStrength:function,GetMilitaryStrengthWithoutTreasury:function,GetNumBuildingsOfType:function,GetNumCitiesFollowingReligion:function,GetNumCivicsCompleted:function,GetNumProjectsAdvanced:function,GetNumTechsResearched:function,GetScienceVictoryPoints:function,GetScienceVictoryPointsPerTurn:function,GetScienceVictoryPointsTotalNeeded:function,GetTourism:function,GetTourismToolTip:function,TypeName:string,__instances:table
+MK|C_Player_P_GetTechs|19|CanResearch:function,CanTriggerBoost:function,GetResearchCost:function,GetResearchPath:function,GetResearchProgress:function,GetResearchQueue:function,GetResearchingTech:function,GetScienceYield:function,GetScienceYieldToolTip:function,GetTurnsLeft:function,GetTurnsToResearch:function,HasBoostBeenTriggered:function,HasTech:function,IsResearchingTech:function,IsTechRevealed:function,ResearchQueue:function,ResearchQueueAux:function,TypeName:string,__instances:table
+MK|C_Player_P_GetTrade|8|CalcFavorPerTurnFromTradePartners:function,GetInternationalYieldModifier:function,GetLandRangeRefuel:function,GetNumOutgoingRoutes:function,GetOutgoingRouteCapacity:function,GetWaterRangeRefuel:function,TypeName:string,__instances:table
+MK|C_Player_P_GetTreasury|13|CanAfford:function,GetBuildingMaintenance:function,GetDistrictMaintenance:function,GetGoldBalance:function,GetGoldYield:function,GetGoldYieldToolTip:function,GetMaintDiscountPerUnit:function,GetTotalMaintenance:function,GetTotalMaintenanceToolTip:function,GetUnitMaintenance:function,GetWMDMaintenance:function,TypeName:string,__instances:table
+MK|C_Player_P_GetUnits|8|FindID:function,GetCount:function,GetFirstReadyUnit:function,GetNextExtractingArchaeologist:function,GetProcessingState:function,Members:function,TypeName:string,__instances:table
+MK|C_Player_P_GetWMDs|4|CanDeployWMD:function,GetWeaponCount:function,TypeName:string,__instances:table
+MK|C_Plot|90|CanHaveDistrict:function,CanHaveWonder:function,GetAdjacencyBonusTooltip:function,GetAdjacencyBonusType:function,GetAdjacencyYield:function,GetAirUnits:function,GetAppeal:function,GetArea:function,GetAreaID:function,GetComponentID:function,GetContinentType:function,GetDefenseModifier:function,GetDistrictID:function,GetDistrictType:function,GetFeature:function,GetFeatureType:function,GetImprovementOwner:function,GetImprovementType:function,GetIndex:function,GetMovementCost:function,GetNationalParkName:function,GetNearestLandArea:function,GetNearestLandPlot:function,GetOwner:function,GetProperty:function,GetResourceCount:function,GetResourceType:function,GetResourceTypeHash:function,GetRiverCrossingCount:function,GetRiverEFlowDirection:function,GetRiverSEFlowDirection:function,GetRiverSWFlowDirection:function,GetRouteType:function,GetTerrainClassType:function,GetTerrainType:function,GetUnitCount:function,GetWonderType:function,GetWorkerCount:function,GetX:function,GetY:function,GetYield:function,HasFeatureBeenAdded:function,IsAdjacentOwned:function,IsAdjacentPlayer:function,IsAdjacentToArea:function,IsAdjacentToLand:function,IsAdjacentToShallowWater:function,IsAt:function,IsCanyon:function,IsChokepoint:function,IsCity:function,IsCoastalLand:function,IsFlatlands:function,IsFreshWater:function,IsHills:function,IsImpassable:function,IsImprovementPillaged:function,IsInternalOnlyDistrict:function,IsLake:function,IsMountain:function,IsNEOfCliff:function,IsNEOfRiver:function,IsNWOfCliff:function,IsNWOfRiver:function,IsNationalPark:function,IsNaturalWonder:function,IsNone:function,IsOpenGround:function,IsOwned:function,IsRiver:function,IsRiverAdjacent:function,IsRiverConnection:function,IsRiverCrossing:function,IsRiverCrossingFlowClockwise:function,IsRiverCrossingToPlot:function,IsRiverSide:function,IsRoughGround:function,IsRoute:function,IsRoutePillaged:function,IsShallowWater:function,IsStartingPlot:function,IsUnit:function,IsValidFoundLocation:function,IsWOfCliff:function,IsWOfRiver:function,IsWater:function,IsWonderComplete:function,SharesAdjacentArea:function,TypeName:string,__instances:table
+MK|C_Plot_P_GetArea|16|GetBoundaries:function,GetID:function,GetImprovementCount:function,GetPlotCount:function,GetResourceCount:function,GetRiverEdgeCount:function,GetTotalImprovements:function,GetTotalNaturalWonders:function,GetTotalResources:function,HasNoFlatCoast:function,IsCanyons:function,IsMountains:function,IsNone:function,IsWater:function,TypeName:string,__instances:table
+MK|C_Plot_P_GetFeature|5|GetDirection:function,GetPlots:function,GetType:function,TypeName:string,__instances:table
+MK|C_PopupDialog|0|<non-enumerable CTypeName=n/a pairs=37>
+MK|C_PopupDialogInGame|0|<non-enumerable CTypeName=n/a pairs=14>
+MK|C_PullDownInstanceManager|5|BuildInstance:function,GetInstance:function,ResetInstances:function,__index:table,new:function
+MK|C_TTManager|0|<non-enumerable CTypeName=ToolTipManager pairs=1>
+MK|C_Territories|0|<non-enumerable CTypeName=n/a pairs=5>
+MK|C_Territories_P_GetTerritoryAt|15|GetBoundaries:function,GetCentroid:function,GetFeatureCount:function,GetID:function,GetName:function,GetPlotCount:function,GetRiverEdgeCount:function,GetTerrainClass:function,GetTotalFeatures:function,GetTotalNaturalWonders:function,IsLake:function,IsNone:function,IsSea:function,TypeName:string,__instances:table
+MK|C_TouchManager|0|<non-enumerable CTypeName=TouchManager pairs=1>
+MK|C_TunerUtilities|0|<non-enumerable CTypeName=n/a pairs=58>
+MK|C_UI|0|<non-enumerable CTypeName=n/a pairs=0>
+MK|C_UIManager|0|<non-enumerable CTypeName=UIManager pairs=1>
+MK|C_UITutorialManager|0|<non-enumerable CTypeName=TutorialManager pairs=1>
+MK|C_UI_P_GetGameParameters|7|Add:function,Get:function,GetValue:function,Remove:function,SetValue:function,TypeName:string,__instances:table
+MK|C_Unit|73|GetAbility:function,GetActionCharges:function,GetAirSlots:function,GetAirUnits:function,GetAntiAirCombat:function,GetArchaeology:function,GetArchaeologyHomeCity:function,GetAttacksRemaining:function,GetBarbarianTargetPlayer:function,GetBarbarianTribeIndex:function,GetBombardCombat:function,GetBuildCharges:function,GetCombat:function,GetComponentID:function,GetDamage:function,GetDisasterCharges:function,GetExperience:function,GetFormationClass:function,GetFormationID:function,GetFormationMaxMoves:function,GetFormationMovesRemaining:function,GetFormationUnitCount:function,GetFortifyTurns:function,GetGreatPerson:function,GetGreatWorkIndex:function,GetHeroClassType:function,GetID:function,GetLocation:function,GetLootName:function,GetMaxDamage:function,GetMaxMoves:function,GetMilitaryFormation:function,GetMovementMovesRemaining:function,GetMovesRemaining:function,GetName:function,GetOriginalOwner:function,GetOwner:function,GetParkCharges:function,GetPlotId:function,GetProperties:function,GetProperty:function,GetPursuingSpyName:function,GetRange:function,GetRangedCombat:function,GetReligionType:function,GetReligiousHealCharges:function,GetReligiousStrength:function,GetRockBand:function,GetSpreadCharges:function,GetSpyOperation:function,GetSpyOperationEndTurn:function,GetTrade:function,GetType:function,GetUnitType:function,GetUpgradeCost:function,GetUpgradeResourceCost:function,GetX:function,GetY:function,HasHiddenVisibility:function,HasMovedIntoZOC:function,HasPendingOperations:function,IgnoresZOC:function,IsAutomated:function,IsCannotAttack:function,IsDead:function,IsDelayedDeath:function,IsEmbarked:function,IsHuman:function,IsReadyToAutomate:function,IsReadyToMove:function,IsReadyToSelect:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetAbility|3|GetAbilities:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetArchaeology|9|GetActivationHighlightPlots:function,GetAreaHighlightPlots:function,GetArtifactIndex:function,GetGreatWorkIndex:function,GetHomeBuilding:function,GetHomeCityID:function,GetUnit:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetExperience|9|GetExperienceForNextLevel:function,GetExperiencePoints:function,GetLevel:function,GetPromotions:function,GetUnit:function,GetVeteranName:function,HasPromotion:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetGreatPerson|12|GetActionCharges:function,GetActivationHighlightPlots:function,GetAreaHighlightPlots:function,GetClass:function,GetIndividual:function,GetPassiveEffectText:function,GetPassiveNameText:function,GetUnit:function,HasPassiveEffect:function,IsGreatPerson:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetRockBand|9|GetActivationHighlightPlots:function,GetAlbumSales:function,GetAreaHighlightPlots:function,GetRockBandLevel:function,GetUnit:function,IsMaxLevel:function,IsMaxPromotions:function,TypeName:string,__instances:table
+MK|C_Unit_P_GetTrade|4|GetLastDestinationTradeCityComponentID:function,GetLastOriginTradeCityComponentID:function,TypeName:string,__instances:table
+MK|C_WorldBuilder|0|<non-enumerable CTypeName=n/a pairs=1>

@@ -1,0 +1,45 @@
+{
+  "tools/_paths.py": {
+    "usage": "python _paths.py        # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）"
+  },
+  "scripts/check_pantry.py": {
+    "usage": "python check_pantry.py <工程根> [--tex-dir Textures] [--quiet]",
+    "purpose": "pantry 体检：`.tex` 位置 / 重名 / depot 库路径 / 非 ASCII / `.tex`↔`.dds` 配对 —— 开 AssetEditor / cook 前必跑。（注：其中 `m_SourceFilePath` 期望 `D:\\desktop\\<stem>.png` 这一条是**示例工程（作者 mod 工程）的约定**，不是 Civ6 通用规则；别的工程会命中 `[src-convention]` 告警，按你自己工程的约定判断即可。）"
+  },
+  "scripts/clear_ae_cache.py": {
+    "usage": "python clear_ae_cache.py [--mod <ModName>] [--dry-run]        # 动过贴图后必跑，否则 AssetEditor 结论是缓存假象"
+  },
+  "_comment": "docstring/argparse 抽不出人话的少数脚本在这里覆盖；覆盖值参与生成，重跑不会丢。键 = 相对 skill 根的路径。",
+  "release/scripts/clash_proxy.py": {
+    "purpose": "Clash Verge 代理节点测速与自动选优（上传工坊网络差时用）",
+    "usage": "python clash_proxy.py [--url <工坊链接>] [--timeout 3000] [--max-workers 8]（测完自动选最优节点为 GLOBAL，无关闭开关）"
+  },
+  "release/scripts/cleanup.ps1": {
+    "purpose": "删除临时上传工作区（真上传成功并验证后才跑）",
+    "usage": "powershell -File cleanup.ps1 -Workspace $env:TEMP\\civ6-ws\\<ModName>"
+  },
+  "release/scripts/build.ps1": {
+    "purpose": "构建非 Trimmed 版 Civ6WorkshopUploader（勿用 PublishTrimmed，会卡 PreparingContent）",
+    "usage": "powershell -File build.ps1（内部 dotnet publish -c Release -r win-x64）"
+  },
+  "release/scripts/validate.ps1": {
+    "purpose": "上传前 validate 工作区（exit 0 才允许 upload）",
+    "usage": "powershell -File validate.ps1 -Workspace <工作区>"
+  },
+  "release/scripts/upload.ps1": {
+    "purpose": "上传 / 更新工坊条目（日志默认写 <tool目录>\\logs）",
+    "usage": "powershell -File upload.ps1 -Workspace <工作区> [-TimeoutSeconds 1800]"
+  },
+  "release/scripts/verify.ps1": {
+    "purpose": "上传后经 Steam API 验证（比对 time_updated / hcontent_file，识别假成功）",
+    "usage": "powershell -File verify.ps1 -ItemId <工坊条目ID>"
+  },
+  "release/scripts/find_item_id.ps1": {
+    "purpose": "从本机 Steam 日志反查工坊条目 ID",
+    "usage": "powershell -File find_item_id.ps1 -ModName <ModName>"
+  },
+  "release/scripts/clash_api.ps1": {
+    "purpose": "Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应）",
+    "usage": "powershell -File clash_api.ps1 -Method GET -Path \"/proxies\" -OutFile resp.txt"
+  }
+}

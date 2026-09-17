@@ -1,0 +1,282 @@
+{
+ "Q-CityGetBuildingsGetBuildingsAtLocation": {
+  "id": "Q-CityGetBuildingsGetBuildingsAtLocation",
+  "type": "QUERY",
+  "table": "City",
+  "functionA": "GetBuildings",
+  "invoke": "Colon (Instance)",
+  "availability": "UI",
+  "functionB": "GetBuildingsAtLocation",
+  "displayName": "City:GetBuildings():GetBuildingsAtLocation()",
+  "notes": [
+   "[作用] 返回指定单元格上属于该城市的所有建筑类型索引数组",
+   "返回的建筑类型索引可用作 GameInfo.Buildings 的键",
+   "只能获取已建成的建筑，未建成的建筑可以使用 GetConstructionsAtLocation"
+  ],
+  "functionC": ""
+ },
+ "A-CityGetBuildQueueAddProgress": {
+  "id": "A-CityGetBuildQueueAddProgress",
+  "type": "ACTION",
+  "table": "City",
+  "functionA": "GetBuildQueue",
+  "invoke": "Colon (Instance)",
+  "availability": "GamePlay",
+  "functionB": "AddProgress",
+  "displayName": "City:GetBuildQueue():AddProgress()",
+  "notes": [
+   "[作用] 为城市当前生产项增加一定数量的生产力进度",
+   "GetBuildQueue() 可能返回 nil，调用前需要判空",
+   "[注意] 如果生产项有增产/减产效果，amount 的值也会被相应增加/减少。例如，如果生产开拓者时 +50% 生产力，AddProgress(100) 会增加 150 点生产进度；如果生产开拓者时 -50% 生产力，AddProgress(100) 只会增加 50 点生产进度",
+   "amount 的值可以为负数，此时会降低生产进度，甚至可以将生产进度降低至负数（此时需要更多生产力才能完成生产）"
+  ]
+ },
+ "Q-CityGetBuildQueueCurrentlyBuilding": {
+  "id": "Q-CityGetBuildQueueCurrentlyBuilding",
+  "type": "QUERY",
+  "table": "City",
+  "functionA": "GetBuildQueue",
+  "invoke": "Colon (Instance)",
+  "availability": "GamePlay",
+  "functionB": "CurrentlyBuilding",
+  "displayName": "City:GetBuildQueue():CurrentlyBuilding()",
+  "notes": [
+   "[作用] 获取城市当前正在建造的内容的类型 ID",
+   "返回值可用于索引 GameInfo.Buildings、GameInfo.Districts、GameInfo.Units、GameInfo.Projects 等配置表",
+   "城市没有生产任务时返回 \"NONE\""
+  ]
+ },
+ "A-CityGetBuildQueueFinishProgress": {
+  "id": "A-CityGetBuildQueueFinishProgress",
+  "type": "ACTION",
+  "table": "City",
+  "functionA": "GetBuildQueue",
+  "invoke": "Colon (Instance)",
+  "availability": "GamePlay",
+  "functionB": "FinishProgress",
+  "displayName": "City:GetBuildQueue():FinishProgress()",
+  "notes": [
+   "[作用] 试图完成城市当前正在建造的项目",
+   "[注意] FinishProgress 有时无法真正完成生产。如果生产项有减产效果，FinishProgress 只会推进生产项的部分生产进度。例如，如果生产开拓者时 -50% 生产力，且开拓者剩余成本是 100，FinishProgress 最终只会增加 50 点生产进度，不会完成生产。详情可查看 AddProgress 函数"
+  ]
+ },
+ "Q-CityGetBuildQueueGetConstructionsAtLocation": {
+  "id": "Q-CityGetBuildQueueGetConstructionsAtLocation",
+  "type": "QUERY",
+  "table": "City",
+  "functionA": "GetBuildQueue",
+  "invoke": "Colon (Instance)",
+  "availability": "UI",
+  "functionB": "GetConstructionsAtLocation",
+  "displayName": "City:GetBuildQueue():GetConstructionsAtLocation()",
+  "notes": [
+   "[作用] 查询城市在指定单元格上的建造队列中的建筑类型索引数组",
+   "GetBuildQueue() 可能返回 nil，调用前需判空",
+   "返回值为 table，每个元素是建筑类型索引（number），可用于 GameInfo.Buildings[] 查找",
+   "只能获取尚未建成的建筑，获取已建成建筑可使用 GetBuildingsAtLocation"
+  ],
+  "functionC": ""
+ },
+ "Q-CityGetBuildQueueGetTurnsLeft": {
+  "id": "Q-CityGetBuildQueueGetTurnsLeft",
+  "type": "QUERY",
+  "table": "City",
+  "functionA": "GetBuildQueue",
+  "invoke": "Colon (Instance)",
+  "availability": "UI",
+  "functionB": "GetTurnsLeft",
+  "displayName": "City:GetBuildQueue():GetTurnsLeft()",
+  "notes": [
+   "[作用] 获取城市建造队列中生产项目的剩余回合数",
+   "无参数调用时返回当前正在生产的项目剩余回合",
+   "传入生产项目类型时可查询特定项目的剩余回合",
+   "单位生产时可通过第二个参数指定军事编队类型"
+  ],
+  "functionC": ""
+ },
+ "Q-CityGetDistrictsGetDistrict": {
+  "id": "Q-CityGetDistrictsGetDistrict",
+  "type": "QUERY",
+  "table": "City",
+  "functionA": "GetDistricts",
+  "invoke": "Colon (Instance)",
+  "availability": "Both",
+  "functionB": "GetDistrict",
+  "displayName": "City:GetDistricts():GetDistrict()",
+  "notes": [
+   "[作用] 根据区域类型获取城市中的指定区域对象",
+   "需要先调用 GetDistricts() 获取区域管理器",
+   "返回值可能为 nil，需要判空",
+   "能够获取到尚未建造完成的区域地基"
+  ],
+  "functionC": ""
+ },
+ "Q-CityGetDistrictsGetDistrictGetLocation": {
+  "id": "Q-CityGetDistrictsGetDistrictGetLocation",
+  "type": "QUERY",
+  "table": "City",
+  "functionA": "GetDistricts",
+  "invoke": "Colon (Instance)",
+  "availability": "Both",
+  "functionB": "GetDistrict",
+  "functionC": "GetLocation",
+  "displayName": "City:GetDistricts():GetDistrict():GetLocation()",
+  "notes": [
+   "[作用] 获取城市指定区域的所在位置坐标",
+   "GetDistrict 的参数为区域类型索引（GameInfo.Districts 中的 Index 值）",
+   "GetDistrict 可能返回 nil（城市未建造该区域时）",
+   "返回的 location 对象包含 .x 和 .y 字段"
+  ]
+ },
+ "Q-CityGetGrowthGetHousingGrowthModifier": {
+  "id": "Q-CityGetGrowthGetHousingGrowthModifier",
+  "type": "QUERY",
+  "table": "City",
+  "functionA": "GetGrowth",
+  "invoke": "Colon (Instance)",
+  "availability": "UI",
+  "functionB": "GetHousingGrowthModifier",
+  "displayName": "City:GetGrowth():GetHousingGrowthModifier()",
+  "notes": [
+   "[作用] 获取住房对城市人口增长速度的倍率修正系数",
+   "返回值对应城市详情面板的住房状态"
+  ],
+  "functionC": ""
+ },
+ "Q-PlayerGetCultureIsPolicyActive": {
+  "id": "Q-PlayerGetCultureIsPolicyActive",
+  "type": "QUERY",
+  "table": "Player",
+  "functionA": "GetCulture",
+  "invoke": "Colon (Instance)",
+  "availability": "Both",
+  "functionB": "IsPolicyActive",
+  "displayName": "Player:GetCulture():IsPolicyActive()",
+  "notes": [
+   "[作用] 检查玩家是否激活了指定的政策卡",
+   "policyIndex 通过 GameInfo.Policies 获取"
+  ],
+  "functionC": ""
+ },
+ "A-PlayerGetDiplomacyDeclareWarOn": {
+  "id": "A-PlayerGetDiplomacyDeclareWarOn",
+  "type": "ACTION",
+  "table": "Player",
+  "functionA": "GetDiplomacy",
+  "invoke": "Colon (Instance)",
+  "availability": "GamePlay",
+  "functionB": "DeclareWarOn",
+  "displayName": "Player:GetDiplomacy():DeclareWarOn()",
+  "notes": [
+   "[作用] 向目标玩家宣战",
+   "第三个参数 isSurprise 通常为 true，表示突袭战争",
+   "可向团队队友或自己（参数 targetPlayerID 填自己的玩家 ID）宣战，这会导致团队所有成员相互宣战"
+  ],
+  "functionC": ""
+ },
+ "Q-PlayerGetDiplomacyGetVisibilityOn": {
+  "id": "Q-PlayerGetDiplomacyGetVisibilityOn",
+  "type": "QUERY",
+  "table": "Player",
+  "functionA": "GetDiplomacy",
+  "invoke": "Colon (Instance)",
+  "availability": "Both",
+  "functionB": "GetVisibilityOn",
+  "displayName": "Player:GetDiplomacy():GetVisibilityOn()",
+  "notes": [
+   "[作用] 查询当前玩家对目标玩家的外交可见性级别",
+   "返回值为 DiplomaticVisibilityTypes 枚举值，可与 GameInfo.Visibilities 表比较获取具体信息",
+   "有多种调用方式，也可以传递 targetPlayer: object 参数"
+  ],
+  "functionC": ""
+ },
+ "A-PlayerGetDiplomacySetVisibilityOn": {
+  "id": "A-PlayerGetDiplomacySetVisibilityOn",
+  "type": "ACTION",
+  "table": "Player",
+  "functionA": "GetDiplomacy",
+  "invoke": "Colon (Instance)",
+  "availability": "GamePlay",
+  "functionB": "SetVisibilityOn",
+  "displayName": "Player:GetDiplomacy():SetVisibilityOn()",
+  "notes": [
+   "[作用] 设置当前玩家对目标玩家的外交可见性级别"
+  ]
+ },
+ "Q-PlotHasFeatureBeenAdded": {
+  "id": "Q-PlotHasFeatureBeenAdded",
+  "type": "QUERY",
+  "table": "Plot",
+  "functionA": "HasFeatureBeenAdded",
+  "invoke": "Colon (Instance)",
+  "availability": "Both",
+  "displayName": "Plot:HasFeatureBeenAdded()",
+  "notes": [
+   "[作用] 判断单元格是否为人造地貌（例如建造者建造的人造林）",
+   "用于区分原始森林和人造林等场景",
+   "一旦单元格的地貌变为人造的（例如建造者建造过人造林），此单元格的 HasFeatureBeenAdded 永久为 true（即便当前已无地貌）。之后不管此单元格是何种地貌，都会被视作人造地貌（例如人造雨林）"
+  ]
+ },
+ "Q-PlotIsLake": {
+  "id": "Q-PlotIsLake",
+  "type": "QUERY",
+  "table": "Plot",
+  "functionA": "IsLake",
+  "invoke": "Colon (Instance)",
+  "availability": "Both",
+  "displayName": "Plot:IsLake()",
+  "notes": [
+   "[作用] 判断 Plot 是否为湖泊（Lake）",
+   "常与 IsWater() 组合使用，如 Plot:IsWater() and not Plot:IsLake() 判断是否为海洋/海岸",
+   "在地图标签系统中用于筛选湖泊进行标注"
+  ],
+  "functionB": "",
+  "functionC": ""
+ },
+ "Q-PlotIsWater": {
+  "id": "Q-PlotIsWater",
+  "type": "QUERY",
+  "table": "Plot",
+  "functionA": "IsWater",
+  "invoke": "Colon (Instance)",
+  "availability": "Both",
+  "displayName": "Plot:IsWater()",
+  "notes": [
+   "[作用] 判断单元格是否为水域（海洋、海岸、湖泊）",
+   "可与 IsLake() 组合使用，判断单元格是否为海洋/海岸"
+  ],
+  "functionB": "",
+  "functionC": ""
+ },
+ "A-UnitManagerInitUnitValidAdjacentHex": {
+  "id": "A-UnitManagerInitUnitValidAdjacentHex",
+  "type": "ACTION",
+  "table": "UnitManager",
+  "functionA": "InitUnitValidAdjacentHex",
+  "invoke": "Dot (Global)",
+  "availability": "GamePlay",
+  "displayName": "UnitManager.InitUnitValidAdjacentHex()",
+  "notes": [
+   "[作用] 在指定坐标周围的有效相邻格中生成单位",
+   "第 5 个参数控制单位生成在坐标的第几环。例如，为 0 时强制生成在坐标处，为 1 时强制生成在坐标第 1 环"
+  ]
+ },
+ "A-UIRequestPlayerOperation": {
+  "id": "A-UIRequestPlayerOperation",
+  "type": "ACTION",
+  "table": "UI",
+  "functionA": "RequestPlayerOperation",
+  "invoke": "Dot (Global)",
+  "availability": "UI",
+  "displayName": "UI.RequestPlayerOperation()",
+  "notes": [
+   "[作用] UI 向 Gameplay 发送操作请求",
+   "无返回值，通过参数表传递操作所需的全部数据",
+   "常用操作类型：EXECUTE_SCRIPT（执行自定义Lua脚本）、BRIBE_CLAN/HIRE_CLAN/RANSOM_CLAN/INCITE_CLAN（蛮族部落）、APPOINT_GOVERNOR/ASSIGN_GOVERNOR/PROMOTE_GOVERNOR（总督）、ACCEPT_EMERGENCY/REJECT_EMERGENCY（紧急事件）、COMMEMORATE（纪念）、UNLOCK_POLICIES（解锁政策）、START_OBSERVER_MODE（观察者模式）",
+   "参数表的key是 PlayerOperations 常量，如 PARAM_PLOT_ONE、PARAM_OTHER_PLAYER、PARAM_GOVERNOR_TYPE 等",
+   "发送操作请求的玩家（orderPlayerID）和实际执行操作的玩家可以不同：通过 parameters 传递一个或多个实际执行操作的玩家 ID。操作将在 orderPlayerID 玩家的回合内执行"
+  ],
+  "functionB": "",
+  "functionC": ""
+ }
+}

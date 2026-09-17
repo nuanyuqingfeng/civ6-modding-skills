@@ -1,0 +1,24 @@
+API                                        | CSV_GP    QA_GP     | CSV_UI    QA_UI     | 结论
+--------------------------------------------------------------------------------------------------------
+Plot.IsWater                               | function  function  | function  function  | OK 一致
+GameEffects.GetModifierArgumentString      | function  function  | function  function  | OK 一致
+Unit.GetFormationUnitIDs                   | function  function  | nil       nil       | OK 一致
+UI.GetCursorNearestPlotEdge                | ERR       nil       | function  function  | OK 一致
+DiplomacyManager.CloseSession              | ERR       nil       | function  function  | OK 一致
+Game.SetWinningTeam                        | function  function  | nil       nil       | OK 一致
+FeatureGenerator.AddJunglesAtPlot          | ERR       nil       | function  function  | OK 一致
+TunerUtilities.GetParentID                 | ERR       nil       | function  nil       | EXPECTED 差异（扫描后已复原 include 模块）
+InstanceManager.DestroyInstances           | ERR       nil       | function  nil       | EXPECTED 差异（扫描后已复原 include 模块）
+GameSummary.HasDataSetValues               | function  function  | function  function  | OK 一致
+Events.Begin2KLoginProcess                 | table     table     | table     table     | OK 一致
+TerrainBuilder.SetResourceType             | nil       nil       | ERR       nil       | OK 一致
+UnitManager.GetUnitType                    | nil       nil       | nil       nil       | OK 一致
+PlayerVisibility.IsVisible                 | function  function  | ERR       nil       | OK 一致
+PlayerVisibility.IsRevealed                | function  function  | ERR       nil       | OK 一致
+UI.ZoomMap                                 | ERR       nil       | nil       nil       | OK 一致
+Map.GetImprovementBuilder                  | nil       nil       | nil       nil       | OK 一致
+Cities.DestroyCity                         | function  function  | nil       nil       | OK 一致
+Locale.Lookup                              | function  function  | function  function  | OK 一致
+GameInfo.Units                             | (明细中无此行)
+--------------------------------------------------------------------------------------------------------
+复核 20 条：一致 18，预期差异 2，未预期差异 0

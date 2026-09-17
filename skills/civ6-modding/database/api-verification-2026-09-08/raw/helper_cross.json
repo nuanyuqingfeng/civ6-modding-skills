@@ -1,0 +1,36 @@
+{
+ "helper_ids": 3273,
+ "inter": 3267,
+ "avail_diff": [
+  [
+   "Q-PlayerVisibilityManagerGetPlayerVisibility",
+   "UI",
+   "Both"
+  ],
+  [
+   "Q-CityGetBuildQueueGetTurnsLeft",
+   "UI",
+   "Both"
+  ]
+ ],
+ "humanChecked": [
+  "Q-PlotIsLake",
+  "A-CityGetBuildQueueAddProgress",
+  "Q-PlotHasFeatureBeenAdded",
+  "Q-PlayerGetCultureIsPolicyActive",
+  "Q-CityGetBuildQueueGetConstructionsAtLocation",
+  "Q-PlotIsWater",
+  "Q-CityGetBuildingsGetBuildingsAtLocation",
+  "A-UnitManagerInitUnitValidAdjacentHex",
+  "Q-CityGetDistrictsGetDistrictGetLocation",
+  "A-PlayerGetDiplomacyDeclareWarOn",
+  "Q-CityGetBuildQueueGetTurnsLeft",
+  "A-CityGetBuildQueueFinishProgress",
+  "Q-CityGetBuildQueueCurrentlyBuilding",
+  "Q-CityGetGrowthGetHousingGrowthModifier",
+  "A-PlayerGetDiplomacySetVisibilityOn",
+  "A-UIRequestPlayerOperation",
+  "Q-PlayerGetDiplomacyGetVisibilityOn",
+  "Q-CityGetDistrictsGetDistrict"
+ ]
+}

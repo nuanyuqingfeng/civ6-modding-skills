@@ -1,0 +1,14 @@
+# 本仓库（skill 自身）的文本文件统一 LF —— 只作用于本 skill 的文档与 Python/Node 工具链。
+# ⚠ **不要照抄进 mod 工程**：mod 工程的换行口径是「资产类文本 LF、代码/配置类 CRLF」，
+#   唯一真源见 gotchas.md §68（体检工具 civ6-modding/scripts/normalize_eol.py）。
+* text=auto eol=lf
+
+# 二进制资产：禁止任何换行/编码转换
+*.sqlite binary
+*.json.gz binary
+*.png binary
+*.exe binary
+*.xlsx binary
+*.psd binary
+*.dds binary
+*.bnk binary
