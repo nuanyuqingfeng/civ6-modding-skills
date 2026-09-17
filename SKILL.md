@@ -24,6 +24,11 @@ languages:
   - en
 ---
 
+> 🧰 **工具先查名录（硬性）**：要写脚本做某件事之前，先看本 skill 的 [`TOOLS.md`](TOOLS.md)
+> —— 本 skill 全部脚本的用途 / 用法 / 路径清单，外加本机**路径收纳**表。
+> **有能用的就改它，不要重建。** 新增或改名脚本后，跑一次
+> `python "<skills>/civ6-modding/tools/skill_manifest.py" civ6-art-reference` 刷新名录（`--check` 可做漂移检测）。
+
 ## 目的与边界
 
 为 mod 新对象（资源/区域/建筑/改良/单位/特征）配置**原版已打包的美术素材**：找到
