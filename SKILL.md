@@ -1,6 +1,6 @@
 ---
 name: civ6-asset-forge
-description: "Civ6 美术素材合成 + 注册链一体化 skill（美术素材合成类 5 类合一）：① 总督素材（governor icon / 就职图标与晋升徽章 24px / 32、64px 头像 / 206x208、326x339 立绘 / 边缘透明渐变、立绘抠边）；② 忠诚度与宗教压力图标（文明 Loyalty Overlay/Pressure + 战略视图 sprite，含新增自定义宗教分支）；③ 单位晋升图标（promotion icon：白金/黄金/白银/青铜四类金属五边形盾形底徽章 + 白色剪影合成）；④ 2D 领袖立绘纸片人（完整美术注册链 + 1024×1024 TEXTURE/OPACITY）；⑤ UI 领袖立绘与选人界面背景（Sukritact's Civ Selection Screen 适配：Players.Portrait/PortraitBackground 的 2D 立绘 + 1440×1080 背景，复用工程既有立绘与外交背景）。五类共用同一注册链机制（.dds/.tex → xlp/artdef/mtl/ast → Art.xml → .civ6proj 幂等补注册）与同一套校验顺序；处理用户素材前必须先询问，默认只生成注册文件。边界：总督八边形徽章与单位晋升五边形盾形**不得混用**；3D 模型、UI 布局改动、2D UI 宗教图标（IconTextureAtlases 270px 图集）、config（领袖互斥/同名）不在本 skill 范围；png→dds/.tex 转换走 `civ6-modding` 的 art-pipeline。触发词：总督素材、governor icon、就职图标、总督徽章、总督立绘、边缘透明渐变、立绘抠边、忠诚度图标、宗教压力图标、自定义宗教注册、晋升图标、promotion icon、单位晋升、白色图标合成、盾形徽章、2D 领袖、立绘纸片人、领袖美术注册链、suk selection、Sukritact、Civ Selection Screen、选人界面、领袖选择界面、PortraitBackground、UILeaders.xlp、UI 领袖立绘、领袖选择背景。"
+description: "Civ6 美术素材合成 + 注册链一体化 skill（美术素材合成类 6 类合一）：① 总督素材（governor icon / 就职图标与晋升徽章 24px / 32、64px 头像 / 206x208、326x339 立绘 / 边缘透明渐变、立绘抠边）；② 忠诚度与宗教压力图标（文明 Loyalty Overlay/Pressure + 战略视图 sprite，含新增自定义宗教分支）；③ 单位晋升图标（promotion icon：白金/黄金/白银/青铜四类金属五边形盾形底徽章 + 白色剪影合成）；④ 2D 领袖立绘纸片人（完整美术注册链 + 1024×1024 TEXTURE/OPACITY）；⑤ UI 领袖立绘与选人界面背景（Sukritact's Civ Selection Screen 适配：Players.Portrait/PortraitBackground 的 2D 立绘 + 1440×1080 背景）；⑥ 历史时刻插画（MomentIllustrations：456×332 卡片，含 18 张官方形状模板套版）。六类共用同一注册链机制（.dds/.tex → xlp/artdef/mtl/ast → Art.xml → .civ6proj 幂等补注册）与同一套校验顺序；处理用户素材前必须先询问，默认只生成注册文件。边界：总督八边形徽章与单位晋升五边形盾形**不得混用**；3D 模型、UI 布局改动、2D UI 宗教图标（IconTextureAtlases 270px 图集）、config（领袖互斥/同名）不在本 skill 范围；png→dds/.tex 转换走 `civ6-modding` 的 art-pipeline。触发词：总督素材、governor icon、就职图标、总督徽章、总督立绘、边缘透明渐变、立绘抠边、忠诚度图标、宗教压力图标、自定义宗教注册、晋升图标、promotion icon、单位晋升、白色图标合成、盾形徽章、2D 领袖、立绘纸片人、领袖美术注册链、suk selection、Sukritact、Civ Selection Screen、选人界面、领袖选择界面、PortraitBackground、UILeaders.xlp、UI 领袖立绘、领袖选择背景、历史时刻、历史时刻插画、时代得分图、historic moment、MomentIllustrations、Moment_、PrideMoments。"
 version: "1.0"
 author: 千与千寻瀑
 license: MIT
@@ -34,11 +34,12 @@ languages:
 
 > **本 skill 由 4 个美术素材合成类 skill 合并而来**（`civ6-loyalty-icon` / `civ6-promotion-icon` /
 > `civ6-governor-art` / `civ6-leader-2d`），来源与各自最后 commit 见 `CHANGELOG.md`；
-> 2026-09-17 新增第 ⑤ 类（UI 领袖立绘 / Suk 选人界面背景，见 `reference/ui-leader-portrait.md`）。
+> 2026-09-17 新增第 ⑤ 类（UI 领袖立绘 / Suk 选人界面背景，`reference/ui-leader-portrait.md`）
+> 与第 ⑥ 类（历史时刻插画，`reference/moment-illustration.md`）。
 > 骨架共用：给定 PNG → 确定性合成器（Python/Pillow）→ 原版风格素材 → 注册链 → 校验器；
 > 注册链逻辑只在本文件维护一份，类别专属实测规格（尺寸/坐标/配色/像素参数）逐字保留在 `reference/*.md`。
 
-## 一、本 skill 覆盖的五类素材（边界先读）
+## 一、本 skill 覆盖的六类素材（边界先读）
 
 | 类别 | 解决的"做什么素材" | 主要产出 | **不做什么** |
 |------|------------------|---------|-------------|
@@ -47,6 +48,7 @@ languages:
 | 单位晋升图标<br>`reference/promotion-icon.md` | 单位晋升图标（四类金属底 + 白色剪影）+ 生图模板再造 | 1024 交付 PNG + 32px 游戏内图集位、`IconTextureAtlases` / `Icons_Promotions.xml` 注册 | 不处理总督晋升（XP1/XP2 `GovernorPromotions24` 体系）与 3D 单位模型；不修改游戏文件 |
 | 2D 领袖<br>`reference/leader-2d.md` | 2D 领袖立绘纸片人（全套注册链）、1024×1024 TEXTURE/OPACITY | XLP 包 / `Leaders.artdef` / 几何 / 材质 / 灯光 / 环境光 / `.tex` / 行为资产 ast | 不生成素材（用户未提供时只出注册文件）；不做 config（领袖互斥/同名，见项目 `DuplicateLeaders`） |
 | **UI 领袖立绘 / 选人界面背景**<br>`reference/ui-leader-portrait.md` | **Sukritact's Civ Selection Screen** 选人界面的 2D 立绘（`Players.Portrait`）与背景（`Players.PortraitBackground`） | 每领袖 2 张 `_Suk` 贴图（立绘 = 内容定宽 ×1024 高；背景 = 外交背景中心裁 1440×1080）+ `UPDATE Players` + XLP + `Criteria` 接线 | 不做 3D 纸片人注册链（→ 类别④）；不负责 Suk mod 本体分发；不处理加载界面（`IMG_LOADING_*` / `LoadingInfo`，另一条链） |
+| **历史时刻插画**<br>`reference/moment-illustration.md` | **`MomentIllustrations`** 的插画卡片（特色单位/区域/建筑/改良/总督的时刻图） | 每张 **456×332** 贴图（套 **18 张官方形状模板**之一）+ `UI_PrideMoments.xlp` 登记 + `MomentIllustrations` 行 | 不新增 `MomentIllustrationType`（属玩法侧表级改动）；不做 `Moments` 表（时刻本体）；不处理非历史时刻的其它 UI 图 |
 
 **三条最容易踩的混用**：
 
@@ -66,12 +68,13 @@ languages:
 | 「晋升图标」「promotion icon」「单位晋升」「白色图标合成」「盾形徽章」「五边形徽章」 | ③ 单位晋升 | `reference/promotion-icon.md`；脚本 `scripts/compose.py`、`scripts/recolor_template.py`、`scripts/verify.py`、`scripts/vcheck_multi.py`、`scripts/slice_atlas.py` |
 | 「2D 领袖」「立绘纸片人」「领袖注册链」「领袖 XLP/artdef/几何/材质/灯光」「1024 TEXTURE/OPACITY」 | ④ 2D 领袖 | `reference/leader-2d.md`；脚本 `scripts/gen_leader_2d.py`、`scripts/process_leader_png.py` |
 | 「suk selection」「Sukritact」「Civ Selection Screen」「选人界面」「领袖选择界面」「PortraitBackground」「UILeaders.xlp」「UI 领袖立绘」「领袖选择背景」 | ⑤ UI 立绘/Suk | `reference/ui-leader-portrait.md`；脚本 `scripts/gen_suk_portrait.py`、`scripts/verify_suk_portrait.py` |
+| 「历史时刻」「历史时刻插画」「时代得分图」「historic moment」「MomentIllustrations」「Moment_」「PrideMoments」 | ⑥ 历史时刻 | `reference/moment-illustration.md`；脚本 `scripts/apply_moment_template.py`、`scripts/verify_moment.py` |
 | 「png → dds / .tex」转换、素材导入工程 | — | 不在本 skill：走 `civ6-modding` 的 `art-pipeline.md`（role 由类别决定，见第六节） |
 
 **路由判定三条**：
 
-1. 先判**对象**：总督 / 文明忠诚度 / 宗教 / 单位晋升 / 领袖（3D 纸片人）/ 领袖（UI 立绘）——"宗教"并入类别②（与忠诚度同一套引擎机制，仅命名映射与 artdef 目标集合不同）。
-2. 再判**产出层级**：只要 PNG 素材（合成层）还是连注册链（注册层）一起做。**注册层逻辑五类共用**（第六节），差别只在声明层文件名与目标集合。
+1. 先判**对象**：总督 / 文明忠诚度 / 宗教 / 单位晋升 / 领袖（3D 纸片人）/ 领袖（UI 立绘）/ 历史时刻——"宗教"并入类别②（与忠诚度同一套引擎机制，仅命名映射与 artdef 目标集合不同）；"历史时刻"独立成类（走 `MomentIllustrations` 数据表 + `UI/PrideMoments` 贴图包，机制与其它五类都不同）。
+2. 再判**产出层级**：只要 PNG 素材（合成层）还是连注册链（注册层）一起做。**注册层逻辑六类共用**（第六节），差别只在声明层文件名与目标集合。
 3. 素材与注册链**都要**时：先出 PNG 交用户审核，审核通过后才做 DDS/.tex 与注册链（第七节）。
 
 ### 2.1 类别⑤ 的触发判定（先说清再动手）
@@ -88,7 +91,29 @@ languages:
 判定为类别⑤ 后，**先按第三节询问素材来源**（复用工程既有立绘+外交背景 / 用户提供），再动手。
 完整规格、类别陷阱与验证顺序见 `reference/ui-leader-portrait.md`。
 
-## 三、铁律一：处理用户素材前必须先询问（五类共用）
+### 2.2 类别⑥ 的触发判定与素材询问
+
+| 关键词 | 判定 |
+|---|---|
+| `历史时刻` / `历史时刻插画` / `时代得分图` / `historic moment` | **强关联** → 类别⑥ |
+| `MomentIllustrations` / `Moment_*` / `PrideMoments` / `UI_PrideMoments.xlp` | **强关联** → 类别⑥ |
+| `加载界面插画`（`IMG_LOADING_*`） | **不关联**（另一条链） |
+
+判定为类别⑥ 后，**询问模板与源图**：
+
+> 历史时刻插画需要**官方形状模板**套版（否则 UI 里卡片形状不对）。
+>
+> - **模板**：默认用 `D:\desktop\模板\历史图片模板（新）\1..18.psd`
+>   （18 张官方形状；`4.psd` 是空的工作稿会自动跳过）。有其他模板请给路径。
+> - **源图**：每张成品插画的原图（PNG/PSD 导出均可，任意尺寸，脚本会缩放到 456×332）。
+>   请给出目录或文件列表。
+> - **模板选择**：指定编号（`--template N`）或让脚本按源图长宽比自动挑（`--auto`）。
+
+> ⚠ **默认模板目录是本机路径**。换机器时用 `--template-dir` 指定；
+> 若用户没有模板 PSD，**不要凭猜造蒙版**——请先索取模板，或从原版
+> `Moment_*.dds` 反推形状（本 skill 未内置该反推脚本，需另行确认）。
+
+## 三、铁律一：处理用户素材前必须先询问（六类共用）
 
 **开始任何一类素材任务前，必须先询问用户是否提供素材**，得到答复后再动手。**默认只生成注册文件/注册链，不主动生成、不擅自处理素材**。
 
@@ -102,6 +127,7 @@ languages:
 | ③ 单位晋升 | `reference/promotion-icon.md` 工作流① | 纯白 `#FFFFFF` 剪影、透明背景、正方形 256~1024px、图形占画布 60%~75% | 不代生成素材 |
 | ④ 2D 领袖 | `reference/leader-2d.md` 第一节 | PNG、建议透明背景、尺寸近似 1:1 | **只生成注册文件**；`.tex` 的 `SourceFilePath` 指向占位路径，素材由用户后续导入 |
 | ⑤ UI 立绘/Suk | `reference/ui-leader-portrait.md` 第三节 | 立绘：PNG 建议透明背景、近似 1:1；背景：建议 16:9（如 1920×1080） | **推荐复用工程既有素材**（`FALLBACK_NEUTRAL_*` 立绘 + `IMG_LEADER_*_DIPLOMACY_BACKGROUND` 外交背景），自动裁切缩放 |
+| ⑥ 历史时刻 | `reference/moment-illustration.md` §2.2 | 源图：每张插画的 PNG（任意尺寸）；**模板**：官方形状 PSD（`1..18.psd`） | 模板与源图都需用户提供；脚本负责套版、缩放、报告覆盖率 |
 
 - 用户坚持用自己提供的模板/素材时，一律按其提供的路径走参数（如 `--glow`、`--icon`、`--avatar`、`--input`），不要替换成内置模板。
 - 交付物中必须写明**实际用了哪个素材文件**（含自动兜底时选中的源文件路径）。
@@ -123,7 +149,7 @@ languages:
 - 游戏安装目录只读 XML/Lua 数据定义，**不作素材来源**。
 - 交付产物一律写到用户指定目录；**不修改游戏文件**。
 
-## 六、注册链总览（五类共用链条）
+## 六、注册链总览（六类共用链条）
 
 ```
 用户/合成器产出 PNG（512/256/128/1024/24/32/64/206×208/326×339/内容定宽×1024 等）
@@ -144,7 +170,7 @@ languages:
    ModBuddy 构建 → 进游戏开一局验证
 ```
 
-### 6.1 五类的声明层落点
+### 6.1 六类的声明层落点
 
 | 类别 | XLP | artdef | 材质/资产 | 其它 |
 |------|-----|--------|----------|------|
@@ -153,6 +179,7 @@ languages:
 | ③ 单位晋升 | 自建图集 + `Icons_Promotions.xml` 加 `ICON_<UnitPromotionType>` 行 | — | — | 走 2D `IconTextureAtlases`（`IconSize 32`）路径，**不走** `.dds/.tex` BLP 链 |
 | ④ 2D 领袖 | `XLPs/leader_{PACK}.xlp`、`XLPs/Leader_LightRigs.xlp` | `ArtDefs/Leaders.artdef` | `Geometries/*.geo`、`Materials/*.mtl`、`LightRigs/*.lrg`、`EnvironmentLights/*.env`、`Textures/*.tex`、`Assets/*.ast` | 每个领袖一套 6 类；聚合模板按领袖数复制块 |
 | ⑤ UI 立绘/Suk | `XLPs/*.xlp`（**`m_ClassName=UITexture`** 的那一个，如 `UILeaders.xlp`） | — | `Textures/*_Suk.{dds,tex}`（`UserInterface`） | `Players` 表 `Portrait`/`PortraitBackground` 列 + **`FrontEndAction` 挂 `Criteria`**（未启用 Suk 时不加载） |
+| ⑥ 历史时刻 | `UI_PrideMoments.xlp`（`m_ClassName=UITexture`，`PackageName=UI/PrideMoments`） | — | `Textures/Moment_*.{dds,tex}`（`UserInterface`，456×332） | `MomentIllustrations` 表（四列，`Texture` **带 `.dds` 后缀**） |
 
 > 类别②「宗教分支」与忠诚度**同一套引擎机制**（同两个 XLP 包 + 同两个 artdef + 同一套官方几何/贴图类别约束），差别仅在命名映射与 artdef 目标集合（`ReligionLensIcons` / `ReligionLensArrows` 同名元素合并追加）。细节见 `reference/loyalty-icon.md` 第八节。
 
@@ -184,7 +211,7 @@ languages:
 
 ## 七、通用验证顺序与校验脚本
 
-五类共用同一顺序，**缺一不可**：
+六类共用同一顺序，**缺一不可**：
 
 1. **合成后立刻跑本类的本地校验脚本**（数值判据，不依赖模型）：
 
@@ -195,6 +222,7 @@ languages:
 | ③ 单位晋升 | `python scripts/verify.py <成品.png> <对应gt1024.png>` | 轮廓 IoU、配色采样、图形对比度；模板再造须 IoU ≥0.94 且配色贴近实测规格 |
 | ④ 2D 领袖 | 生成文件清单自检（XML 可解析 / 无残留 `{占位符}` / 条目数 = 对象数 / 引用名与磁盘文件逐字符一致） | 完整 checklist 见 `reference/leader-2d.md` 第五节 |
 | ⑤ UI 立绘/Suk | `python scripts/verify_suk_portrait.py --project <工程根>` | 类别必须是 `UserInterface`（**类别陷阱**）、`.tex` 宽高 == DDS 实际、贴图已被 `UITexture` XLP 登记、SQL 引用无悬空、行尾合规 |
+| ⑥ 历史时刻 | `python scripts/verify_moment.py --project <工程根>` | **alpha 覆盖率 ≥75%**（原版 240 张最低 83%；漏套模板实测量到 14~15%）、456×332、类别 `UserInterface`、XLP 登记、`MomentIllustrations` 配对与 Texture 存在性 |
 
 2. **视觉评审 / 人眼验收**：与原版对照检查轮廓、描边、高光、渐变、图形对比度。
    - 类别③用 `scripts/vcheck_multi.py`（gemini-3-flash-preview，密钥与代理见 `reference/promotion-icon.md`）。
@@ -210,7 +238,7 @@ languages:
 
 ```
 civ6-asset-forge/
-├─ SKILL.md              ← 本文件：路由 + 五类共用链条（只写一份）
+├─ SKILL.md              ← 本文件：路由 + 六类共用链条（只写一份）
 ├─ CHANGELOG.md          ← 合并来源、各原仓库最后 commit、引用修正清单
 ├─ reference/
 │   ├─ loyalty-icon.md          ← 类别② 全部类别专属内容（逐字）
@@ -218,11 +246,12 @@ civ6-asset-forge/
 │   ├─ governor-art.md          ← 类别①
 │   ├─ leader-2d.md             ← 类别④
 │   ├─ ui-leader-portrait.md    ← 类别⑤（Suk 选人界面适配）
+│   ├─ moment-illustration.md   ← 类别⑥（历史时刻插画）
 │   ├─ promotion-icon/   ← 原 promotion 的 specs.md / prompts.md（实测规格、提示词手册）
 │   └─ governor-art/     ← 原 governor 的 specs.md / inventory.md / palette.json（实测规格、素材清单、配色）
-├─ scripts/              ← 五类脚本合并（basename 无冲突，未改名）
-├─ templates/            ← 四类模板合并（loyalty_chain/、religion_chain/、领袖模板 + 光晕模板；类别⑤ 无需模板）
-└─ assets/               ← 四类素材合并（晋升 gt 模板 + 白色剪影样例、总督官方对照图；类别⑤ 无需素材）
+├─ scripts/              ← 六类脚本合并（basename 无冲突，未改名）
+├─ templates/            ← 四类模板合并（loyalty_chain/、religion_chain/、领袖模板 + 光晕模板；⑤⑥ 无需模板）
+└─ assets/               ← 四类素材合并（晋升 gt 模板 + 白色剪影样例、总督官方对照图；⑤⑥ 无需素材）
 ```
 
 | 脚本 | 类别 | 说明 |
@@ -242,12 +271,14 @@ civ6-asset-forge/
 | `scripts/process_leader_png.py` | ④ | 立绘 PNG → 1024² TEXTURE/OPACITY（读 `templates/` 的两个 `.tex` 模板） |
 | `scripts/gen_suk_portrait.py` | ⑤ | Suk 适配素材 + `UPDATE Players` + XLP + civ6proj 接线（幂等，`--check`/`--write`） |
 | `scripts/verify_suk_portrait.py` | ⑤ | Suk 适配只读校验（类别陷阱 / 尺寸对齐 / XLP 登记 / 悬空引用 / 行尾） |
+| `scripts/apply_moment_template.py` | ⑥ | 历史时刻插画套官方形状模板（`--list` / `--template N` / `--auto` / `--dds`；报告覆盖率对照 83~99%） |
+| `scripts/verify_moment.py` | ⑥ | 历史时刻只读校验（**覆盖率下界** / 456×332 / 类别 / XLP / `MomentIllustrations` 配对） |
 
 > `templates/` 与 `scripts/` **必须保持同级**：`process_loyalty_icon.py`（默认光晕模板 `templates/Loyalty_Overlay_Template.png`）、
 > `gen_leader_2d.py`、`process_leader_png.py` 都按 `scripts/../templates` 定位模板。
 > 类别⑤ 两个脚本按 `scripts/../../civ6-modding/art/dds_io.py` 复用 DDS 读写（单一真源）。
 
-## 九、交付要求（五类共用）
+## 九、交付要求（六类共用）
 
 - 交付说明必须包含：**生成文件清单（含尺寸/输出目录）**、**注册链文件清单**、`Art.xml` / `*.civ6proj` 改动说明、**"待用户审核 / 待 tex+dds / 待用户提供素材"清单**。
 - 素材相关一律标注"待用户处理"，**除非用户明确要求代处理**。

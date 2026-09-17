@@ -9,6 +9,7 @@
 
 | 工具 | 干什么 | 用法 |
 |---|---|---|
+| `scripts/apply_moment_template.py` | apply_moment_template.py — 历史时刻插画：把源图套上官方形状模板 | `python apply_moment_template.py --list --template-dir "<模板目录>"<br>python apply_moment_template.py --input 原图.png --template 1 --out 输出目录` |
 | `scripts/build_icon_set.py` | build_icon_set.py - 由"一张头像"生成总督全套图标（色调高度一致） | `python build_icon_set.py --avatar 头像.png --outdir out --key CTTH_RGN<br>python build_icon_set.py --avatar 头像.png --outdir out --glyph 图形.png --checker` |
 | `scripts/compose.py` | 确定性合成器：白色图标 + 盾形模板 → 原版风格晋升图标（库函数 compose()，也被 build_icon_set 调用） | `python compose.py <模板.png> <图标.png> <输出.png>` |
 | `scripts/edge_gradient.py` | edge_gradient.py - 立绘"边缘透明渐变"处理器 | `python edge_gradient.py --input 立绘.png --outdir out --key CTTH_RGN<br>python edge_gradient.py --input a.png --input b.png --outdir out --key CTTH_RGN` |
@@ -23,9 +24,10 @@
 | `scripts/vcheck_multi.py` | 多图视觉复核（把若干 PNG 一起丢给 Gemini 视觉模型问一个问题） | `python vcheck_multi.py "<问题>" <图片1.png> [图片2.png ...]` |
 | `scripts/verify.py` | 校验晋升图标/模板: 轮廓 IoU + 配色采样 + 图形检查 | `python verify.py <candidate.png> <gt1024.png> [--mode auto\|template\|final]` |
 | `scripts/verify_badge.py` | verify_badge.py - 总督 24px 徽章几何/配色验证 | `python verify_badge.py 生成.png                  # 只做几何自洽校验<br>python verify_badge.py 生成.png 官方格.png        # 与官方对照，输出 IoU 与配色误差` |
+| `scripts/verify_moment.py` | verify_moment.py — 历史时刻插画与接线的只读校验器 | `python verify_moment.py --project <工程根><br>python verify_moment.py --project <工程根> --coverage-min 83 --coverage-max 99` |
 | `scripts/verify_suk_portrait.py` | verify_suk_portrait.py — Suk 选人界面适配素材与接线的只读校验器 | `python verify_suk_portrait.py --project <工程根><br>python verify_suk_portrait.py --project <工程根> --suffix _Suk` |
 
-共 15 个脚本。
+共 17 个脚本。
 
 ## 路径收纳（本机绝对路径，勿写死进脚本）
 
