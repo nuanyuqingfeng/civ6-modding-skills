@@ -17,7 +17,7 @@
    - 资源：陆地/海洋、地形与特征（`Resource_ValidTerrains` / `Resource_ValidFeatures`）、
      产出、是否上地图（`Frequency`/`SeaFrequency`）。
    - 区域：功能定位（学院/圣地/商业…）。
-   - 名字含义：中文/英文语义（可用 dsh_validate 查语料助判）。
+   - 名字含义：中文/英文语义（按对象在游戏里的名称理解即可）。
 3. **Icon 例外规则**：默认不处理 2D Icon。仅当对象会因缺 Icon 定义而悬空（数据库
    引用了不存在的图标）时才补图标链（SQL `IconTextureAtlases`，不属 artdef）。
    本工程资源图标已全套注册，通常无需动作。
