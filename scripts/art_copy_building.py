@@ -206,13 +206,14 @@ def main():
     ap.add_argument('--district', action='append', default=[],
                     help='额外目标区域（mod 侧区域不在索引里，必须显式给出）')
     ap.add_argument('--tag', help='新标签 token（默认由新建筑名推导）')
+    ap.add_argument('--index', default=None, help='索引文件路径（默认 ../assets/art_index.json.gz）')
     ap.add_argument('--dry-run', action='store_true')
     args = ap.parse_args()
     if not args.landmarks_out and not args.buildings_out:
         sys.exit('至少给一个 --landmarks-out / --buildings-out')
 
     new_tok = args.tag or re.sub('_RGN$', '', re.sub('^BUILDING_', '', args.new_building))
-    idx = art_copy.load_index()
+    idx = art_copy.load_index(args.index)
 
     auto = game_targets(idx, args.src_building)
     auto_names = []

@@ -80,8 +80,15 @@ def find_source(idx, template, entry):
 
 def extract_entry(idx, artdef, entry):
     """从源文件提取条目 Element（深拷贝）"""
-    path = os.path.join(idx['roots']['game'] if artdef['source'] in ('base', 'dlc') else idx['roots']['sdk'],
-                        artdef['rel'].replace('/', os.sep))
+    root_key = 'game' if artdef['source'] in ('base', 'dlc') else 'sdk'
+    base = (idx.get('roots') or {}).get(root_key)
+    if not base or not os.path.isdir(base):
+        sys.exit(
+            f"索引记录的游戏根在本机不存在：{root_key} = {base or '(索引里没有该根)'}\n"
+            "  索引里烧死的是重建索引那台机器上的路径，换机器后必须重建索引：\n"
+            "    python scripts/artdef_indexer.py --game <你的游戏目录> --out assets/art_index.json.gz\n"
+            "  （SDK 侧同理，加 --sdk <你的 SDK Assets 根>）")
+    path = os.path.join(base, artdef['rel'].replace('/', os.sep))
     root = load_xml(path)
     rc = root.find('m_RootCollections')
     for coll in list(rc):

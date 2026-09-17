@@ -25,6 +25,48 @@ import xml.etree.ElementTree as ET
 DEFAULT_GAME = r"F:\Steam\steamapps\common\Sid Meier's Civilization VI"
 DEFAULT_SDK  = r"F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK Assets"
 
+# 别人机器上的覆盖入口：默认值不存在时按 环境变量 → local_paths.json 探测（不改默认值语义）
+_LOCAL_PATHS_FILES = [
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'local_paths.json'),
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                 '..', 'civ6-modding', 'local_paths.json'),
+]
+
+
+def _from_local_paths(*keys):
+    for lp in _LOCAL_PATHS_FILES:
+        try:
+            with open(lp, encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception:
+            continue
+        for k in keys:
+            v = data.get(k)
+            if v:
+                return v
+    return None
+
+
+def resolve_root(cli_value, env_keys, lp_keys, default):
+    """CLI 显式值 > 默认值（本机存在时直接用）> 环境变量 > local_paths.json > 默认值。
+
+    默认值存在时直接采用 —— 保证作者机上的行为与改造前完全一致，
+    覆盖入口只在「默认路径缺失」这一分支生效。
+    """
+    if cli_value:
+        return cli_value
+    if os.path.isdir(default):
+        return default
+    for e in env_keys:
+        v = os.environ.get(e)
+        if v:
+            return v
+    v = _from_local_paths(*lp_keys)
+    if v:
+        return v
+    return default
+
+
 def load_xml(path):
     with open(path, 'rb') as f:
         raw = f.read().decode('utf-8', errors='replace')
@@ -186,24 +228,58 @@ def parse_xlp(path):
             "entryCount": len(entries), "entries": entries}
 
 def main():
+    # Windows 控制台默认 GBK，中文提示会乱码 → 强制 UTF-8（失败也不致命）
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     ap = argparse.ArgumentParser()
-    ap.add_argument('--game', default=DEFAULT_GAME)
-    ap.add_argument('--sdk',  default=DEFAULT_SDK)
+    ap.add_argument('--game', default=None,
+                    help='Civ6 安装根目录（默认按 CIV6_GAME → local_paths.json 的 game → 作者示例路径探测）')
+    ap.add_argument('--sdk',  default=None,
+                    help='SDK Assets 根目录（默认按 CIV6_SDK_ASSETS → local_paths.json 的 sdk_assets → 作者示例路径探测）')
     ap.add_argument('--out',  default=None, help='输出 json 或 json.gz（默认与脚本同目录 art_index.json.gz）')
+    ap.add_argument('--allow-missing-roots', action='store_true',
+                    help='游戏根与 SDK 根都不可用时仍继续（会写出几乎空的索引，仅供自检）')
     args = ap.parse_args()
 
+    game = resolve_root(args.game, ('CIV6_GAME', 'CIV6_GAME_ROOT'), ('game',), DEFAULT_GAME)
+    sdk = resolve_root(args.sdk, ('CIV6_SDK_ASSETS', 'CIV6_SDK'), ('sdk_assets', 'sdk'), DEFAULT_SDK)
+
     roots = [
-        ("base",   os.path.join(args.game, "Base", "ArtDefs")),
-        ("dlc",    os.path.join(args.game, "DLC")),
-        ("sdk",    os.path.join(args.sdk,  "Civ6", "pantry")),
-        ("sdkdlc", os.path.join(args.sdk,  "Civ6", "DLC")),
+        ("base",   os.path.join(game, "Base", "ArtDefs")),
+        ("dlc",    os.path.join(game, "DLC")),
+        ("sdk",    os.path.join(sdk,  "Civ6", "pantry")),
+        ("sdkdlc", os.path.join(sdk,  "Civ6", "DLC")),
     ]
-    index = {"roots": {"game": args.game, "sdk": args.sdk}, "artdefs": [], "xlps": []}
+    missing = [(label, root) for label, root in roots if not os.path.isdir(root)]
+    miss_labels = {label for label, _ in missing}
+    game_ok = not {"base", "dlc"} <= miss_labels
+    sdk_ok = not {"sdk", "sdkdlc"} <= miss_labels
+    if not game_ok and not sdk_ok and not args.allow_missing_roots:
+        sys.stderr.write(
+            "[FAIL] 游戏根与 SDK 根都不可用，无法建立索引"
+            "（否则只会写出一份几乎空的索引却显示成功）。\n"
+            "  本次 game = %s（Base/ArtDefs、DLC 均不存在）\n"
+            "  本次 sdk  = %s（Civ6/pantry、Civ6/DLC 均不存在）\n"
+            "  这两个默认值是作者机器路径，别人机器上通常不存在。请指向你自己的目录：\n"
+            "    --game <Civ6 安装根>    形如 <Steam>/steamapps/common/Sid Meier's Civilization VI\n"
+            "    --sdk  <SDK Assets 根>  形如 <Steam>/steamapps/common/Sid Meier's Civilization VI SDK Assets\n"
+            "  也可用环境变量 CIV6_GAME / CIV6_SDK_ASSETS，或在 local_paths.json 写 "
+            "{\"game\": \"...\", \"sdk_assets\": \"...\"}\n"
+            "  （本脚本读取 <skill>/local_paths.json 与同级 civ6-modding/local_paths.json）\n"
+            "  确知本机没有游戏、只想生成空索引时，加 --allow-missing-roots。\n"
+            % (game, sdk))
+        sys.exit(2)
+
+    index = {"roots": {"game": game, "sdk": sdk}, "artdefs": [], "xlps": []}
     for label, root in roots:
         if not os.path.isdir(root):
             print(f"WARN root missing: {root}", file=sys.stderr)
             continue
-        base_len = len(args.game if label in ("base", "dlc") else args.sdk)
+        base_len = len(game if label in ("base", "dlc") else sdk)
         for dirpath, dirnames, filenames in os.walk(root):
             for fn in filenames:
                 if not fn.lower().endswith(('.artdef', '.xlp')):
@@ -228,6 +304,11 @@ def main():
     print(f"artdefs: {len(index['artdefs'])}, xlps: {len(index['xlps'])}, parse errors: {len(errs)}")
     for a in errs:
         print("  ERR", a['rel'], a['error'])
+    if missing:
+        print("已跳过 %d 个缺失根（其内容不在索引中）：%s"
+              % (len(missing), "; ".join("%s=%s" % (l, r) for l, r in missing)))
+    if args.allow_missing_roots and not game_ok and not sdk_ok:
+        print("WARN --allow-missing-roots：游戏根与 SDK 根都不可用，本索引几乎为空，不可用于实际引用查询。")
     print(f"written: {out} ({os.path.getsize(out)/1e6:.2f} MB)")
 
 if __name__ == '__main__':
