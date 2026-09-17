@@ -32,7 +32,7 @@ except Exception:
     pass
 
 SKILLS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SCAN_DIRS = ["scripts", "tools", "（本地化工具已移除）", "art", "release/scripts", "database/scripts"]
+SCAN_DIRS = ["scripts", "tools", "art", "release/scripts", "database/scripts"]
 CODE_EXT = {".py", ".mjs", ".js", ".ps1", ".sh"}
 MANUAL_BEGIN = "<!-- MANUAL:BEGIN -->"
 MANUAL_END = "<!-- MANUAL:END -->"
