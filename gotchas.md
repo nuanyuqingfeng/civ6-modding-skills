@@ -637,5 +637,35 @@
 
 
 
+71. **`.tex` 的"官方格式"不是一套常量：`bCompleteMipChain` 按类别不同，`UserInterface` 是 69/31 分裂**（2026-09 实测）
+
+    想"把 `.tex` 对齐官方"时容易犯的错：拿某一个官方样本当模板全局套用。
+    对全 SDK **12709 个 `.tex`** 做统计后，事实是：
+
+    | 字段 | 官方真实情况 |
+    |------|------------|
+    | XML 声明 + 字节编码 | **100% UTF-8**（唯一真正全局一致的字段） |
+    | 行尾 | **100% LF** |
+    | `bCompleteMipChain` | **按 `m_ClassName` 分裂**：`Generic_*`/`StrategicView_*`/`Leader_*` 等几乎 100% `true`；`TerrainElementHeightmap`/`ColorKey` 等 100% `false`；**`UserInterface` 是 `true` 69% / `false` 31%** |
+    | `m_Groups` | 多数自闭合 `<m_Groups/>`，但 `UserInterface` 有 25% 直接缺失 → **缺失也不算错** |
+    | `m_CookParams` | `UserInterface` 有 **51%** 是空 `<m_Values/>` → **空 cook 完全合法**，别当缺失去补 |
+    | `useMips` | **由 DDS 实际 mips 决定**（不是类别）：`StrategicView_Sprite` 100% `true`；`UserInterface` 100% `false`（其 DDS 多带 mip）；不变量是 `m_NumMipMaps = DDS mips - 1` |
+
+    ★ **要害**：`bCompleteMipChain` 与 `m_Groups` 这类字段**不能一刀切**。正确做法是按
+    `m_ClassName` 分组统计官方分布，**只对"同类别一致率 ≥80%"的类**套用，
+    分裂的类（`UserInterface`）**保持原值不动**。工具 `art/align_tex_format.py`
+    内置的 `COMPLETE_POLICY` 表就是这个策略。
+
+    ⚠ **改编码前必须确认内容为纯 ASCII**：`gen_tex.py` 的警告（「.tex 写 UTF-8 会被
+    AssetEditor 按 GBK 误读并崩溃」）**只在内容含非 ASCII 字节时成立**。
+    ASCII 在 GBK/UTF-8 下字节完全相同 → 改声明+改编码零风险。若源路径含中文则**不可**改。
+    参见 `art-pipeline.md` 第 8.2 节。
+
+    ⚠ **`m_SourceFilePath` 是不可对齐项**：官方是 `//civ6/main/ArtDev/...` depot 路径，
+    但本工程（及多数 mod 工程）的约定是 `D:/desktop/<stem>.png` **ASCII 虚拟路径** ——
+    照抄官方会破坏 pom 约定甚至让 AssetEditor 崩溃。**格式对齐只针对格式类字段，值类字段一律不碰。**
+
+
+
 
 

@@ -462,6 +462,54 @@ python art/verify_icon_atlas.py <projectRoot> --edge-qa
 
 **无 256 母版的图集不在体检范围**（如通知 40/100、按钮 38/44/52、总督 1×1 各档）：
 它们没有可当"应有值"的高分辨率源，本门跳过；如需覆盖，先补一份 256 母版。
+（**单档贴图**也可用 `regen_atlas_tiers.py --file` 手工重出，见第 8.2 节。）
+
+### 8.2 `.tex` 格式对齐官方（`align_tex_format.py`）
+
+`.tex` 是 AssetEditor 的贴图元数据。由不同批次/工具生成的工程里常出现**格式类**
+偏差（不影响当前构建，但会造成编码乱码风险、与官方结构不一致、语义相悖）：
+
+| 字段 | 官方约定（全 SDK 12709 个 `.tex` 实测） | 本工程 2026-09 实测偏差 |
+|------|--------------------------------------|----------------------|
+| XML 声明 + 字节编码 | **100% UTF-8** | 77 个声明为 GBK |
+| `m_Groups` | 多数为自闭合 `<m_Groups/>` | 210 个缺失 |
+| 行尾 | **100% LF** | 已一致 |
+| `bCompleteMipChain` | **按 `m_ClassName` 逐类决定** | 7 个与同类别官方相反 |
+| `useMips` / `m_NumMipMaps` | `numMipMaps = DDS mips - 1`（官方不变量） | 226/226 合规 |
+
+**只改格式、绝不改值**。工具坚决不碰：
+`m_Width`/`m_Height`/`ePixelformat`/`m_ClassName`/`m_SourceFilePath`/`m_Name`/`m_RelativePath`/`m_Tags`、
+以及 `m_CookParams` 内的**参数值**。
+
+⚠ **`m_SourceFilePath` 必须保持本工程的 `D:/desktop/<stem>.png` 虚拟路径**，
+严禁改成官方 pantry 的 `//civ6/main/ArtDev/...` depot 路径（AGENTS.md 硬性约定：
+depot 路径在 pantry 里会让 AssetEditor 崩溃/找不到源）。本工具不碰该字段。
+
+**`bCompleteMipChain` 为什么按类别而不是一刀切**：官方统计显示它**不是全局常量** ——
+`Generic_*`/`StrategicView_*`/`Leader_*` 等 3D 与 sprite 类几乎 100% 为 `true`，
+而 `TerrainElementHeightmap`/`ColorKey` 等 100% 为 `false`；
+`UserInterface` 则是 `true` 69% / `false` 31%（**未达阈值，故意不动**）。
+工具内置 `COMPLETE_POLICY` 表，只对「官方同类别一致率 ≥80%」的类生效。
+
+⚠ **编码转换的安全前提**：`gen_tex.py` 的 docstring 警告
+「.tex 若写 UTF-8，AssetEditor 按 GBK 解读会乱码崩溃」——
+该风险**仅在内容含非 ASCII 字节时成立**（如中文 `m_SourceFilePath`）。
+本项目 226 个 `.tex` **全为纯 ASCII**（pantry 文件名与虚拟路径均 ASCII，见 AGENTS.md），
+ASCII 在 GBK/UTF-8 下**字节完全相同**，故改声明+改写出编码**零风险**。
+工具会先校验：若发现非 ASCII 内容，应停止并人工确认。
+（注意：新建 `.tex` 时若源路径含中文，仍须按 `gen_tex.py` 的 ANSI 代码页规则写出。）
+
+```bash
+# 体检（退出码 2 = 有待改项）
+python art/align_tex_format.py <projectRoot> --check [--list]
+# 实际改写
+python art/align_tex_format.py <projectRoot> --write
+# 只处理部分项
+python art/align_tex_format.py <projectRoot> --write --only encoding,groups,complete
+```
+
+改写后必跑不变量复核（宽高 / `numMipMaps = mips-1` / `useMips` 与 mips 一致 /
+`m_Name` 与文件名一致 / 源路径仍为 `D:/desktop/`），并 `check_pantry.py` 确认 pantry 卫生。
 
 ## 九、FOW 迷雾变体（apply_fow.py）
 
@@ -501,7 +549,8 @@ python <skill>\art\apply_fow.py --input <图标.png|dds> [--output <路径>] \
 | `convert_art.ps1` | 单图 → 多尺寸 DDS + `.tex` | 单图独立出图时 |
 | `merge_icon_registration.py` | **幂等**把注册片段并入项目 Icons XML + 补 XLP 条目；保 BOM/CRLF | `make_atlas.py` 出完片段之后（别手工合并） |
 | `verify_icon_atlas.py` | 落地自查：引用闭合 / 画布与网格一致 / mips=1 / **格子非空** / `.tex` 对齐 / XLP 无悬空 / 与官方重名；**`--edge-qa` 另查中间档边缘抗锯齿质量**（第 8.1 节） | **交付前必跑**（第八节的可执行版）；改了图集贴图再加 `--edge-qa` |
-| `regen_atlas_tiers.py` | **图集中间档母版重出**：从最大档逐格 LANCZOS 重出各小档，修「被锐化/压对比 → 实机锯齿」；`--report` 体检、`--report --write-damaged` 一键全修 | `--edge-qa` 报 DAMAGED 时；或接手他人图集想确认中间档是否干净 |
+| `regen_atlas_tiers.py` | **图集中间档母版重出**：从最大档逐格 LANCZOS 重出各小档，修「被锐化/压对比 → 实机锯齿」；`--report` 体检、`--report --write-damaged` 一键全修；`--file` 可重出单档贴图（如字体图集） | `--edge-qa` 报 DAMAGED 时；或接手他人图集想确认中间档是否干净 |
+| `align_tex_format.py` | **`.tex` 格式对齐官方**：统一 UTF-8 / 补 `m_Groups` / 按类别修正 `bCompleteMipChain`；**只动格式不动值**，且不碰 `m_SourceFilePath` | 接手他人工程的 `.tex`、或发布前统一格式；见第 8.2 节 |
 | `apply_fow.py` | 生成迷雾「羊皮纸」FOW 变体 | 该类别原版有 `_FOW` 时（建筑/区域/资源有，项目没有） |
 | `gen_tex.py` | 按 DDS 头生成 `.tex`（GBK/ANSI 编码，别存 UTF-8） | 一般不直接调，make_atlas/convert_art 会调 |
 | `gen_modartxml.py` | 生成/核对 `Mod.Art.xml` | 新增或改了 XLP/Artdef 时 `--check` |
