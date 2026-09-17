@@ -77,17 +77,12 @@ RATIO_FACTOR = 0.7      # 归一化斜坡宽度低于参考值 70% → 受损
 
 # ---------------------------------------------------------------- DDS I/O
 
-def dds_header_bytes(w, h):
-    """R8G8B8A8 单 mip 的 DDS 头（与 Civ6 工程既有 DDS 逐字节同构）。"""
-    hdr = bytearray()
-    hdr += b'DDS '
-    hdr += struct.pack('<7I', 124, 0x21007, h, w, 0, 1, 1)
-    hdr += bytes.fromhex('46545854') + bytes(40)          # 'FTXT' 签名 + 备份位
-    hdr += struct.pack('<2I', 32, 0x41)                   # pfSize, RGB|ALPHAPIXELS
-    hdr += b'\x00' * 4                                    # fourCC
-    hdr += struct.pack('<5I', 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000)
-    hdr += struct.pack('<5I', 0x401008, 0, 0, 0, 0)
-    return bytes(hdr)
+# 头部构造复用共享模块（单一真源）。此处原先自带一份 dds_header_bytes，
+# 2026-09-17 与 dds_io.dds_header_bytes 做过多尺寸逐字节比对（1x1…1920x1080）完全一致后去重。
+# read_dds/write_dds 仍留本地：它们走 numpy 数组，与本文件的质量指标计算耦合，
+# 而 dds_io 走 PIL.Image（两者用途不同，不强行统一）。
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from dds_io import dds_header_bytes  # noqa: E402
 
 
 def read_dds(path):

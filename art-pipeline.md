@@ -60,6 +60,27 @@
 
 依赖：`texconv`（缺失时脚本自动 winget 安装）、Python 3 + Pillow（make_atlas 组版用）。
 
+### 二.1 ⚠ `.tex` 类别（`m_ClassName`）是硬约束，且**不能靠名字猜**
+
+`gen_tex.py` 按**名字前缀**推断 `m_ClassName`：`FALLBACK_NEUTRAL_*` → `Leader_Fallback`，
+其余 → `UserInterface`。**但同前缀不代表同类别**：
+
+| 贴图名 | 真实用途 | 应有 `m_ClassName` | 注册在 |
+|---|---|---|---|
+| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP` | 3D 领袖回退 | `Leader_Fallback` | `LeaderFallbacks.xlp` |
+| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP_Suk` | **UI 选人界面 2D 立绘** | **`UserInterface`** | `UILeaders.xlp`（`UITexture`） |
+
+类别写错的后果是**静默**的：cooker 报
+`has class 'X', but is bound to parameter 'Y' which does not accept this class`，
+错误沿「材质 → 资产 → XLP 条目」传播，而 **XLP cook 仍显示 success**，条目被替换成 error asset
+（界面空白，不报错）。
+
+- `gen_tex.py` 已内置 `_UI_PORTRAIT_SUFFIXES` 显式排除 `_Suk` 这类 UI 后缀；
+  **新增同类后缀请往该常量里加**，不要再写前缀特例。
+- 交付前自查：`grep m_ClassName Textures/*.tex` 逐个核对，或跑
+  `civ6-asset-forge/scripts/verify_suk_portrait.py`（在意的就是这一条）。
+- 详见 `civ6-asset-forge/reference/ui-leader-portrait.md` §4.4。
+
 ## 三、图标尺寸规格全表（19 类）
 
 数据来源：Civ6 Modding Assistant 1.6.3 `civ6/iconsize_data.pyc` 反编译表；已用本项目
@@ -90,9 +111,43 @@
 | `victory_icon` | Victories | 64,80,130,220 |
 | `wonder_icon` | Wonders | 32,38,50,64,128,256 |
 
-非图标 role（原尺寸单 DDS，不进此表）：`portrait`/`fallback`（立绘 544×968）、
-`background`（1920×960）、`diplomacy_layer1..4`（960×505）、`loyalty_3d`/`loyalty_sv`
-（忠诚度贴图 512/128 与 256/128，尺寸由 `civ6-asset-forge` skill 的 `reference/loyalty-icon.md` 固定）、`custom`（兜底）。
+非图标 role（**原尺寸单 DDS**——`convert_art.ps1` 对它们**不加 `-w/-h`**，
+即**脚本不强制尺寸**，尺寸由素材来源/所属类别决定）：
+
+| role | 典型尺寸（原版实测） | 对应贴图 / 注册目标 |
+|---|---|---|
+| `portrait` | 高 **1024**（宽随内容，原版实测 389~803） | UI 选人立绘 `LEADER_*_NEUTRAL` → `UILeaders.xlp`（`UITexture`）<br>3D 纸片人贴图 `LEADER_*_TEXTURE`/`_OPACITY` = **1024²** → `Leaders.artdef` |
+| `fallback` | 高 **1024/1080**（宽随内容；原版 554~816） | `FALLBACK_NEUTRAL_*` → `LeaderFallbacks.xlp`（`LeaderFallback`） |
+| `background` | **1920×960** | `LEADER_*_BACKGROUND` → `Shell_Loading.xlp`（`UITexture`），领袖**加载界面**背景 |
+| `diplomacy_layer1..4` | 层 1–3 = **960×505**；层 4 = **1920×1010** | `<LEADER>_1..4` → `UI_LeaderScenes.xlp`（`UITexture`），外交**场景分层** |
+| `loyalty_3d` / `loyalty_sv` | 512 / 128 与 256 / 128 | 由 `civ6-asset-forge` 的 `reference/loyalty-icon.md` 固定；UILens XLP + artdef |
+| `custom` | 不限 | 兜底，注册目标由调用方负责 |
+| `fow` | 同其普通版 | FOW 迷雾变体，源图由 `apply_fow.py` 生成 |
+
+> ⚠ **尺寸不是脚本强制的**：`convert_art.ps1` 的 `Get-Sizes()` 对上述 role 返回空表
+> → 走「原尺寸单 DDS」分支（**不带 `-w/-h`**）。所以**给错尺寸不会报错**，
+> 只会让游戏里显示异常。**填 manifest 前请查上表并核对参考文档**，不要凭记忆。
+>
+> 📐 **原版实测依据**（全 pantry 6 个 `Textures` 目录、12686 个 `.tex` 扫描）：
+> `LEADER_*_BACKGROUND` **42/42 全为 1920×960**；
+> `<LEADER>_1/_2/_3` 主体为 **960×505**（另有 DLC 的 934×505 等变体）；
+> `<LEADER>_4` 为 **1920×1010**；`LEADER_*_NEUTRAL` 高度为 1024 或 1080、**最宽 803**。
+> 与第三方教程《Civ6 Modding Textbook》第 08 章的实测数值一致
+> （其参考工程：`LEADER_JASPER_KITTY_BACKGROUND` 1920×960、`JASPER_KITTY_1..3` 960×505）。
+>
+> ❗ **2026-09-17 勘误（AI 自引入并已回退）**：本节一度被改成
+> `background = 1920×1080`、`diplomacy_layer = "由 DiplomacyInfo 决定"`，**那是错的**，
+> 成因是把 示例工程 项目的**另一条链**串味过来：
+> `DiplomacyInfo.BackgroundImage`（如本项目自命名的 `IMG_LEADER_*_DIPLOMACY_BACKGROUND`，
+> 1920×1080）是**单图覆盖外交背景**的独立机制，**不是** `background` role，
+> 也**不是** `diplomacy_layer1..4`（后者是 `Leaders.SceneLayers=4` 配 `UI_LeaderScenes.xlp` 的分层场景）。
+> 三者互不相同，勿再混淆：
+> `background`(Shell_Loading 加载界面) ≠ `diplomacy_layer1..4`(UI_LeaderScenes 分层场景) ≠ `DiplomacyInfo`(单图覆盖)。
+>
+> ❓ **仍存疑**：本表历史上的 `544×968` 在 pantry（12686 个 `.tex`）与教程参考工程中
+> **均无先例**，尚不能确认它对应哪个对象；已从表中移除，未再断言。
+> 若后续遇到该尺寸的原始出处，请补记于此。
+
 
 **Atlas 图集命名约定（make_atlas.py 默认值即按此设计）：**
 - 图集名统一以 `ATLAS` 起始；项目专属前缀（如示例中的 `MYMOD`）不属于本 skill 职责，由项目自身规范定义，下面用 `{PREFIX}` 占位。
