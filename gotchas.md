@@ -365,7 +365,7 @@
 
 53. **`LIKE` 里的 `_` 是单字符通配符，匹配字面下划线必须 `ESCAPE '\'`**
     ```sql
-    WHERE Type LIKE 'CIVILIZATION\_（已移除）\_WAVES\_%' ESCAPE '\'
+    WHERE Type LIKE 'CIVILIZATION\_MY\_MOD\_%' ESCAPE '\'
     ```
     漏写 `ESCAPE` 会静默多匹配（`\_` 被当"任意单字符"），在批量 `DELETE`/`UPDATE` 里后果放大。
 

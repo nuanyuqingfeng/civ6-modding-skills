@@ -156,7 +156,7 @@ def _comment_block(path: str) -> str:
     """非 Python：取文件**头部**注释块（支持 `//`、`#`、`/* … */`）。
 
     只扫头部 —— 早期版本允许"out 为空就继续扫"，结果把代码中间的第一条 `//` 注释
-    当成 header（实测把 `// story` 认成了 `（语料执行器已移除）` 的用途）。
+    当成 header（实测把某行内注释误认成了模块用途）。
     """
     text = open(path, encoding="utf-8-sig", errors="replace").read()
     text = re.sub(r"^#![^\n]*\n", "", text)              # 先剥 shebang

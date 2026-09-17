@@ -9,21 +9,6 @@
   "scripts/clear_ae_cache.py": {
     "usage": "python clear_ae_cache.py [--mod <ModName>] [--dry-run]        # 动过贴图后必跑，否则 AssetEditor 结论是缓存假象"
   },
-  "（本地化工具已移除）/civ6_text_audit.py": {
-    "usage": "python civ6_text_audit.py audit --root <工程目录> --out report.txt   |   python civ6_text_audit.py diff-tags --base <主工程> --balance <补丁> --out diff.txt"
-  },
-  "（本地化工具已移除）/civ6_locale_tool.py": {
-    "usage": "python civ6_locale_tool.py {extract|lookup|generate|merge|apply-edits|update|verify} [...]   (lookup 的词库为可选外部 （语料库已移除）：--db / （已移除的语料库环境变量）)"
-  },
-  "（本地化工具已移除）/civ6_pipeline.py": {
-    "usage": "python civ6_pipeline.py run --root <工程目录> --names names.json --workdir out [--overwrite] [--strict] [--dry-run]"
-  },
-  "（本地化工具已移除）/civ6_locale_extract.py": {
-    "usage": "python civ6_locale_extract.py --root <工程目录> --out <输出.json> [--tag <LOC_前缀>]"
-  },
-  "（本地化工具已移除）/civ6_num_audit.py": {
-    "usage": "python civ6_num_audit.py --root <工程目录> [--out <报告.txt>]"
-  },
   "_comment": "docstring/argparse 抽不出人话的少数脚本在这里覆盖；覆盖值参与生成，重跑不会丢。键 = 相对 skill 根的路径。",
   "release/scripts/clash_proxy.py": {
     "purpose": "Clash Verge 代理节点测速与自动选优（上传工坊网络差时用）",

@@ -14,7 +14,6 @@
 | `DebugLocalization.sqlite` | 62.1 MB | 官方 `LocalizedText` 全量（8 语言）+ skill 自建侧表 `SkillAnnotation_Colors` / `SkillAnnotation_Icons`（手工配色与图标名） | 否 |
 | `DebugConfiguration.sqlite` | 1.1 MB | 官方 FrontEnd 配置快照（`Maps` 等表） | 否 |
 | `source_index.sqlite` | 29.1 MB | 官方行级来源索引（`row_source`）+ 人工 `dlc_dependency` 标注（12 行 Mode/Scenario） | 否 |
-| `（已移除）/（语料库已移除）` | 27.7 MB | 多语言语料库（约 13 万业务行 × 8 语言），**可选**：仅翻译/本地化时的词库查证用 | ★ **是**：`python -c "import zipfile;zipfile.ZipFile('（语料库已移除）').extractall('database/（已移除）')"` → 见 `（已移除）/README.md` |
 | `annotations/dynamic_modifiers_dlc.json` | 7 KB | 人工整理的 DLC 依赖标注（`source_index.dlc_dependency` 的镜像） | 否 |
 | `scripts/`、`*.md` | — | 查询脚本与注解文档 | 否 |
 

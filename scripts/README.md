@@ -46,13 +46,7 @@ check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR �
 |---|---|---|
 | `clear_ae_cache.py` | 删 `%APPDATA%\AssetCloud\mod-<Mod>-asset-deps.json`（可再生，AssetEditor 会重建）。**开 AE 前若动过贴图，必须先清**，否则"移走问题文件仍不闪退"是缓存假象 | `python clear_ae_cache.py [--mod <名>] [--dry-run]` |
 
-## 3. 语料工具
-
-| 脚本 | 作用 | 用法 |
-|---|---|---|
-| `（语料执行器已移除）` | 查跨项目语料库（术语 / 剧情台词，多语言 + 说话人） | `node （语料执行器已移除） --q <关键词> [--table terms\|story] [--lang zh\|en\|ja] [--speaker <人名>] [--exact] [--limit N]` |
-
-## 4. 标准验证顺序
+## 3. 标准验证顺序
 
 ```
 ⓿ 【有对局在跑时，先做这一步】
