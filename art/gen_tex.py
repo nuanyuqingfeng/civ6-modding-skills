@@ -282,8 +282,32 @@ def get_source_png(name_no_ext):
     return os.path.join(ASSETS_DIR, friendly + ".png")
 
 
+# UI 立绘/背景后缀：这些贴图虽与 3D 回退同前缀，但类别必须是 UserInterface。
+# 由 Sukritact's Civ Selection Screen 适配引入（civ6-asset-forge/scripts/gen_suk_portrait.py）。
+_UI_PORTRAIT_SUFFIXES = ("_Suk",)
+
+
 def is_fallback(name):
-    """判断是否为 Fallback 前景立绘"""
+    """判断是否为 Fallback 前景立绘（3D 领袖回退用的 Leader_Fallback 贴图）。
+
+    ⚠ 不能只做前缀判断：`FALLBACK_NEUTRAL_{X}` 与 `FALLBACK_NEUTRAL_{X}_Suk`
+    虽然同前缀，但**类别完全不同**：
+
+      FALLBACK_NEUTRAL_CARTETHYIA_QYQXP      -> Leader_Fallback（3D 回退，带 mip，
+                                                注册在 LeaderFallback XLP）
+      FALLBACK_NEUTRAL_CARTETHYIA_QYQXP_Suk  -> UserInterface （Suk 选人界面的 2D 立绘，
+                                                单 mip，注册在 UITexture XLP）
+
+    若 _Suk 被判成 Leader_Fallback，会出现「类别与所绑定的 XLP 参数不匹配」：
+    cooker 报 `has class 'X', but is bound to parameter 'Y' which does not accept
+    this class`，且 XLP cook 仍显示 success，条目被静默替换成 error asset
+    （详见 civ6-asset-forge/reference/loyalty-icon.md「类别是硬约束」一节）。
+
+    因此这里显式排除 UI 立绘后缀。新增同类后缀时**往 _UI_PORTRAIT_SUFFIXES 里加**，
+    而不是再写前缀特例。
+    """
+    if name.endswith(_UI_PORTRAIT_SUFFIXES):
+        return False
     return name.startswith("FALLBACK_NEUTRAL_")
 
 
