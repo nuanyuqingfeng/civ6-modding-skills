@@ -7,3 +7,8 @@
 *.sqlite binary
 *.json.gz binary
 *.png binary
+*.exe binary
+*.xlsx binary
+*.psd binary
+*.dds binary
+*.bnk binary

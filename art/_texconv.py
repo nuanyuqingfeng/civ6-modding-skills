@@ -22,10 +22,13 @@ r"""_texconv.py — texconv（外部 DDS 转换器）定位的单一真源
 
 ## 探测顺序（与 convert_art.ps1 一致）
 
-1. `PATH` 上的 `texconv`
-2. `%LOCALAPPDATA%\Microsoft\WinGet\Links\texconv.exe`（winget 安装后的固定链接位；
+1. 环境变量 `TEXCONV`（显式覆盖，最高优先级）
+2. **本 skill 随包内置**：`art/bin/texconv.exe`（Microsoft DirectXTex 官方 release 版，MIT；
+   随仓库分发 → clone 后开箱可用）
+3. `PATH` 上的 `texconv`
+4. `%LOCALAPPDATA%\Microsoft\WinGet\Links\texconv.exe`（winget 安装后的固定链接位；
    winget 装完当前会话 PATH 不刷新，故需补探测）
-3. （仅 `recursive=True`）`%LOCALAPPDATA%\Microsoft\WinGet\Packages` 下递归找
+5. （仅 `recursive=True`）`%LOCALAPPDATA%\Microsoft\WinGet\Packages` 下递归找
 
 **不自动安装**：找不到就返回 `None`，由调用方决定报错还是跳过（本 skill 不代跑 winget）。
 
@@ -45,8 +48,9 @@ import sys
 from pathlib import Path
 from shutil import which
 
-__all__ = ["find_texconv", "describe_missing", "WINGET_LINKS", "WINGET_PACKAGES"]
+__all__ = ["find_texconv", "describe_missing", "WINGET_LINKS", "WINGET_PACKAGES", "BUNDLED"]
 
+BUNDLED = Path(__file__).resolve().parent / "bin" / "texconv.exe"   # 随包内置（DirectXTex, MIT）
 WINGET_LINKS = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/WinGet/Links/texconv.exe"
 WINGET_PACKAGES = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/WinGet/Packages"
 
@@ -54,10 +58,21 @@ WINGET_PACKAGES = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/WinGet/P
 def find_texconv(recursive=True):
     """定位 texconv。找到返回完整路径（或 `"texconv"` 若在 PATH），否则 `None`。
 
+    顺序：`TEXCONV` 环境变量 → 随包内置 `art/bin/texconv.exe` → PATH → WinGet Links
+          →（recursive）WinGet Packages 递归。
+
     Args:
         recursive: True 时额外递归扫 `WinGet/Packages`（管线内部用）；
-                   False 只查 PATH 与 WinGet Links 固定位（面向用户用）。
+                   False 只查内置副本 / PATH / WinGet Links 固定位（面向用户用）。
     """
+    env = os.environ.get("TEXCONV")
+    if env and Path(env).is_file():
+        return env
+    try:
+        if BUNDLED.is_file():
+            return str(BUNDLED)
+    except OSError:
+        pass
     found = which("texconv")
     if found:
         return found
@@ -78,7 +93,8 @@ def find_texconv(recursive=True):
 
 def describe_missing(recursive=True):
     """找不到时的统一提示文案（含手动安装命令）。"""
-    scope = "PATH → WinGet Links → WinGet Packages(递归)" if recursive else "PATH → WinGet Links"
+    scope = ("TEXCONV → 内置 art/bin/texconv.exe → PATH → WinGet Links → WinGet Packages(递归)"
+             if recursive else "TEXCONV → 内置 art/bin/texconv.exe → PATH → WinGet Links")
     return (
         "找不到 texconv（已查：%s）。\n"
         "本 skill 不自动安装。请任选一种：\n"

@@ -1,4 +1,4 @@
-# Verify a workshop item after upload using Steam API
+﻿# Verify a workshop item after upload using Steam API
 param(
     [Parameter(Mandatory=$true)][string]$ItemId
 )

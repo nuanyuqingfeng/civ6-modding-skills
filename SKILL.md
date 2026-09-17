@@ -101,6 +101,11 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 | **文明周边数据收尾**（百科资料卡 `CivilizationInfo` / 城市名 `CityNames` / 市民名 `CivilizationCitizenNames` / 出生关联 `StartBias*` / BGM 开关 `CivilizationAudioTags` / 知名地名 `NamedMountains·NamedRivers` 等） | → **`reference/civ-metadata.md`**（各表 schema、取值域、写作要点、数量建议、最小检查清单） |
 | **Asset Editor 字段名 / 调试查日志 / 枚举取值**（"AE 里那个框叫什么"、"Database.log 怎么看"、"Culture 有哪些值"、"忠诚度材质的字段名"） | → **`reference/editor-and-enums.md`**（AE 字段速查 / 调试三板斧 / `Cultures.artdef` 取值表 / 忠诚度 3D 链字段） |
 | **平衡补丁 / 差分覆盖**（改主工程数值、解挂载、覆盖文本的补丁 mod） | → `balance-patch.md` |
+| **换行 / EOL 归一化**（"CRLF 还是 LF"、行尾混了、`.gitattributes` 怎么写、接手他人工程先体检） | → `gotchas.md` **§68「换行分层铁律」**（唯一真源）+ `scripts/normalize_eol.py`（默认只报告，`--fix` 才写盘） |
+| **工坊封面 / 预览图**（做封面、"封面上的中文别画错"） | → `tools/workshop_cover.py`（确定性 CJK 排版；用法见 `TOOLS.md` 与 `tools/README.md`，发布流程见 `release.md`） |
+| **音频**（导入 / 素材整备 / 响度均衡 / Wwise / bank / 语音 / BGM） | → **`civ6-audio-pipeline` skill**（音频全流程在该 skill 内，此处不重复） |
+| **运行时验证**（"这个 API 实际行为是什么"、复现脚本报错、PROPERTY/modifier 实测） | → **`civ6-tuner` skill**（FireTuner TCP 4318，在运行中的对局里执行 Lua；静态校验回答不了的问题走这里） |
+| **翻译 / 多语言文本**（补缺失语言、审计语言齐缺失、主工程 vs 补丁文本 diff） | → `（本地化工具已移除）/`（**已内化**，见其 `README.md`）+ `SKILL.md` §4.1 的风格底线 |
 | **Mixed** | → Read all relevant |
 | **Steam 创意工坊上传/更新** | → `release.md` |
 | **Debug** | → `debug-tools.md` + `gotchas.md` |
@@ -161,23 +166,19 @@ REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "Load
 ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
 ```
 
-### 4.1 本地化桥接（翻译/多语言任务）—— **可选：依赖本机外部 skill**
+### 4.1 本地化 / 多语言文本（工具已内化在 `（本地化工具已移除）/`）
 
-> ⚠ **本节是"作者本机附加能力"，不是本 skill 的组成部分。** 下表命令指向另一个 skill
-> （`（外部翻译 skill，已不作为依赖）`，位于作者机器的 `~/.config/opencode/skills/`）与一份**不随本 skill 分发**的
-> 语料库 `（语料库已移除）`。**全新环境里这些路径不存在**，命令会直接失败——这**不影响** Civ6 侧的其它任何功能。
->
-> 你要做翻译/本地化时，二选一：
-> ① 自行准备等价工具（本 skill 侧只需守住下面的"风格底线"）；
-> ② 拿到 `（外部翻译 skill，已不作为依赖）` 与 `（语料库已移除）` 后，把命令里的路径替换成你自己的实际路径再跑。
->
-> `（外部翻译 skill，已不作为依赖）` 是跨项目翻译总 skill；仅在翻译/本地化任务时借调其工具，最终校验仍用本 skill 的 Civ6 风格规则。
+五个与 Civ6 文本直接相关的脚本**已内化到本 skill**（纯标准库，clone 即用）：
+`（本地化工具已移除）/civ6_text_audit.py`、`civ6_locale_tool.py`、`civ6_pipeline.py`、
+`civ6_locale_extract.py`、`civ6_num_audit.py`。用法与能力边界见 `（本地化工具已移除）/README.md`。
 
-- 词库查证（SQLite 优先）：`python <（外部翻译 skill，已不作为依赖）>/references/（已移除）/scripts/search_（已移除）.py "守岸人" --source-type term,item --field-type name --limit 10`
-- 全工程审计（只读）：`python <（外部翻译 skill，已不作为依赖）>/scripts/civ6_text_audit.py audit --root <工程目录> --out report.txt`
-- 主工程 vs 平衡补丁：`python <（外部翻译 skill，已不作为依赖）>/scripts/civ6_text_audit.py diff-tags --base <主工程> --balance <补丁> --out diff.txt`
-- 写入（自动备份 + 元组级替换 + 写后 verify）：`python <（外部翻译 skill，已不作为依赖）>/scripts/civ6_locale_tool.py merge --sql Text_X.sql --changes changes.json`；`apply-edits --sql Text_X.sql --edits edits.json`
-- 单命令闭环：`python <（外部翻译 skill，已不作为依赖）>/scripts/civ6_pipeline.py run --root <工程目录> --names names.json --workdir out --db <你的 （语料库已移除）>`；默认只补缺失语言，`--overwrite` 才覆盖已有译文，`--strict` 卡后置审计，`--dry-run` 只出计划。
+- 全工程审计（只读）：`python （本地化工具已移除）/civ6_text_audit.py audit --root <工程目录> --out report.txt`
+- 主工程 vs 平衡补丁：`python （本地化工具已移除）/civ6_text_audit.py diff-tags --base <主工程> --balance <补丁> --out diff.txt`
+- 写入（元组级替换 + 写后 verify）：`python （本地化工具已移除）/civ6_locale_tool.py merge --sql Text_X.sql --changes changes.json`；`apply-edits --sql Text_X.sql --edits edits.json`
+- 单命令闭环：`python （本地化工具已移除）/civ6_pipeline.py run --root <工程目录> --names names.json --workdir out`；默认只补缺失语言，`--overwrite` 才覆盖已有译文，`--strict` 卡后置审计，`--dry-run` 只出计划。
+- 词库查证（**可选**）：`civ6_locale_tool.py lookup --names names.json --db <（语料库已移除）> --out names_final.json`
+  —— 该语料库（约 95 MB）**不随本 skill 分发**，用 `--db` / `--（已移除）`、环境变量 `（已移除的语料库环境变量）` / `（已移除的语料库环境变量）`
+  或 `local_paths.json` 的 `（已移除的语料库键）` / `（已移除的语料库键）` 键指定；缺它时**不影响**上列其它功能。
 - 可直接 import（主模型或子代理）：`audit_files` / `marker_drift` / `diff_tags`；另可复用 `parse_sql_rows` / `extract_file_rows`。
 - 风格底线：语言代码 `en_US` / `zh_Hans_CN` / `zh_Hant_HK` / `ja_JP` / `ko_KR` / `de_DE` / `es_ES` / `fr_FR`；`[ICON_X]`、`[COLOR:...]`、`[ENDCOLOR]`、`[NEWLINE]`、`{LOC_TAG}` 必须保留；默认多语言合并进原 SQL，不新增分语言文件；UTF-8/CRLF/注释/尾逗号保持原样；Config 覆盖属预期加载语义。
 
@@ -376,6 +377,8 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 | `art/verify_tex_class.py` | **`.tex` 类别 vs XLP 注册类**是否匹配（如 `UITexture` 包里的贴图必须 `UserInterface`） | ★ 唯一能防「类别写错 → cooker 静默替换成 error asset」的机械防线；`check_pantry`/`verify_icon_atlas`/`align_tex_format` 都不查它 |
 | `scripts/clear_ae_cache.py` | 清 AssetEditor 依赖缓存（动过贴图后**必须**清，否则验证结论是缓存假象） | 同上 |
 | `scripts/verify_trees.py` | 两棵目录逐字节相同（源 ↔ Mods 副本） | 双目录一致性 |
+| `scripts/check_lua_registration.py` | **`.lua` 注册体检** —— 按角色（UI 上下文 / include 扩展件 / GP 脚本）判定哪些 `.lua` 实际不会被加载 | 改过 `.lua` 后必跑（`scripts/README.md` 标准顺序第 ⑥ 步） |
+| `scripts/normalize_eol.py` | **换行归一化** —— 按 `gotchas.md` §68「资产类 LF / 代码·配置类 CRLF」体检（默认只报告，`--fix` 才写盘） | 接手他人工程、批量改过行尾后 |
 
 
 ### rgn_validate 离线执行器
@@ -506,15 +509,30 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | `database/scripts/query_events.py` | 事件查询工具（查参数/签名/示例） |
 | `database/scripts/query_api.py` | API 查询工具（主源 `api.sqlite`，**父项与子项一并查**；含 availability/核验字段，示例/注释来自 JSON 富化） |
 | `database/scripts/requirement_reference.sql` | RequirementType 分类 |
+| `database/scripts/query_civ6_db.py` | 通用 DB 查询 CLI（SQLite 封装；`--check-id <TYPE>` 可做新 Type 的 id 冲突前置检查） |
+| `database/CALIBRATION_LOG_2026-08.md` | 2026-08 **全量校准验证日志**（库补全 / 来源标注 / API 核验的取证过程与结论） |
+| `database/source_index.sqlite` | **官方行级来源索引**（`row_source` 457 表 / 5.8 万行）+ 人工 `dlc_dependency`（12 行 Mode/Scenario DLC 依赖；版本真值镜像见 `database/annotations/dynamic_modifiers_dlc.json`） |
+| `release/docs/checklist.md` · `release/docs/troubleshooting.md` | 工坊发布**核对清单**与**异常诊断**（`release.md` 引用） |
+| `（本地化工具已移除）/` | **本地化/多语言工具（已内化）**：文本审计 / 词表提取 / 合并与元组级替换 / 单命令闭环；见 `（本地化工具已移除）/README.md` |
+| `art/bin/texconv.exe` | 随包内置的 PNG→DDS 转换器（Microsoft DirectXTex，MIT，v2026.5.8.1）；探测顺序见 `art/bin/README.md` |
+| `art/make-icon.ps1` | 白色扁平图标生成（本地扩散模型 + 阈值抠底），依赖需自备，参数见 `reference/imagegen-channels.md` |
+| `reference/imagegen-channels.md` | 文生图渠道现状与"扩散模型不能出中文"等实测坑 |
+| `reference/sources/` | 外部参考件（Civ VI Modding Companion、原版议程表），出处与许可见该目录 README |
+| `database/api-verification-2026-09-08/` | **API 核验原始记录**（FireTuner 实跑输出、全量 CSV、人工复核清单）；核验列的真源，见该目录 README |
 
-### 数据库文件
+### 数据库文件（**2026-09-18 起全部随仓库分发**）
 
 | 数据库 | 大小 | 用途 |
 |--------|------|------|
-| `database/DebugGameplay.sqlite` | **61,014,016 字节（58.2 MiB）** | 游戏数据 (427 表)；**该库未入库（可再生产物）**，首次使用需自备，见 `database/README.md` |
-| `database/api.sqlite` | 2.5 MB | Lua API（4857 行；含 2026-09-08 FireTuner 实测核验列，见下节） |
-| `database/DebugLocalization.sqlite` | 64.9 MB | 中英文文本 |
-| `database/DebugConfiguration.sqlite` | — | FrontEnd 配置数据 |
+| `database/DebugGameplay.sqlite` | **61,014,016 字节（58.2 MiB）** | 游戏数据（427 表）；`rgn_validate` 的基础库、SQL 查询主库 |
+| `database/api.sqlite` | 2.5 MB | Lua API（4857 行；含 2026-09-08 FireTuner 实测核验列，见下节；**原始记录随包**：`database/api-verification-2026-09-08/`） |
+| `database/DebugLocalization.sqlite` | **65,081,344 字节（62.1 MiB）** | 官方本地化文本（8 语言）+ `SkillAnnotation_*` 手工标注侧表 |
+| `database/DebugConfiguration.sqlite` | 1.1 MiB | FrontEnd 配置数据（`Maps` 等） |
+| `database/source_index.sqlite` | 29.1 MiB | 官方行级来源索引 + 人工 `dlc_dependency` 标注 |
+| `（语料库已移除）` | 27.7 MiB（解压 90.7 MiB） | **可选**多语言语料库（翻译查证用）；**需解压**，见 `database/（已移除）/README.md` |
+| `database/api-verification-2026-09-08/` | 6.2 MiB | API 核验原始记录 |
+
+> 逐库说明、可再生性、缺库影响与重建口径见 `database/README.md`。
 
 ### API 核验字段（2026-09-08 FireTuner 全量实测 · UI/GP 范围存在性）
 

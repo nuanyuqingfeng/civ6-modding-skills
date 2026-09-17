@@ -2,27 +2,27 @@
 __pycache__/
 *.pyc
 
-# ---- 数据库纳管规则（2026-09-17 重构）----------------------------------------
-# 区分「可再生成的官方快照」与「不可再生的手工成果」：
-#   入库：api.sqlite           —— 含 2026-09-08 FireTuner 全量实测核验列
-#                                （verify_status/verify_note/runtime_gp/runtime_ui/
-#                                 true_name/corrected_from/suspect_type/audit_priority），
-#                                1854 条修正与标记是纯人工成果，丢了无法从游戏重建。
-#   入库：DebugLocalization.sqlite —— 除官方 LocalizedText 外还含 skill 自建侧表
-#                                SkillAnnotation_Colors / SkillAnnotation_Icons（手工配色与图标名）。
-#   忽略：其余 *.sqlite 均为官方 SDK 拷贝快照，可随时从游戏/SDK 重建，不入库。
-# 注意：具体忽略项写在下方「可再生成快照」段，勿用通配 `database/*.sqlite` 一刀切。
+# ---- 数据库纳管规则（2026-09-18：参考库全部随仓库分发）----------------------
+# 用户裁决：**所有参考库都随 skill 一起开源**（含官方快照），即使需要压缩后分发。
+#   入库：database/api.sqlite                官方 Lua API + 2026-09-08 FireTuner 实测核验列（人工成果）
+#   入库：database/DebugLocalization.sqlite  官方本地化文本 + SkillAnnotation_* 手工标注侧表
+#   入库：database/DebugGameplay.sqlite      官方 gameplay 库快照（rgn_validate 的基础库）
+#   入库：database/DebugConfiguration.sqlite 官方 FrontEnd 配置快照
+#   入库：database/source_index.sqlite       官方行级来源索引 + 人工 dlc_dependency 标注
+#   入库：（语料库已移除）          外部多语言语料库（95 MB → 压缩分发，解压步骤见该目录 README）
+# 仅排除**本机个人配置**（local_paths.json）与运行缓存/日志 —— 它们不是"参考库"。
 *.sqlite
 !database/api.sqlite
 !database/DebugLocalization.sqlite
-
-# ---- 可再生成的官方快照（体积大且能从游戏/SDK 重建，不入库）----
-database/DebugGameplay.sqlite
-database/DebugConfiguration.sqlite
-database/source_index.sqlite
+!database/DebugGameplay.sqlite
+!database/DebugConfiguration.sqlite
+!database/source_index.sqlite
 
 # ---- 本地个人环境文件（不随仓库分享/覆盖他人）----
 local_paths.json
+
+# ---- 解压产物：语料库以 zip 入库，解压出的 .db 不入库（各人本地解压即可）----
+database/（已移除）/（语料库已移除）
 
 # ---- 临时/日志 ----
 *.log

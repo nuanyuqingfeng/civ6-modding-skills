@@ -1,4 +1,4 @@
-# Upload/update a Civ6 workshop workspace
+﻿# Upload/update a Civ6 workshop workspace
 param(
     [Parameter(Mandatory=$true)][string]$Workspace,
     [int]$TimeoutSeconds = 1800,

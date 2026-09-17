@@ -10,11 +10,15 @@
 
 | Skill | 版本 | 管什么（一句话） | 体量 |
 |---|---|---|---|
-| **`civ6-modding`** | 2.0 | **玩法侧总入口 + 发布**：Lua（UI + GP）、ForgeUI XML、`.civ6proj`/`.modinfo`、数据库 XML/SQL、事件系统、API 参考，以及 **Steam 创意工坊发布（`release.md`）**；含 934 ModifierTypes / 761 EffectTypes / 327 RequirementTypes（1051 条 Requirements / 982 条 RequirementSets）离线库与查询工具 | 218 MB（含 4 个 SQLite 快照） |
-| `civ6-art-reference` | 1.3 | **引用原版美术素材**：ArtDef/XLP 四层引用链 + **cook 层**（pantry 解析→产物归一化→警告即静默降级→源/产物差异分级） | 1.45 MB |
-| `civ6-audio-pipeline` | 1.3 | **音频全流程**：素材整备→核验→按类别响度均衡→Wwise 工程直改→自动注册（语音 / BGM / 普通 sfx 三类路由） | 5.12 MB |
-| `civ6-tuner` | — | **FireTuner 运行时验证**（TCP 4318）：在运行中的对局里执行 Lua，回答"这个 API 实际行为是什么" | 0.10 MB |
-| **`civ6-asset-forge`** | — | **2D 美术素材总入口**：由原 `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` **四个 skill 合并而成**——忠诚度/宗教压力图标、单位晋升图标、总督素材、2D 领袖立绘注册（各成一册 `reference/*.md`）；2026-09-17 增第 ⑤ 类 **UI 领袖立绘 / 选人界面背景（Suk 适配）** 与第 ⑥ 类 **历史时刻插画（MomentIllustrations）** | 3.45 MB |
+| **`civ6-modding`** | 2.0 | **玩法侧总入口 + 发布**：Lua（UI + GP）、ForgeUI XML、`.civ6proj`/`.modinfo`、数据库 XML/SQL、事件系统、API 参考，以及 **Steam 创意工坊发布（`release.md`）**；含 934 ModifierTypes / 761 EffectTypes / 327 RequirementTypes（1051 条 Requirements / 982 条 RequirementSets）离线库与查询工具 | 173.3 MiB（含 4 个 SQLite 快照） |
+| `civ6-art-reference` | 1.3 | **引用原版美术素材**：ArtDef/XLP 四层引用链 + **cook 层**（pantry 解析→产物归一化→警告即静默降级→源/产物差异分级） | 1.40 MiB |
+| `civ6-audio-pipeline` | 1.3 | **音频全流程**：素材整备→核验→按类别响度均衡→Wwise 工程直改→自动注册（语音 / BGM / 普通 sfx 三类路由） | 4.93 MiB |
+| `civ6-tuner` | — | **FireTuner 运行时验证**（TCP 4318）：在运行中的对局里执行 Lua，回答"这个 API 实际行为是什么" | 0.11 MiB |
+| **`civ6-asset-forge`** | 1.0 | **2D 美术素材总入口**：由原 `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` **四个 skill 合并而成**——忠诚度/宗教压力图标、总督素材、2D 领袖立绘注册（各成一册 `reference/*.md`）；2026-09-17 增第 ⑤ 类 **UI 领袖立绘 / 选人界面背景（Suk 适配）** 与第 ⑥ 类 **历史时刻插画（MomentIllustrations）**。⚠ **单位晋升图标（原第 ③ 类）生成管线已于 2026-09-18 作废**，只保留规格 `reference/promotion-icon-sizes.md` | 14.6 MiB |
+
+> **体量口径**（2026-09-18 实测）：**不含 `.git/` 与 `__pycache__/`**，1 MiB = 1,048,576 字节
+> （`Get-ChildItem -Recurse -File | Measure-Object Length -Sum` 同口径）；asset-forge 的 14.6 MiB
+> 含 18 张官方历史时刻 PSD 模板。
 
 > **两条整合线**（2026-09）：
 > - `civ6-workshop-uploader` → 并入 **`civ6-modding/release.md`**（发布同属工程管理；脚本落在 `civ6-modding/release/scripts/`、模板 `release/templates/`、清单 `release/docs/`）。
@@ -52,13 +56,13 @@
 | **适配 Sukritact 选人界面（suk selection / 领袖选择界面 2D 立绘+背景）** | `civ6-asset-forge` → `reference/ui-leader-portrait.md` |
 | **做历史时刻插画（MomentIllustrations / 时代得分图 / Moment_*）** | `civ6-asset-forge` → `reference/moment-illustration.md` |
 | **做忠诚度 / 宗教压力图标** | `civ6-asset-forge` → `reference/loyalty-icon.md` |
-| **做单位晋升图标** | `civ6-asset-forge` → `reference/promotion-icon.md` |
+| **问单位晋升图标（promotion icon）尺寸 / 格式 / 注册** | `civ6-asset-forge` → `reference/promotion-icon-sizes.md`（**仅规格**；生成管线已作废） |
 | **做总督素材（徽章 / 头像小图标 / 立绘 / 边缘透明渐变）** | `civ6-asset-forge` → `reference/governor-art.md` |
 | **运行时验证 API 行为 / 复现脚本报错** | `civ6-tuner` |
 | **上传 / 更新 Steam 工坊** | `civ6-modding` → **`release.md`**（脚本 `release/scripts/`） |
-| 多语言翻译与本地化审计 | 借调 `（外部翻译 skill，已不作为依赖）`（见 §四） |
+| 多语言翻译与本地化审计 | `civ6-modding` → `（本地化工具已移除）/`（已内化）；语料库查证为可选外部依赖 |
 
-> `civ6-asset-forge` 的四类素材在 skill 内以 `reference/*.md` 分册组织（`leader-2d.md` / `loyalty-icon.md` / `promotion-icon.md` / `governor-art.md`，子资料在其同名子目录）；总入口与该 skill 自己的路由表见其 `SKILL.md`。
+> `civ6-asset-forge` 的素材类分册在 skill 内以 `reference/*.md` 组织：`leader-2d.md` / `loyalty-icon.md` / `governor-art.md` / `ui-leader-portrait.md` / `moment-illustration.md` / `promotion-icon-sizes.md`（最后一册**只有尺寸规格**——类别③ 的生成管线已作废）；总入口与该 skill 自己的路由表见其 `SKILL.md`。
 > 原 `civ6-leader-2d` / `civ6-loyalty-icon` / `civ6-promotion-icon` / `civ6-governor-art` 四个名字**已废止**，一律改走 `civ6-asset-forge`。
 
 **混合任务**：先按本表定位主 skill，再按需读其它 skill 的对应章节；`civ6-modding/SKILL.md` 的 Task Routing 是完整决策树。
@@ -73,7 +77,18 @@
 | `civ6-art-reference` | **不解包任何 `.blp`**（一律按名引用）；2D UI 图标默认不处理（仅悬空时补链）；领袖立绘 / 忠诚度图标 / 晋升图标 / 总督素材走 `civ6-asset-forge` |
 | `civ6-audio-pipeline` | 不做 3D/2D 美术资产；音频以外的注册一律回 `civ6-modding/project-setup.md` |
 | `civ6-tuner` | 只做**运行时**验证；静态校验走 `civ6-modding` 的 `rgn_validate` / `scripts/*.py`，不在本 skill 重复 |
-| `civ6-asset-forge` | **素材处理前必须先询问用户是否提供素材**（默认只生成注册文件）；只管美术规格与素材合成，**玩法注册链**仍在 `civ6-modding`（如总督玩法见 `governor-authoring.md`）；2D UI 宗教图标（`IconTextureAtlases` 270px 图集）不在范围。六类素材见其 `SKILL.md` §一 |
+| `civ6-asset-forge` | **素材处理前必须先询问用户是否提供素材**（默认只生成注册文件）；只管美术规格与素材合成，**玩法注册链**仍在 `civ6-modding`（如总督玩法见 `governor-authoring.md`）；2D UI 宗教图标（`IconTextureAtlases` 270px 图集）不在范围（→ `civ6-modding/art-pipeline.md` §图标规范化）。五类素材见其 `SKILL.md` §一（③ 晋升图标只剩尺寸规格） |
+
+### 3.1 本家族**不负责**的方向（职责真空 —— 先看这里，别在 5 个 skill 之间空转）
+
+下面三类**没有任何一个 civ6 skill 负责**。列在这里是为了让你在 30 秒内知道"这条路本家族走不通"，
+而不是把 5 个 skill 逐个翻完才发现。确需自建时，只能走家族外的资料 / 工具链。
+
+| 方向 | 你会卡在哪一步 | 建议去哪找 |
+|---|---|---|
+| **3D 模型与动画制作**（新建 mesh / 骨骼 / 动画；改单位 idle·攻击动画） | `civ6-art-reference` 只做「找到相近功能的原版对象、完整复制其美术引用链」——**它不造新模**；`civ6-asset-forge` 明确「不做 3D 模型」。一旦新单位要一把原版没有的武器、新资源要全新 3D 模型，本家族**没有入口** | 家族外工具链：AssetEditor 之外的建模 / 动画工具（Blender + Civ6 导入器一类）；`.fgx` / `.wig` 平面模型与 Animation / `.ast` 3D 动画本家族均无制作文档。可拆解工坊同类 mod、参考社区教程（Civ VI Modding Companion） |
+| **UI 字体 / 字形**（游戏内中文显示成方块、想换 UI 字体、自定字号字形） | Task Routing 里「字体」**零落点**；`civ6-modding/art-pipeline.md` 的「字体图集（FontIcon）」是**文本内嵌图标**的注册，**不是**字体本体 / CJK 字形覆盖——照它做会发现完全不是同一件事 | 家族外：字体与字形覆盖属引擎资源，只能覆盖游戏字体包或做覆盖式 UI mod。先看原版 `Base\Assets\UI\Fonts`（路径见 `civ6-modding/SKILL.md` 环境路径总表 P3），再参考社区的字体覆盖 mod |
+| **地图与场景制作**（自定义地图 / Scenario / 改地图生成脚本） | `civ6-modding` 里唯一的 Map 落点是**只读查询**（`SELECT * FROM Maps` @ `DebugConfiguration.sqlite`，见其「数据查询」表）——那是查原版地图列表，**不是**做地图 | 家族外：**WorldBuilder**（ModBuddy 之外的独立工具，随官方 SDK）+ `.Civ6Map` 与 Scenario 数据。本家族只在"把做好的地图注册进 `.civ6proj` / `.modinfo`"这一步可用（`civ6-modding/project-setup.md`） |
 
 ---
 
@@ -151,7 +166,7 @@ UTF-8 读写；不改编码/换行；PowerShell 先 `chcp 65001`；**查看中�
 
 **分享包形态**（历史做法，见 `.agents/skills/civ6-modding_2026-08-06_*.zip`）：
 
-- **full**：含数据库快照（`DebugGameplay.sqlite` 61 MB / `DebugLocalization.sqlite` 65 MB / `api.sqlite` / `source_index.sqlite` …）—— 接收方开箱即用；
+- **full**：含数据库快照（`DebugGameplay.sqlite` 58.2 MiB / `DebugLocalization.sqlite` 62.1 MiB / `api.sqlite` / `source_index.sqlite` …）—— 接收方开箱即用；
 - **clean**：只出文档 + 脚本，接收方自行放数据库。
 
 > ⚠ 分享前注意：数据库是**官方 schema 快照**，改动过要跑 `database/scripts/audit_schema_drift.py` 防污染（有漂移 exit 1）。

@@ -49,7 +49,7 @@
      `Leader_LightRigs.xlp`=LeaderLighting、`UILensModels.xlp`=UILensAsset 等）条目名**不是贴图**，
      登记进去也不会被打进 UI 包。
      但 ⚠ **`UI_LeaderScenes.xlp` 不是这类反例**——它 `m_ClassName=UITexture`（官方 3 个共 174 条），
-     外交分层贴图就登记在它里面（见下方「二.2」）。
+     外交分层贴图就登记在它里面（见下方「三.1」）。
 → Mod.Art.xml：python <skill>\art\gen_modartxml.py <projectRoot> --check
      （差异需人工确认后才 --write；注意 --check 报的差异可能是**本次改动之前就存在的**，
       先看差异里有没有提到你这次新增的 XLP/artdef，没有就别顺手 --write）
@@ -66,7 +66,12 @@
 
 ```
 
-依赖：`texconv`（缺失时脚本自动 winget 安装）、Python 3 + Pillow（make_atlas 组版用）。
+依赖：`texconv`（**已随包内置 `art/bin/texconv.exe`**，探测链见 `art/bin/README.md` / `_texconv.py`：
+`TEXCONV` → 内置 → `PATH` → WinGet Links →（仅 `recursive=True`）WinGet Packages）、
+Python 3 + **Pillow**（`make_atlas.py` 组版）、**numpy + scipy**（`normalize_icon.py` / `apply_fow.py` / `verify_icon_atlas.py` / `regen_atlas_tiers.py` / `survey_icon_atlas.py`）。
+
+> ⚠ **"自动 winget 安装"只对 `convert_art.ps1` 入口成立**（它会跑一次 `winget install Microsoft.DirectXTex.Texconv`）；
+> `make_atlas.py` / `_texconv.py` **只探测、不安装**，找不到就报错要求手动装或设 `TEXCONV`。
 
 ### 二.1 ⚠ `.tex` 类别（`m_ClassName`）是硬约束，且**不能靠名字猜**
 
@@ -87,8 +92,9 @@
 
 - `gen_tex.py` 已内置 `_UI_PORTRAIT_SUFFIXES` 显式排除 `_Suk` 这类 UI 后缀；
   **新增同类后缀请往该常量里加**，不要再写前缀特例。
-- 交付前自查：`grep m_ClassName Textures/*.tex` 逐个核对，或跑
-  `civ6-asset-forge/scripts/verify_suk_portrait.py`（在意的就是这一条）。
+- 交付前自查（PowerShell）：`Select-String -Path Textures\*.tex -Pattern m_ClassName` 逐个核对，
+  或跑 `python "<skills>/civ6-asset-forge/scripts/verify_suk_portrait.py" --project <工程根>`
+  （`--project` 为必填；在意的就是这一条）。bash 下等价写法是 `grep m_ClassName Textures/*.tex`。
 - 详见 `civ6-asset-forge/reference/ui-leader-portrait.md` §4.4。
 
 ## 三、图标尺寸规格全表（19 类）
@@ -138,7 +144,7 @@
 > → 走「原尺寸单 DDS」分支（**不带 `-w/-h`**）。所以**给错尺寸不会报错**，
 > 只会让游戏里显示异常。**填 manifest 前请查上表并核对参考文档**，不要凭记忆。
 
-### 二.2 领袖「背景」的三条独立链（极易混淆，务必先读）
+### 三.1 领袖「背景」的三条独立链（极易混淆，务必先读）
 
 术语里「领袖背景」指**三个互不相同**的东西。它们的**尺寸、XLP、加载条件**都不同，
 混淆会导致"图做了但游戏里不显示"。**引擎的真实逻辑**（`Base/Assets/UI/LeaderScene.lua:61-79`）：
@@ -224,7 +230,7 @@ end
   与旧序列图合成工具（普通插值）的输出允许像素级差异——尺寸/网格/命名完全一致，
   仅像素级更锐；重生成覆盖旧 DDS 前须向用户说明此差异（一致性上报守则）。
 
-### 3.9 单位立绘（unit_portrait）与伟人立绘（great person portrait）
+### 三.2 单位立绘（unit_portrait）与伟人立绘（great person portrait）
 
 > 官方来源：`Base/Assets/UI/Icons/Icons_UnitPortraits.xml`、`Icons_GreatPeople.xml`、
 > `PortraitSupport.lua`、`GreatPeoplePopup.lua`。本子节解决"单位立绘怎么注册、伟人立绘为什么不一样"。

@@ -1,4 +1,4 @@
-# Clash Verge named-pipe API helper (returns raw HTTP response)
+﻿# Clash Verge named-pipe API helper (returns raw HTTP response)
 # Usage:
 #   powershell -File clash_api.ps1 -Method GET -Path "/proxies" -OutFile "resp.txt"
 #   powershell -File clash_api.ps1 -Method PUT -Path "/proxies/GLOBAL" -Body '{"name":"node"}' -OutFile "resp.txt"

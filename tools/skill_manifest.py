@@ -32,7 +32,7 @@ except Exception:
     pass
 
 SKILLS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SCAN_DIRS = ["scripts", "tools", "art", "release/scripts", "database/scripts"]
+SCAN_DIRS = ["scripts", "tools", "（本地化工具已移除）", "art", "release/scripts", "database/scripts"]
 CODE_EXT = {".py", ".mjs", ".js", ".ps1", ".sh"}
 MANUAL_BEGIN = "<!-- MANUAL:BEGIN -->"
 MANUAL_END = "<!-- MANUAL:END -->"
@@ -99,14 +99,11 @@ THIRD_PARTY = {
     "civ6-asset-forge": [
         ("scripts/apply_moment_template.py", "numpy、Pillow、psd_tools"),
         ("scripts/build_icon_set.py", "numpy、Pillow"),
-        ("scripts/compose.py", "numpy、Pillow"),
         ("scripts/edge_gradient.py", "numpy、Pillow、scipy"),
         ("scripts/gen_suk_portrait.py", "Pillow"),
         ("scripts/process_leader_png.py", "Pillow"),
         ("scripts/process_loyalty_icon.py", "Pillow"),
-        ("scripts/recolor_template.py", "numpy、Pillow、scipy"),
-        ("scripts/slice_atlas.py", "Pillow"),
-        ("scripts/verify.py", "numpy、Pillow"),
+        ("scripts/psd_inspect.py", "psd_tools（--export-layers 另需 Pillow、numpy）"),
         ("scripts/verify_badge.py", "numpy、Pillow"),
     ],
     "civ6-audio-pipeline": [

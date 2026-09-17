@@ -1,0 +1,24 @@
+{
+ "CommemorationBonuses": [],
+ "DiplomacyActions": [],
+ "DistrictBuildings": [],
+ "DualHeroes": [],
+ "GoodyHutTypes": [],
+ "GreatWork_RelicData": [],
+ "HeroAbilities": [],
+ "HeroActions": [],
+ "HeroDefinitions": [],
+ "Hero_AccumulatedXp": [],
+ "Hero_Attributes": [],
+ "Hero_XpNeeded": [],
+ "IconDefinitions": [],
+ "Icons": [
+  "Localization"
+ ],
+ "Icons_FontIcons": [],
+ "Map_GreatPersonPoints": [],
+ "Map_TradeRoutes": [],
+ "NaturalWonderAdjacencies": [],
+ "NaturalWonderTypeAdjacencies": [],
+ "VotedEffects": []
+}

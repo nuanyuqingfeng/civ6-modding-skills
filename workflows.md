@@ -539,7 +539,7 @@ What kind of data?
 
 ### Step 1 — Create GamePlay Lua Script
 
-Place in `DLC/<ModName>/Scripts/MyScript.lua`:
+Place in `Mods/<ModName>/Scripts/MyScript.lua`（Mods 加载目录，见 SKILL.md 环境路径总表 P2）:
 
 ```lua
 print("MyMod: Initializing gameplay script");

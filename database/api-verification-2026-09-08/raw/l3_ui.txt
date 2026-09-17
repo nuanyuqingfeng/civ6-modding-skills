@@ -1,0 +1,10 @@
+L3|C_City_P_GetDistricts|true|Members|table
+L3K|C_City_P_GetDistricts|27|CanAttack:function,GetAdjacencyYield:function,GetAirSlots:function,GetAirUnitCount:function,GetAirUnits:function,GetAttackStrength:function,GetBaseDefenseStrength:function,GetCity:function,GetComponentID:function,GetDamage:function,GetDefenseStrength:function,GetExtraRegionalEntertainment:function,GetExtraRegionalRange:function,GetID:function,GetLocation:function,GetMaxDamage:function,GetOwner:function,GetReligionHealRate:function,GetType:function,GetX:function,GetY:function,GetYield:function,IsComplete:function,IsPillaged:function,IsUnderSiege:function,TypeName:string,__instances:table
+L3T|C_City_P_GetDistricts|CTypeName=nil
+L3|C_Player_P_GetGovernors|true|unresolved|nil
+L3|C_Player_P_GetCities|true|Members|table
+L3K|C_Player_P_GetCities|43|CanRaze:function,GetAllAssignedGovernors:function,GetAmenityAdvice:function,GetAssignedGovernor:function,GetBuildQueue:function,GetBuildingPotentialYield:function,GetBuildingYield:function,GetBuildings:function,GetCitizens:function,GetCityAI:function,GetComponentID:function,GetCulturalIdentity:function,GetCulture:function,GetDistrictID:function,GetDistricts:function,GetGold:function,GetGrowth:function,GetHousingAdvice:function,GetID:function,GetJustConqueredFrom:function,GetLastTransferType:function,GetLocation:function,GetLoyaltyAdvice:function,GetName:function,GetOriginalOwner:function,GetOwner:function,GetOwnerBeforeOccupation:function,GetPopulation:function,GetPower:function,GetPowerAdvice:function,GetProperties:function,GetProperty:function,GetReligion:function,GetTrade:function,GetX:function,GetY:function,GetYield:function,GetYieldToolTip:function,IsCapital:function,IsOccupied:function,IsOriginalCapital:function,TypeName:string,__instances:table
+L3T|C_Player_P_GetCities|CTypeName=nil
+L3|C_Game_P_GetGreatPeople|true|unresolved|nil
+L3|C_Unit_P_GetAbility|true|call:GetAbilities(0)|table
+L3K|C_Unit_P_GetAbility|0|<non-enumerable pairs=4>

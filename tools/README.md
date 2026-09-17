@@ -79,8 +79,11 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
 | `ws_root` | 上传临时工作区根 | `%TEMP%\civ6-ws` |
 | `steam_logs` | Steam 日志（查 workshop item id） | `F:\Steam\logs` |
 
-生图渠道现状（哪个能用、哪个挂了）不在本文件维护，见
-`%USERPROFILE%\.config\opencode\imagegen-channels.md`（渠道清单 + 失败模式）。
+生图渠道现状（哪个能用、哪个挂了、扩散模型出不了中文等实测坑）**已内化**在本 skill：
+见 `reference/imagegen-channels.md`（渠道清单 + 失败模式 + `art/make-icon.ps1` 用法）。
+
+本机内置的 `art/bin/texconv.exe`（DirectXTex, MIT）优先于 PATH 上的同名工具；
+需要换版本时设环境变量 `TEXCONV` 或替换该文件，详见 `art/bin/README.md`。
 
 ---
 
@@ -99,8 +102,9 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
 - **`local_flux.py`**：Google 生图（`gemini-*-image`）配额耗尽时，本地 FLUX 是唯一免费自动渠道；
   但它**不能出中文文字**，也不要拿它做图标（图标剪影走 `art/normalize_icon.py`：把已有主体图
   裁边/等比/居中并涂成白色剪影（`--color 255`、unit 图标用 `--role unit_icon`），再由
-  `art/convert_art.ps1` 出 DDS/.tex；要**由文字直接生成**剪影则用第 2 节 `sd_cpp` 目录下的
-  `make-icon.ps1`（`-Subject/-Out/-Seed`），它不在本 skill 内、换机器需自备）。
+  `art/convert_art.ps1` 出 DDS/.tex；要**由文字直接生成**剪影则用**随包内置**的
+  `art/make-icon.ps1`（`-Subject/-Out/-Seed`；模型目录用 `-SdDir`，默认取 `_paths.py` 的 `sd_cpp` 键，
+  本机没有 sd-cpp 时需自备），用法与踩坑见 `reference/imagegen-channels.md`）。
 - **`strip_comments.py`**：**默认只剥 `.lua`**（2026-09-16 起）—— Lua 注释是踩坑记录的主要载体、
   且剥离后能用 `luac -p` 自证；SQL/XML 注释多为分节标题与列对照，体量小、剥离无可比自检，
   收益低而回归面大。需要旧的全类型行为时显式加 `--all-exts`。

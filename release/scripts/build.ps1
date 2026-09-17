@@ -1,4 +1,4 @@
-# Build non-trimmed Civ6WorkshopUploader
+﻿# Build non-trimmed Civ6WorkshopUploader
 param(
     [string]$Source = "$env:USERPROFILE\AppData\Local\Temp\Civ6WorkshopUploader",
     [string]$ArtifactsPath = "artifacts"
