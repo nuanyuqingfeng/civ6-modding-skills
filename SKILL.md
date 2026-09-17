@@ -166,21 +166,22 @@ REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "Load
 ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
 ```
 
-### 4.1 本地化 / 多语言文本（工具已内化在 `（本地化工具已移除）/`）
+### 4.1 多语言文本 / 本地化（**Civ6 侧规则**）
 
-五个与 Civ6 文本直接相关的脚本**已内化到本 skill**（纯标准库，clone 即用）：
-`（本地化工具已移除）/civ6_text_audit.py`、`civ6_locale_tool.py`、`civ6_pipeline.py`、
-`civ6_locale_extract.py`、`civ6_num_audit.py`。用法与能力边界见 `（本地化工具已移除）/README.md`。
+本 skill **不内置**翻译工具链（审计/词表/合并等脚本不随包分发）；做翻译/多语言文本时按下面的
+**Civ6 侧规则**执行，工具自备（任何能按行处理 SQL 的脚本/GUI 均可）：
 
-- 全工程审计（只读）：`python （本地化工具已移除）/civ6_text_audit.py audit --root <工程目录> --out report.txt`
-- 主工程 vs 平衡补丁：`python （本地化工具已移除）/civ6_text_audit.py diff-tags --base <主工程> --balance <补丁> --out diff.txt`
-- 写入（元组级替换 + 写后 verify）：`python （本地化工具已移除）/civ6_locale_tool.py merge --sql Text_X.sql --changes changes.json`；`apply-edits --sql Text_X.sql --edits edits.json`
-- 单命令闭环：`python （本地化工具已移除）/civ6_pipeline.py run --root <工程目录> --names names.json --workdir out`；默认只补缺失语言，`--overwrite` 才覆盖已有译文，`--strict` 卡后置审计，`--dry-run` 只出计划。
-- 词库查证（**可选**）：`civ6_locale_tool.py lookup --names names.json --db <（语料库已移除）> --out names_final.json`
-  —— 该语料库（约 95 MB）**不随本 skill 分发**，用 `--db` / `--（已移除）`、环境变量 `（已移除的语料库环境变量）` / `（已移除的语料库环境变量）`
-  或 `local_paths.json` 的 `（已移除的语料库键）` / `（已移除的语料库键）` 键指定；缺它时**不影响**上列其它功能。
-- 可直接 import（主模型或子代理）：`audit_files` / `marker_drift` / `diff_tags`；另可复用 `parse_sql_rows` / `extract_file_rows`。
-- 风格底线：语言代码 `en_US` / `zh_Hans_CN` / `zh_Hant_HK` / `ja_JP` / `ko_KR` / `de_DE` / `es_ES` / `fr_FR`；`[ICON_X]`、`[COLOR:...]`、`[ENDCOLOR]`、`[NEWLINE]`、`{LOC_TAG}` 必须保留；默认多语言合并进原 SQL，不新增分语言文件；UTF-8/CRLF/注释/尾逗号保持原样；Config 覆盖属预期加载语义。
+1. **语言代码固定为**：`en_US` / `zh_Hans_CN` / `zh_Hant_HK` / `ja_JP` / `ko_KR` / `de_DE` / `es_ES` / `fr_FR`
+   （与 `Text/*.sql` 的 `UpdateText` 动作语言段一致；`Config` 覆盖属预期加载语义）。
+2. **标记必须原样保留**：`[ICON_X]`、`[COLOR:...]`、`[ENDCOLOR]`、`[NEWLINE]`、`{LOC_TAG}`。
+   图标名写错**不会报错**，只是不显示——可用 `reference/sources/civ6-icon-tags.sql`（原版 5056 个标记全表）核对。
+3. **默认多语言合并进原 SQL**，不新增分语言文件；UTF-8 / CRLF / 注释 / 尾逗号保持原样。
+4. **先查原版有没有现成 tag**：`SELECT Text FROM LocalizedText WHERE Tag='LOC_X' AND Language='zh_Hans_CN'`
+   （`database/DebugLocalization.sqlite`）——能复用就复用，文案还与官方逐字一致。
+5. 写入后逐条复核：标签齐缺失（八语言）、空值、标记漂移；改动量大时按 `validation.md` 的清单过一遍。
+
+> 文本与图标/颜色的对照数据在本 skill 内：`database/DebugLocalization.sqlite`（官方文本 + 手工标注侧表
+> `SkillAnnotation_Colors` / `SkillAnnotation_Icons`）与 `reference/sources/` 的两份社区常量表。
 
 ### 5. 中文文件处理（必读）
 
@@ -353,13 +354,12 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 
 **调用优先级（硬性）**：
 
-1. **原生插件工具（首选）**：会话工具列表存在 `dsh_validate` / `dsh_validate`（opencode 全局适配插件，注册于 `~/.config/opencode/dsh-plugins/dsh-rgn-tools.mjs`）→ 直接调用；
+1. **原生插件工具（首选）**：会话工具列表存在 `dsh_validate`（opencode 全局适配插件，注册于 `~/.config/opencode/dsh-plugins/dsh-rgn-tools.mjs`）→ 直接调用；
 2. **离线执行器（无原生工具时）**：node 直调下述 runner，参数语义与工具一致；
 3. **最终退化**：执行器也不可用才允许手动查 skill 自带 sqlite / 人工核对，交付注明"未经 rgn_validate 校验"。
 
 | 场景 | 原生工具 | 离线执行器 |
 |------|--------|-----------|
-| 查（已移除）官方译名/名词/剧情台词（`（语料库已移除）`，12 万行语料，多语言+说话人） | `dsh_validate` | `（语料执行器已移除）` |
 | 校验项目 `*_RGN.sql` 引用完整性（悬空 ModifierId/Type/RequirementSetId 等，可对照基础库） | `dsh_validate` | `scripts/rgn_validate_runner.mjs` |
 
 ### 自带校验/运维脚本（`scripts/`，全部零依赖 + 带退出码）
@@ -393,16 +393,6 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 - `--static` 回退纯文本解析模式（仅认 VALUES 字面量行，SELECT 拼接会误报悬空）
 - 执行错误多为基础库缺引擎专属/前端表（如 Players、PlayerItems）或校验器限制（Config 文件按 gameplay schema 校验，如 DuplicateLeaders.Domain；Types.Hash UNIQUE 未模拟引擎哈希；temp 表两遍执行顺序），属环境性容错项而非项目错误
 - **基础库防污染**：参考库必须与官方 schema 1:1。改过 DB 后跑 `python database/scripts/audit_schema_drift.py`（有漂移 exit 1）；校验器也会对 DynamicModifiers/Modifiers/ModifierArguments/Types 做列断言并告警
-
-### （已移除）_query 离线执行器
-
-`（语料执行器已移除）`：移植自 dsh-rgn-tools 源码 `（已移除）Query()`，CLI 化。数据源 `D:\documents\Firaxis ModBuddy\Civilization VI\示例工程\（已移除的语料库键）\（语料库已移除）`。
-
-```bash
-node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table terms|story] [--lang zh|en|ja] [--speaker <人名>] [--exact] [--limit N]
-```
-
-- `terms` → `translations` 术语词典表；`story` → `story_dialogues` 剧情台词表（`speaker_{lang}` 模糊匹配说话人）
 - `--lang` 按所选语言匹配文本列（默认 `zh`，可选 `en` / `ja`）
 
 ## File Reference
@@ -529,7 +519,6 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 | `database/DebugLocalization.sqlite` | **65,081,344 字节（62.1 MiB）** | 官方本地化文本（8 语言）+ `SkillAnnotation_*` 手工标注侧表 |
 | `database/DebugConfiguration.sqlite` | 1.1 MiB | FrontEnd 配置数据（`Maps` 等） |
 | `database/source_index.sqlite` | 29.1 MiB | 官方行级来源索引 + 人工 `dlc_dependency` 标注 |
-| `（语料库已移除）` | 27.7 MiB（解压 90.7 MiB） | **可选**多语言语料库（翻译查证用）；**需解压**，见 `database/（已移除）/README.md` |
 | `database/api-verification-2026-09-08/` | 6.2 MiB | API 核验原始记录 |
 
 > 逐库说明、可再生性、缺库影响与重建口径见 `database/README.md`。

@@ -46,13 +46,7 @@
 | `scripts/normalize_eol.py` | 按「原版换行分层铁律」归一化 Civ6 工程的文本文件换行。 | `python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）<br>python normalize_eol.py <工程目录> --fix           # 就地归一化` |
 | `scripts/rgn_validate_runner.mjs` | rgn_validate 离线执行器 v2 — 核心判定逻辑提取自 @dsh-external/dsh-rgn-tools 的 | `node rgn_validate_runner.mjs [目录=cwd] [文件模式=*.sql] [checkNaming=true] [--base <基础库>] [--static]` |
 | `scripts/verify_trees.py` | Verify two directory trees are byte-identical (recursive SHA256 comparison). | `python verify_trees.py <dirA> <dirB>` |
-| `（语料执行器已移除）` | （已移除）_query 离线执行器 — 逻辑移植自 @dsh-external/dsh-rgn-tools 的 src/index.ts （已移除）Query() | `node （语料执行器已移除） --q <关键词> [--table terms\|story] [--lang zh\|en\|ja]` |
 | `tools/_paths.py` | 本机 Civ6 关键路径解析（P1–P6），全 civ6-modding/tools 共用。 | `python _paths.py        # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）` |
-| `（本地化工具已移除）/civ6_locale_extract.py` | civ6_locale_extract.py — 提取 mod 文本库全量 LOC tag × 8 语言为参考文件。 | `python civ6_locale_extract.py --root <工程目录> --out <输出.json> [--tag <LOC_前缀>]` |
-| `（本地化工具已移除）/civ6_locale_tool.py` | civ6_locale_tool.py — Civ6 文明 Mod 多语言本地化专用工具（防踩坑版） | `python civ6_locale_tool.py {extract\|lookup\|generate\|merge\|apply-edits\|update\|verify} [...]   (lookup 的词库为可选外部 （语料库已移除）：--db / （已移除的语料库环境变量）)` |
-| `（本地化工具已移除）/civ6_num_audit.py` | civ6_num_audit.py — 以 zh_Hans_CN 为基准的多语言数值一致性审计。 | `python civ6_num_audit.py --root <工程目录> [--out <报告.txt>]` |
-| `（本地化工具已移除）/civ6_pipeline.py` | civ6_pipeline.py — audit → lookup → merge → verify 单命令流水线 | `python civ6_pipeline.py run --root <工程目录> --names names.json --workdir out [--overwrite] [--strict] [--dry-run]` |
-| `（本地化工具已移除）/civ6_text_audit.py` | civ6_text_audit.py — Civ6 本地化文本审计工具（独立 CLI + 可被其他 skill 调用） | `python civ6_text_audit.py audit --root <工程目录> --out report.txt   \|   python civ6_text_audit.py diff-tags --base <主工程> --balance <补丁> --out diff.txt` |
 | `tools/local_flux.py` | 本地 FLUX.2-klein-4B 文生图封装（免费、离线、约 8–30s/张）。 | `python local_flux.py --prompt "..." --out x.png [--seed 42] [--size 1024]<br>python local_flux.py --prompt-file p.txt --out x.png --seeds 42,7,123   # 多 seed 取样挑图` |
 | `tools/modinfo_build.py` | 从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。 | `python modinfo_build.py <X.civ6proj>                 # 只生成到 <proj目录>/Build/X.modinfo<br>python modinfo_build.py <X.civ6proj> --deploy        # 复制 Content 文件 + 写 modinfo 到 Mods/<X>/` |
 | `tools/skill_manifest.py` | 名录生成器：扫描一个 skill 的脚本，从各自 docstring 抽出「用途 + 用法」， | `python skill_manifest.py <skill 目录名或绝对路径> [...]      # 指定 skill<br>python skill_manifest.py --all-civ6                          # 批量刷新全部 civ6-* skill` |
@@ -62,7 +56,7 @@
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 52 个脚本。
+共 46 个脚本。
 
 ## 第三方依赖（非标准库）
 

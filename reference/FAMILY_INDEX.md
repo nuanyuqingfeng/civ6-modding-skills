@@ -24,7 +24,8 @@
 > - `civ6-workshop-uploader` → 并入 **`civ6-modding/release.md`**（发布同属工程管理；脚本落在 `civ6-modding/release/scripts/`、模板 `release/templates/`、清单 `release/docs/`）。
 > - `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` → 合并为 **`civ6-asset-forge`**。
 
-> **家族外的依赖**：`（外部翻译 skill，已不作为依赖）`（翻译总 skill）位于 `~/.config/opencode/skills/`，**不在 DSH 的 `.agents/skills` 目录** —— DSH 会话无法用 `skill` 工具加载它，只能按绝对路径调用其脚本。见 §四。
+> **家族外的依赖**：本家族 5 个 skill 自洽，**不依赖任何家族外 skill**；多语言文本按 `SKILL.md` §4.1 的
+> Civ6 侧规则自行处理（工具自备）。
 
 > 🧰 **每个 skill 都有 `TOOLS.md`（可复用工具名录）** —— 要写脚本做某件事之前先查它：
 > 本 skill 全部脚本的用途 / 用法 / 路径 + 本机**路径收纳**表。**有能用的就改它，不要重建。**
