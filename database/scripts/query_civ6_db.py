@@ -11,6 +11,37 @@ SKILL_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 DATA_DIR = os.path.join(SKILL_ROOT, "database")
 DB_PATH = os.path.join(DATA_DIR, "DebugGameplay.sqlite")
 LOC_DB_PATH = os.path.join(DATA_DIR, "DebugLocalization.sqlite")
+README_PATH = os.path.join(DATA_DIR, "README.md")
+
+
+def _db_missing_msg(db_path):
+    return (
+        "[错误] 缺少离线参考库：%s\n"
+        "  该库是官方 gameplay 库快照（约 58 MiB），体积大且原则上可重建，"
+        "已被 .gitignore 排除，不随 skill 仓库分发。\n"
+        "  三种补齐方式（详见 %s 第二节/第四节）：\n"
+        "    1) 从可信来源取得一份官方 gameplay 库快照，直接放到 %s\n"
+        "    2) 手上有官方 gameplay SQL dump（DebugGameplay_ALL_MODES.sql）时，按 README 第四节导入\n"
+        "    3) 库放在别处：加 --db <你的 DebugGameplay.sqlite 绝对路径> 指定（本次查询即可用）\n"
+        "  补齐后建议先跑结构自检：python %s\n"
+        % (db_path, README_PATH, DB_PATH, os.path.join(DATA_DIR, "scripts", "audit_schema_drift.py")))
+
+
+def _require_db():
+    """库缺失时明确报错并非 0 退出（exit 2：与 --check-id 命中冲突的 exit 1 区分）。"""
+    if os.path.isfile(DB_PATH):
+        return
+    sys.stderr.write(_db_missing_msg(DB_PATH))
+    sys.exit(2)
+
+
+def _apply_db_override(db_arg):
+    """--db 覆盖基础库；同目录下存在 DebugLocalization.sqlite 时一并切换（供 --type-name）。"""
+    global DB_PATH, LOC_DB_PATH
+    DB_PATH = os.path.abspath(db_arg)
+    sibling = os.path.join(os.path.dirname(DB_PATH), "DebugLocalization.sqlite")
+    if os.path.isfile(sibling):
+        LOC_DB_PATH = sibling
 
 
 def _connect(db_path):
@@ -134,6 +165,8 @@ def print_results(title, items, fmt=str):
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="Convenience CLI for SQLite queries.")
     parser.add_argument("--modifiertype", "-mt", help="Search ModifierTypes")
     parser.add_argument("--effect", "-e", help="Search Effects")
@@ -147,11 +180,16 @@ def main():
     parser.add_argument("--lang", choices=["en", "zh"], default="en",
         help="Output language for --type-name (default: en; zh for display to user)")
     parser.add_argument("--limit", "-l", type=int, default=50)
+    parser.add_argument("--db", default=None,
+        help="基础库路径（默认 database/DebugGameplay.sqlite；库不随仓库分发，缺失时见 database/README.md）")
 
     args = parser.parse_args()
     if not any(vars(args).values()):
         parser.print_help()
         sys.exit(0)
+    if args.db:
+        _apply_db_override(args.db)
+    _require_db()
 
     if args.modifiertype:
         r = search_modifiertypes(args.modifiertype, args.limit)

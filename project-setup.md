@@ -661,7 +661,7 @@ XML / SQL / Lua 同步时的条目格式：
 **自检**：把 Action 段引用的文件与 `<Content Include>` 做归一化（`\`→`/`）差集，再按上表判角色 —— ③类落在差集里 = 真漏；①类落在差集里 = 正常。
 参考实现：示例工程 `workspace/_tools/check_proj_content.py`。
 
-### 工程骨架：`.gitignore` 白名单 + `.gitattributes` 钉 LF
+### 工程骨架：`.gitignore` 白名单 + `.gitattributes` 换行分层
 
 真实工程（多个独立收敛到同一策略）推荐的仓库骨架：
 
@@ -698,13 +698,17 @@ workspace/
 ```
 
 ```gitattributes
-# ★ ArtDef / XML / SQL / Lua：强制 LF
+# ★ 换行分层铁律（唯一真源：gotchas.md §68）：资产类 LF、代码/配置类 CRLF
 # 本机 core.autocrlf 常见为 true，checkout 会把仓库里的 LF 写成工作区 CRLF；
-# 而 cooker 产物一律是 LF → 「源 ↔ Mods 副本」会出现永久伪不一致。
+# 不一刀切、不写反方向，否则会制造新的「源 ↔ Mods 副本」伪不一致。
 *.artdef  text eol=lf
-*.xml     text eol=lf
-*.sql     text eol=lf
-*.lua     text eol=lf
+*.xlp     text eol=lf
+*.txt     text eol=lf
+*.lua     text eol=crlf
+*.sql     text eol=crlf
+*.xml     text eol=crlf
+*.modinfo text eol=crlf
+*.civ6proj text eol=crlf
 
 # 美术二进制资产：禁止任何换行/编码转换
 *.dds -text -diff -merge binary
@@ -715,8 +719,10 @@ workspace/
 *.blp -text -diff -merge binary
 ```
 
-> `.gitattributes` 的完整论证与实测支撑见 `civ6-art-reference/reference/cook-layer.md §2.3.1`。
-> 加完后若出现大批"看似被改动"的文件，那是 autocrlf 历史遗留，用 `git add --renormalize .` 一次性归位，**不是内容改动**。
+> `.gitattributes` 的完整论证与实测支撑见 `civ6-art-reference/reference/cook-layer.md §2.3.1`
+> 与 `gotchas.md` §68。加完规则后若出现大批"看似被改动"的文件，**先跑
+> `python scripts/normalize_eol.py <工程目录>` 看报告**（默认只报告），确认方向符合上表再写盘；
+> **不要用 `git add --renormalize .` 一把梭** —— 它会把被 `eol=lf` 覆盖的 Lua/SQL/XML 烘成 LF 写进索引。
 
 ### 加载动作更新（动作定义 / Action definitions）
 

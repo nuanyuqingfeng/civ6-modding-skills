@@ -92,7 +92,7 @@
 
 11. **To remove data, use `<Delete>` tags** in XML with higher priority (lower Priority number).
 
-12. **`Requirements.Inverse` (BOOLEAN NOT NULL) is universally supported on ALL RequirementType.** While only 53 of 545+ RequirementType instances use Inverse=1 in official data, the engine respects the column on every type. Use `Inverse=1` on the Requirements row to negate ANY requirement — confirmed safe for `REQUIREMENT_UNIT_TYPE_MATCHES`, `REQUIREMENT_UNIT_TAG_MATCHES`, and all others. Do NOT use `Inverse` as a RequirementArgument (it's a column on the Requirements table, not an argument in RequirementArguments).
+12. **`Requirements.Inverse` (BOOLEAN NOT NULL) is universally supported on ALL RequirementType.** While only 92 of 1051 `Requirements` rows use Inverse=1 in official data (实测 `SELECT COUNT(*) FROM Requirements WHERE Inverse=1`), the engine respects the column on every type. Use `Inverse=1` on the Requirements row to negate ANY requirement — confirmed safe for `REQUIREMENT_UNIT_TYPE_MATCHES`, `REQUIREMENT_UNIT_TAG_MATCHES`, and all others. Do NOT use `Inverse` as a RequirementArgument (it's a column on the Requirements table, not an argument in RequirementArguments).
 
 13. **文本里绝对不可以出现单个 `'`、也不可以用 `\'` 或 `\` —— 唯一的隔离方式是连续两个 `''`**
     SQL 的字符串转义是**两个连续单引号 `''`**，用来与文本两端的定界 `'` 区分开。

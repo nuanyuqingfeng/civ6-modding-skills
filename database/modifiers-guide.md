@@ -131,7 +131,7 @@ Modifiers.SubjectRequirementSetId → RequirementSet → Requirements
 | **Unit** | `REQUIREMENT_UNIT_TYPE_MATCHES`, `REQUIREMENT_UNIT_TAG_MATCHES` |
 | **Logic** | `REQUIREMENT_COLLECTION_ALL_MET`, `REQUIREMENT_COLLECTION_ANY_MET`, `REQUIREMENT_REQUIREMENTSET_IS_MET` (for nesting) |
 
-**For all 545+ RequirementTypes**: `SELECT * FROM Requirements WHERE RequirementType LIKE '%Keyword%'` (DebugGameplay.sqlite) 或 `database/scripts/requirement_reference.sql`。
+**RequirementType 实测共 327 个**（口径：`SELECT COUNT(DISTINCT RequirementType) FROM Requirements`；`Requirements` 1051 行 / `RequirementSets` 982 行）：`SELECT * FROM Requirements WHERE RequirementType LIKE '%Keyword%'` (DebugGameplay.sqlite) 或 `database/scripts/requirement_reference.sql`（常用类型分类整理）。
 
 ### Subject vs Owner Requirements
 
@@ -267,5 +267,5 @@ SELECT DistrictType FROM Districts;
 - **Type Names & Relationship Chain**: `reference/TYPE_NAME_MAPPING.md` - Type → Name lookup + Trait→Modifier→LocalizedText 关联链 SQL
 - **Workshop Patterns**: `reference/WORKSHOP_PATTERNS.md` - Bulk SQL, attachments, property states, timing flags
 - **Modifier Args**: `reference/MODIFIER_ARGUMENTS.md` - Parameter data types
-- **Requirement SQL**: `database/scripts/requirement_reference.sql` - 545+ RequirementTypes
+- **Requirement SQL**: `database/scripts/requirement_reference.sql` - RequirementType 分类整理（实测 `Requirements` 表去重 **327** 个类型 / 1051 行）
 - **Query Templates**: `database/scripts/sql_query_templates.sql` - SQL patterns

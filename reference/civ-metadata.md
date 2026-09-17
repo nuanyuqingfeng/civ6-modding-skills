@@ -210,5 +210,5 @@
 - [ ] 知名地名（XP2）若要，定义表 + 关联表齐全，且 `KIND_NAMED_*` 已在 `Types` 声明
 - [ ] **所有 `LOC_*` tag 在 8 语言 `Text/*.sql` 都有文案**（缺则显示原始 key）
 
-> 校验：`python <skill>/scripts/rgn_validate_runner.mjs <Data 目录>` 查悬空引用；
+> 校验：`node <skill>/scripts/rgn_validate_runner.mjs <Data 目录>` 查悬空引用；
 > `python <skill>/scripts/check_types_kinds.py <工程>` 查 Kind 是否合法枚举。

@@ -10,7 +10,7 @@
 
 | Skill | 版本 | 管什么（一句话） | 体量 |
 |---|---|---|---|
-| **`civ6-modding`** | 2.0 | **玩法侧总入口 + 发布**：Lua（UI + GP）、ForgeUI XML、`.civ6proj`/`.modinfo`、数据库 XML/SQL、事件系统、API 参考，以及 **Steam 创意工坊发布（`release.md`）**；含 907 ModifierTypes / 1987 Effects / 545 Requirements 离线库与查询工具 | 218 MB（含 4 个 SQLite 快照） |
+| **`civ6-modding`** | 2.0 | **玩法侧总入口 + 发布**：Lua（UI + GP）、ForgeUI XML、`.civ6proj`/`.modinfo`、数据库 XML/SQL、事件系统、API 参考，以及 **Steam 创意工坊发布（`release.md`）**；含 934 ModifierTypes / 761 EffectTypes / 327 RequirementTypes（1051 条 Requirements / 982 条 RequirementSets）离线库与查询工具 | 218 MB（含 4 个 SQLite 快照） |
 | `civ6-art-reference` | 1.3 | **引用原版美术素材**：ArtDef/XLP 四层引用链 + **cook 层**（pantry 解析→产物归一化→警告即静默降级→源/产物差异分级） | 1.45 MB |
 | `civ6-audio-pipeline` | 1.3 | **音频全流程**：素材整备→核验→按类别响度均衡→Wwise 工程直改→自动注册（语音 / BGM / 普通 sfx 三类路由） | 5.12 MB |
 | `civ6-tuner` | — | **FireTuner 运行时验证**（TCP 4318）：在运行中的对局里执行 Lua，回答"这个 API 实际行为是什么" | 0.10 MB |
@@ -164,12 +164,12 @@ UTF-8 读写；不改编码/换行；PowerShell 先 `chcp 65001`；**查看中�
 
 | 产出 | 位置 |
 |---|---|
-| 完整审查报告（含用户裁决更正、证据链） | 示例工程 `workspace/specs/2026-09-14-civ6-skill-family-audit.md` |
+| 完整审查报告（含用户裁决更正、证据链） | 作者本地工程记录（不随 skill 分发）；结论已全部回灌下列文件 |
 | **P0 纠错**：`Events.*` / `GameEvents.*` 总线路由错误结论 | `SKILL.md` / `gotchas.md` §7 / `events.md` |
 | **P1 新章节** | `governor-authoring.md` / `citystate-authoring.md` / `balance-patch.md` |
 | **P2 扩充** | `gotchas.md` §44–64（LoadOrder 阶梯 / Criteria 三态 / 引擎数据细节 / 双端 API 差异）；`project-setup.md`（LoadOrder 分层、两轴、工程骨架） |
 | **P3 工具** | `scripts/` 六个新校验器 + `scripts/README.md` |
-| art 侧 | `civ6-art-reference`：pantry 注意事项 + `cook-layer.md §2.3.1` 的 `.gitattributes` 执法手段 |
+| art 侧 | `civ6-art-reference`：pantry 注意事项 + `cook-layer.md §2.3` 的双端不一致分级判定（换行分层的执法口径已统一到 `gotchas.md` §68） |
 
 ---
 

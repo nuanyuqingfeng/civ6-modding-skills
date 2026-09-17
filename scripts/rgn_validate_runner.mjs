@@ -355,7 +355,17 @@ function runExecMode() {
 
     // ── 报告 ──
     L.push(`═══ rgn_validate 报告（实跑模式）═══`)
-    L.push(`目录: ${dir} | 文件: ${files.length} 个 | 基础库: ${mat.ok ? '已快照 ' + path.basename(basePath) : '无（内存空库，仅项目内自洽）'}${mat.ok && mat.how !== 'vacuum-into' ? '（复制回退）' : ''}`)
+    L.push(`目录: ${dir} | 文件: ${files.length} 个 | 基础库: ${mat.ok ? '已快照 ' + path.basename(basePath) : '缺失 ⚠'}${mat.ok && mat.how !== 'vacuum-into' ? '（复制回退）' : ''}`)
+    if (!mat.ok) {
+      // 缺基础库时若照旧输出"✅ 未发现悬空引用"，会把"只做了项目内自洽检查"误读成"引用全部闭合"
+      // —— 而本库被 .gitignore 排除、新克隆的仓库里本就没有（见 SKILL.md「查询三级阶梯」L1）。
+      L.push('')
+      L.push('⚠⚠ 基础库缺失：未加载任何官方参考库，本次结果**仅**代表「项目文件之间的自洽性」，')
+      L.push('    无法判定对原版 ID 的悬空引用。**不要把本报告当作发布前校验结论。**')
+      L.push(`    期望路径: ${basePath}`)
+      L.push('    修复：① 把官方 DebugGameplay 参考库放到该路径；② 或显式指定 `--base <基础库路径>`。')
+      L.push('    该库为何不在仓库内、以及如何得到它，见 SKILL.md「查询三级阶梯」与 `database/README.md`。')
+    }
     if (baseSchemaWarnings.length) {
       L.push(`⚠ 基础库 schema 异常（跑 database/scripts/audit_schema_drift.py 排查）:`)
       for (const w of baseSchemaWarnings) L.push(`  - ${w}`)
@@ -403,7 +413,9 @@ function runExecMode() {
         L.push(...suggestions.slice(0, 10))
       }
     } else {
-      L.push('✅ 未发现悬空引用（项目新增引用全部闭合）')
+      L.push(mat.ok
+        ? '✅ 未发现悬空引用（项目新增引用全部闭合）'
+        : '⚠ 项目内引用闭合，但**未经基础库对照**（见开头告警）——不能据此判定悬空引用为 0')
     }
     if (namingIssues.length) {
       L.push('')
@@ -612,7 +624,7 @@ function runStaticMode() {
   }
 
   L.push(`═══ rgn_validate 报告（静态模式）═══`)
-  L.push(`目录: ${dir} | 文件: ${files.length} 个 | 基础库: ${base ? '已对照 ' + path.basename(config.baseDbPath) : '未对照（仅项目内检查）'}`)
+  L.push(`目录: ${dir} | 文件: ${files.length} 个 | 基础库: ${base ? '已对照 ' + path.basename(config.baseDbPath) : '缺失 ⚠（仅项目内检查，不能判定对原版 ID 的悬空引用）'}`)
   const defTotal = [...defs.entries()].reduce((acc, [d, s]) => acc + s.size, 0)
   L.push(`定义: ${defTotal} 个标识符（域: ${[...defs.entries()].map(([d, s]) => `${d}=${s.size}`).join(', ')}）`)
   L.push(`引用: 已扫描 ${checked.size} 个去重标识符引用，悬空 ${dangling.length} 个`)
@@ -625,7 +637,7 @@ function runStaticMode() {
     }
     if (dangling.length > 40) L.push(`… 还有 ${dangling.length - 40} 条未显示`)
   } else {
-    L.push('✅ 未发现悬空引用（项目内定义域内全部闭合）')
+    L.push('✅ 未发现悬空引用（项目内定义域内全部闭合）' + (base ? '' : '（⚠ 未对照基础库，见上方说明）'))
   }
 
   if (namingIssues.length) {

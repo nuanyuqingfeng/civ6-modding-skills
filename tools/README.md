@@ -97,7 +97,10 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
   （实测 `人类玩家所有单位` → `义凵薊丨劦…`），拉丁长句也会掉字母（`CIVILIZATION` → `CIVILLZATION`）。
   另外**封面一律不署名**（项目约定，作者只写在 `.modinfo` 的 `Authors` 与代码里）。
 - **`local_flux.py`**：Google 生图（`gemini-*-image`）配额耗尽时，本地 FLUX 是唯一免费自动渠道；
-  但它**不能出中文文字**，也不要拿它做图标（图标走 `make-icon.ps1` 的白色剪影管线）。
+  但它**不能出中文文字**，也不要拿它做图标（图标剪影走 `art/normalize_icon.py`：把已有主体图
+  裁边/等比/居中并涂成白色剪影（`--color 255`、unit 图标用 `--role unit_icon`），再由
+  `art/convert_art.ps1` 出 DDS/.tex；要**由文字直接生成**剪影则用第 2 节 `sd_cpp` 目录下的
+  `make-icon.ps1`（`-Subject/-Out/-Seed`），它不在本 skill 内、换机器需自备）。
 - **`strip_comments.py`**：**默认只剥 `.lua`**（2026-09-16 起）—— Lua 注释是踩坑记录的主要载体、
   且剥离后能用 `luac -p` 自证；SQL/XML 注释多为分节标题与列对照，体量小、剥离无可比自检，
   收益低而回归面大。需要旧的全类型行为时显式加 `--all-exts`。

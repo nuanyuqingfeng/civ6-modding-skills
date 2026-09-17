@@ -199,7 +199,7 @@ SELECT UnitType FROM Units WHERE UnitType LIKE '%WARRIOR%';
 ### SQL 模板 (`database/scripts/`)
 
 - `sql_query_templates.sql` — 8 种常用 SQL 模式（建筑加成、单位强化、嵌套 Modifier 等），可直接复制修改
-- `requirement_reference.sql` — 545+ RequirementType 按 16 个分类完整整理，含完整示例
+- `requirement_reference.sql` — RequirementType 分类整理（实测 `Requirements` 表去重 **327** 个类型 / 1051 行；本文件收录其中常用类型），含完整示例
 
 > **CLI 备份**: `py database/scripts/query_civ6_db.py` 是 SQLite 的命令行封装，不便写 SQL 时可用。
 

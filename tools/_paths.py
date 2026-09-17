@@ -31,7 +31,7 @@ DEFAULTS = {
 # 外部可执行/工具路径（同样可被 local_paths.json 覆盖）—— 全 skill 的"路径收纳"单一真源
 TOOL_DEFAULTS = {
     "uploader": r"D:\documents\Civ6WorkshopUploader\tool\Civ6WorkshopUploader.exe",
-    "sd_cpp": r"%USERPROFILE%\sd-cpp",
+    "sd_cpp": os.path.expandvars(r"%USERPROFILE%\sd-cpp"),
     "imagemagick": r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe",
     "luac": r"E:\SoftWares\Lua\5.1\luac.exe",
     "ws_root": os.path.join(os.environ.get("TEMP", r"C:\Windows\Temp"), "civ6-ws"),

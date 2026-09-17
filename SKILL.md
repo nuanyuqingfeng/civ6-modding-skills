@@ -1,6 +1,6 @@
 ---
 name: civ6-modding
-description: "文明6 mod 玩法侧总入口：Lua（UI + GamePlay）、ForgeUI XML 布局、.civ6proj / .modinfo 注册、数据库 XML/SQL、事件系统与全量 API 参考。内含决策树、任务工作流、XML 模板、验证清单，以及离线数据库目录（907 ModifierTypes / 1987 Effects / 545 Requirements）+ SQLite 查询工具。专项章节：总督编写、城邦编写、平衡补丁（差分覆盖）、议程与领袖 AI、素材转换管线。发布：Steam 创意工坊上传/更新（release.md）。工具：7 个零依赖校验器（SQL 可执行性 / 引用完整性 / Types.Kind / SQL 语义反模式 / 内容清单闭合 / .lua 加载路径 / pantry 卫生）+ 双目录一致性比对。触发词：文明6、Civ6、modding、Lua、ForgeUI、UI 面板、按钮、弹窗、modinfo、civ6proj、数据库、Modifier、Requirement、PROPERTY、事件、GameEvents、LuaEvents、总督、governor、城邦、city-state、平衡补丁、balance patch、议程、agenda、创意工坊、workshop、上传、发布、校验、rgn_validate。"
+description: "文明6 mod 玩法侧总入口：Lua（UI + GamePlay）、ForgeUI XML 布局、.civ6proj / .modinfo 注册、数据库 XML/SQL、事件系统与全量 API 参考。内含决策树、任务工作流、XML 模板、验证清单，以及离线数据库目录（934 ModifierTypes / 761 EffectTypes / 327 RequirementTypes；1051 条 Requirements / 982 条 RequirementSets）+ SQLite 查询工具。专项章节：总督编写、城邦编写、平衡补丁（差分覆盖）、议程与领袖 AI、素材转换管线。发布：Steam 创意工坊上传/更新（release.md）。工具：7 个零依赖校验器（SQL 可执行性 / 引用完整性 / Types.Kind / SQL 语义反模式 / 内容清单闭合 / .lua 加载路径 / pantry 卫生）+ 双目录一致性比对。触发词：文明6、Civ6、modding、Lua、ForgeUI、UI 面板、按钮、弹窗、modinfo、civ6proj、数据库、Modifier、Requirement、PROPERTY、事件、GameEvents、LuaEvents、总督、governor、城邦、city-state、平衡补丁、balance patch、议程、agenda、创意工坊、workshop、上传、发布、校验、rgn_validate。"
 version: "2.0"
 author: 千与千寻瀑
 license: MIT
@@ -161,15 +161,23 @@ REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "Load
 ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
 ```
 
-### 4.1 本地化桥接（翻译/多语言任务）
+### 4.1 本地化桥接（翻译/多语言任务）—— **可选：依赖本机外部 skill**
 
-`（外部翻译 skill，已不作为依赖）` 是跨项目翻译总 skill；仅在翻译/本地化任务时借调其工具，最终校验仍用本 skill 的 Civ6 风格规则。
+> ⚠ **本节是"作者本机附加能力"，不是本 skill 的组成部分。** 下表命令指向另一个 skill
+> （`（外部翻译 skill，已不作为依赖）`，位于作者机器的 `~/.config/opencode/skills/`）与一份**不随本 skill 分发**的
+> 语料库 `（语料库已移除）`。**全新环境里这些路径不存在**，命令会直接失败——这**不影响** Civ6 侧的其它任何功能。
+>
+> 你要做翻译/本地化时，二选一：
+> ① 自行准备等价工具（本 skill 侧只需守住下面的"风格底线"）；
+> ② 拿到 `（外部翻译 skill，已不作为依赖）` 与 `（语料库已移除）` 后，把命令里的路径替换成你自己的实际路径再跑。
+>
+> `（外部翻译 skill，已不作为依赖）` 是跨项目翻译总 skill；仅在翻译/本地化任务时借调其工具，最终校验仍用本 skill 的 Civ6 风格规则。
 
-- 词库查证（SQLite 优先）：`python %USERPROFILE%/.config/opencode/skills/（外部翻译 skill，已不作为依赖）/references/（已移除）/scripts/search_（已移除）.py "守岸人" --source-type term,item --field-type name --limit 10`
-- 全工程审计（只读）：`python %USERPROFILE%/.config/opencode/skills/（外部翻译 skill，已不作为依赖）/scripts/civ6_text_audit.py audit --root <工程目录> --out report.txt`
-- 主工程 vs 平衡补丁：`python %USERPROFILE%/.config/opencode/skills/（外部翻译 skill，已不作为依赖）/scripts/civ6_text_audit.py diff-tags --base <主工程> --balance <补丁> --out diff.txt`
-- 写入（自动备份 + 元组级替换 + 写后 verify）：`python %USERPROFILE%/.config/opencode/skills/（外部翻译 skill，已不作为依赖）/scripts/civ6_locale_tool.py merge --sql Text_X.sql --changes changes.json`；`apply-edits --sql Text_X.sql --edits edits.json`
-- 单命令闭环：`python %USERPROFILE%/.config/opencode/skills/（外部翻译 skill，已不作为依赖）/scripts/civ6_pipeline.py run --root <工程目录> --names names.json --workdir out --db %USERPROFILE%/.config/opencode/skills/（外部翻译 skill，已不作为依赖）/references/（已移除）/（语料库已移除）`；默认只补缺失语言，`--overwrite` 才覆盖已有译文，`--strict` 卡后置审计，`--dry-run` 只出计划。
+- 词库查证（SQLite 优先）：`python <（外部翻译 skill，已不作为依赖）>/references/（已移除）/scripts/search_（已移除）.py "守岸人" --source-type term,item --field-type name --limit 10`
+- 全工程审计（只读）：`python <（外部翻译 skill，已不作为依赖）>/scripts/civ6_text_audit.py audit --root <工程目录> --out report.txt`
+- 主工程 vs 平衡补丁：`python <（外部翻译 skill，已不作为依赖）>/scripts/civ6_text_audit.py diff-tags --base <主工程> --balance <补丁> --out diff.txt`
+- 写入（自动备份 + 元组级替换 + 写后 verify）：`python <（外部翻译 skill，已不作为依赖）>/scripts/civ6_locale_tool.py merge --sql Text_X.sql --changes changes.json`；`apply-edits --sql Text_X.sql --edits edits.json`
+- 单命令闭环：`python <（外部翻译 skill，已不作为依赖）>/scripts/civ6_pipeline.py run --root <工程目录> --names names.json --workdir out --db <你的 （语料库已移除）>`；默认只补缺失语言，`--overwrite` 才覆盖已有译文，`--strict` 卡后置审计，`--dry-run` 只出计划。
 - 可直接 import（主模型或子代理）：`audit_files` / `marker_drift` / `diff_tags`；另可复用 `parse_sql_rows` / `extract_file_rows`。
 - 风格底线：语言代码 `en_US` / `zh_Hans_CN` / `zh_Hant_HK` / `ja_JP` / `ko_KR` / `de_DE` / `es_ES` / `fr_FR`；`[ICON_X]`、`[COLOR:...]`、`[ENDCOLOR]`、`[NEWLINE]`、`{LOC_TAG}` 必须保留；默认多语言合并进原 SQL，不新增分语言文件；UTF-8/CRLF/注释/尾逗号保持原样；Config 覆盖属预期加载语义。
 
@@ -456,9 +464,14 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 |------|------|
 | Civilizations（civ_icon） | 22,30,32,36,44,45,48,50,64,80,128,200,256 |
 | Leaders（leader_icon） | 32,45,48,50,55,64,80,256 |
-| Buildings / Units / Districts | 22,32,38,50,80,128,256 |
-| Resources / Wonders | 38,50,64,256 |
-| Civics / Tech | 38,42,128,160 |
+| Buildings（building_icon） | 32,38,50,80,128,256 |
+| Units（unit_icon） | 22,32,38,50,80,256 |
+| Districts（district_icon） | 22,32,38,50,80,128,256 |
+| Resources（resource_icon） | 38,50,64,256 |
+| Wonders（wonder_icon） | 32,38,50,64,128,256 |
+| Improvements（improvement_icon） | 38,50,80,256 |
+| Civics（civic_icon） | 38,42,128,160 |
+| Tech（tech_icon） | 30,38,42,128,160 |
 | Policies | 32,38,50,256 |
 | Projects | 30,32,38,50,70,80,256 |
 | Greatworks | 45,64,256 |
@@ -498,7 +511,7 @@ node "<本skill目录>/（语料执行器已移除）" --q <关键词> [--table 
 
 | 数据库 | 大小 | 用途 |
 |--------|------|------|
-| `database/DebugGameplay.sqlite` | 10.9 MB | 游戏数据 (427 表) |
+| `database/DebugGameplay.sqlite` | **61,014,016 字节（58.2 MiB）** | 游戏数据 (427 表)；**该库未入库（可再生产物）**，首次使用需自备，见 `database/README.md` |
 | `database/api.sqlite` | 2.5 MB | Lua API（4857 行；含 2026-09-08 FireTuner 实测核验列，见下节） |
 | `database/DebugLocalization.sqlite` | 64.9 MB | 中英文文本 |
 | `database/DebugConfiguration.sqlite` | — | FrontEnd 配置数据 |

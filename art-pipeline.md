@@ -45,7 +45,11 @@
      并保留目标文件的 BOM / CRLF / 格式（只做行插入）；--dry-run 可先看将要插什么。
 → 注意 **新贴图必须登记进某个 `<m_ClassName text="UITexture"/>` 的 XLP**（本工程是 XLPs\Icons.xlp）。
      漏登记 = .dds 存在但不会被打进 UI/Icons 包，游戏里图标是空白。merge 工具会代劳。
-     别混：`.ast`/几何/材质的 XLP（UI_LeaderScenes.xlp、RGN_Clutter_*.xlp 等）条目名**不是贴图**。
+     别混：几何/材质/模型类 XLP（`tilebases.xlp`=TileBase、本工程 `RGN_Clutter_*.xlp`=Landmark、
+     `Leader_LightRigs.xlp`=LeaderLighting、`UILensModels.xlp`=UILensAsset 等）条目名**不是贴图**，
+     登记进去也不会被打进 UI 包。
+     但 ⚠ **`UI_LeaderScenes.xlp` 不是这类反例**——它 `m_ClassName=UITexture`（官方 3 个共 174 条），
+     外交分层贴图就登记在它里面（见下方「二.2」）。
 → Mod.Art.xml：python <skill>\art\gen_modartxml.py <projectRoot> --check
      （差异需人工确认后才 --write；注意 --check 报的差异可能是**本次改动之前就存在的**，
       先看差异里有没有提到你这次新增的 XLP/artdef，没有就别顺手 --write）
@@ -66,7 +70,9 @@
 
 ### 二.1 ⚠ `.tex` 类别（`m_ClassName`）是硬约束，且**不能靠名字猜**
 
-`gen_tex.py` 按**名字前缀**推断 `m_ClassName`：`FALLBACK_NEUTRAL_*` → `Leader_Fallback`，
+`gen_tex.py` 判 `m_ClassName` 用的是「**前缀判断 + `_UI_PORTRAIT_SUFFIXES` 例外表**」
+（`is_fallback()`，脚本 285–311 行）：以 `FALLBACK_NEUTRAL_` 开头者 → `Leader_Fallback`，
+**但以 `_UI_PORTRAIT_SUFFIXES`（当前仅 `_Suk`）结尾的显式排除在外** → `UserInterface`，
 其余 → `UserInterface`。**但同前缀不代表同类别**：
 
 | 贴图名 | 真实用途 | 应有 `m_ClassName` | 注册在 |
@@ -629,7 +635,8 @@ python art/align_tex_format.py <projectRoot> --write --only encoding,groups,comp
 
 ```bash
 python <skill>\art\apply_fow.py --input <图标.png|dds> [--output <路径>] \
-    [--no-hatch] [--hatch-strength 0.6] [--hatch-gamma 1.6] [--strength 1.0]
+    [--hatch-strength 0.62] [--ink-strength 0.55] [--strength 1.0] \
+    [--no-hatch] [--no-ink] [--no-vignette]
 ```
 
 - 默认输出 `<输入名>_FOW.png`；支持图集（整图处理）与 DDS 源（自动转 RGBA）

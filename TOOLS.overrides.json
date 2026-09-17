@@ -2,7 +2,7 @@
   "_comment": "docstring/argparse 抽不出人话的少数脚本在这里覆盖；覆盖值参与生成，重跑不会丢。键 = 相对 skill 根的路径。",
   "release/scripts/clash_proxy.py": {
     "purpose": "Clash Verge 代理节点测速与自动选优（上传工坊网络差时用）",
-    "usage": "python clash_proxy.py [--url <工坊链接>] [--top N]（详见脚本 argparse）"
+    "usage": "python clash_proxy.py [--url <工坊链接>] [--timeout 3000] [--max-workers 8]（测完自动选最优节点为 GLOBAL，无关闭开关）"
   },
   "release/scripts/cleanup.ps1": {
     "purpose": "删除临时上传工作区（真上传成功并验证后才跑）",
