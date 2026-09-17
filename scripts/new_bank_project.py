@@ -185,7 +185,15 @@ def main():
         if not os.path.isfile(DEF_WWCLI):
             raise SystemExit(
                 '[FAIL] 未找到 WwiseCLI.exe: %s\n'
-                '  请安装 Wwise 2015.1.9，或在 skill 根目录 local_paths.json 中配置 "wwcli" 后重试。' % DEF_WWCLI)
+                '  该值取自本 skill 的 local_paths.json 的 "wwcli" 键；未配置时为占位符。\n'
+                '  注意：local_paths.json 里原本写的是**作者机器**的路径（示例值），别人机器上勿照抄。\n'
+                '  请二选一指向你自己的 WwiseCLI.exe：\n'
+                '    1) 编辑 %s，写入：{"wwcli": "D:/Wwise_v2015.1.9/Authoring/x64/Release/bin/WwiseCLI.exe"}\n'
+                '    2) 或设环境变量 CIV6_WWCLI=<你的 WwiseCLI.exe 绝对路径>\n'
+                '  Wwise 2015.1 典型安装位置：<盘符>:/Wwise_v2015.1.9/Authoring/x64/Release/bin/WwiseCLI.exe\n'
+                '  （装到默认位置时形如 C:/Program Files (x86)/Audiokinetic/Wwise_v2015.1.9/'
+                'Authoring/x64/Release/bin/WwiseCLI.exe）'
+                % (DEF_WWCLI, paths.LP))
         cmd = [DEF_WWCLI, os.path.join(DST, 'Yuni.wproj'), '-GenerateSoundBanks',
                '-Platform', 'Windows', '-Bank', a.bank, '-Verbose']
         print('[GEN]', ' '.join(cmd))
