@@ -32,6 +32,7 @@
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） | `powershell -File clash_api.ps1 -Method GET -Path "/proxies" -OutFile resp.txt` |
 | `release/scripts/clash_proxy.py` | Clash Verge 代理节点测速与自动选优（上传工坊网络差时用） | `python clash_proxy.py [--url <工坊链接>] [--timeout 3000] [--max-workers 8]（测完自动选最优节点为 GLOBAL，无关闭开关）` |
 | `release/scripts/cleanup.ps1` | 删除临时上传工作区（真上传成功并验证后才跑） | `powershell -File cleanup.ps1 -Workspace $env:TEMP\civ6-ws\<ModName>` |
+| `release/scripts/ensure_uploader.ps1` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
 | `release/scripts/find_item_id.ps1` | 从本机 Steam 日志反查工坊条目 ID | `powershell -File find_item_id.ps1 -ModName <ModName>` |
 | `release/scripts/upload.ps1` | 上传 / 更新工坊条目（日志默认写 <tool目录>\logs） | `powershell -File upload.ps1 -Workspace <工作区> [-TimeoutSeconds 1800]` |
 | `release/scripts/validate.ps1` | 上传前 validate 工作区（exit 0 才允许 upload） | `powershell -File validate.ps1 -Workspace <工作区>` |
@@ -56,7 +57,7 @@
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 46 个脚本。
+共 47 个脚本。
 
 ## 第三方依赖（非标准库）
 

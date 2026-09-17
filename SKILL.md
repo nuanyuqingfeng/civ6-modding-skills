@@ -563,6 +563,10 @@ Reference: Civ6Docs.html (Civ6 root) + Civ VI Modding Companion 2.0.xlsx
 
 [Civ VI Modding Companion 2.0.xlsx] by ChimpanG, WildW
 枫叶佬的 Lua 教程: https://github.com/FYMapleLeaves/ml-civ6-lua-tutorial/tree/main
+原版图标标记全表 by 号码菌（`reference/sources/civ6-icon-tags.sql`）
+texconv（PNG→DDS）来自 [microsoft/DirectXTex](https://github.com/microsoft/DirectXTex)（MIT，随包内置 `art/bin/`）
+工坊上传器 [Jianbao233/Civ6WorkshopUploader](https://github.com/Jianbao233/Civ6WorkshopUploader)（MIT，**不随包**，用
+`release/scripts/ensure_uploader.ps1` 从上游获取）
 
 ---
 
@@ -570,3 +574,4 @@ Reference: Civ6Docs.html (Civ6 root) + Civ VI Modding Companion 2.0.xlsx
 
 - 整理人：千与千寻瀑
 - 致谢：优妮、Hemmelfort、枫叶、夏凉凉凉、AWAW 等
+- 随包的素材/模板来自社区前人的整理与分享；本 skill 的管线、工作流与实测结论为整理人所作
