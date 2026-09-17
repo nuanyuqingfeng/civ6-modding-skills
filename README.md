@@ -205,7 +205,7 @@ civ6-modding-skills/
 
 ### 10.2 致谢
 
-- **教程与经验**：优妮（《小优妮的文明6模组笔记》）、枫叶（Lua 教程）、Hemmelfort、夏凉凉凉、AWAW、岛村卯月 / UzukiShimamura
+- **教程与经验**：优妮/岛村卯月 / UzukiShimamura（《小优妮的文明6模组笔记》）、枫叶（Lua 教程）、Hemmelfort、夏凉凉凉、AWAW
 - **社区资料**：ChimpanG / WildW（Civ VI Modding Companion）、号码菌（原版图标标记全表）
 - **工具**：Jianbao233（Civ6WorkshopUploader）、Microsoft（DirectXTex / texconv）
 - **游戏与数据**：Firaxis Games / 2K（《文明 6》本体、SDK 与 pantry 素材）
