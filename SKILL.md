@@ -301,4 +301,7 @@ civ6-asset-forge/
 ## 作者与致谢
 
 - 整理人：千与千寻瀑
+- 随包素材/模板：18 张历史时刻形状 PSD（由原版时刻插画轮廓整理）、总督官方对照图 —— 社区与官方素材的整理成果；
+  本 skill 的管线、工作流与实测规格为整理人所作
+- texconv（PNG→DDS）来自 [microsoft/DirectXTex](https://github.com/microsoft/DirectXTex)（MIT，随包内置在 `civ6-modding/art/bin/`）
 - 致谢：优妮
