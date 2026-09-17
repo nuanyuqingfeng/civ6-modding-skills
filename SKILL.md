@@ -189,4 +189,6 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
 ## 作者与致谢
 
 - 整理人：千与千寻瀑
+- 引用链索引（`assets/art_index.json.gz`）由原版 artdef / SDK XLP 全量解析生成，可用 `scripts/artdef_indexer.py` 在本机重建
+- texconv（原版 DDS → PNG 测量用）来自 [microsoft/DirectXTex](https://github.com/microsoft/DirectXTex)（MIT，随包内置在 `civ6-modding/art/bin/`）
 - 致谢：优妮
