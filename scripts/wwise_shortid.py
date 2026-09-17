@@ -271,13 +271,19 @@ class IdAllocator:
         raise RuntimeError('无法分配空闲 32 位 ID')
 
 
-def scan_id_registry(finished_mod_dirs=(), wwu_dirs=()):
-    """扫描成品银行/模板工程 WWU，收集全部已用 ShortID。"""
+def scan_id_registry(finished_mod_dirs=(), wwu_dirs=(), stats=None):
+    """扫描成品银行/模板工程 WWU，收集全部已用 ShortID。
+
+    目录不存在时跳过并计数：跳过数会打印出来，并回填到可选的 stats
+    （{'skipped_dirs': N, 'skipped_list': [...]}），供 audio_pack.py 的告警引用。
+    """
     used = set(IdAllocator.ANCHORS)
+    skipped = []
     pat_txt = re.compile(r'\b(\d{1,10})\b')
     pat_short = re.compile(r'ShortID="(\d+)"')
     for d in finished_mod_dirs:
         if not os.path.isdir(d):
+            skipped.append(d)
             continue
         for fn in os.listdir(d):
             p = os.path.join(d, fn)
@@ -289,6 +295,7 @@ def scan_id_registry(finished_mod_dirs=(), wwu_dirs=()):
                 used |= set(int(m) for m in pat_txt.findall(s))
     for d in wwu_dirs:
         if not os.path.isdir(d):
+            skipped.append(d)
             continue
         for root, _, files in os.walk(d):
             for fn in files:
@@ -300,6 +307,12 @@ def scan_id_registry(finished_mod_dirs=(), wwu_dirs=()):
                     continue
                 used |= set(int(m) for m in pat_short.findall(s))
                 used |= set(int(m) for m in re.findall(r'Name="id(\d+)"', s))
+    if skipped:
+        print('[WARN] scan_id_registry: 跳过 %d 个不存在的目录: %s'
+              % (len(skipped), '; '.join(str(x) for x in skipped)))
+    if stats is not None:
+        stats['skipped_dirs'] = len(skipped)
+        stats['skipped_list'] = list(skipped)
     return used
 
 

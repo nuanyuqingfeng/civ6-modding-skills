@@ -76,8 +76,8 @@ def main():
     if not os.path.isdir(a.template):
         raise SystemExit(
             '[FAIL] 模板工程不存在: %s\n'
-            '  内置瘦身模板位于 <skill>/assets/template_slim/FelineJasperKitty；\n'
-            '  voice/bgm 所需完整模板可运行 scripts/ensure_template.py 获取，或用 --template 指定。' % a.template)
+            '  瘦身模板位于 <skill>/assets/template_slim/FelineJasperKitty（第三方内容，公开仓库中为空属正常）；\n'
+            '  voice/bgm 所需完整模板请运行 scripts/ensure_template.py 获取，或用 --template 指定。' % a.template)
 
     if a.dry_run:
         for w in media:

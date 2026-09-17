@@ -26,15 +26,20 @@ tags:
 
 | 项 | 路径 | 说明 |
 |---|---|---|
-| WwiseCLI | `E:\SoftWares\Wwise_v2015.1.9\Authoring\x64\Release\bin\WwiseCLI.exe` | 官方命令行生成器，与 GUI Shift+F7 同引擎 |
-| 模板工程(内置) | `<skill>\assets\template_slim\FelineJasperKitty` | 结构化瘦身版 0.6MB（空 Originals 壳）；脚本默认 |
-| 模板工程(完整) | `<上游教程仓库本地副本>\WWiseProject\FelineJasperKitty` | 含 301MB 媒体；GUI 里做 voice/bgm 容器工作时复制这份 |
-| 教程 | `<skill>\assets\tutorial11\11音频.md`（已内化） | 领袖/BGM 的 GUI 步骤权威依据 |
-| P1 源工程 | `D:\documents\Firaxis ModBuddy\Civilization VI` | `.civ6proj` 注册对象 |
-| P2 运行目录 | `D:\documents\My Games\Sid Meier's Civilization VI\Mods` | `.modinfo` 注册对象 |
+| WwiseCLI | 见 `local_paths.json: wwcli`（本机默认值仅为作者示例） | 官方命令行生成器，与 GUI Shift+F7 同引擎 |
+| 模板工程(瘦身) | `<skill>\assets\template_slim\FelineJasperKitty` ⚠ **不随仓库分发** | 结构壳（空 Originals），仅供本机实验脚本参考 |
+| 模板工程(完整) | 见 `local_paths.json: template_full`（首次用 `scripts/ensure_template.py` 获取） | 含媒体；GUI 里做 voice/bgm 容器工作时用它 |
+| 教程 | 上游开源教程《Civ6_Modding_Textbook》第 11 章 ⚠ **不随仓库分发** | 领袖/BGM 的 GUI 步骤权威依据；用 `ensure_template.py --repo <url>` 拉取 |
+| P1 源工程 | 见 `local_paths.json: p1`（ModBuddy 源工程根） | `.civ6proj` 注册对象 |
+| P2 运行目录 | 见 `local_paths.json: p2`（游戏 Mods 目录） | `.modinfo` 注册对象 |
 | ffmpeg/ffprobe | PATH 内 | 核验与响度均衡依赖 |
 
-> `local_paths.json` 是本机私有配置（键：`wwcli` / `template_full` / `p1` / `p2`），分享 skill 前请删除；也可用 `CIV6_WWCLI`、`CIV6_TEMPLATE_FULL`、`CIV6_P1`、`CIV6_P2` 环境变量临时覆盖。
+> `local_paths.json` 是本机私有配置（键：`wwcli` / `template_full` / `p1` / `p2`），**不入库**；也可用 `CIV6_WWCLI`、`CIV6_TEMPLATE_FULL`、`CIV6_P1`、`CIV6_P2` 环境变量临时覆盖。
+>
+> ⚠ **第三方模板与教程不随本 skill 分发**（上游仓库未附许可证）：公开仓库里 `assets/template_slim/`、
+> `assets/tutorial11/` 为空属**正常**。首次使用时跑
+> `python scripts/ensure_template.py`（会先询问，再用 `git clone --depth 1` 拉上游教程仓库并写入
+> `local_paths.json: template_full`）；没有 git/网络时手动下载该仓库并填 `template_full` 即可。
 
 > **编码自适应（无需 `PYTHONUTF8=1`）**：`audio_check.py` / `audio_normalize.py` / `new_bank_project.py` / `wwise_wire.py` 已内置 UTF-8 子进程解码，并在输出重定向（管道/采集）时自动切 UTF-8 标准输出；
 

@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 ensure_template.py -- 模板自适应保障
-1) 检查内置瘦身模板 (assets/template_slim) 与完整模板 (local_paths.json: template_full / 默认教程路径)
-2) 完整模板缺失且用户确认后: git clone --depth 1 官方教程仓库, 复制 WWiseProject/FelineJasperKitty 到 --to
+1) 检查瘦身模板 (assets/template_slim, **不随仓库分发**) 与完整模板 (local_paths.json: template_full / 默认教程路径)
+2) 完整模板缺失且用户确认后: git clone --depth 1 上游教程仓库, 复制 WWiseProject/FelineJasperKitty 到 --to
 3) 写 local_paths.json (template_full=...), 之后 new_bank_project/register 路径自适应
 用法: python ensure_template.py [--to <目录>] [--repo https://github.com/dwughjsd/Civ6_Modding_Textbook]
 注意: 涉及网络与写入, 运行前须获用户确认 (skill 铁律: 先问再做)。
+第三方模板与教程的版权归上游作者，本仓库不再分发；公开 clone 后这两个目录为空属正常。
 """
 import os, sys, json, shutil, argparse, subprocess
 import paths
@@ -31,7 +32,7 @@ def main():
     a = ap.parse_args()
     lp = load_lp()
     full = lp.get('template_full', DEF_FULL)
-    print('[1] 内置瘦身模板:', 'OK' if os.path.isdir(SLIM) else '缺失!')
+    print('[1] 瘦身模板 (assets/template_slim):', 'OK' if os.path.isdir(SLIM) else '缺失（正常：第三方内容不随仓库分发）')
     print('[2] 完整模板 (%s):' % full, 'OK' if os.path.exists(os.path.join(full, 'Yuni.wproj')) else '缺失')
     if os.path.exists(os.path.join(full, 'Yuni.wproj')):
         print('[DONE] 完整模板可用, 无需拉取'); return

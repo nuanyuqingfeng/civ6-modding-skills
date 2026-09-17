@@ -127,4 +127,5 @@
 - `wwise_shortid.py` 可从模板 Speech.bnk 提取 Sound/Action/Event/Anchor/Leaf 的 HIRC 字节模板，按 `BKHD + DIDX + DATA + HIRC` 重建 bank（SoundbankVersion=113）——**结构重建能力有效**，可用于 ShortID/布局研究。
 - **编码已废弃（实机验证记录）**：用 ffmpeg 标准 `adpcm_ms` 内嵌进 WWise 语音模板后，游戏按 **WWise 私有 ADPCM 变体**解码（ffmpeg 无法解码，报 `block_predictor` 错），导致**噪音+闪退**；且 ADPCM 压缩率约 25%，也达不到成品音乐 7.8%（Vorbis 流式）。
 - **正确做法（正式交付）**：把素材做成 **Stream（流式）→ WWise Vorbis wem**（约 8-10% 体积），建事件后由 WwiseCLI 生成 bank。语音（Speech bank）与普通音频/BGM 均如此——`audio_pack.py` 的纯 Python 产品**不得用于交付**。
-- 内置模板 `assets/template_slim/template_speech.bnk` 是**纯结构模板**（瘦身模板 + 静音占位生成，无成品音频），仅用于研究。
+- 瘦身模板 `assets/template_slim/template_speech.bnk` 是**纯结构模板**（瘦身模板 + 静音占位生成，无成品音频），仅用于研究；
+  该目录属第三方派生内容，**不随公开仓库分发**（本地保留，缺失时跑 `scripts/ensure_template.py`）。

@@ -42,6 +42,7 @@ def _default_finished_mod_dirs():
     """本机先例成品 mod 的 Audio 目录（scan 时扫描，可被 --mods 覆盖）。
 
     默认路径按本机环境自动探测；示例目录名以实际安装的 mod 为准。
+    p2 未配置或目录不存在时返回 []（调用方 cmd_scan 会据此打醒目告警）。
     """
     base = paths.get('p2') or ''
     if not os.path.isdir(base):
@@ -53,6 +54,32 @@ def _default_finished_mod_dirs():
         if os.path.isdir(audio):
             out.append(audio)
     return out
+
+
+def _mod_dirs_warning(explicit, mods):
+    """成品 mod 目录数为 0 时的醒目告警文案；正常情况返回 None（退出码不变，仍为 0）。"""
+    if mods:
+        return None
+    if explicit:
+        why = '命令行 --mods 给出的目录都不存在（或都不含 Platforms/Windows/Audio）'
+    else:
+        p2 = paths.get('p2')
+        if not p2:
+            why = ('local_paths.json 未配置 "p2"（Civ6 运行 Mods 目录），'
+                   '也未设环境变量 CIV6_P2')
+        elif not os.path.isdir(p2):
+            why = 'local_paths.json 的 "p2" 指向的目录在本机不存在：%s' % p2
+        else:
+            why = '"p2" 目录下没有任何含 Platforms/Windows/Audio 的成品 mod：%s' % p2
+    banner = '!' * 78
+    return '\n'.join([banner,
+                      '[WARN] 本次扫描到的成品 mod 目录数 = 0 —— %s。' % why,
+                      '       本次重建的 id_registry.json 不含既有成品 ID，新分配的 ShortID 可能与已有 mod 撞号！',
+                      '       解决：用 --mods 显式指定成品 mod 的 Audio 目录（可给多个），例如',
+                      '         python audio_pack.py scan --mods '
+                      '"<Civ6 Mods>/<成品mod名>/Platforms/Windows/Audio" [<更多目录>...]',
+                      '        也可在 skill 根目录 local_paths.json 里配置 "p2"（Civ6 Mods 目录）后重跑。',
+                      banner])
 
 
 def _default_wwu_dirs():
@@ -68,12 +95,21 @@ def cmd_scan(args):
     os.makedirs(STATE_DIR, exist_ok=True)
     mods = args.mods if args.mods else _default_finished_mod_dirs()
     wwus = args.wwu if args.wwu else _default_wwu_dirs()
-    used = ca.scan_id_registry(mods, wwus)
+    warn = _mod_dirs_warning(bool(args.mods), mods)
+    if warn:
+        print(warn)
+    stat = {}
+    used = ca.scan_id_registry(mods, wwus, stats=stat)
     reg = ca.IdAllocator(REGISTRY)
     reg.add(used)
     reg.save()
     print(f"[OK] id_registry 已更新: {REGISTRY}")
     print(f"     已用 ShortID {len(reg.used)} 个（含锚点 {len(ca.IdAllocator.ANCHORS)}）")
+    if warn:
+        skipped = stat.get('skipped_dirs') or 0
+        extra = '，跳过 %d 个不存在的目录' % skipped if skipped else ''
+        print(f"[WARN] 本次注册表不含既有成品 mod 的 ID（成品 mod 目录 0 个{extra}），"
+              f"存在撞号风险 —— 见上方告警的 --mods 用法。")
     return 0
 
 
