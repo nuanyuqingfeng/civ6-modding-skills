@@ -1,0 +1,15 @@
+# 文本文件统一 LF：避免 core.autocrlf=true 下 checkout 引入 CRLF 抖动
+# （本项目实测教训：示例工程 的源 artdef 混入 CRLF 导致「源 ↔ cook 产物」永久伪不一致）
+* text=auto eol=lf
+
+# 二进制资产：禁止任何换行/编码转换
+*.png binary
+*.jpg binary
+*.psd binary
+*.tga binary
+*.gz  binary
+*.bnk binary
+*.wwu binary
+*.wproj binary
+*.sqlite binary
+*.exe binary

@@ -1,0 +1,12 @@
+{
+  "_comment": "docstring/argparse 抽不出人话的少数脚本在这里覆盖；覆盖值参与生成，重跑不会丢。键 = 相对 skill 根的路径。",
+  "scripts/process_loyalty_icon.py": {
+    "usage": "python process_loyalty_icon.py --kind {loyalty|religion} (--icon <png> | --project <工程>) --suffix <后缀> [--out-dir <目录>] [--fit-mode {core,extent}]"
+  },
+  "scripts/apply_moment_template.py": {
+    "usage": "python apply_moment_template.py (--input <源图> | --input-dir <目录>) [--template N | --auto] [--out <目录>] [--dds] [--list]"
+  },
+  "scripts/psd_inspect.py": {
+    "usage": "python psd_inspect.py <psd或目录> [--pick 1,4,18] [--all] [--export-layers] [--out <目录>]"
+  }
+}

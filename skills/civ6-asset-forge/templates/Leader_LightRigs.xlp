@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<AssetObjects..XLP>
+	<m_Version>
+		<major>1</major>
+		<minor>0</minor>
+		<build>0</build>
+		<revision>0</revision>
+	</m_Version>
+	<m_ClassName text="LeaderLighting"/>
+	<m_PackageName text="leaders/light_rigs"/>
+	<m_Entries>
+<!-- LEADER_BLOCK_START -->
+		<Element>
+			<m_EntryID text="{LEADER}_LightRig"/>
+			<m_ObjectName text="{LR}"/>
+		</Element>
+<!-- LEADER_BLOCK_END -->
+	</m_Entries>
+	<m_AllowedPlatforms>
+		<Element>WINDOWS</Element>
+		<Element>MACOS</Element>
+		<Element>LINUX</Element>
+	</m_AllowedPlatforms>
+</AssetObjects..XLP>
