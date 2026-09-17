@@ -92,6 +92,7 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 |------|-------|
 | **UI panel** (XML + Lua) | → UI Routing ↓ |
 | **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节，图标规范化/占幅/边距规范查其第四节 |
+| **图标实机锯齿 / 边缘发硬 / 毛刺**（"游戏里图标不清晰"、"小尺寸档有锯齿"、接手他人图集想验中间档） | → `art-pipeline.md` **第 8.1 节「边缘质量门」**：`verify_icon_atlas.py --edge-qa` 体检 + `regen_atlas_tiers.py` 从母版重出。**注意结构校验查不出这类问题** |
 | **原版美术素材引用 / ArtDef·XLP 链**（给新对象配原版模型、查引用链、排查美术悬空、ArtDef cook 报错或"不同步"、单位渲染残缺） | → **`civ6-art-reference` skill**（引用链与 cook 层逻辑全在该 skill 内，此处不重复） |
 | **Gameplay logic** (Lua only) | → Gameplay Routing ↓ |
 | **Game data** (units, buildings, modifiers) | → Data Routing ↓ |

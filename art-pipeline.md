@@ -51,6 +51,9 @@
       先看差异里有没有提到你这次新增的 XLP/artdef，没有就别顺手 --write）
 → 校验：python <skill>\art\verify_icon_atlas.py <projectRoot> [--vanilla "<官方 Icons 目录>"]
      （第八节「完成标准」的可执行版，交付前必跑，见第十节）
+→ 边缘质量门：python <skill>\art\verify_icon_atlas.py <projectRoot> --edge-qa
+     （专查"中间档被锐化/压对比 → 实机锯齿"；结构检查查不出这类损伤，见第 8.1 节。
+       报 DAMAGED 时用 art\regen_atlas_tiers.py 从 256 母版重出，不必改 .tex/网格）
 → 注册：Art.xml 的 <Content> 与 项目 `.civ6proj` 条目同步更新
 
 ```
@@ -281,6 +284,22 @@ python art/normalize_icon.py --role unit_icon --show        # 查看该类别规
   manifest 指向工程内路径而不是桌面路径 —— 否则桌面一清空，`make_atlas.py` 下次必炸。
 - 源图只剩桌面路径时：先把 manifest 改成工程内副本再转换。
 
+> ⚠ **中间档源图陷阱（2026-09 真实踩坑，会造成"修好了又变回锯齿"）**
+>
+> 很多素材目录里**每个尺寸档都存了一份独立 PNG**（`ATLAS_X32.png`、`ATLAS_X45.png`…
+> 与 `ATLAS_X256.png` 并列）。这些**小档 PNG 往往本身就是被锐化/压对比过的成品**
+> —— 也就是第 8.1 节那个"锯齿损伤"的原始来源。
+>
+> **后果**：若 manifest 的 `members` 指向小档 PNG，或将来有人"照目录里的文件名"重跑
+> `make_atlas.py`，就会把损伤**原样再产出一遍**，而 `--edge-qa` 又会报 DAMAGED，
+> 看起来像"修了没用"。
+>
+> **规矩**：图集重建**一律以最大档（256）为唯一母版**逐格降采样；
+> **永远不要**把 `ATLAS_X{32,45,50,80…}.png` 这类小档当成"源素材"使用。
+> 判断方法：若某档的 `mid`（边界中间调占比）显著低于母版重出值，它就是受损产物，不是素材。
+> 本项目 `D:\desktop\Material\Image-Rinascita\Atlas_Rgn\{Leaders,Distrits,Resources,Monopoly}_Atlas\`
+> 下的小档 PNG **全部属于此类**（2026-09 实测；256 母版无此问题）。
+
 ### 4.9 `improvement_icon` 规范（2026-09 实测 · verified）
 
 来源：`SDK Assets/Civ6/pantry/Textures/UnitActions{38,50,80,256}.dds` 的 23 个
@@ -377,7 +396,62 @@ XML 字符引用转义，文件仍是合法 XML。**不要手工把 `.tex` 另�
 4. Art.xml / `.civ6proj` 条目与磁盘一致（Project 文件同步规范）；
 5. 若本次新增/修改了 `XLPs\` 或 `ArtDefs\` 文件：`gen_modartxml.py <projectRoot> --check`
    必跑，差异人工确认后才 `--write`（新增 XLP/Artdef 不重生成 Art.xml = 最常见的漏项）；
-6. 未动用户未确认的任何素材文件。
+6. 未动用户未确认的任何素材文件；
+7. **各尺寸档的边缘抗锯齿质量合格**：`verify_icon_atlas.py <projectRoot> --edge-qa` 必须通过
+   （见第 8.1 节）。这是唯一能抓出「结构全对、实机却是锯齿」的门。
+
+### 8.1 边缘质量门（`--edge-qa`）—— 中间档锯齿 / 硬边的唯一防线
+
+**症状**：游戏内图标（尤其 frontend 小尺寸档）肉眼可见线条锯齿、硬边、毛刺。
+
+**成因**：图集的**中间档**（32/45/50/80/128…）本应从最高分辨率母版逐格等比降采样。
+若这些小档不是从母版缩出来（链式缩放 / 有损来源反复转存），或缩完之后又被
+**锐化 / 对比拉伸（levels）**，抗锯齿的过渡像素会被推向 alpha 两端，边缘退化成「二值硬边」。
+**母版（256）本身往往是好的，所以肉眼看母版永远看不出问题。**
+
+**为什么必须单独设门**：这类损伤**结构完全合法** —— 引用闭合、画布尺寸对、`.tex` 对齐、
+格子非空、mips=1，第 1–6 项**全部 PASS**。本项目 2026-09 实测 **4 个图集共 22 个中间档**
+中招（`ATLAS_RGN_ICON_LEADERS` 7 个、`ATLAS_RGN_ICON_DISTRICTS` 6 个、
+`ATLAS_RGN_ICON_PRODUCT` 5 个、`ATLAS_RGN_ICON_RESOURCES` 4 个），结构校验一路绿灯，
+而实机图标全是锯齿。
+
+**判据**（对每个含 256 母版的图集，把「母版逐格 LANCZOS 重出」当**应有值**）：
+
+| 指标 | 含义 | 受损特征 |
+|------|------|---------|
+| `mid` | 边界像素落在中间调 (20..235) 的比例% | 骤降（抗锯齿过渡被掏空） |
+| `hard` | 相邻 alpha 跳变 >200 的比例% | 升高（边缘变硬） |
+| `ratio` | 半透明像素数 ÷ 边界周长（形状无关） | 骤降（每单位边缘长度的过渡像素变少） |
+
+判受损：`mid < 参考 - 8`（百分点）或 `ratio < 参考 × 0.7`。阈值可用
+`--edge-tolerance` / `--edge-ratio` 调整。
+
+**实测对照**（本项目 Leaders 45px，修复前 → 后）：
+
+| | 边界中间调占比 | 二值端占比 | 过渡像素÷周长 | 内部 Laplacian |
+|---|---|---|---|---|
+| 受损档 | 20.4% | 74.7% | 0.59 | 23026 |
+| 修复后 | 43.6% | 49.7% | 1.79 | 7408 |
+| 原版参考 | 45.1% | 51.3% | 0.65 | 6947 |
+
+注意**关键反直觉点**：受损档的内部高频（Laplacian）**高于**健康档 3 倍 ——
+因为锐化在压边缘的同时也放大了内部噪点。「清晰度变好」不等于「边缘更宽」，而是
+「不再有假的硬跳变」。
+
+**修复**：用 `regen_atlas_tiers.py` 从母版逐格 LANCZOS 重出（下一节），
+**不需要改 `.tex` / 网格 / 注册链**（尺寸完全不变）。
+
+```bash
+# 体检（不写盘，退出码 2 = 发现受损档）
+python art/regen_atlas_tiers.py <projectRoot> --report
+# 一次修好全部受损档
+python art/regen_atlas_tiers.py <projectRoot> --report --write-damaged
+# 复核
+python art/verify_icon_atlas.py <projectRoot> --edge-qa
+```
+
+**无 256 母版的图集不在体检范围**（如通知 40/100、按钮 38/44/52、总督 1×1 各档）：
+它们没有可当"应有值"的高分辨率源，本门跳过；如需覆盖，先补一份 256 母版。
 
 ## 九、FOW 迷雾变体（apply_fow.py）
 
@@ -416,7 +490,8 @@ python <skill>\art\apply_fow.py --input <图标.png|dds> [--output <路径>] \
 | `make_atlas.py` | 多图拼网格序列图集 → 逐尺寸 PNG → texconv DDS → `.tex` → **注册片段** | 多图合并成一张序列图时 |
 | `convert_art.ps1` | 单图 → 多尺寸 DDS + `.tex` | 单图独立出图时 |
 | `merge_icon_registration.py` | **幂等**把注册片段并入项目 Icons XML + 补 XLP 条目；保 BOM/CRLF | `make_atlas.py` 出完片段之后（别手工合并） |
-| `verify_icon_atlas.py` | 落地自查：引用闭合 / 画布与网格一致 / mips=1 / **格子非空** / `.tex` 对齐 / XLP 无悬空 / 与官方重名 | **交付前必跑**（第八节的可执行版） |
+| `verify_icon_atlas.py` | 落地自查：引用闭合 / 画布与网格一致 / mips=1 / **格子非空** / `.tex` 对齐 / XLP 无悬空 / 与官方重名；**`--edge-qa` 另查中间档边缘抗锯齿质量**（第 8.1 节） | **交付前必跑**（第八节的可执行版）；改了图集贴图再加 `--edge-qa` |
+| `regen_atlas_tiers.py` | **图集中间档母版重出**：从最大档逐格 LANCZOS 重出各小档，修「被锐化/压对比 → 实机锯齿」；`--report` 体检、`--report --write-damaged` 一键全修 | `--edge-qa` 报 DAMAGED 时；或接手他人图集想确认中间档是否干净 |
 | `apply_fow.py` | 生成迷雾「羊皮纸」FOW 变体 | 该类别原版有 `_FOW` 时（建筑/区域/资源有，项目没有） |
 | `gen_tex.py` | 按 DDS 头生成 `.tex`（GBK/ANSI 编码，别存 UTF-8） | 一般不直接调，make_atlas/convert_art 会调 |
 | `gen_modartxml.py` | 生成/核对 `Mod.Art.xml` | 新增或改了 XLP/Artdef 时 `--check` |
@@ -425,3 +500,8 @@ python <skill>\art\apply_fow.py --input <图标.png|dds> [--output <路径>] \
 `RGN_Product_Font.dds` 被引用但文件不存在（7 条 IconDefinitions 悬空）、
 `ATLAS_RGN_ICON_DISTRICTS256_FOW.dds` 被引用但没登记进任何 UITexture XLP（不会被打包）。
 这类问题肉眼几乎看不出来，只有进游戏才会发现是空白图标。
+
+`--edge-qa` + `regen_atlas_tiers.py` 的实战产出（2026-09）：领袖图标实机锯齿溯源到中间档 alpha
+被压对比（45px 边界中间调仅 20.4%，原版 45.3%），修复后 43.6%；顺带全工程体检又抓出
+`DISTRICTS`(6) / `PRODUCT`(5) / `RESOURCES`(4) 共 15 个同类受损档 —— 全部由结构校验 PASS、
+只有边缘门能发现。

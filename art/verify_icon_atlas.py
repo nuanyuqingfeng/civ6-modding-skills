@@ -12,12 +12,31 @@
   4. .tex 的 m_Width/m_Height 与 DDS 实际宽高一致（不一致 → AssetEditor 会裁/拉伸）；
   5. XLP 里每一条 <m_EntryID> 在 Textures/ 下都有同名 .dds（漏登记 → 游戏里纹理不加载）；
   6. （可选）自定义 IconDefinitions 名与官方 Icons_*.xml 无重名。
+  7. **--edge-qa**：边缘抗锯齿质量门 —— 各尺寸档的 alpha 过渡是否被「锐化/对比拉伸」破坏。
+     这类损伤让图标在游戏内呈现硬边锯齿，但**结构完全合法**（引用闭合、尺寸对、格子非空），
+     前 6 项**全部查不出来**，只有肉眼在实机才看得见。判据见下方「边缘质量门」。
 
 用法：
   python verify_icon_atlas.py <projectRoot> [--icons a.xml b.xml] [--xlp a.xlp b.xlp]
                               [--vanilla "<官方 Base/Assets/UI/Icons 目录>"] [--min-px 20]
+                              [--edge-qa] [--edge-tolerance 8.0] [--edge-ratio 0.7]
 不传 --icons 时自动扫 <projectRoot>/Data/*.xml 与 Mod_Adaptation/**/*.xml 里含 <IconDefinitions> 的。
 退出码 0 = 全通过；1 = 有失败项。
+
+## 边缘质量门（--edge-qa）
+
+对每个含 256 母版的图集，把「母版逐格 LANCZOS 重出」当作**应有值**，与现存档比三个指标：
+
+  mid   = 边界像素中落在中间调 (20..235) 的比例%   —— 越高 = 抗锯齿过渡越完整
+  hard  = 相邻 alpha 跳变 > 200 的比例%             —— 越高 = 边缘越硬
+  ratio = 半透明像素数 / 边界周长                   —— 归一化斜坡宽度（形状无关）
+
+判受损：`mid < 参考 - tolerance`（默认 8 个百分点）或 `ratio < 参考 * factor`（默认 0.7）。
+修复用同目录的 `regen_atlas_tiers.py`（逐格 LANCZOS 从母版重出）。
+
+为什么必须单独抽一个门：**损伤只出现在中间档**（母版是好的），且完全不影响上面的结构检查 ——
+本项目 2026-09 实测 4 个图集共 22 个中间档中招（LEADERS 7 / DISTRICTS 6 / PRODUCT 5 /
+RESOURCES 4），前 6 项全 PASS，而实机图标是锯齿状硬边。
 """
 import argparse
 import glob
@@ -61,13 +80,108 @@ _ALPHA_CACHE = {}
 
 
 def _load_alpha(path):
-    """整图 alpha 平面，按文件缓存（不缓存的话每格都重解一遍大图集，几十秒起步）。"""
+    """整图 RGBA，按文件缓存（不缓存的话每格都重解一遍大图集，几十秒起步）。"""
     import numpy as np
     key = str(path)
     if key not in _ALPHA_CACHE:
         from PIL import Image
         _ALPHA_CACHE[key] = np.array(Image.open(path).convert("RGBA"))
     return _ALPHA_CACHE[key]
+
+
+# ---------------------------------------------------------------- 边缘质量门
+
+def _cell_edge(im):
+    """单格 (mid%, hard%, ratio)；空格返回 None。"""
+    import numpy as np
+    a = im[:, :, 3].astype(int)
+    if (a > 8).sum() < 16:
+        return None
+    m = a > 8
+    b = np.zeros_like(m)
+    b[:-1, :] |= m[:-1, :] != m[1:, :]
+    b[:, :-1] |= m[:, :-1] != m[:, 1:]
+    b[1:, :] |= m[1:, :] != m[:-1, :]
+    b[:, 1:] |= m[:, 1:] != m[:, :-1]
+    bd = a[b]
+    mid = ((bd > 20) & (bd < 235)).mean() * 100
+    hs = tot = 0
+    for dy, dx in ((0, 1), (1, 0)):
+        p = a[:a.shape[0] - dy, :a.shape[1] - dx]
+        q = a[dy:, dx:]
+        d = np.abs(p - q)
+        sel = d[(p > 0) | (q > 0)]
+        hs += int((sel > 200).sum())
+        tot += int(sel.size)
+    return mid, hs / max(tot, 1) * 100, int(((a > 0) & (a < 255)).sum()) / max(int(b.sum()), 1)
+
+
+def _atlas_edge(arr, size, cols, rows):
+    import numpy as np
+    out = []
+    for i in range(cols * rows):
+        r, c = divmod(i, cols)
+        if (r + 1) * size > arr.shape[0] or (c + 1) * size > arr.shape[1]:
+            break
+        q = _cell_edge(arr[r * size:(r + 1) * size, c * size:(c + 1) * size])
+        if q:
+            out.append(q)
+    if not out:
+        return None
+    a = np.array(out)
+    return a[:, 0].mean(), a[:, 1].mean(), a[:, 2].mean()
+
+
+def _regen(arr, size, cols, rows, msize):
+    """母版逐格 LANCZOS → 目标尺寸（工程既有约定）。"""
+    import numpy as np
+    from PIL import Image as _I
+    canv = np.zeros((rows * size, cols * size, 4), dtype=np.uint8)
+    for i in range(cols * rows):
+        r, c = divmod(i, cols)
+        cell = _I.fromarray(arr[r * msize:(r + 1) * msize, c * msize:(c + 1) * msize])
+        canv[r * size:(r + 1) * size, c * size:(c + 1) * size] = np.asarray(
+            cell.resize((size, size), _I.Resampling.LANCZOS))
+    return canv
+
+
+def edge_qa(tex, atlas, tolerance, ratio_factor):
+    """→ (行 list, 受损 list)。只审有 256 母版的图集。"""
+    import numpy as np
+    rows, damaged = [], []
+    by_atlas = {}
+    for (name, size), (fn, cols, rows_n) in atlas.items():
+        by_atlas.setdefault(name, {})[size] = (fn, cols, rows_n)
+    for name, sized in sorted(by_atlas.items()):
+        local = {s: v for s, v in sized.items() if (tex / v[0]).is_file()}
+        if len(local) < 2:
+            continue
+        msize = 256 if 256 in local else max(local)
+        mfn, mcols, mrows = local[msize]
+        try:
+            marr = _load_alpha(tex / mfn)
+        except Exception:
+            continue
+        if marr.shape[:2] != (mrows * msize, mcols * msize):
+            continue
+        for s in sorted(local):
+            fn, cols, rows_n = local[s]
+            try:
+                arr = _load_alpha(tex / fn)
+            except Exception:
+                continue
+            if arr.shape[:2] != (rows_n * s, cols * s):
+                continue
+            q = _atlas_edge(arr, s, cols, rows_n)
+            if q is None:
+                continue
+            ref = None
+            if s != msize:
+                ref = _atlas_edge(_regen(marr, s, cols, rows_n, msize), s, cols, rows_n)
+            rows.append((name, s, fn, q, ref, msize if s != msize else None))
+            if ref and (q[0] < ref[0] - tolerance or q[2] < ref[2] * ratio_factor):
+                damaged.append((name, s, fn, q, ref))
+    return rows, damaged
 
 
 def cell_alpha_px(png_or_dds, size, index, cols):
@@ -92,6 +206,12 @@ def main():
     ap.add_argument("--vanilla", default="", help="官方 Base/Assets/UI/Icons 目录（查重名）")
     ap.add_argument("--min-px", type=int, default=20, help="格子非空阈值（alpha>8 像素数）")
     ap.add_argument("--strict-xlp", action="store_true", help="额外反向检查：XLP 条目是否都有同名 .dds")
+    ap.add_argument("--edge-qa", action="store_true",
+                    help="边缘抗锯齿质量门：查中间档是否被锐化/对比拉伸破坏（见文件头说明）")
+    ap.add_argument("--edge-tolerance", type=float, default=8.0,
+                    help="--edge-qa：中间调占比允许低于参考值的百分点（默认 8）")
+    ap.add_argument("--edge-ratio", type=float, default=0.7,
+                    help="--edge-qa：归一化斜坡宽度允许低于参考值的比例（默认 0.7）")
     args = ap.parse_args()
 
     root = Path(args.projectRoot)
@@ -205,6 +325,32 @@ def main():
                 n_dds += 1
             else:
                 fails.append(f"XLP 条目 {e} 在 Textures/ 下没有同名 .dds（--strict-xlp）")
+
+    # ---- 边缘质量门
+    if args.edge_qa:
+        try:
+            rows, damaged = edge_qa(tex, atlas, args.edge_tolerance, args.edge_ratio)
+        except ImportError:
+            print("\n边缘质量门: 未装 Pillow/numpy，跳过")
+            rows, damaged = [], []
+        print(f"\n边缘质量门 (--edge-qa): 审查 {len(rows)} 档"
+              f"（mid=边界中间调占比% / ratio=过渡像素÷周长；参考值=母版逐格 LANCZOS 重出）")
+        if rows:
+            print(f"  {'图集':<32} {'档':>4} {'中间调%':>8} {'硬跳%':>7} {'比值':>7} |"
+                  f" {'参考 中间调/比值':>17} | {'判定':>8}")
+            for name, s, fn, q, ref, ms in rows:
+                refs = f"{ref[0]:7.1f}% {ref[2]:6.2f}" if ref else ""
+                bad = any(d[0] == name and d[1] == s for d in damaged)
+                verdict = "DAMAGED" if bad else ("ok" if ref else "母版")
+                print(f"  {name:<32} {s:>4} {q[0]:8.1f} {q[1]:7.1f} {q[2]:7.2f} |"
+                      f" {refs:>17} | {verdict:>8}")
+        for name, s, fn, q, ref in damaged:
+            fails.append(
+                f"{fn} @{s}: 边缘抗锯齿受损（中间调 {q[0]:.1f}% < 参考 {ref[0]:.1f}%，"
+                f"过渡/周长 {q[2]:.2f} < 参考 {ref[2]:.2f}）"
+                f" -> 用 regen_atlas_tiers.py 从母版重出")
+        if not damaged and rows:
+            print("  全部档位边缘质量正常。")
 
 
 
