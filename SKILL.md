@@ -105,7 +105,7 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 | **工坊封面 / 预览图**（做封面、"封面上的中文别画错"） | → `tools/workshop_cover.py`（确定性 CJK 排版；用法见 `TOOLS.md` 与 `tools/README.md`，发布流程见 `release.md`） |
 | **音频**（导入 / 素材整备 / 响度均衡 / Wwise / bank / 语音 / BGM） | → **`civ6-audio-pipeline` skill**（音频全流程在该 skill 内，此处不重复） |
 | **运行时验证**（"这个 API 实际行为是什么"、复现脚本报错、PROPERTY/modifier 实测） | → **`civ6-tuner` skill**（FireTuner TCP 4318，在运行中的对局里执行 Lua；静态校验回答不了的问题走这里） |
-| **翻译 / 多语言文本**（补缺失语言、审计语言齐缺失、主工程 vs 补丁文本 diff） | → `（本地化工具已移除）/`（**已内化**，见其 `README.md`）+ `SKILL.md` §4.1 的风格底线 |
+| **翻译 / 多语言文本**（补缺失语言、审计语言齐缺失、主工程 vs 补丁文本 diff） | → `SKILL.md` §4.1 的 Civ6 侧规则（语言代码 / 标记必须保留 / 合并进原 SQL / 写后复核）；工具自备 |
 | **Mixed** | → Read all relevant |
 | **Steam 创意工坊上传/更新** | → `release.md` |
 | **Debug** | → `debug-tools.md` + `gotchas.md` |
@@ -503,7 +503,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `database/CALIBRATION_LOG_2026-08.md` | 2026-08 **全量校准验证日志**（库补全 / 来源标注 / API 核验的取证过程与结论） |
 | `database/source_index.sqlite` | **官方行级来源索引**（`row_source` 457 表 / 5.8 万行）+ 人工 `dlc_dependency`（12 行 Mode/Scenario DLC 依赖；版本真值镜像见 `database/annotations/dynamic_modifiers_dlc.json`） |
 | `release/docs/checklist.md` · `release/docs/troubleshooting.md` | 工坊发布**核对清单**与**异常诊断**（`release.md` 引用） |
-| `（本地化工具已移除）/` | **本地化/多语言工具（已内化）**：文本审计 / 词表提取 / 合并与元组级替换 / 单命令闭环；见 `（本地化工具已移除）/README.md` |
+| `reference/sources/` | 外部参考件（Civ VI Modding Companion、原版议程表、原版图标标记全表、颜色/图标常量、StretchMode 统计）；出处与许可见该目录 README |
 | `art/bin/texconv.exe` | 随包内置的 PNG→DDS 转换器（Microsoft DirectXTex，MIT，v2026.5.8.1）；探测顺序见 `art/bin/README.md` |
 | `art/make-icon.ps1` | 白色扁平图标生成（本地扩散模型 + 阈值抠底），依赖需自备，参数见 `reference/imagegen-channels.md` |
 | `reference/imagegen-channels.md` | 文生图渠道现状与"扩散模型不能出中文"等实测坑 |

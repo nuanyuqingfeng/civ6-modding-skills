@@ -61,7 +61,7 @@
 | **做总督素材（徽章 / 头像小图标 / 立绘 / 边缘透明渐变）** | `civ6-asset-forge` → `reference/governor-art.md` |
 | **运行时验证 API 行为 / 复现脚本报错** | `civ6-tuner` |
 | **上传 / 更新 Steam 工坊** | `civ6-modding` → **`release.md`**（脚本 `release/scripts/`） |
-| 多语言翻译与本地化审计 | `civ6-modding` → `（本地化工具已移除）/`（已内化）；语料库查证为可选外部依赖 |
+| 多语言翻译与本地化审计 | `civ6-modding` → `SKILL.md` §4.1（Civ6 侧规则；工具自备） |
 
 > `civ6-asset-forge` 的素材类分册在 skill 内以 `reference/*.md` 组织：`leader-2d.md` / `loyalty-icon.md` / `governor-art.md` / `ui-leader-portrait.md` / `moment-illustration.md` / `promotion-icon-sizes.md`（最后一册**只有尺寸规格**——类别③ 的生成管线已作废）；总入口与该 skill 自己的路由表见其 `SKILL.md`。
 > 原 `civ6-leader-2d` / `civ6-loyalty-icon` / `civ6-promotion-icon` / `civ6-governor-art` 四个名字**已废止**，一律改走 `civ6-asset-forge`。
