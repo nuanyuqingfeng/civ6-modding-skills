@@ -1,6 +1,9 @@
 ---
 name: civ6-tuner
+version: "1.0"
 author: 千与千寻瀑
+license: MIT
+category: game-modding
 description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局里执行任意 Lua，用于接口行为/参数/PROPERTY/modifier 的运行时验证、游戏内快速测试、复现脚本报错。当静态校验(rgn_validate)无法回答"这个 API 实际行为是什么"、需要查询运行时状态或验证 GP/UI 链路时使用。
 ---
 
@@ -119,7 +122,7 @@ Players[pid]:GetProperty(k)      -- 两端可读；只能读到【Player 层】�
 ## 命令速查
 
 ```powershell
-$T = "%USERPROFILE%\.agents\skills\civ6-tuner\scripts\tuner_exec.py"
+$T = "$env:USERPROFILE\.agents\skills\civ6-tuner\scripts\tuner_exec.py"
 
 # ① 每次测试会话第一步：探测连接与对局状态
 python $T check          # 等价简写: python $T --check
