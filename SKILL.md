@@ -98,6 +98,7 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 | **Game data** (units, buildings, modifiers) | → Data Routing ↓ |
 | **总督（Governor）**（新增总督 / 晋升树 / 就职回合 / 立绘注册 / 名额扩容） | → `governor-authoring.md`（美术规格另见 `civ6-asset-forge` skill 的 `reference/governor-art.md`） |
 | **城邦（City-State）**（自定义城邦 / 选单不出现 / 宗主国加成 / 使者层级） | → `citystate-authoring.md` |
+| **文明周边数据收尾**（百科资料卡 `CivilizationInfo` / 城市名 `CityNames` / 市民名 `CivilizationCitizenNames` / 出生关联 `StartBias*` / BGM 开关 `CivilizationAudioTags` / 知名地名 `NamedMountains·NamedRivers` 等） | → **`reference/civ-metadata.md`**（各表 schema、取值域、写作要点、数量建议、最小检查清单） |
 | **平衡补丁 / 差分覆盖**（改主工程数值、解挂载、覆盖文本的补丁 mod） | → `balance-patch.md` |
 | **Mixed** | → Read all relevant |
 | **Steam 创意工坊上传/更新** | → `release.md` |
@@ -363,6 +364,7 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 | `scripts/check_sql_antipatterns.py` | **语义反模式** —— 语法合法但恒假：`LIKE ('%A%' OR '%B%')`、`WHERE … = NULL` | ★ 前三个都抓不到：它跑得起来、引用也闭合，只是**意思错了** |
 | `scripts/check_proj_content.py` | `<Content Include>` ↔ 磁盘**双向闭合**（悬空清单项 / 漏登记） | 见 `gotchas.md` §3「打包 vs 加载」 |
 | `scripts/check_pantry.py` | **pantry 卫生** —— `.tex` 位置 / 重名 / depot 路径 / 非 ASCII / `.tex`↔`.dds` 配对 | 开 AssetEditor 前必跑 |
+| `art/verify_tex_class.py` | **`.tex` 类别 vs XLP 注册类**是否匹配（如 `UITexture` 包里的贴图必须 `UserInterface`） | ★ 唯一能防「类别写错 → cooker 静默替换成 error asset」的机械防线；`check_pantry`/`verify_icon_atlas`/`align_tex_format` 都不查它 |
 | `scripts/clear_ae_cache.py` | 清 AssetEditor 依赖缓存（动过贴图后**必须**清，否则验证结论是缓存假象） | 同上 |
 | `scripts/verify_trees.py` | 两棵目录逐字节相同（源 ↔ Mods 副本） | 双目录一致性 |
 

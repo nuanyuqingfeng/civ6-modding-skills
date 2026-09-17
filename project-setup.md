@@ -496,6 +496,52 @@ Hand-friendly XML with a single `<Mod id="GUID" version="V">` root.
 
 4. **类型定义和 Modifiers 分开注册** — 类型定义（建筑、单位、文明等）和 Modifiers 表分别放在独立的 `UpdateDatabase` 动作中，便于控制加载顺序。
 
+### ModBuddy 的 `Mod Info → Custom Properties` 面板（≠ 模板变量）
+
+ModBuddy 工程属性页有一个 **`Custom Properties`** 面板（`Civ6.Project.dll` 里的
+`CustomPropertiesUserControl`），构建时经 `Civ6.targets` 传入 modinfo：
+
+```xml
+<GenerateModInfo ... CustomProperties ="$(ModProperties)" ... />
+```
+
+它在 `.modinfo` 里输出为空元素：
+
+```xml
+<CustomProperties></CustomProperties>
+```
+
+**实测现状**：查遍工坊全量 modinfo，该元素**清一色是空的**
+（`Liyue.modinfo`、`Civilization_MyMod.modinfo`、`Civ8.modinfo` 等均为
+`<CustomProperties></CustomProperties>`），教程参考工程也不含它。
+即：**该面板在本机/社区实践中没有形成可用约定**，不要依赖它承载数据。
+
+> ⚠ **重要纠正 —— 不要把它和第三方教程 xlsx 里的 `$VAR$` 混为一谈**：
+> 教程素材包 `模组参数生成器.xlsx` 的单元格里写着
+> `<CustomParameter Name="$LEADER_TYPE$" Value="..."/>`，看上去像"模板变量替换"。
+> 经全量核查，**这套 `$VAR$` 构建期替换在本机环境中查无实据**：
+
+| 核查项 | 结果 |
+|---|---|
+| 教程**自己的参考工程**（10 个 snapshot + final） | **不含** `CustomParameter` |
+| 工坊全量 `*.civ6proj` / `*.modinfo` | **0 命中** |
+| SDK 自带模板（`ModBuddy/**`） | **0 命中** |
+| `Civ6.targets`（构建逻辑） | **无**任何自定义占位符替换；只处理标准 MSBuild `$(...)` 属性 |
+| ModBuddy 二进制（`Civ6.Tasks.dll`、`Civ6.Project.dll` 等） | **0 命中** `CustomParameter` |
+
+**结论**：那些 xlsx 片段更可能是**作者自用的纯文本模板**
+（填好 `Value` 列后手工复制进工程），而非 ModBuddy 特性。
+**要"一份模板套多个领袖"，用生成器脚本，别赌这套机制**：
+
+1. **生成器脚本（推荐）**：读一份变量表，直接渲染出完整
+   `Data/*.sql`、`Text/*.sql`、`.civ6proj`。本 skill 家族的
+   `civ6-asset-forge/scripts/gen_leader_2d.py`、`gen_suk_portrait.py` 即此形态。
+2. **SQL 拼接**：`INSERT ... SELECT 'PREFIX_' || ...`
+   （注意本工程 AGENTS.md 对 `SELECT` 拼接样式另有约定）。
+
+> 若你确知某个 ModBuddy 版本支持 `CustomParameter` 替换，请连同
+> **版本号 + 最小复现工程**补记于此，再把结论改为"已验证支持"。
+
 ### 标准 FrontEnd 结构
 
 ```xml

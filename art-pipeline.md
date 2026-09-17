@@ -51,6 +51,10 @@
       先看差异里有没有提到你这次新增的 XLP/artdef，没有就别顺手 --write）
 → 校验：python <skill>\art\verify_icon_atlas.py <projectRoot> [--vanilla "<官方 Icons 目录>"]
      （第八节「完成标准」的可执行版，交付前必跑，见第十节）
+→ **类别校验**：python <skill>\art\verify_tex_class.py --project <projectRoot>
+     （查 `.tex` 的 `m_ClassName` 与消费它的 XLP 类是否匹配 —— 见下方「二.1」。
+       类别写错时 cooker 只报一句 class 不匹配，且 XLP cook 仍显示 success、
+       条目被静默换成 error asset；本脚本是唯一能提前拦住的机械防线）
 → 边缘质量门：python <skill>\art\verify_icon_atlas.py <projectRoot> --edge-qa
      （专查"中间档被锐化/压对比 → 实机锯齿"；结构检查查不出这类损伤，见第 8.1 节。
        报 DAMAGED 时用 art\regen_atlas_tiers.py 从 256 母版重出，不必改 .tex/网格）
@@ -127,22 +131,66 @@
 > ⚠ **尺寸不是脚本强制的**：`convert_art.ps1` 的 `Get-Sizes()` 对上述 role 返回空表
 > → 走「原尺寸单 DDS」分支（**不带 `-w/-h`**）。所以**给错尺寸不会报错**，
 > 只会让游戏里显示异常。**填 manifest 前请查上表并核对参考文档**，不要凭记忆。
->
-> 📐 **原版实测依据**（全 pantry 6 个 `Textures` 目录、12686 个 `.tex` 扫描）：
-> `LEADER_*_BACKGROUND` **42/42 全为 1920×960**；
-> `<LEADER>_1/_2/_3` 主体为 **960×505**（另有 DLC 的 934×505 等变体）；
-> `<LEADER>_4` 为 **1920×1010**；`LEADER_*_NEUTRAL` 高度为 1024 或 1080、**最宽 803**。
-> 与第三方教程《Civ6 Modding Textbook》第 08 章的实测数值一致
-> （其参考工程：`LEADER_JASPER_KITTY_BACKGROUND` 1920×960、`JASPER_KITTY_1..3` 960×505）。
->
+
+### 二.2 领袖「背景」的三条独立链（极易混淆，务必先读）
+
+术语里「领袖背景」指**三个互不相同**的东西。它们的**尺寸、XLP、加载条件**都不同，
+混淆会导致"图做了但游戏里不显示"。**引擎的真实逻辑**（`Base/Assets/UI/LeaderScene.lua:61-79`）：
+
+```lua
+local diplomacyInfo = GameInfo.DiplomacyInfo[leaderName];
+if diplomacyInfo and diplomacyInfo.BackgroundImage then
+    -- 链 C：直接用这一张图，**完全跳过** SceneLayers 分层
+    CreateBackgroundLayer(diplomacyInfo.BackgroundImage, ...);
+else
+    local numLayers = GameInfo.Leaders[leaderName].SceneLayers;
+    leaderName = string.gsub(leaderName, "LEADER_", "");   -- ← 去掉 LEADER_ 前缀
+    if (numLayers == 0) then leaderName = "CLEOPATRA"; numLayers = 4; end   -- 兜底
+    for i = 1, numLayers, 1 do
+        CreateBackgroundLayer(leaderName .. "_" .. i, ...);  -- ← 拼 <NAME>_<i>
+    end
+end
+```
+
+| | 链 A `background`（**role 名**） | 链 B `diplomacy_layer1..4`（**role 名**） | 链 C `DiplomacyInfo`（**数据表，不是 role**） |
+|---|---|---|---|
+| 用途 | 领袖**加载/选人界面**背景 | 外交**分层场景**（视差） | 外交背景**整图替换** |
+| 贴图名 | `LEADER_<X>_BACKGROUND` | `<X>_1` … `<X>_4`（**无** `LEADER_` 前缀） | 任意名（项目自定） |
+| 尺寸（原版实测） | **1920×960** | 层 1–3 **960×505**；层 4 **1920×1010** | 随源图（示例工程 用 1920×1080） |
+| XLP | `Shell_Loading.xlp` | `UI_LeaderScenes.xlp` | 任一 `UITexture` 包 |
+| 加载条件 | 无条件（按名自动找） | 仅当**没有** `DiplomacyInfo` 行时 | **有即优先**，压过链 B |
+| 层数由谁定 | —（单图） | `Leaders.SceneLayers`（原版只有 0 或 4） | —（单图） |
+
+**三条要点（都是实测/源码级结论）**：
+
+1. **链 C 压过链 B**：只要 `DiplomacyInfo` 里有该领袖一行，引擎**只**用那一张图，
+   `SceneLayers` 与 `UI_LeaderScenes.xlp` 的分层贴图**根本不会被读**。
+2. **链 B 的条目名不带 `LEADER_`**：引擎 `gsub("LEADER_","")` 之后才拼 `_i`，
+   所以查找的是 `CARTETHYIA_QYXP_2` 而**不是** `LEADER_CARTETHYIA_QYXP_2`。
+   原版 pantry 三个 `UI_LeaderScenes.xlp` 共 174 条**全部无 `LEADER_` 前缀**；
+   第三方教程参考工程同样是 `JASPER_KITTY_1..4`。
+   → 写成 `LEADER_<X>_2` 是**死条目**：不会被查到，白注册。
+3. **层 4 用别名**：官方惯例是层 4 复用 `BARBAROSSA_4`
+   （`<m_EntryID text="<X>_4"/><m_ObjectName text="BARBAROSSA_4"/>`），前 3 层才是自绘。
+
+> **示例工程 现状（2026-09-17 实查，仅上报未改）**：该工程**三条链都用了**——
+> `Leaders.SceneLayers=4` + `UI_LeaderScenes.xlp` 注册了 18 条
+> `LEADER_<X>_<2|3|4>`（带前缀，属上述死条目）+ `DiplomacyInfo` 6 行单图。
+> 因链 C 优先，**实际生效的是 DiplomacyInfo 单图**，那 18 条分层条目不影响运行
+> （既不生效也不报错）。若要清理，把 EntryID 的 `LEADER_` 前缀去掉即可让链 B 也有意义；
+> 但**只要 DiplomacyInfo 还在，链 B 就永远不会被读**——二者留一即可。
+
+**原版实测依据**（全 pantry 6 个 `Textures` 目录、12686 个 `.tex` 扫描）：
+`LEADER_*_BACKGROUND` **42/42 全为 1920×960**；
+`<LEADER>_1/_2/_3` 主体为 **960×505**（另有 DLC 的 934×505、944×505 等变体）；
+`<LEADER>_4` 为 **1920×1010**；`LEADER_*_NEUTRAL` 高度为 1024 或 1080、**最宽 803**。
+与第三方教程《Civ6 Modding Textbook》第 08 章实测一致
+（其参考工程：`LEADER_JASPER_KITTY_BACKGROUND` 1920×960、`JASPER_KITTY_1..3` 960×505）。
+
 > ❗ **2026-09-17 勘误（AI 自引入并已回退）**：本节一度被改成
 > `background = 1920×1080`、`diplomacy_layer = "由 DiplomacyInfo 决定"`，**那是错的**，
-> 成因是把 示例工程 项目的**另一条链**串味过来：
-> `DiplomacyInfo.BackgroundImage`（如本项目自命名的 `IMG_LEADER_*_DIPLOMACY_BACKGROUND`，
-> 1920×1080）是**单图覆盖外交背景**的独立机制，**不是** `background` role，
-> 也**不是** `diplomacy_layer1..4`（后者是 `Leaders.SceneLayers=4` 配 `UI_LeaderScenes.xlp` 的分层场景）。
-> 三者互不相同，勿再混淆：
-> `background`(Shell_Loading 加载界面) ≠ `diplomacy_layer1..4`(UI_LeaderScenes 分层场景) ≠ `DiplomacyInfo`(单图覆盖)。
+> 成因是把链 C 串味成链 A/B。三者互不相同：
+> `background`(链 A) ≠ `diplomacy_layer1..4`(链 B) ≠ `DiplomacyInfo`(链 C)。
 >
 > ❓ **仍存疑**：本表历史上的 `544×968` 在 pantry（12686 个 `.tex`）与教程参考工程中
 > **均无先例**，尚不能确认它对应哪个对象；已从表中移除，未再断言。
