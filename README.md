@@ -15,7 +15,7 @@ UI、2D 美术素材、原版美术引用链、音频管线、工坊发布与运
 （图标尺寸表、原版换行口径、API 运行时核验结果等）。
 
 **分工与署名**：本合集里**管线、工作流、方法论与实测结论**由作者（千与千寻瀑）整理；
-随包分发的**素材与模板是社区前人整理、分享的成果**（逐项出处见各文件与 [`skills/civ6-modding/reference/sources/README.md`](skills/civ6-modding/reference/sources/README.md)），
+随包分发的**教程、参考库、素材与模板是社区前人整理、分享的成果**（逐项出处见各文件与 [`skills/civ6-modding/reference/sources/README.md`](skills/civ6-modding/reference/sources/README.md)），
 第三方**工具**（工坊上传器、Wwise 模板工程等）不随包分发，按上游许可自行获取。
 
 | skill | 定位 | 关键内容 |
