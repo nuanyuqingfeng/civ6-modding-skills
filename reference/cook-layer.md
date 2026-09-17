@@ -195,14 +195,19 @@ python artdef_sync_check.py <工程名> --detail 3 # 语义层差异时打印样
 它会**在 checkout 时把仓库里的 LF 写成工作区的 CRLF**，于是"源永远 CRLF、产物永远 LF"，
 双端不一致被 git 反复制造出来。
 
-在工程根加 `.gitattributes`：
+在工程根加 `.gitattributes`（**按「换行分层铁律」分层，禁止一刀切 LF** —— 唯一真源是
+`civ6-modding/gotchas.md` §68）：
 
 ```gitattributes
-# ArtDef / XML / SQL / Lua 等 cook 输入：强制 LF，禁止 git 引入 CRLF
+# 资产类 cook 输入：LF（AssetEditor / cooker 输出恒为 LF）
 *.artdef  text eol=lf
-*.xml     text eol=lf
-*.sql     text eol=lf
-*.lua     text eol=lf
+*.xlp     text eol=lf
+*.txt     text eol=lf
+
+# 代码 / 配置类：CRLF（原版实测 .lua 40/40、.xml 40/40、.sql 17/17 均为 CRLF）
+*.lua     text eol=crlf
+*.sql     text eol=crlf
+*.xml     text eol=crlf
 
 # 美术二进制资产：禁止 git 做任何换行/编码转换
 *.dds  -text -diff -merge binary
@@ -214,9 +219,17 @@ python artdef_sync_check.py <工程名> --detail 3 # 语义层差异时打印样
 *.blb  -text -diff -merge binary
 ```
 
-- `示例工程` 即用此法（其 `.gitattributes` 首行注释就写明"本机 `core.autocrlf=true`，若不钉死 checkout 会把 artdef 变成 CRLF，而 cooker 产物一律是 LF —— 于是『源 ↔ Mods 副本』永远不一致"，并注明跨工程 5 例 + 本工程 11/13 的实测支撑）。
-- 加完后工作区若出现大批"看似被改动"的文件，那是 **autocrlf 历史遗留**，用 `git add --renormalize .` 一次性归位即可，**不是**内容改动。
-- 对**不入 git 的工程**：等价手段是在编辑器/生成脚本里显式写 LF（`newline='\n'`），并同样禁止中间目录产出 CRLF 版本。
+- ⚠ **绝不要给 `*.xml` / `*.sql` / `*.lua` 写 `text eol=lf`**：那是 2026-09-16 之前的旧口径
+  （本 skill 1.3 之前的版本教过这条），会让源与原版/引擎（CRLF）分层相反，并制造新的伪差异。
+- `示例工程` 的实际做法即上表（`.artdef` = LF、`.lua`/`.sql`/`.xml` = CRLF；其 `.gitattributes`
+  首行注释直接引用「换行分层铁律」，并注明跨工程 5 例 + 本工程 11/13 的实测支撑）。
+- 加完规则后工作区若出现大批"看似被改动"的文件，**先跑
+  `python civ6-modding/scripts/normalize_eol.py <工程目录>` 看报告**（默认只报告、`--fix` 才写盘），
+  确认差异确实只是行尾、且方向符合上表，再决定是否写盘。
+  **不要用 `git add --renormalize .` 一把梭** —— 在 `eol=lf` 规则下它会把 Lua/SQL/XML 全部烘成 LF
+  写进索引，等于亲手把分层推倒。
+- 对**不入 git 的工程**：等价手段是在编辑器/生成脚本里显式写目标行尾
+  （`.artdef` → `newline='\n'`；`.lua`/`.sql`/`.xml` → `newline='\r\n'`）。
 
 > 推论：凡是"改了编码/格式想让源与产物一致"的任务，**先问"是谁在把 CRLF 塞回工作区"**，
 > 再决定是统一源写法还是加 `.gitattributes` —— 只改一次文件不改供给链，下次 checkout 就打回原形。

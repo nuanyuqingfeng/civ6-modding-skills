@@ -48,7 +48,7 @@ languages:
 AssetEditor / cooker 会把**整个工程目录树**递归当 pantry 扫描 —— **不只是 `Textures/`**。
 任何位置的 `.tex` 都会被注册为贴图实体，同名副本会抢占注册。实测（2026-09-12）：同名 `.tex` 副本 + `m_SourceFilePath` 为 depot 库路径 `//civ6/main/...`
 → AE 版本状态更新抛 `NotSupportedException: 不支持给定路径的格式` → 日志 `CRASH` → **浏览素材时闪退**。
-复盘：`workspace/specs/2026-09-12-duplicate-tex-ae-crash.md`。
+复盘与完整证据链保存在作者本地工程记录中（不随 skill 分发）；下面的四条硬性规则即其结论。
 
 **四条硬性规则**
 
@@ -69,12 +69,12 @@ AssetEditor / cooker 会把**整个工程目录树**递归当 pantry 扫描 —�
 
 **验证顺序**（贴图改动后）：
 
-1. 跑 `scripts/check_pantry.py`（检查 `.tex` 位置 / 重名 / depot 路径 / 非 ASCII / `.tex`↔`.dds` 配对）—— 必须 0 error；
+1. 跑 `civ6-modding/scripts/check_pantry.py`（**在 `civ6-modding` skill 内**，检查 `.tex` 位置 / 重名 / depot 路径 / 非 ASCII / `.tex`↔`.dds` 配对）—— 必须 0 error；
 2. **清 AE 依赖缓存**（`%APPDATA%\AssetCloud\mod-<Mod>-asset-deps.json`）；
 3. 再启动 AssetEditor，确认日志无 `CRASH`。
 
 > ⚠ **缓存必须清**：不清缓存会出现假象 —— 问题文件已移走却仍显示不闪退。
-> 参考实现：`scripts/check_pantry.py` 与 `scripts/clear_ae_cache.py`。
+> 参考实现：`civ6-modding/scripts/check_pantry.py` 与 `civ6-modding/scripts/clear_ae_cache.py`（两者都属 `civ6-modding` skill，本 skill 内没有这两个脚本）。
 > 附带铁律：**禁止修改/替换 SDK 安装目录下的任何 DLL**。
 
 ## 原版美术资产路径（强制约定）
@@ -105,7 +105,7 @@ AssetEditor / cooker 会把**整个工程目录树**递归当 pantry 扫描 —�
 ```bash
 cd ~/.agents/skills/civ6-art-reference/scripts
 python art_lookup.py RESOURCE_OLIVES Resources      # 条目引用链
-python art_lookup.py --list Clutter CLUTTER_        # 列全部 clutter 候选
+python art_lookup.py --list Clutter --prefix CLUTTER_   # 列全部 clutter 候选
 python art_lookup.py --xlp environment/clutter      # 列 XLP 包条目
 python art_lookup.py --building BUILDING_AMPHITHEATER       # 反查建筑的 3D 模型链（在哪些区域/组合、落在哪个包）
 python art_lookup.py --district-buildings DISTRICT_THEATER  # 列区域的 hero 组合表（标签 -> 建筑 -> 资产）

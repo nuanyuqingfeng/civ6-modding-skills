@@ -27,7 +27,7 @@
 1. 优先**同名/近义**原版对象（如橄榄→`RESOURCE_OLIVES`，海龟→`RESOURCE_TURTLES`）。
 2. 其次**同类同环境**：海产在 `CRABS/PEARLS/WHALES/REEF_TURTLES/REEF_FISH/BARRIER_REEF`
    里选；林果在 `BANANAS/CITRUS/COCOA/SPICES/TRUFFLE` 里选。
-3. 全量候选清单：`art_lookup.py --list <模板> [前缀]`（如 `--list Clutter CLUTTER_`）。
+3. 全量候选清单：`art_lookup.py --list <模板> --prefix <前缀>`（如 `--list Clutter --prefix CLUTTER_`）。
 4. 区域类参照物直接选功能相近的原版区域（学院→Campus，圣地→HolySite）。
 
 ## ③ 查参照物完整引用链

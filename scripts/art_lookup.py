@@ -3,7 +3,7 @@
 
 用法:
   python art_lookup.py <关键词> [模板名]           # 查包含关键词的条目及其完整引用链
-  python art_lookup.py --list <模板名> [前缀]      # 列出某模板全部条目（可按前缀过滤）
+  python art_lookup.py --list <模板名> --prefix <前缀>   # 列出某模板全部条目（--prefix 按前缀过滤）
   python art_lookup.py --xlp <包名或文件名>        # 列出某 XLP 包的条目
 
 索引自动从脚本同目录 ../assets/art_index.json(.gz) 读取；--index 可指定其他索引。
@@ -295,6 +295,10 @@ def building_chain(idx, btype):
 
 
 def main():
+    try:  # Windows 控制台默认 GBK：条目名与告警含中文/符号时必须显式 UTF-8（本家族统一约定）
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
     ap = argparse.ArgumentParser()
     ap.add_argument('keyword', nargs='?', help='条目名关键词')
     ap.add_argument('template', nargs='?', help='模板名过滤（如 Resources/Clutter/Districts）')
@@ -308,6 +312,19 @@ def main():
     args = ap.parse_args()
 
     idx = load_index(args.index)
+    # 随包索引里记录的是**生成者本机**的 game/sdk 根路径（artdef_indexer.py 写入）。
+    # 换机器后这些根通常不存在 → 依赖回读源文件的功能（字符串引用参数等）会静默无输出，
+    # 用户容易把"读不到"误读成"没有引用"。这里显式告警，并给出重建索引的办法。
+    _game, _sdk = roots_of(idx)
+    _missing = [r for r in (_game, _sdk) if r and not os.path.isdir(r)]
+    if _missing and not args.no_strings:
+        print("⚠ 索引里的源文件根路径在本机不存在：")
+        for r in _missing:
+            print(f"    {r}")
+        print("  → 依赖回读源文件的输出（如「字符串引用参数」）会被跳过，**不代表该条目没有引用**。")
+        print("  → 修复：在本机跑 `python scripts/artdef_indexer.py --out assets/art_index.json.gz` 重建索引；")
+        print("          或用 `--index <你的索引>` 指定；只做条目名查询可加 `--no-strings` 消除本告警。")
+        print()
     if args.building:
         building_chain(idx, args.building)
     elif args.district_buildings:
