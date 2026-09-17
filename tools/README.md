@@ -99,6 +99,14 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
 - **`workshop_cover.py`**：中文标题**必须**由真实字体排版。扩散模型渲染中文得到形近伪字
   （实测 `人类玩家所有单位` → `义凵薊丨劦…`），拉丁长句也会掉字母（`CIVILIZATION` → `CIVILLZATION`）。
   另外**封面一律不署名**（项目约定，作者只写在 `.modinfo` 的 `Authors` 与代码里）。
+  **预览图（`--preview`）的缩放执行端已迁到 `art/make_workshop_preview.py`**（默认 512×512）——
+  本脚本只做排版，写完委托那条采定管线；原先各写一份 `resize()` 正是封面发糊的来源。
+- **工坊预览图为什么会糊（`art/make_workshop_preview.py`）**：根因不是尺寸、也不是源图，
+  而是**缩放方式**——`magick -resize` 不写 `-filter` 时走 **Mitchell（偏软）**，实测锐度
+  2,592.6；`-filter Lanczos` 4,842.4；**Lanczos 逐级减半 + unsharp 13,047.4**（采定）。
+  两条铁律：① **已达标 512 成品不要再缩**（工具默认直通，`--force-resize` 才重采样）；
+  ② 别裸用 `magick -resize`。执行端改用 Pillow 是因为它**必须显式写 `Image.LANCZOS`**，
+  从根上消灭"忘写 `-filter` 就发糊"。细节见 `art-pipeline.md` 第九·补节。
 - **`local_flux.py`**：Google 生图（`gemini-*-image`）配额耗尽时，本地 FLUX 是唯一免费自动渠道；
   但它**不能出中文文字**，也不要拿它做图标（图标剪影走 `art/normalize_icon.py`：把已有主体图
   裁边/等比/居中并涂成白色剪影（`--color 255`、unit 图标用 `--role unit_icon`），再由

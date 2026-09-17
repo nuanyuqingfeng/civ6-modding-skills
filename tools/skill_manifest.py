@@ -90,6 +90,7 @@ THIRD_PARTY = {
         ("art/apply_fow.py", "numpy、Pillow"),
         ("art/dds_io.py", "Pillow"),
         ("art/make_atlas.py", "Pillow"),
+        ("art/make_workshop_preview.py", "Pillow、numpy（--qa 指标）"),
         ("art/normalize_icon.py", "numpy、Pillow、scipy"),
         ("art/regen_atlas_tiers.py", "numpy、Pillow"),
         ("art/survey_icon_atlas.py", "numpy、Pillow、scipy"),
@@ -353,7 +354,10 @@ def process(target: str, check_only: bool) -> int:
     old = open(out_path, encoding="utf-8").read() if os.path.isfile(out_path) else ""
     manual = extract_manual(old)
     if manual:
-        new = re.sub(re.escape(MANUAL_BEGIN) + r".*?" + re.escape(MANUAL_END), manual, new, flags=re.S)
+        # 用函数作替换体：manual 里的反斜杠（如 `.\Civ6WorkshopUploader.exe`）会被
+        # re.sub 当成替换转义序列（\C 直接抛 bad escape）—— 传字符串是错的。
+        new = re.sub(re.escape(MANUAL_BEGIN) + r".*?" + re.escape(MANUAL_END),
+                     lambda m: manual, new, flags=re.S)
 
     if check_only:
         if old != new:

@@ -102,7 +102,7 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 | **Asset Editor 字段名 / 调试查日志 / 枚举取值**（"AE 里那个框叫什么"、"Database.log 怎么看"、"Culture 有哪些值"、"忠诚度材质的字段名"） | → **`reference/editor-and-enums.md`**（AE 字段速查 / 调试三板斧 / `Cultures.artdef` 取值表 / 忠诚度 3D 链字段） |
 | **平衡补丁 / 差分覆盖**（改主工程数值、解挂载、覆盖文本的补丁 mod） | → `balance-patch.md` |
 | **换行 / EOL 归一化**（"CRLF 还是 LF"、行尾混了、`.gitattributes` 怎么写、接手他人工程先体检） | → `gotchas.md` **§68「换行分层铁律」**（唯一真源）+ `scripts/normalize_eol.py`（默认只报告，`--fix` 才写盘） |
-| **工坊封面 / 预览图**（做封面、"封面上的中文别画错"） | → `tools/workshop_cover.py`（确定性 CJK 排版；用法见 `TOOLS.md` 与 `tools/README.md`，发布流程见 `release.md`） |
+| **工坊封面 / 预览图**（做封面、"封面上的中文别画错"、"封面太模糊"） | → 排版走 `tools/workshop_cover.py`（确定性 CJK 排版）；**预览图缩放执行端在 `art/make_workshop_preview.py`**（Lanczos 阶梯 + unsharp、默认 512、已达标直通不二次缩放；见 `art-pipeline.md` 第九·补节）；发布流程见 `release.md` §3.2 |
 | **音频**（导入 / 素材整备 / 响度均衡 / Wwise / bank / 语音 / BGM） | → **`civ6-audio-pipeline` skill**（音频全流程在该 skill 内，此处不重复） |
 | **运行时验证**（"这个 API 实际行为是什么"、复现脚本报错、PROPERTY/modifier 实测） | → **`civ6-tuner` skill**（FireTuner TCP 4318，在运行中的对局里执行 Lua；静态校验回答不了的问题走这里） |
 | **翻译 / 多语言文本**（补缺失语言、审计语言齐缺失、主工程 vs 补丁文本 diff） | → `SKILL.md` §4.1 的 Civ6 侧规则（语言代码 / 标记必须保留 / 合并进原 SQL / 写后复核）；工具自备 |

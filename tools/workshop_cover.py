@@ -9,6 +9,13 @@
 项目硬性约定：**封面任何情况下不署名**（作者只写在 .modinfo 的 Authors 与代码里）。
 本脚本因此不提供作者行参数。
 
+## 预览图（`--preview`）
+
+预览图走 `art/make_workshop_preview.py` 的**同一套采定管线**（Lanczos 逐级减半 + unsharp，
+默认 512×512）—— 不要在这里另写一份"随手 resize"：本项目 2026-09 的封面发糊事故，
+根因就是单步缩放 + 默认滤镜（Mitchell）偏软，实测锐度仅约为采定管线的 1/5。
+若 `art/` 不可用，会**明确告警**并回落到旧的单步 LANCZOS，而不是静默降级。
+
 用法（先出底图，再合成）：
     python local_flux.py --prompt-file bg.txt --out bg_7.png --seeds 42,7,123
     python local_flux.py --prompt-file emblem.txt --out emblem.png   # 或由 sd_cpp 下的 make-icon.ps1 / art/normalize_icon.py 出白色剪影
@@ -30,6 +37,9 @@ try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
     pass
+
+# 预览图执行端在 art/（单一真源）；下面按需加入 sys.path 后 import
+_ART_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "art")
 
 INK = (5, 11, 20)
 GOLD_TOP = (247, 230, 178)
@@ -77,6 +87,36 @@ def _draw_tracked(draw, text, font, tracking, top, fill, canvas_w):
         x += font.getlength(c) + tracking
 
 
+def _write_preview(im, out_path, size):
+    """写预览图 —— 委托 `art/make_workshop_preview.py`（采定管线的单一真源）。
+
+    该模块不可用时**明确告警**再回落单步 LANCZOS（历史上正是这种写法导致封面发糊），
+    绝不静默降级。
+    """
+    try:
+        if _ART_DIR not in sys.path:
+            sys.path.insert(0, _ART_DIR)
+        import make_workshop_preview as mwp
+    except ImportError as e:
+        print("WARN  未能加载 art/make_workshop_preview.py（%s）——"
+              "回落到单步 LANCZOS（清晰度会低于采定管线，建议修好后重出）" % e)
+        im.resize((size, size), Image.LANCZOS).save(out_path, "PNG", optimize=True)
+    else:
+        prev, ref, steps = mwp.build(im, target=size, sharpen=True)
+        prev.save(out_path, "PNG", optimize=True, compress_level=9)
+        if steps:
+            print("阶梯    Lanczos 逐级减半 → %s" % " → ".join(str(s) for s in steps))
+        if ref is not None:
+            try:
+                print("振铃    %.1f%%（参考：无锐化 ≈2.7 / 采定 ≈17 / 200%% ≈31）"
+                      % mwp.ringing_pct(prev, ref))
+            except ImportError:
+                pass
+
+    n = os.path.getsize(out_path)
+    print("PREVIEW %s  %d B%s" % (out_path, n, "  <== 超过 Steam 1 MB 上限！" if n > 1 << 20 else ""))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="工坊封面合成（确定性 CJK 排版）")
     ap.add_argument("--bg", required=True, help="底图 PNG（生图模型产出，不含文字）")
@@ -87,7 +127,8 @@ def main() -> int:
     ap.add_argument("--master", required=True, help="母版输出 PNG")
     ap.add_argument("--preview", default=None, help="预览图输出 PNG（Steam 上限 1 MB）")
     ap.add_argument("--size", type=int, default=1024)
-    ap.add_argument("--preview-size", type=int, default=640)
+    ap.add_argument("--preview-size", type=int, default=512,
+                    help="预览图边长（Steam 上限 1 MB；采定 512，见 art/make_workshop_preview.py）")
     ap.add_argument("--title-size", type=int, default=92)
     ap.add_argument("--cjk-font", default=DEFAULT_CJK_FONT)
     ap.add_argument("--latin-font", default=DEFAULT_LATIN_FONT)
@@ -183,9 +224,7 @@ def main() -> int:
 
     if args.preview:
         os.makedirs(os.path.dirname(os.path.abspath(args.preview)), exist_ok=True)
-        bg.resize((args.preview_size, args.preview_size), Image.LANCZOS).save(args.preview, "PNG", optimize=True)
-        n = os.path.getsize(args.preview)
-        print("PREVIEW %s  %d B%s" % (args.preview, n, "  <== 超过 Steam 1 MB 上限！" if n > 1 << 20 else ""))
+        _write_preview(bg, args.preview, args.preview_size)
     print("提醒    封面不署名（项目约定）；作者只写在 .modinfo 的 Authors 与代码里")
     return 0
 

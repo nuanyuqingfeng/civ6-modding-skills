@@ -18,6 +18,7 @@
 | `art/gen_tex.py` | 为 {MOD_NAME}/Textures/ 下的每个 dds 文件生成同名 .tex 文件。 | `python gen_tex.py [textures_dir] [assets_dir] [asset_map_json]` |
 | `art/make-icon.ps1` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
 | `art/make_atlas.py` | make_atlas.py — Civ6 多图网格图集（IconTextureAtlas）合成器。 | `python make_atlas.py [-Manifest art_manifest.json] [-ProjectRoot <path>]` |
+| `art/make_workshop_preview.py` | make_workshop_preview.py — 工坊预览图（Steam cover）生成器 | `python make_workshop_preview.py <master.png> --out <ws>/image.png --qa<br>python make_workshop_preview.py <已有512.png> --out <ws>/image.png` |
 | `art/merge_icon_registration.py` | merge_icon_registration.py — 把 make_atlas.py 产出的注册片段幂等并入项目 | `python merge_icon_registration.py <projectRoot> --fragment <...>_registration.xml` |
 | `art/normalize_icon.py` | normalize_icon.py — Civ6 图标规范化预处理（art-pipeline「图标规范化」专属章节的引擎） | `python normalize_icon.py <in.png> [out.png] [--canvas 256] [--content 224] [--color 255]<br>python normalize_icon.py <in.png> --role unit_icon        # 用 registry 内置规范` |
 | `art/regen_atlas_tiers.py` | regen_atlas_tiers.py — 图集中间档「母版重出」工具（修复被压对比/锐化的档位） | `python regen_atlas_tiers.py <projectRoot> --report<br>python regen_atlas_tiers.py <projectRoot> --atlas ATLAS_X --master 256 --sizes 32,50,80` |
@@ -57,7 +58,7 @@
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 47 个脚本。
+共 48 个脚本。
 
 ## 第三方依赖（非标准库）
 
@@ -66,6 +67,7 @@
 - `art/apply_fow.py` → numpy、Pillow
 - `art/dds_io.py` → Pillow
 - `art/make_atlas.py` → Pillow
+- `art/make_workshop_preview.py` → Pillow、numpy（--qa 指标）
 - `art/normalize_icon.py` → numpy、Pillow、scipy
 - `art/regen_atlas_tiers.py` → numpy、Pillow
 - `art/survey_icon_atlas.py` → numpy、Pillow、scipy
@@ -115,6 +117,9 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 ### 新 mod 从工程到线上的推荐顺序
 
 ```
+⓪ Push-Location <tool 目录>; .\Civ6WorkshopUploader.exe new -w <ws>; Pop-Location
+                                                        # 首建骨架（★ cwd 必须是 exe 目录，否则 Template not found）
+                                                        更新已有条目跳过此步，复用旧 workspace
 ① python tools/modinfo_build.py <X.civ6proj> --deploy   # 生成 .modinfo + 部署到 Mods
 ② python tools/verify_mod_package.py --src <工程> --mods <Mods副本>
                                                         # 三处一致性 + 引用闭合
@@ -123,10 +128,21 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 ④ python tools/workshop_meta.py <spec.json> --out <ws>/workshop.json --record <桌面存档>
 ⑤ python tools/local_flux.py … → python tools/workshop_cover.py …
                                                         # 底图（模型，无文字）+ 封面（真实字体排版）
+                                                        封面加 --preview <ws>/image.png 即成为工坊预览图
+                                                        （已达标 512 成品直通、不二次缩放；不放 = 保留线上原图）
+   或只需缩放：python art/make_workshop_preview.py <母版> --out <ws>/image.png --qa
+                                                        # ★ 预览图缩放的执行端在 art/（单一真源）
+                                                        #   别用 magick -resize 裸缩（默认 Mitchell 偏软 → 发糊）
 ⑥ release/scripts/validate.ps1 → upload.ps1 → verify.ps1
 ⑦ python tools/workshop_item_check.py <id>              # 线上复核
 ⑧ release/scripts/cleanup.ps1 -Workspace <ws>           # 真成功后才删工作区
+⑨ （下架）.\Civ6WorkshopUploader.exe remove -w <ws> -i <id>   # 不可逆，只删线上
 ```
+
+> 上传工具的完整命令面（`new` / `validate` / `upload` / `remove`）、退出码
+> （`0` 成功 / `1` 硬错误 / `2` validate 提示级不阻断）与 workspace 结构见
+> [`release.md`](release.md)「Hard Rules」。**别用来路不明的预编译 zip 替换本机
+> `tool\`**（上游无 Releases/tag/CI）——判据与实测见同节。
 
 ### 详细说明与踩坑
 
