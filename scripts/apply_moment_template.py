@@ -50,6 +50,7 @@ Civ6 的「历史时刻」插画（`MOMENT_ILLUSTRATION_*`，见 `MomentIllustra
 """
 import argparse
 import glob
+import json
 import os
 import re
 import sys
@@ -64,11 +65,21 @@ except ImportError:  # pragma: no cover
     raise SystemExit(1)
 
 # 与 civ6-modding/art/dds_io.py 共用同一套 DDS 头（单一真源）
+# 探测顺序：CIV6_SKILLS_ROOT 指定的 skills 根 → 同级 civ6-modding → 用户 skills 目录
 _HERE = os.path.dirname(os.path.abspath(__file__))
-for _c in (os.path.join(_HERE, "..", "..", "civ6-modding", "art"),
-           os.path.join(os.path.expanduser("~"), ".agents", "skills", "civ6-modding", "art")):
+_DDS_IO_CANDIDATES = []
+if os.environ.get("CIV6_SKILLS_ROOT"):
+    _DDS_IO_CANDIDATES.append(
+        os.path.join(os.environ["CIV6_SKILLS_ROOT"], "civ6-modding", "art"))
+_DDS_IO_CANDIDATES += [
+    os.path.join(_HERE, "..", "..", "civ6-modding", "art"),
+    os.path.join(os.path.expanduser("~"), ".agents", "skills", "civ6-modding", "art"),
+]
+DDS_IO_FOUND = False
+for _c in _DDS_IO_CANDIDATES:
     if os.path.isfile(os.path.join(_c, "dds_io.py")):
         sys.path.insert(0, os.path.abspath(_c))
+        DDS_IO_FOUND = True
         break
 try:
     from dds_io import write_dds
@@ -83,6 +94,47 @@ if hasattr(sys.stdout, "reconfigure"):
 
 MOMENT_W, MOMENT_H = 456, 332
 MASK_THR = 128
+
+# 作者机模板目录（历史默认值，仅作探测链一环；别人机器上通常不存在，勿照抄）
+LEGACY_TEMPLATE_DIR = r"D:\desktop\模板\历史图片模板（新）"
+
+# 找不到 dds_io.py 时的统一修复提示
+DDS_IO_HINT = (
+    "找不到 civ6-modding/art/dds_io.py。请检查 civ6-modding 是否与 civ6-asset-forge 同级，"
+    "或用环境变量 CIV6_SKILLS_ROOT 指定 skills 根目录"
+    "（期望 <CIV6_SKILLS_ROOT>/civ6-modding/art/dds_io.py）。")
+
+
+def _local_paths_candidates():
+    """local_paths.json 候选位置（本 skill 根目录 → 同级 civ6-modding）。"""
+    return [os.path.join(os.path.dirname(_HERE), "local_paths.json"),
+            os.path.join(_HERE, "..", "..", "civ6-modding", "local_paths.json")]
+
+
+def resolve_template_dir(cli_value):
+    """--template-dir 缺省时的探测链：local_paths.json → 作者机历史默认值 → 当前工作目录。"""
+    if cli_value:
+        return cli_value
+    for lp in _local_paths_candidates():
+        try:
+            with open(lp, encoding="utf-8") as f:
+                v = json.load(f).get("moment_template_dir")
+        except Exception:
+            continue
+        if v and os.path.isdir(v):
+            print("模板目录取自 %s：%s" % (lp, v))
+            return v
+    if os.path.isdir(LEGACY_TEMPLATE_DIR):
+        return LEGACY_TEMPLATE_DIR
+    cwd_cand = os.path.join(os.getcwd(), "模板", "历史图片模板（新）")
+    if os.path.isdir(cwd_cand):
+        return cwd_cand
+    raise SystemExit(
+        "找不到 18 张 PSD 时刻模板目录。请用 --template-dir 指定你的 18 张 PSD 模板目录"
+        "（例如 --template-dir \"D:/我的素材/历史图片模板（新）\"）。\n"
+        "  也可在 local_paths.json 写入 {\"moment_template_dir\": \"<模板目录>\"}，"
+        "或把模板放到当前工作目录的 模板/历史图片模板（新）/ 下。\n"
+        "  本次已探测：%s" % "，".join([LEGACY_TEMPLATE_DIR, cwd_cand]))
 
 
 # ---------------------------------------------------------------- 模板
@@ -185,7 +237,9 @@ def coverage(img):
 
 def main():
     ap = argparse.ArgumentParser(description="历史时刻插画：套官方形状模板")
-    ap.add_argument("--template-dir", default=r"D:\desktop\模板\历史图片模板（新）")
+    ap.add_argument("--template-dir", default=None,
+                    help="18 张 PSD 时刻模板目录（默认按 local_paths.json 的 moment_template_dir → "
+                         "作者示例路径 → 当前工作目录的 模板/历史图片模板（新） 依次探测）")
     ap.add_argument("--input", help="单个源图")
     ap.add_argument("--input-dir", help="源图目录（批量）")
     ap.add_argument("--template", type=int, help="模板编号 1..18")
@@ -194,6 +248,11 @@ def main():
     ap.add_argument("--dds", action="store_true", help="同时写单 mip RGBA8 DDS")
     ap.add_argument("--list", action="store_true", help="只列出模板信息")
     a = ap.parse_args()
+
+    a.template_dir = resolve_template_dir(a.template_dir)
+    # 显式要求 --dds 时才把「缺 dds_io.py」当致命错误（未要求时保持原行为）
+    if a.dds and write_dds is None:
+        raise SystemExit("--dds 需要 civ6-modding/art/dds_io.py，无法写出 DDS。\n  " + DDS_IO_HINT)
 
     templates = load_templates(a.template_dir)
     if not templates:
@@ -237,7 +296,11 @@ def main():
                 src = Image.open(p)
                 src.load()
         except Exception as e:
-            print("  SKIP %s (%s)" % (os.path.basename(p), e))
+            if p.lower().endswith(".dds") and not DDS_IO_FOUND:
+                print("  SKIP %s：找不到 civ6-modding/art/dds_io.py，无法读取 DDS 输入"
+                      "（未请求 DDS 输出，跳过本输入）" % os.path.basename(p))
+            else:
+                print("  SKIP %s (%s)" % (os.path.basename(p), e))
             continue
         num = a.template if a.template else pick_template(src, templates)
         out_img = apply_mask(src, templates[num])

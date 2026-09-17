@@ -173,7 +173,7 @@ python <skill>\scripts\gen_loyalty_art.py --project "<工程路径>" --civ-types
 2. **光晕模板**：黑色径向光晕（中心平台 alpha≈168，向边缘衰减），只含 alpha 形状信息；官方样例的最终 alpha = 光晕 alpha（图标画在光晕之上）。
 3. **Box ast 复用官方几何**：Overlay 用 `HexModelGeo`（mesh `Official_Hex 034`，AnimType `FADE_LOOP`，AutoPlay true）；Pressure 用 `PipModelGeo`/`PipModel`（AnimType `NONE`，AutoPlay false）。**不自建几何**，唯一变量是材质引用。
 4. **材质最小单元是贴图但入口在材质**：AssetEditor 无法直接导入 3D 镜头贴图，必须经 mtl 的 `UILensOverlayTexture` 参数挂贴图（脚本直接写 mtl，绕过此坑）。
-5. **XLP/ArtDef 必须注册 civ6proj Content 才会编译**（Materials/Assets/Textures 目录构建时自动扫描，无需注册）；civ6proj 有多个 ItemGroup，脚本插到最后一个 `</Content>` 之后。
+5. **XLP / ArtDef 的构建接入点：`.civ6proj` 的 `<Content>`**不是**必需项**——实测可运行工程（`示例工程`）的 `.civ6proj` 里 `.artdef` / `.xlp` 的 Content 条目为 **0**，而构建出的 `.modinfo` 仍自动收进全部 13 个 `.artdef`；`.xlp` 是 cook 输入，既不进 Content 也不进产物。**真正的必需项是 `.Art.xml`**（经 `<UpdateArt>` 的 `(Mod Art Dependency File)` 挂载）中的 consumer / `requiredGameArtIDs` 声明。`gen_loyalty_art.py` / `gen_religion_art.py` 仍会**幂等补写** Content 条目（历史做法，写了不报错、属可选冗余）；Materials/Assets/Textures 目录构建时自动扫描，无需注册。
 6. **包合并**：`strategicview/strategicview_uilenses`、`UILensAssets` 包与基础库同名合并，故 artdef 引用基础/自有条目均可。
 7. **引擎查找约定**：Overlay.artdef 的 `LoyaltyLensArrows` 下子集合名 = 完整 `CIVILIZATION_X` 类型名；StrategicView.artdef 的 UILenses 元素名 = `LoyaltyWarning_{CIV}` 与 `{CIV}`——名字打错游戏不报错但图标不显示。
 8. **压力箭头**：SV 压力条目里的 `ReligionPressureArrow_ReligionPressureArrow` 是官方共享箭头条目，直接引用不要改名。

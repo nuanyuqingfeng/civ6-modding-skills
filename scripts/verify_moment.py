@@ -7,14 +7,17 @@ r"""verify_moment.py — 历史时刻插画与接线的只读校验器
 检查项：
   1. 每张 `Moment_*` 贴图 `.dds` ↔ `.tex` 成对，`.tex` 宽高 == 456×332 == DDS 实际；
   2. `m_ClassName == UserInterface`、`m_Tags` 单条 `UserInterface`；
-  3. **alpha 覆盖率落在 83~99%**（低于 83% = 漏套官方形状模板 —— 本节最有价值的检查）；
+  3. **alpha 覆盖率在 75.0~99.5%（可调）**：`< --coverage-min`（默认 75.0）判 FAIL = 疑似漏套官方
+     形状模板；75.0~83.0 之间只 warn（**原版 240 张实测最低 83.0%**，留 8pp 容差避免把软边
+     差异误报成漏套；漏套实测仅 14~15%）；`> --coverage-max`（默认 99.5）warn = 软边可能被削掉。
+     —— 本节最有价值的检查。
   4. 贴图已被 `UITexture` 类 XLP 登记（默认 UI/PrideMoments）；
   5. `MomentIllustrations` 每行 Texture 在磁盘存在、(MomentIllustrationType, MomentDataType) 配对合法；
   6. `.tex`/`.xlp` 为 LF，`.sql` 为 CRLF。
 
 用法：
     python verify_moment.py --project <工程根>
-    python verify_moment.py --project <工程根> --coverage-min 83 --coverage-max 99
+    python verify_moment.py --project <工程根> --coverage-min 75 --coverage-max 99
 """
 import argparse
 import os

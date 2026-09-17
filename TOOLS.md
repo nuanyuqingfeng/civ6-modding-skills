@@ -2,7 +2,7 @@
 
 > **硬性约定**：要写脚本做某件事之前，**先查本名录**；有能用的就**改它**，不要重建。
 > 新增脚本 → 同一次改动里跑 `python civ6-modding/tools/skill_manifest.py civ6-asset-forge` 刷新本文件。
-> 本目录的工具全部零第三方依赖（Python 标准库 / Node 内置），带退出码，可直接接 CI。
+> 本目录的工具**以纯标准库为主**（Python 标准库 / Node 内置），带退出码，可直接接 CI；用到第三方库的脚本逐条列在下方「第三方依赖」节。
 > 跨 skill 先看 `civ6-modding/TOOLS.md`（通用工具）与 `civ6-modding/reference/FAMILY_INDEX.md`（家族路由）。
 
 ## 工具名录（由 `skill_manifest.py` 扫描磁盘生成，勿手改表格）
@@ -19,25 +19,50 @@
 | `scripts/gen_suk_portrait.py` | gen_suk_portrait.py — Sukritact's Civ Selection Screen 适配素材与接线生成器 | `python gen_suk_portrait.py --project <工程根> --check<br>python gen_suk_portrait.py --project <工程根> --write` |
 | `scripts/process_leader_png.py` | process_leader_png.py — Civ6 2D 领袖立绘 PNG -> TEXTURE/OPACITY 1024x1024 素材生成器 | `python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA_QYQXP` |
 | `scripts/process_loyalty_icon.py` | 文明6 忠诚度/宗教图标合成：图标 + 黑色光晕模板 → PNG 组。 | `python process_loyalty_icon.py --kind {loyalty\|religion} (--icon <png> \| --project <工程>) --suffix <后缀> [--out-dir <目录>] [--fit-mode {core,extent}]` |
+| `scripts/psd_inspect.py` | PSD 结构检视 + 图层导出（类别⑥ 历史时刻模板反推用）。 | `python psd_inspect.py <psd或目录> [--out <目录>] [--export-layers] [--pick 1,4,18] [--all]<br>python psd_inspect.py --help` |
 | `scripts/recolor_template.py` | 旧晋升模板 → 四类金属（platinum/gold/silver/bronze）重着色，保留浮雕细节 | `python recolor_template.py <源模板.png> <输出目录>` |
 | `scripts/slice_atlas.py` | 把 Promotions32.png 图集切成 40 枚晋升图标(带类别与晋升名) | `python slice_atlas.py <Promotions32.png> <Icons_Promotions.xml> <outdir>` |
 | `scripts/vcheck_multi.py` | 多图视觉复核（把若干 PNG 一起丢给 Gemini 视觉模型问一个问题） | `python vcheck_multi.py "<问题>" <图片1.png> [图片2.png ...]` |
 | `scripts/verify.py` | 校验晋升图标/模板: 轮廓 IoU + 配色采样 + 图形检查 | `python verify.py <candidate.png> <gt1024.png> [--mode auto\|template\|final]` |
 | `scripts/verify_badge.py` | verify_badge.py - 总督 24px 徽章几何/配色验证 | `python verify_badge.py 生成.png                  # 只做几何自洽校验<br>python verify_badge.py 生成.png 官方格.png        # 与官方对照，输出 IoU 与配色误差` |
-| `scripts/verify_moment.py` | verify_moment.py — 历史时刻插画与接线的只读校验器 | `python verify_moment.py --project <工程根><br>python verify_moment.py --project <工程根> --coverage-min 83 --coverage-max 99` |
+| `scripts/verify_moment.py` | verify_moment.py — 历史时刻插画与接线的只读校验器 | `python verify_moment.py --project <工程根><br>python verify_moment.py --project <工程根> --coverage-min 75 --coverage-max 99` |
 | `scripts/verify_suk_portrait.py` | verify_suk_portrait.py — Suk 选人界面适配素材与接线的只读校验器 | `python verify_suk_portrait.py --project <工程根><br>python verify_suk_portrait.py --project <工程根> --suffix _Suk` |
 
-共 17 个脚本。
+共 18 个脚本。
+
+## 第三方依赖（非标准库）
+
+本 skill 的脚本**多数是纯标准库**；下列脚本需要先 `pip install` 对应第三方库：
+
+- `scripts/apply_moment_template.py` → numpy、Pillow、psd_tools
+- `scripts/build_icon_set.py` → numpy、Pillow
+- `scripts/compose.py` → numpy、Pillow
+- `scripts/edge_gradient.py` → numpy、Pillow、scipy
+- `scripts/gen_suk_portrait.py` → Pillow
+- `scripts/process_leader_png.py` → Pillow
+- `scripts/process_loyalty_icon.py` → Pillow
+- `scripts/recolor_template.py` → numpy、Pillow、scipy
+- `scripts/slice_atlas.py` → Pillow
+- `scripts/verify.py` → numpy、Pillow
+- `scripts/verify_badge.py` → numpy、Pillow
+
+> 口径：对脚本 `import` 的实测扫描；纯标准库脚本不列。新增/改动依赖时同一次改动里更新 `skill_manifest.py` 的 `THIRD_PARTY`。
 
 ## 路径收纳（本机绝对路径，勿写死进脚本）
 
-Py 工具统一走路径解析器；**换机器只改 `civ6-modding/local_paths.json` 一处**。
+每个 skill **各自**有一份 `local_paths.json`（个人环境文件，不入库）：
+
+| skill | 路径解析器 | 环境变量前缀 |
+|---|---|---|
+| `civ6-modding` | `tools/_paths.py`（P1–P6 + 外部工具） | 见该文件 `DEFAULTS` / `TOOL_DEFAULTS` |
+| `civ6-audio-pipeline` | `scripts/paths.py`（`wwcli` / `template_full` / `p1` / `p2`） | `CIV6_<KEY>`（如 `CIV6_WWCLI`） |
+| 其余 skill | 无独立解析器：脚本用 CLI 参数 / 相对定位，或调用 `civ6-modding` 的解析器 | — |
 
 ```bash
 python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工具的实际解析结果
 ```
 
-| 键 | 含义 |
+| 键（civ6-modding） | 含义 |
 |---|---|
 | `modbuddy` | ModBuddy 源工程根（P1） |
 | `mods` | 游戏 Mods 加载目录（P2） |
@@ -52,9 +77,8 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 | `ws_root` | 上传临时工作区根（`%TEMP%\civ6-ws`） |
 | `steam_logs` | Steam 日志目录（反查工坊条目 ID） |
 
-> 完整路径表与各键本机取值见 `civ6-modding/tools/README.md` 第 2 节；
-> 生图**渠道可用性**（哪个模型还能用、失败模式）见
-> `%USERPROFILE%\.config\opencode\imagegen-channels.md`，不在本文件维护。
+> 完整路径表与各键本机取值见 `civ6-modding/tools/README.md` 第 2 节。
+> 全新机器上先跑一次上面那条命令：缺失的键会打印 `[缺失]`，按提示写 `local_paths.json` 即可。
 
 <!-- MANUAL:BEGIN -->
 ## 人工备注（重跑生成器时原样保留）

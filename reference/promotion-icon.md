@@ -71,7 +71,10 @@ languages:
 
 ### ① 素材准备（用户提供或生成）
 白色图标：纯白 `#FFFFFF` 剪影、透明背景、正方形 256~1024px、图形占画布 60%~75%。
-（生成白色剪影可用 `%USERPROFILE%\sd-cpp\make-icon.ps1 -Subject "..." -Out ...`）
+（白色剪影：已有主体图 → 用 `civ6-modding` 的 `art/normalize_icon.py`（`--color 255` 涂白、
+`--role unit_icon` 用内置白色剪影规范，占幅可用 `--canvas/--content` 调）；要**由文字生成**剪影 →
+本机 `sd_cpp` 目录下的 `make-icon.ps1 -Subject "..." -Out ...`（`sd_cpp` 取值见
+`civ6-modding/tools/_paths.py`；该脚本不在 skill 内，换机器需自备）。）
 
 ### ② 选模板
 本 skill `assets/` 内置四类盾形模板（`TEMPLATE_{metal}_1024.png`，生图模型产出，
@@ -79,12 +82,18 @@ languages:
 白金=精密/远程/舰队，黄金=突击/工程，白银=机动/步兵战术，青铜=近战/骑兵/通用（详见 `reference/promotion-icon/specs.md` 的 40 枚对照表）。
 
 ### ③ 合成成品
-- **有多图生图模型可用时**：白图标 + 模板两张图 + `reference/promotion-icon/prompts.md` 第二节提示词（中英双语）。
+- **有多图生图模型可用时**：白图标 + 模板两张图 + `reference/promotion-icon/prompts.md` 第二节提示词（中英双语）；
+  需要**先对齐官方画幅占比或派生四色版本**时，用 `reference/promotion-icon/prompts-metal-recolor.md`
+  （含原版 `Promotions32.dds` 实测占比：盾徽宽 75%、左右留白各 12.5%、顶 12.5%、底 6%）。
 - **本地管线（默认可靠路径）**：
   ```bash
-  python scripts/compose.py <模板1024.png> <白图标.png> <输出.png> [scale=0.55] [cy=0.44]
+  python scripts/compose.py <模板1024.png> <白图标.png> <输出.png>
   ```
   自动完成：白→#120804 重着色、按徽章宽 55% 缩放、居中(44%高)、柔和投影、输出 1024 + 32px。
+  > ⚠ CLI **只吃 3 个位置参数**（`sys.argv[1..3]` = 模板 / 白图标 / 输出），**没有**
+  > `scale=` / `cy=` 这类位置参数；`scale=0.55`、`cy_frac=0.44` 是库函数
+  > `compose.compose(...)` 的关键字默认值，要改只能 `from compose import compose` 后传参
+  > （或 `python -c`），命令行传第 4 个参数会被静默忽略。
 
 ### ③b 带内容旧模板的重着色（用户提供成品图/旧模板时）
 不要用剪影覆盖重画，走保浮雕重着色：

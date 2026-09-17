@@ -101,7 +101,7 @@ languages:
 ### 2. 运行生成脚本
 
 ```bash
-python %USERPROFILE%\.agents\skills\civ6-asset-forge\scripts\gen_leader_2d.py \
+python "<skills>/civ6-asset-forge/scripts/gen_leader_2d.py" \
   --project "<工程路径>" \
   --pack <包名> \
   --abbr <文明缩写> \
@@ -142,7 +142,7 @@ python %USERPROFILE%\.agents\skills\civ6-asset-forge\scripts\gen_leader_2d.py \
 - 若脚本因依赖缺失失败，进入层级 3。
 
 ```bash
-python %USERPROFILE%\.agents\skills\civ6-asset-forge\scripts\process_leader_png.py \
+python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
   --input "<源PNG路径>" \
   --leader-type "LEADER_CANTARELLA_QYQXP"
 ```

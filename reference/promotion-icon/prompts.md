@@ -55,10 +55,10 @@ extra icons, circular badge, changed badge colors, opaque background, blurry edg
 准备 init：ground truth（`assets/TEMPLATE_{metal}_gt1024.png`）贴到纯黑 RGB 画布。
 
 ```powershell
-& %USERPROFILE%\sd-cpp\sd-cli.exe `
-  --diffusion-model "%USERPROFILE%\sd-cpp\models\flux2-klein4b\flux-2-klein-4b-Q4_0.gguf" `
-  --vae "%USERPROFILE%\sd-cpp\models\flux2-klein4b\vae_small_decoder.safetensors" `
-  --llm "%USERPROFILE%\sd-cpp\models\flux2-klein4b\qwen3-4b-Q4_K_M.gguf" `
+& "$env:USERPROFILE\sd-cpp\sd-cli.exe" `
+  --diffusion-model "$env:USERPROFILE\sd-cpp\models\flux2-klein4b\flux-2-klein-4b-Q4_0.gguf" `
+  --vae "$env:USERPROFILE\sd-cpp\models\flux2-klein4b\vae_small_decoder.safetensors" `
+  --llm "$env:USERPROFILE\sd-cpp\models\flux2-klein4b\qwen3-4b-Q4_K_M.gguf" `
   -p "<下方提示词>" -i "<init图>" --strength 0.45 --cfg-scale 1.0 --steps 4 -H 1024 -W 1024 `
   --diffusion-fa --offload-to-cpu --seed 777 -o "<raw输出>"
 ```
@@ -92,7 +92,10 @@ no symbol, no letter, centered, isolated on pure black background, <金属描述
 ## 四、白色剪影生成（可选）
 
 ```powershell
-& %USERPROFILE%\sd-cpp\make-icon.ps1 -Subject "a laurel wreath with a captain helmet" -Out "D:\path\icon.png" -Seed 42
+# <sd_cpp> = 本机生图工具目录，取值见 civ6-modding/tools/_paths.py 的 sd_cpp 键
+#            （`python civ6-modding/tools/_paths.py` 会打印实际路径；本机为 %USERPROFILE%\sd-cpp）
+# 该脚本不在 skill 内、换机器需自备；已有主体图时也可直接用 civ6-modding/art/normalize_icon.py --color 255 涂白
+& <sd_cpp>\make-icon.ps1 -Subject "a laurel wreath with a captain helmet" -Out "D:\path\icon.png" -Seed 42
 ```
 
 （脚本内置最优提示词，Subject 不要写风格词；线稿化时换种子。）

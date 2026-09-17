@@ -40,7 +40,9 @@ Civ6 的**历史时刻**（Historic Moment）在触发时会弹出一张**插画
 | 注册目标 | `UI_PrideMoments.xlp`（`m_ClassName=UITexture`，`PackageName=UI/PrideMoments`） | 原版 pantry + 项目既有 XLP |
 
 > ⚠ **覆盖率是最有用的机械判据**：官方每张时刻图都是**同一族卡片形状蒙版**裁出来的，
-> 所以覆盖率**不会低于 83%**。若你的成品覆盖率远低于此（实测漏套模板的案例仅 **14.5% / 15.3%**），
+> 所以**原版 240 张不会低于 83%**。而 `verify_moment.py` 的**校验门槛默认 75%**
+> （原版下界留 8pp 容差，避免把软边差异误报；见 `CHANGELOG.md`）——低于门槛即判 FAIL。
+> 成品覆盖率远低于门槛时（实测漏套模板的案例仅 **14.5% / 15.3%**），
 > 说明**没有套模板**——卡片在 UI 里会形状不对、该透明处不透明，像贴了块方形补丁。
 
 ## 三、官方形状模板（18 张 PSD）
@@ -100,7 +102,7 @@ python <skill>/scripts/apply_moment_template.py --input a.png --template 1 --out
 | 1 | `Textures/Moment_<名>.{dds,tex}` | 新增贴图；`.tex` 的 `m_ClassName=UserInterface`、`m_Tags` 单条 `UserInterface`、`m_Width/Height=456/332` |
 | 2 | `XLPs/UI_PrideMoments.xlp` | 每条一张贴图：`<m_EntryID>` + `<m_ObjectName>`（同名） |
 | 3 | `Data/*.sql` | `INSERT OR REPLACE INTO MomentIllustrations` 四列 |
-| 4 | `*.civ6proj` | XLP 需在 Content/InGameAction 注册（本项目 `UI_PrideMoments.xlp` 已注册） |
+| 4 | `*.civ6proj` | **无需注册**（实测可运行工程的 Content 里没有 `.xlp` 条目，见 `loyalty-icon.md` §六.5）；真正必需的是 `.Art.xml` 的 consumer 声明 |
 
 ### 5.1 `MomentIllustrationType` × `MomentDataType` 配对表（实测原版）
 
@@ -142,7 +144,8 @@ python <skill>/scripts/verify_moment.py --project <工程根>
 
 1. 每张 `Moment_*` 贴图 `.dds` ↔ `.tex` 成对，`.tex` 宽高 == 456×332 == DDS 实际；
 2. `m_ClassName == UserInterface`、`m_Tags` 单条 `UserInterface`；
-3. **alpha 覆盖率落在 83~99%**（低于 83% = 漏套模板，是本节最有价值的检查）；
+3. **alpha 覆盖率 75~99%**（脚本默认下界 **75.0**、上界 99.5；低于下界判 FAIL = 漏套模板，
+   75~83 之间只 warn —— **原版 240 张实测最低 83.0%**，是本节最有价值的检查）；
 4. 贴图已被 `UITexture` XLP（`UI/PrideMoments`）登记；
 5. `MomentIllustrations` 每行的 `Texture` 在磁盘存在、`GameDataType` 在对应表存在、
    `(MomentIllustrationType, MomentDataType)` 配对合法；

@@ -208,9 +208,14 @@ INSERT OR REPLACE INTO Governors
    TransitionStrength, Image, PortraitImage, PortraitImageSelected)
 VALUES
   ('GOVERNOR_CTTH_RGN','LOC_GOVERNOR_CTTH_RGN_NAME',8,'LOC_..._TITLE','LOC_..._SHORT_TITLE',
-   'LOC_..._DESCRIPTION',150,'ICON_GOVERNOR_CTTH_RGN',
+   'LOC_..._DESCRIPTION',150,'GOVERNOR_CTTH_RGN',
    'GovernorNormal_CTTH_RGN','GovernorSelected_CTTH_RGN');
 ```
+
+> ⚠ **`Image` 列填的是不带 `ICON_` 前缀的纹理名**（官方 `Expansion1_Governors.xml` 实测形如
+> `Image="GOVERNOR_CITY_DEFENDER"`，一个带 `ICON_` 的都没有）；引擎自己找 `ICON_<Image>`，
+> 也就是下面 `IconDefinitions` 里那条 `ICON_GOVERNOR_CTTH_RGN`。写成 `'ICON_GOVERNOR_...'`
+> 会去找 `ICON_ICON_GOVERNOR_...` → 图标静默不显示。（口径同 `civ6-modding/governor-authoring.md` §二②）
 
 **图标注册**（图集 + 图标定义，两行凑齐 32/64 两个 IconSize 共用一个 Atlas 名）：
 
@@ -233,8 +238,9 @@ VALUES
 → texconv 必须带 `-m 1`（否则默认生成完整 mip 链，与 .tex 声明冲突）。
 OPACITY 用单通道 `PF_R8_UNORM`。项目既有 `.tex` 模板可直接照抄字段顺序。
 
-**XLP**：把贴图加进项目的 `XLPs/Icons.xlp`，
-并在 `civ6proj` 补注册。
+**XLP**：把贴图加进项目的 `XLPs/Icons.xlp`；
+`.civ6proj` 的 Content **不必**登记（理由与实测证据见 `loyalty-icon.md` §六.5），
+但 `.Art.xml` 的 consumer 声明必须同步。
 
 ---
 

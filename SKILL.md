@@ -52,7 +52,7 @@ languages:
 
 **三条最容易踩的混用**：
 
-1. 总督 24px 徽章是**八边形**（上下切角），单位晋升是**五边形盾形**——两者规格、配色、图集完全是两套，**禁止互相套用**（详见 `reference/governor-art.md` 的「与单位晋升的区别」与 `reference/promotion-icon.md` 的盾形轮廓表）。
+1. 总督 24px 徽章是**八边形**（上下切角），单位晋升是**五边形盾形**——两者规格、配色、图集完全是两套，**禁止互相套用**（详见 `reference/governor-art/specs.md` §2.3「与单位晋升的区别」、`reference/governor-art.md`「边界」节，与 `reference/promotion-icon.md` 的盾形轮廓表）。
 2. 「晋升」一词要分清：**单位晋升**（本 skill 类别③）与**总督晋升徽章**（类别①）不是同一件事。
 3. 「领袖立绘」要分清：**类别④**是给 3D 引擎当纸片人的 `_TEXTURE`/`_OPACITY`（走 `Leaders.artdef`）；**类别⑤**是给 Suk 这类 2D 选人界面用的 `_Suk` UI 贴图（走 `UITexture` XLP）。两者同名前缀 `FALLBACK_NEUTRAL_*` 但**类别不同**，详见 `reference/ui-leader-portrait.md` §4.4。
 
@@ -109,9 +109,11 @@ languages:
 >   请给出目录或文件列表。
 > - **模板选择**：指定编号（`--template N`）或让脚本按源图长宽比自动挑（`--auto`）。
 
-> ⚠ **默认模板目录是本机路径**。换机器时用 `--template-dir` 指定；
-> 若用户没有模板 PSD，**不要凭猜造蒙版**——请先索取模板，或从原版
-> `Moment_*.dds` 反推形状（本 skill 未内置该反推脚本，需另行确认）。
+> ⚠ **默认模板目录是本机路径**。换机器时用 `--template-dir` 指定（或写 `local_paths.json` 的
+> `moment_template_dir` 键 / 把模板放在工作目录的 `模板/历史图片模板（新）/`）。
+> 若用户没有模板 PSD，**不要凭猜造蒙版**——请先索取模板，或从原版 `Moment_*.dds` 反推形状；
+> 拿到模板 PSD 后先用 `python scripts/psd_inspect.py <模板目录> --pick 1,4,18` 看清图层语义
+> （哪个是形状遮罩、哪个是描边），再决定套哪一号模板。
 
 ## 三、铁律一：处理用户素材前必须先询问（六类共用）
 
@@ -127,7 +129,7 @@ languages:
 | ③ 单位晋升 | `reference/promotion-icon.md` 工作流① | 纯白 `#FFFFFF` 剪影、透明背景、正方形 256~1024px、图形占画布 60%~75% | 不代生成素材 |
 | ④ 2D 领袖 | `reference/leader-2d.md` 第一节 | PNG、建议透明背景、尺寸近似 1:1 | **只生成注册文件**；`.tex` 的 `SourceFilePath` 指向占位路径，素材由用户后续导入 |
 | ⑤ UI 立绘/Suk | `reference/ui-leader-portrait.md` 第三节 | 立绘：PNG 建议透明背景、近似 1:1；背景：建议 16:9（如 1920×1080） | **推荐复用工程既有素材**（`FALLBACK_NEUTRAL_*` 立绘 + `IMG_LEADER_*_DIPLOMACY_BACKGROUND` 外交背景），自动裁切缩放 |
-| ⑥ 历史时刻 | `reference/moment-illustration.md` §2.2 | 源图：每张插画的 PNG（任意尺寸）；**模板**：官方形状 PSD（`1..18.psd`） | 模板与源图都需用户提供；脚本负责套版、缩放、报告覆盖率 |
+| ⑥ 历史时刻 | `reference/moment-illustration.md` 第三节（官方形状模板）与第四节（制作流程 4.1/4.2） | 源图：每张插画的 PNG（任意尺寸）；**模板**：官方形状 PSD（`1..18.psd`） | 模板与源图都需用户提供；脚本负责套版、缩放、报告覆盖率 |
 
 - 用户坚持用自己提供的模板/素材时，一律按其提供的路径走参数（如 `--glow`、`--icon`、`--avatar`、`--input`），不要替换成内置模板。
 - 交付物中必须写明**实际用了哪个素材文件**（含自动兜底时选中的源文件路径）。
@@ -186,7 +188,7 @@ languages:
 ### 6.2 工程接线的五条共用规则
 
 1. **`Materials/`、`Assets/`、`Textures/`、`Geometries/`、`LightRigs/`、`EnvironmentLights/` 构建时自动扫描**编译进 `Platforms\Windows\BLPs\*.blp`，**不需要**写进 `*.civ6proj` 清单。
-2. **XLP 与 ArtDef 必须注册到 `*.civ6proj` 的 Content 才会编译**；civ6proj 可能有多个 `ItemGroup`，脚本按幂等语义追加（插到最后一个 `</Content>` 之后），重复运行**不产生重复条目**。
+2. **XLP / ArtDef 的构建接入点**：`.civ6proj` 的 `<Content>` 条目**不是**必需 —— 实测可运行工程（`示例工程`）的 `.civ6proj` 里 `.artdef` / `.xlp` 条目为 **0**，而其构建产物 `.modinfo` 自动收进全部 `.artdef`（`.xlp` 属 cook 输入，不进产物）。**真正必须的是第 3 条的 `.Art.xml`**。历史脚本（`gen_loyalty_art.py` / `gen_religion_art.py`）会**幂等补写** Content 条目，属可选冗余、写了不报错；civ6proj 可能有多个 `ItemGroup`，脚本统一插到最后一个 `</Content>` 之后，重复运行不产生重复条目。
 3. **Art.xml 与 artdef/xlp 必须同步**：新增/修改 `XLPs\`、`ArtDefs\` 之后必须重新生成 `.Art.xml`——用
    `python <civ6-modding skill>\art\gen_modartxml.py <projectRoot> --check`，人工确认差异后加 `--write`（脚本按工程实存文件重算 artConsumers / gameLibraries / requiredGameArtIDs，优于手工补引用）。
 4. **已存在的 artdef 不整体覆盖**：走脚本的幂等合并；脚本找不到锚点时必须报"请手动合并"，**不静默跳过**（防止覆盖工程里其他功能条目）。
@@ -248,6 +250,7 @@ civ6-asset-forge/
 │   ├─ ui-leader-portrait.md    ← 类别⑤（Suk 选人界面适配）
 │   ├─ moment-illustration.md   ← 类别⑥（历史时刻插画）
 │   ├─ promotion-icon/   ← 原 promotion 的 specs.md / prompts.md（实测规格、提示词手册）
+│   │                        + prompts-metal-recolor.md（画幅对齐 + 四色重着色实操稿）
 │   └─ governor-art/     ← 原 governor 的 specs.md / inventory.md / palette.json（实测规格、素材清单、配色）
 ├─ scripts/              ← 六类脚本合并（basename 无冲突，未改名）
 ├─ templates/            ← 四类模板合并（loyalty_chain/、religion_chain/、领袖模板 + 光晕模板；⑤⑥ 无需模板）
