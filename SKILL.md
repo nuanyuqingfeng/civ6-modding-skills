@@ -27,6 +27,11 @@ languages:
   - en
 ---
 
+> 🧰 **工具先查名录（硬性）**：要写脚本做某件事之前，先看本 skill 的 [`TOOLS.md`](TOOLS.md)
+> —— 本 skill 全部脚本的用途 / 用法 / 路径清单，外加本机**路径收纳**表。
+> **有能用的就改它，不要重建。** 新增或改名脚本后，跑一次
+> `python "<skills>/civ6-modding/tools/skill_manifest.py" civ6-asset-forge` 刷新名录（`--check` 可做漂移检测）。
+
 > **本 skill 由 4 个美术素材合成类 skill 合并而来**（`civ6-loyalty-icon` / `civ6-promotion-icon` /
 > `civ6-governor-art` / `civ6-leader-2d`），来源与各自最后 commit 见 `CHANGELOG.md`。
 > 骨架共用：给定 PNG → 确定性合成器（Python/Pillow）→ 原版风格素材 → 注册链 → 校验器；
