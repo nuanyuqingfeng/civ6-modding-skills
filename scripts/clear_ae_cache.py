@@ -4,7 +4,7 @@
 删除 %APPDATA%\\AssetCloud\\mod-<Mod>-asset-deps.json；下次启动 AssetEditor 会自动重建。
 
 用法：
-    python workspace/_tools/clear_ae_cache.py [--mod Ragunna_Pack] [--dry-run]
+    python workspace/_tools/clear_ae_cache.py [--mod 示例工程] [--dry-run]
 """
 import argparse
 import os

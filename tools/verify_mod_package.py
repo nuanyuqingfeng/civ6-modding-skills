@@ -12,7 +12,7 @@
   `.lua` 在三处哈希不一致时，会再算一次 `strip(源)` 比对，
   命中则记为 `OK(已剥离)` 而不计入问题。想强制逐字节一致时加 `--strict`。
 
-★ **cook 产物感知**：`Platforms/Windows/BLPs/**`（AssetEditor/cooker 产出）与 `Ragunna_Pack.dep`
+★ **cook 产物感知**：`Platforms/Windows/BLPs/**`（AssetEditor/cooker 产出）与 `示例工程.dep`
   在源工程里**本就不存在** —— 它们只活在 Mods 副本、且每次 `Rebuild All` 重新生成。
   这类文件也不计入问题（`--strict` 下仍会报），避免长期假红灯淹没真问题。
 
@@ -60,7 +60,7 @@ _STRIP_TOOLS = os.path.dirname(os.path.abspath(__file__))
 
 # cook 产物：只存在于 Mods 副本，每次 Rebuild All 重新生成；源工程本就没有
 COOK_ARTIFACT_PREFIXES = ("platforms/windows/blps/", "platforms/macos/blps/")
-COOK_ARTIFACT_FILES = {"ragunna_pack.dep"}
+COOK_ARTIFACT_FILES = {"myciv_pack.dep"}
 
 
 def is_cook_artifact(rel: str) -> bool:

@@ -1,6 +1,6 @@
 # Build non-trimmed Civ6WorkshopUploader
 param(
-    [string]$Source = "C:\Users\Administrator\AppData\Local\Temp\Civ6WorkshopUploader",
+    [string]$Source = "$env:USERPROFILE\AppData\Local\Temp\Civ6WorkshopUploader",
     [string]$ArtifactsPath = "artifacts"
 )
 if (-not (Test-Path $Source)) {

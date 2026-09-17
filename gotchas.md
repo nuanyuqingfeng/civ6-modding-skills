@@ -48,7 +48,7 @@
    > 那是**错的**，对①类文件引擎会自动加载。**只有②类文件漏登记才真的不生效。**
    >
    > **自检**：把 Action 段引用的文件与 `<Content Include>` 做归一化（`\`→`/`）差集，
-   > 逐个判断上表角色 —— ③类在差集里 = 真漏；①类在差集里 = 正常。参考实现：Ragunna_Pack `workspace/_tools/check_proj_content.py`。
+   > 逐个判断上表角色 —— ③类在差集里 = 真漏；①类在差集里 = 正常。参考实现：示例工程 `workspace/_tools/check_proj_content.py`。
 
 <!-- 4. **Mod ID must be a valid GUID.** Don't reuse GUIDs across mods. -->
 
@@ -92,7 +92,7 @@
 
 11. **To remove data, use `<Delete>` tags** in XML with higher priority (lower Priority number).
 
-12. **`Requirements.Inverse` (BOOLEAN NOT NULL) is universally supported on ALL RequirementType.** While only 53 of 545+ RequirementType instances use Inverse=1 in official data, the engine respects the column on every type. Use `Inverse=1` on the Requirements row to negate ANY requirement — confirmed safe for `REQUIREMENT_UNIT_TYPE_MATCHES`, `REQUIREMENT_UNIT_TAG_MATCHES`, and all others. Do NOT use `Inverse` as a RequirementArgument (it's a column on the Requirements table, not an argument in RequirementArguments).
+12. **`Requirements.Inverse` (BOOLEAN NOT NULL) is universally supported on ALL RequirementType.** While only 92 of 1051 `Requirements` rows use Inverse=1 in official data (实测 `SELECT COUNT(*) FROM Requirements WHERE Inverse=1`), the engine respects the column on every type. Use `Inverse=1` on the Requirements row to negate ANY requirement — confirmed safe for `REQUIREMENT_UNIT_TYPE_MATCHES`, `REQUIREMENT_UNIT_TAG_MATCHES`, and all others. Do NOT use `Inverse` as a RequirementArgument (it's a column on the Requirements table, not an argument in RequirementArguments).
 
 13. **文本里绝对不可以出现单个 `'`、也不可以用 `\'` 或 `\` —— 唯一的隔离方式是连续两个 `''`**
     SQL 的字符串转义是**两个连续单引号 `''`**，用来与文本两端的定界 `'` 区分开。
@@ -237,10 +237,10 @@
 
     | 用途（按观测归纳） | 观测值 | 出现工程 |
     |---|---|---|
-    | 内容/类型**定义**前置 | `-2` / `-1` | Governor_Encore、Governor_Jinhsi、Gvoernor_ShoreKeeper、Jinzhou_Changli、Jinzhou_Jinhsi、UnitRover、Ragunna_Pack、Black_Shores_Pack |
+    | 内容/类型**定义**前置 | `-2` / `-1` | 工程 F、工程 G、工程 H、工程 B、工程 C、工程 I、示例工程、工程 A |
     | 常规内容 | `10` – `200`（`200` 最常见，多用于 Types） | 多数 |
-    | 跨 mod 适配层 | `1000` / `10000` / `20000` / `30000` | BlackShores_Patch、Governor_Encore/SK、Hethereau_Mint |
-    | 大包主体（需晚于他人读取） | `600000` – `610003` | Black_Shores `600003`、Jinzhou `600000/600001`、Ragunna `600000/600005`、UI 层 `610002/610003` |
+    | 跨 mod 适配层 | `1000` / `10000` / `20000` / `30000` | BlackShores_Patch、工程 F/SK、工程 D |
+    | 大包主体（需晚于他人读取） | `600000` – `610003` | 工程 A `600003`、工程 C `600000/600001`、示例工程 `600000/600005`、UI 层 `610002/610003` |
     | 最终覆盖层（立绘/适配/补丁） | `777777` – `9999999`（`999999` 见于 7 个工程） | 多个 |
 
     - ★ **`-1` 出现在 8/11 个工程**，且 4 个独立总督工程都把它用于 `Governors` 数据 → **强约定**：*被其他内容引用的定义类数据要早加载*。
@@ -266,7 +266,7 @@
     | `<ModInUse>GUID</ModInUse>` | 对方在场 → **加载我的适配内容** |
     | `<ModInUse inverse="1">GUID</ModInUse>` | 对方在场 → **关闭我的重复内容**（避免同一内容被两个 mod 各定义一份） |
     | 补丁门控 | 父 mod 在场才加载补丁（见 `balance-patch.md`） |
-    实测被多个工程共同适配的生态 GUID：`HD`、`Suk_Portrait`、`UnitRover`、`DLL`、`BuilderCharges`。
+    实测被多个工程共同适配的生态 GUID：`HD`、`Suk_Portrait`、`工程 I`、`DLL`、`BuilderCharges`。
 
 46. **Lua 拿不到 `<Criteria>` —— 用 `GlobalParameters` 做桥**
     `<Criteria>` 只在**加载期**决定"这块内容跑不跑"，Lua 运行时读不到它。

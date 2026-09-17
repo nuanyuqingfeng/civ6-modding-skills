@@ -1,6 +1,6 @@
 # 总督编写（Governor Authoring）
 
-> 来源：3 个独立总督工程（Governor_Encore / Governor_Jinhsi / Gvoernor_ShoreKeeper）+ 2 个含总督的文明包（Ragunna_Pack / Black_Shores_Pack）横向审查，
+> 来源：3 个独立总督工程（工程 F / 工程 G / 工程 H）+ 2 个含总督的文明包（示例工程 / 工程 A）横向审查，
 > 所有 schema 结论均已用 skill 自带 `database/DebugGameplay.sqlite` 复核（标 ★）。
 > 美术侧规格见 **`civ6-asset-forge`** skill 的 `reference/governor-art.md`；本文只管**玩法注册链**。
 
@@ -77,7 +77,7 @@ INSERT OR REPLACE INTO Governors (
 | 400 | 1 | — |
 | 600 | 0（即刻） | — |
 
-> 数值表本身来自工程注释（`Governor_Jinhsi.xml`），**未独立实测**；100/150 两个档位有 vanilla 实值支撑。
+> 数值表本身来自工程注释（`工程 G.xml`），**未独立实测**；100/150 两个档位有 vanilla 实值支撑。
 
 ### ③ `GovernorPromotionSets` —— 归属
 
@@ -175,7 +175,7 @@ LOC_PEDIA_GOVERNORS_PAGE_<GovernorType|PromotionType>_CHAPTER_HISTORY_PARA_<n>
 ### ⑪ `.civ6proj` 注册
 
 `UpdateDatabase` 动作 + `<Content Include>` **两处都要写**（见 `gotchas.md` §3 的「打包 vs 加载」两轴）。
-**推荐 `LoadOrder = -1`**：实测 4 个独立总督工程 + Ragunna_Pack 全部把总督数据放在 `-1`（或 `-2`）—— 总督数据被其他内容引用，需早于常规内容（`200`）加载。
+**推荐 `LoadOrder = -1`**：实测 4 个独立总督工程 + 示例工程 全部把总督数据放在 `-1`（或 `-2`）—— 总督数据被其他内容引用，需早于常规内容（`200`）加载。
 
 ### ⑫ 名额扩容（**必须做，且必须用增量**）
 
@@ -183,7 +183,7 @@ LOC_PEDIA_GOVERNORS_PAGE_<GovernorType|PromotionType>_CHAPTER_HISTORY_PARA_<n>
 UPDATE GlobalParameters SET Value = Value + 3 WHERE Name = 'MAX_GOVERNOR_APPOINTMENTS';
 ```
 > ⚠ **绝不要写 `SET Value = <绝对值>`** —— 会覆盖其他 mod 的调整。
-> 实测：Ragunna_Pack `+10`、Black_Shores_Pack `+3`，两工程独立收敛到同一写法。
+> 实测：示例工程 `+10`、工程 A `+3`，两工程独立收敛到同一写法。
 
 ---
 

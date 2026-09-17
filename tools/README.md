@@ -73,14 +73,14 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
 | `sdk` | SDK 工具（ModBuddy / MSBuild） | `…\Sid Meier's Civilization VI SDK` |
 | `workshop_ref` | 创意工坊参考件（289070） | `F:\Steam\steamapps\workshop\content\289070` |
 | `uploader` | 工坊上传器（**非 Trimmed 构建，勿改**） | `D:\documents\Civ6WorkshopUploader\tool\Civ6WorkshopUploader.exe` |
-| `sd_cpp` | 本地生图（stable-diffusion.cpp + FLUX 权重） | `C:\Users\Administrator\sd-cpp` |
+| `sd_cpp` | 本地生图（stable-diffusion.cpp + FLUX 权重） | `%USERPROFILE%\sd-cpp` |
 | `imagemagick` | ImageMagick（图标阈值/裁边用） | `C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe` |
 | `luac` | Lua 语法检查（`luac -p`，Civ6 是 5.1 方言） | `E:\SoftWares\Lua\5.1\luac.exe` |
 | `ws_root` | 上传临时工作区根 | `%TEMP%\civ6-ws` |
 | `steam_logs` | Steam 日志（查 workshop item id） | `F:\Steam\logs` |
 
 生图渠道现状（哪个能用、哪个挂了）不在本文件维护，见
-`C:\Users\Administrator\.config\opencode\imagegen-channels.md`（渠道清单 + 失败模式）。
+`%USERPROFILE%\.config\opencode\imagegen-channels.md`（渠道清单 + 失败模式）。
 
 ---
 
@@ -97,7 +97,10 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
   （实测 `人类玩家所有单位` → `义凵薊丨劦…`），拉丁长句也会掉字母（`CIVILIZATION` → `CIVILLZATION`）。
   另外**封面一律不署名**（项目约定，作者只写在 `.modinfo` 的 `Authors` 与代码里）。
 - **`local_flux.py`**：Google 生图（`gemini-*-image`）配额耗尽时，本地 FLUX 是唯一免费自动渠道；
-  但它**不能出中文文字**，也不要拿它做图标（图标走 `make-icon.ps1` 的白色剪影管线）。
+  但它**不能出中文文字**，也不要拿它做图标（图标剪影走 `art/normalize_icon.py`：把已有主体图
+  裁边/等比/居中并涂成白色剪影（`--color 255`、unit 图标用 `--role unit_icon`），再由
+  `art/convert_art.ps1` 出 DDS/.tex；要**由文字直接生成**剪影则用第 2 节 `sd_cpp` 目录下的
+  `make-icon.ps1`（`-Subject/-Out/-Seed`），它不在本 skill 内、换机器需自备）。
 - **`strip_comments.py`**：**默认只剥 `.lua`**（2026-09-16 起）—— Lua 注释是踩坑记录的主要载体、
   且剥离后能用 `luac -p` 自证；SQL/XML 注释多为分节标题与列对照，体量小、剥离无可比自检，
   收益低而回归面大。需要旧的全类型行为时显式加 `--all-exts`。

@@ -3,7 +3,7 @@
 
 背景：ModBuddy 只把 <Content Include> 列出的文件部署到 Mods 目录；若某 SQL/XML/Lua
 只被 InGameActions 引用而未进 Content 清单，就会出现「modinfo 引用它、Mods 副本里却没有」
-的悬空引用（Ragunna_Pack 曾踩坑：Data/Agendas_RGN.sql）。
+的悬空引用（示例工程 曾踩坑：Data/Agendas_RGN.sql）。
 
 用法:
     python check_proj_content.py <工程根目录>

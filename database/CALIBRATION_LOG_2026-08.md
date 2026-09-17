@@ -24,7 +24,7 @@
   - Types 系统类 Kind 1,331 行（KIND_MODIFIER/KIND_REQUIREMENT）
   - 领袖 DLC 15,066 行 + Expansion1/2（GovernorPromotions 70、UNIT_ROCK_BAND、UNIT_GIANT_DEATH_ROBOT 等）
 - 验证：情景内容 5 项抽样 = 0 ✓；领袖 DLC 抽样 > 0 ✓；PRAGMA integrity_check = ok ✓
-- 备份：清理前完整备份在 C:\Users\ADMINI~1\AppData\Local\Temp\opencode\（DebugGameplay_backup.sqlite = 原始旧库；清理后现库 = 补全+清理态）
+- 备份：清理前完整备份在 %TEMP%\opencode\（DebugGameplay_backup.sqlite = 原始旧库；清理后现库 = 补全+清理态）
 
 ### LuaEvents 收录规则（用户指示）
 
@@ -42,7 +42,7 @@
   - skip: 192（引擎自动主键表如 BehaviorTreeNodes/PrimaryKey、ConfigurationUpdates 等）
   - Update/Delete 操作不纳入（用户指示）
 - 验证：BELIEF_ORAL_TRADITION ✓、CIVILIZATION_AMSTERDAM ✓（补全前不存在）
-- 备份：C:\Users\ADMINI~1\AppData\Local\Temp\opencode\DebugGameplay_backup.sqlite（60MB）
+- 备份：%TEMP%\opencode\DebugGameplay_backup.sqlite（60MB）
 
 ### 关键根因修复记录（比对误报排查）
 1. XML 属性与 DB 列名大小写不敏感（ModifierID vs ModifierId）→ norm_pk 大小写不敏感匹配

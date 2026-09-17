@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Ragunna_Pack pantry 体检 —— 开 AssetEditor / cook 前必跑。
+"""示例工程 pantry 体检 —— 开 AssetEditor / cook 前必跑。
 
 pantry = 本工程目录。AssetEditor / cooker 会**递归扫描整棵目录树**，
 任何位置的 .tex 都会被当作贴图实体注册；重复 .tex / 库路径会直接导致 AE 闪退

@@ -10,7 +10,7 @@
     },
     "phase": 1,
     "description": "初始数据：从 markdown 提取，未经过 AI 分析验证",
-    "notes": "2026-08 校准: LuaEvents 补充 DLC 来源标注(445 条) + 新增(1 条) | 2026-09 运行时实测(Ragunna_Pack 报错溯源): 48 个未向 Lua 暴露的 GameCoreEvent 单独标注 —— 其中 15 条原误标 Events/Both|UI 已改为 GameEvents/GamePlay, 30 条补录; 均加 verify_* 字段与实测来源。 | 2026-09 二次更正: 经 FireTuner 对照实验证明 GameEvents 不承载 GameCoreEvent, 48 个未暴露事件 availability 由 GamePlay 改标 None(不可订阅)。",
+    "notes": "2026-08 校准: LuaEvents 补充 DLC 来源标注(445 条) + 新增(1 条) | 2026-09 运行时实测(示例工程 报错溯源): 48 个未向 Lua 暴露的 GameCoreEvent 单独标注 —— 其中 15 条原误标 Events/Both|UI 已改为 GameEvents/GamePlay, 30 条补录; 均加 verify_* 字段与实测来源。 | 2026-09 二次更正: 经 FireTuner 对照实验证明 GameEvents 不承载 GameCoreEvent, 48 个未暴露事件 availability 由 GamePlay 改标 None(不可订阅)。",
     "availabilityValues": [
       "UI",
       "Both",
@@ -13793,7 +13793,7 @@
       "exampleCode": "",
       "notes": [
         "2026-09 运行时实测（FireTuner：UI=ingame / GP=gamecore 两个上下文）：Events.UnitExperienceChanged 均为 nil，Lua 无法订阅该事件。",
-        "★ UI 端写 Events.UnitExperienceChanged.Add(fn) 会抛 attempt to index a nil value，并中断所在函数后续初始化（Ragunna_Pack 的 Ciaccona_MainPanel.lua 实际踩坑）。",
+        "★ UI 端写 Events.UnitExperienceChanged.Add(fn) 会抛 attempt to index a nil value，并中断所在函数后续初始化（示例工程 的 Ciaccona_MainPanel.lua 实际踩坑）。",
         "原记录 eventSystem=Events / availability=Both 有误，现更正为 GameEvents / GamePlay。",
         "证据：CivilizationVI.exe 的 GameCoreEvent:: 串表含该名，属 325 个 GameCoreEvent 中未向 Lua 暴露的 48 个之一；1593 个 Lua 文件（游戏 646 + 工坊 + 本项目）语料零使用。",
         "注意：GP 侧 GameEvents 表对任意名字都返回 table（自动建表），故该事件是否真正经 GameEvents 投递无法用 Lua 验证，勿据此断言可用。",

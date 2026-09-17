@@ -176,7 +176,7 @@ AE（`Launch Asset Editor...`）的字段名与官方文档一样零散，教程
 ## 四、忠诚度 / 宗教 3D 链字段名（实测自工程真实文件）
 
 由 `civ6-asset-forge` 的 `reference/loyalty-icon.md` 讲完整流程，这里只固化
-**字段名**（教程截图 OCR + 对照 `Ragunna_Pack` 真实文件双向确认）。
+**字段名**（教程截图 OCR + 对照 `示例工程` 真实文件双向确认）。
 
 ### 4.1 材质（`.mtl`）
 
@@ -229,4 +229,4 @@ AE（`Launch Asset Editor...`）的字段名与官方文档一样零散，教程
 | AE 字段名（§一） | **FROM-OCR**：来自教程截图 OCR，拼写已按常见形式修正（如 `ModuIe`→`Module`、`CIass`→`Class`）；个别按钮文字 OCR 残缺已标注 |
 | 调试路径/错误样例/日志清空（§二） | **VERIFIED**：本机实测目录存在；错误样例与纪律引用教程原文；`.ltp` 文件清单实测 |
 | `Cultures`/`UnitCulture` 取值（§三） | **VERIFIED**：递归解析 33 份官方 `Cultures.artdef` 所得；并实测确认三库均无 `%Culture%` 表 |
-| 忠诚度字段（§四） | **VERIFIED**：对照 `Ragunna_Pack` 真实 `.mtl`/`.ast`/`.xlp` 逐字段读出 |
+| 忠诚度字段（§四） | **VERIFIED**：对照 `示例工程` 真实 `.mtl`/`.ast`/`.xlp` 逐字段读出 |

@@ -45,7 +45,11 @@
      并保留目标文件的 BOM / CRLF / 格式（只做行插入）；--dry-run 可先看将要插什么。
 → 注意 **新贴图必须登记进某个 `<m_ClassName text="UITexture"/>` 的 XLP**（本工程是 XLPs\Icons.xlp）。
      漏登记 = .dds 存在但不会被打进 UI/Icons 包，游戏里图标是空白。merge 工具会代劳。
-     别混：`.ast`/几何/材质的 XLP（UI_LeaderScenes.xlp、RGN_Clutter_*.xlp 等）条目名**不是贴图**。
+     别混：几何/材质/模型类 XLP（`tilebases.xlp`=TileBase、本工程 `RGN_Clutter_*.xlp`=Landmark、
+     `Leader_LightRigs.xlp`=LeaderLighting、`UILensModels.xlp`=UILensAsset 等）条目名**不是贴图**，
+     登记进去也不会被打进 UI 包。
+     但 ⚠ **`UI_LeaderScenes.xlp` 不是这类反例**——它 `m_ClassName=UITexture`（官方 3 个共 174 条），
+     外交分层贴图就登记在它里面（见下方「二.2」）。
 → Mod.Art.xml：python <skill>\art\gen_modartxml.py <projectRoot> --check
      （差异需人工确认后才 --write；注意 --check 报的差异可能是**本次改动之前就存在的**，
       先看差异里有没有提到你这次新增的 XLP/artdef，没有就别顺手 --write）
@@ -66,7 +70,9 @@
 
 ### 二.1 ⚠ `.tex` 类别（`m_ClassName`）是硬约束，且**不能靠名字猜**
 
-`gen_tex.py` 按**名字前缀**推断 `m_ClassName`：`FALLBACK_NEUTRAL_*` → `Leader_Fallback`，
+`gen_tex.py` 判 `m_ClassName` 用的是「**前缀判断 + `_UI_PORTRAIT_SUFFIXES` 例外表**」
+（`is_fallback()`，脚本 285–311 行）：以 `FALLBACK_NEUTRAL_` 开头者 → `Leader_Fallback`，
+**但以 `_UI_PORTRAIT_SUFFIXES`（当前仅 `_Suk`）结尾的显式排除在外** → `UserInterface`，
 其余 → `UserInterface`。**但同前缀不代表同类别**：
 
 | 贴图名 | 真实用途 | 应有 `m_ClassName` | 注册在 |
@@ -156,7 +162,7 @@ end
 |---|---|---|---|
 | 用途 | 领袖**加载/选人界面**背景 | 外交**分层场景**（视差） | 外交背景**整图替换** |
 | 贴图名 | `LEADER_<X>_BACKGROUND` | `<X>_1` … `<X>_4`（**无** `LEADER_` 前缀） | 任意名（项目自定） |
-| 尺寸（原版实测） | **1920×960** | 层 1–3 **960×505**；层 4 **1920×1010** | 随源图（Ragunna 用 1920×1080） |
+| 尺寸（原版实测） | **1920×960** | 层 1–3 **960×505**；层 4 **1920×1010** | 随源图（示例工程 用 1920×1080） |
 | XLP | `Shell_Loading.xlp` | `UI_LeaderScenes.xlp` | 任一 `UITexture` 包 |
 | 加载条件 | 无条件（按名自动找） | 仅当**没有** `DiplomacyInfo` 行时 | **有即优先**，压过链 B |
 | 层数由谁定 | —（单图） | `Leaders.SceneLayers`（原版只有 0 或 4） | —（单图） |
@@ -173,7 +179,7 @@ end
 3. **层 4 用别名**：官方惯例是层 4 复用 `BARBAROSSA_4`
    （`<m_EntryID text="<X>_4"/><m_ObjectName text="BARBAROSSA_4"/>`），前 3 层才是自绘。
 
-> **Ragunna_Pack 现状（2026-09-17 实查，仅上报未改）**：该工程**三条链都用了**——
+> **示例工程 现状（2026-09-17 实查，仅上报未改）**：该工程**三条链都用了**——
 > `Leaders.SceneLayers=4` + `UI_LeaderScenes.xlp` 注册了 18 条
 > `LEADER_<X>_<2|3|4>`（带前缀，属上述死条目）+ `DiplomacyInfo` 6 行单图。
 > 因链 C 优先，**实际生效的是 DiplomacyInfo 单图**，那 18 条分层条目不影响运行
@@ -329,7 +335,7 @@ python art/normalize_icon.py --role unit_icon --show        # 查看该类别规
   （或在转换脚本内 import 处理；本 skill 优先在 AI 流程里显式两步，便于审计与回退）。
 
 > **嵌套项目路径坑**：`make_atlas.py` 自动探测 Textures 目录依赖 `.civ6proj` 父目录名；
-> 当工程目录本身带嵌套（如 `Ragunna_Pack/Ragunna_Pack`）时会多嵌一层 `Ragunna_Pack/Textures`。
+> 当工程目录本身带嵌套（如 `示例工程/示例工程`）时会多嵌一层 `示例工程/Textures`。
 > 遇到此类结构请在 manifest 显式写 `texturesDir`（指向真实 `Textures/`），避免 DDS 落错目录。
 
 ### 4.5 `building_icon` 规范（2026-09 实测 · verified）
@@ -424,7 +430,7 @@ python art/normalize_icon.py --role unit_icon --show        # 查看该类别规
   KURGAN 93.8%、MISSION 86.3%、SPHINX 96.9%、STEPWELL 88.3%、ZIGGURAT 100%。
 - 取图位置提醒：科技树解锁项按 **38px** 取图（`TechAndCivicSupport.lua` →
   `IconManager:FindIconAtlas(iconName, 38)`），建造按钮用 50px —— **四档缺一不可**。
-- 首用案例：Ragunna_Pack 神秘气泡 `ICON_IMPROVEMENT_BUBBLES_RGN`（源图白色剪影 128x128，
+- 首用案例：示例工程 神秘气泡 `ICON_IMPROVEMENT_BUBBLES_RGN`（源图白色剪影 128x128，
   按 `content=224` 规范化后入 `ATLAS_RGN_ICON_IMPROVEMENTS{38,50,80,256}`，
   管线留档 `workspace/src/improvement_icons/`）。
 
@@ -629,7 +635,8 @@ python art/align_tex_format.py <projectRoot> --write --only encoding,groups,comp
 
 ```bash
 python <skill>\art\apply_fow.py --input <图标.png|dds> [--output <路径>] \
-    [--no-hatch] [--hatch-strength 0.6] [--hatch-gamma 1.6] [--strength 1.0]
+    [--hatch-strength 0.62] [--ink-strength 0.55] [--strength 1.0] \
+    [--no-hatch] [--no-ink] [--no-vignette]
 ```
 
 - 默认输出 `<输入名>_FOW.png`；支持图集（整图处理）与 DDS 源（自动转 RGBA）

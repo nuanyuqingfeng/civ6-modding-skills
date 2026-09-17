@@ -2,7 +2,7 @@
 
 > **硬性约定**：要写脚本做某件事之前，**先查本名录**；有能用的就**改它**，不要重建。
 > 新增脚本 → 同一次改动里跑 `python civ6-modding/tools/skill_manifest.py civ6-modding` 刷新本文件。
-> 本目录的工具全部零第三方依赖（Python 标准库 / Node 内置），带退出码，可直接接 CI。
+> 本目录的工具**以纯标准库为主**（Python 标准库 / Node 内置），带退出码，可直接接 CI；用到第三方库的脚本逐条列在下方「第三方依赖」节。
 > 跨 skill 先看 `civ6-modding/TOOLS.md`（通用工具）与 `civ6-modding/reference/FAMILY_INDEX.md`（家族路由）。
 
 ## 工具名录（由 `skill_manifest.py` 扫描磁盘生成，勿手改表格）
@@ -23,21 +23,25 @@
 | `art/survey_icon_atlas.py` | survey_icon_atlas.py — 按 `art-pipeline.md` §4.7 流程，「量出」某图标类别的规范 | `python survey_icon_atlas.py --atlas "<pantry>/Buildings256.dds" --role building_icon<br>python survey_icon_atlas.py --atlas Dist256.dds --grid 4x4 --min-px 20` |
 | `art/verify_icon_atlas.py` | verify_icon_atlas.py — 图标图集落地自查（art-pipeline 第八节「完成标准」的可执行版） | `python verify_icon_atlas.py <projectRoot> [--icons a.xml b.xml] [--xlp a.xlp b.xlp]` |
 | `art/verify_tex_class.py` | verify_tex_class.py — 校验「.tex 的 m_ClassName」与其「XLP 注册类」是否匹配 | `python verify_tex_class.py --project <工程根>              # 只查类别匹配<br>python verify_tex_class.py --project <工程根> --full        # 全量贴图体检（见下）` |
+| `database/scripts/audit_schema_drift.py` | audit_schema_drift.py - guard the civ6-modding reference DB against | `python database/scripts/audit_schema_drift.py<br>python database/scripts/audit_schema_drift.py --game "F:/Steam/.../Sid Meier's Civilization VI"` |
+| `database/scripts/query_api.py` | Civ6 API Query Tool — 主源 api.sqlite（含子项 sub_func_name 与运行时核验字段）， | `python query_api.py --search <关键词>              # 搜 表名/函数名/子项名/真名/id（子项一并命中）<br>python query_api.py --search <关键词> --sub-only   # 只看"本身是子项"的条目` |
+| `database/scripts/query_civ6_db.py` | Civilization VI Mod Database Query Tool — SQLite CLI wrapper. | `（见脚本 docstring）` |
+| `database/scripts/query_events.py` | Civ6 Event Query Tool — 直接查 events_enhanced.json，无需中间索引。 | `（见脚本 docstring）` |
 | `release/scripts/build.ps1` | 构建非 Trimmed 版 Civ6WorkshopUploader（勿用 PublishTrimmed，会卡 PreparingContent） | `powershell -File build.ps1（内部 dotnet publish -c Release -r win-x64）` |
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） | `powershell -File clash_api.ps1 -Method GET -Path "/proxies" -OutFile resp.txt` |
-| `release/scripts/clash_proxy.py` | Clash Verge 代理节点测速与自动选优（上传工坊网络差时用） | `python clash_proxy.py [--url <工坊链接>] [--top N]（详见脚本 argparse）` |
+| `release/scripts/clash_proxy.py` | Clash Verge 代理节点测速与自动选优（上传工坊网络差时用） | `python clash_proxy.py [--url <工坊链接>] [--timeout 3000] [--max-workers 8]（测完自动选最优节点为 GLOBAL，无关闭开关）` |
 | `release/scripts/cleanup.ps1` | 删除临时上传工作区（真上传成功并验证后才跑） | `powershell -File cleanup.ps1 -Workspace $env:TEMP\civ6-ws\<ModName>` |
 | `release/scripts/find_item_id.ps1` | 从本机 Steam 日志反查工坊条目 ID | `powershell -File find_item_id.ps1 -ModName <ModName>` |
 | `release/scripts/upload.ps1` | 上传 / 更新工坊条目（日志默认写 <tool目录>\logs） | `powershell -File upload.ps1 -Workspace <工作区> [-TimeoutSeconds 1800]` |
 | `release/scripts/validate.ps1` | 上传前 validate 工作区（exit 0 才允许 upload） | `powershell -File validate.ps1 -Workspace <工作区>` |
 | `release/scripts/verify.ps1` | 上传后经 Steam API 验证（比对 time_updated / hcontent_file，识别假成功） | `powershell -File verify.ps1 -ItemId <工坊条目ID>` |
 | `scripts/check_lua_registration.py` | `.lua` 注册体检 —— 用「按角色判定」的规则找出真正不会被加载的脚本。 | `python check_lua_registration.py <工程根目录> [--modinfo <构建产物.modinfo>]` |
-| `scripts/check_pantry.py` | Ragunna_Pack pantry 体检 —— 开 AssetEditor / cook 前必跑。 | `python workspace/_tools/check_pantry.py [--root <pantry 路径>] [--quiet]` |
+| `scripts/check_pantry.py` | 示例工程 pantry 体检 —— 开 AssetEditor / cook 前必跑。 | `python workspace/_tools/check_pantry.py [--root <pantry 路径>] [--quiet]` |
 | `scripts/check_proj_content.py` | 核对 .civ6proj 的 <Content Include> 清单与实际磁盘内容是否闭合。 | `python check_proj_content.py <工程根目录>` |
 | `scripts/check_sql_antipatterns.py` | SQL 语义反模式静态扫描 —— 抓「语法完全合法、但语义恒假/恒错」的写法。 | `python check_sql_antipatterns.py <工程根目录> [--glob *.sql]` |
 | `scripts/check_sql_exec.py` | 全工程 SQL 执行排查 —— 抓「整条语句报废」类错误（非法转义 / 字符错位）。 | `python check_sql_exec.py [--root <工程根目录>] [--base <基础库>]` |
 | `scripts/check_types_kinds.py` | Types.Kind 合法性检查 —— 复现游戏加载期的 `Invalid Reference on Types.Kind`。 | `python check_types_kinds.py [--root <工程根目录>] [--db <基础库>] [--dirs Data,Mod_Adaptation]` |
-| `scripts/clear_ae_cache.py` | 清除 AssetEditor 依赖缓存（可再生文件，按「备份规范」不备份、直接删）。 | `python workspace/_tools/clear_ae_cache.py [--mod Ragunna_Pack] [--dry-run]` |
+| `scripts/clear_ae_cache.py` | 清除 AssetEditor 依赖缓存（可再生文件，按「备份规范」不备份、直接删）。 | `python workspace/_tools/clear_ae_cache.py [--mod 示例工程] [--dry-run]` |
 | `scripts/normalize_eol.py` | 按「原版换行分层铁律」归一化 Civ6 工程的文本文件换行。 | `python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）<br>python normalize_eol.py <工程目录> --fix           # 就地归一化` |
 | `scripts/rgn_validate_runner.mjs` | rgn_validate 离线执行器 v2 — 核心判定逻辑提取自 @dsh-external/dsh-rgn-tools 的 | `node rgn_validate_runner.mjs [目录=cwd] [文件模式=*.sql] [checkNaming=true] [--base <基础库>] [--static]` |
 | `scripts/verify_trees.py` | Verify two directory trees are byte-identical (recursive SHA256 comparison). | `python verify_trees.py <dirA> <dirB>` |
@@ -52,17 +56,38 @@
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 42 个脚本。
+共 46 个脚本。
+
+## 第三方依赖（非标准库）
+
+本 skill 的脚本**多数是纯标准库**；下列脚本需要先 `pip install` 对应第三方库：
+
+- `art/apply_fow.py` → numpy、Pillow
+- `art/dds_io.py` → Pillow
+- `art/make_atlas.py` → Pillow
+- `art/normalize_icon.py` → numpy、Pillow、scipy
+- `art/regen_atlas_tiers.py` → numpy、Pillow
+- `art/survey_icon_atlas.py` → numpy、Pillow、scipy
+- `art/verify_icon_atlas.py` → numpy、Pillow
+- `tools/workshop_cover.py` → Pillow
+
+> 口径：对脚本 `import` 的实测扫描；纯标准库脚本不列。新增/改动依赖时同一次改动里更新 `skill_manifest.py` 的 `THIRD_PARTY`。
 
 ## 路径收纳（本机绝对路径，勿写死进脚本）
 
-Py 工具统一走路径解析器；**换机器只改 `civ6-modding/local_paths.json` 一处**。
+每个 skill **各自**有一份 `local_paths.json`（个人环境文件，不入库）：
+
+| skill | 路径解析器 | 环境变量前缀 |
+|---|---|---|
+| `civ6-modding` | `tools/_paths.py`（P1–P6 + 外部工具） | 见该文件 `DEFAULTS` / `TOOL_DEFAULTS` |
+| `civ6-audio-pipeline` | `scripts/paths.py`（`wwcli` / `template_full` / `p1` / `p2`） | `CIV6_<KEY>`（如 `CIV6_WWCLI`） |
+| 其余 skill | 无独立解析器：脚本用 CLI 参数 / 相对定位，或调用 `civ6-modding` 的解析器 | — |
 
 ```bash
 python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工具的实际解析结果
 ```
 
-| 键 | 含义 |
+| 键（civ6-modding） | 含义 |
 |---|---|
 | `modbuddy` | ModBuddy 源工程根（P1） |
 | `mods` | 游戏 Mods 加载目录（P2） |
@@ -77,9 +102,8 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 | `ws_root` | 上传临时工作区根（`%TEMP%\civ6-ws`） |
 | `steam_logs` | Steam 日志目录（反查工坊条目 ID） |
 
-> 完整路径表与各键本机取值见 `civ6-modding/tools/README.md` 第 2 节；
-> 生图**渠道可用性**（哪个模型还能用、失败模式）见
-> `C:\Users\Administrator\.config\opencode\imagegen-channels.md`，不在本文件维护。
+> 完整路径表与各键本机取值见 `civ6-modding/tools/README.md` 第 2 节。
+> 全新机器上先跑一次上面那条命令：缺失的键会打印 `[缺失]`，按提示写 `local_paths.json` 即可。
 
 <!-- MANUAL:BEGIN -->
 ## 人工备注（重跑生成器时原样保留）

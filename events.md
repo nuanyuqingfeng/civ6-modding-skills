@@ -24,7 +24,7 @@ Events.ExitToMainMenu();
 
 > **可用性实测（2026-09 FireTuner）**：引擎共注册 325 个 `GameCoreEvent`，其中 **277 个暴露到 `Events.*`**，另 **48 个完全不经 Lua**（仅引擎内部使用）。
 > 这 48 个在 `events_enhanced.json` 中标注为 `availability: "None"` + `luaSubscribable: false`。
-> ⚠ **UI 侧对不存在的事件写 `.Add()` 会抛 `attempt to index a nil value`，并中断所在函数后续的全部初始化**（不是静默失败）——Ragunna_Pack 曾因此整个面板打不开。
+> ⚠ **UI 侧对不存在的事件写 `.Add()` 会抛 `attempt to index a nil value`，并中断所在函数后续的全部初始化**（不是静默失败）——示例工程 曾因此整个面板打不开。
 > 判定某事件是否存在的**唯一权威探针**是 `type(Events.名称) == "table"`。
 
 ### Type Legend

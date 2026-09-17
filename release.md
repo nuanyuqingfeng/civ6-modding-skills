@@ -54,7 +54,7 @@
 6. **大文件上传失败先等待再重试**：间隔 1–2 分钟；连续失败先检查网络/代理节点。
 
 7. **workspace 必须建在 `%TEMP%\civ6-ws\<ModName>`**：
-   - 工作区根固定为 `$env:TEMP\civ6-ws`（本机实例如 `C:\Users\Administrator\AppData\Local\Temp\civ6-ws\<ModName>`）
+   - 工作区根固定为 `$env:TEMP\civ6-ws`（本机实例如 `%USERPROFILE%\AppData\Local\Temp\civ6-ws\<ModName>`）
    - **不要**用 `%TEMP%\Civ6WorkshopUploader` 做工作区根——那是上传工具本身的源码/构建目录
    - **禁止**把 workspace 建在 git 仓库内（如 ModBuddy 工程目录 `D:\documents\Firaxis ModBuddy\Civilization VI\...`）——数百 MB 的 mod 内容会污染 `git status`（untracked 大量 sql/xml/lua/artdef）
    - 旧位置 `D:\documents\Civ6WorkshopUploader` 需完整文件权限才能写入；DSH 沙箱为 "never" 审批策略时不可用，仅当策略为 "ask" 且已授权时才使用
@@ -211,7 +211,7 @@ Copy-Item "<Mods 路径>\<ModName>" "$ws\content" -Recurse
 - 工作区根：`%TEMP%\civ6-ws`（= `$env:TEMP\civ6-ws`；旧位置 `D:\documents\Civ6WorkshopUploader` 仅在有完整文件权限时使用）
 - Steam 日志：`F:\Steam\logs\workshop_log.txt`
 - 已确认作品：
-  - Changli：`3578690887`
+  - Changli：`<你的工坊条目 ID>`
   - Jinhsi：`3567447705`
   - Balance Patch：`3573460321`
   - Test Empty：`3679086609`

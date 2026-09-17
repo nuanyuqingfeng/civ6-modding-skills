@@ -3,7 +3,7 @@
 
 为什么只剥离发布副本：源工程是唯一保存设计理由与踩坑记录的地方（本项目里源工程才有注释，
 Mods 副本/工坊包才是对外产物）。剥离后 源 与 Mods 会**故意不一致**——校验方式因此改为
-「Mods == strip(源)」，用 `--src` 一次跑完（这也是 Ragunna_Pack v3 发布时用的口径）。
+「Mods == strip(源)」，用 `--src` 一次跑完（这也是 示例工程 v3 发布时用的口径）。
 
 为什么默认只剥 Lua（2026-09-16 起）：
   · Lua 注释是「设计理由 + 踩坑记录」的主要载体，且剥离后可用 `luac -p` 做语法自证，
@@ -166,7 +166,7 @@ def harmonize_newlines(text: str, raw: str) -> str:
 
     剥离器用 `"\\n" * count` 重建被删注释所占的换行（见 strip_lua / strip_sql），
     这会在 **CRLF 文件里引入裸 LF**：文件读进来是 `\\r\\n`，注释块留下的却是 `\\n`，
-    于是 Mods 副本变成 MIXED（实测 Ragunna_Pack：328 CRLF + 6 裸 LF），
+    于是 Mods 副本变成 MIXED（实测 示例工程：328 CRLF + 6 裸 LF），
     与「换行分层铁律」冲突，也让 strip(源) 比对出现伪差异。
 
     以原文的主导风格回填：CRLF 文件统一 CRLF，纯 LF 文件统一 LF。

@@ -11,7 +11,7 @@
 
 用法（先出底图，再合成）：
     python local_flux.py --prompt-file bg.txt --out bg_7.png --seeds 42,7,123
-    python local_flux.py --prompt-file emblem.txt --out emblem.png   # 或 make-icon.ps1 出剪影
+    python local_flux.py --prompt-file emblem.txt --out emblem.png   # 或由 sd_cpp 下的 make-icon.ps1 / art/normalize_icon.py 出白色剪影
     python workshop_cover.py --bg bg_7.png --emblem emblem.png \
         --line1 "人类玩家所有单位" --line2 "可以建立城市" \
         --subtitle "CIVILIZATION VI MOD" \

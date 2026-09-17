@@ -91,7 +91,7 @@ def select_node(name: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Test Clash nodes and select best for Steam upload")
-    parser.add_argument("--url", default="https://steamcommunity.com/sharedfiles/filedetails/?id=3578690887",
+    parser.add_argument("--url", default="https://steamcommunity.com/sharedfiles/filedetails/?id=<你的工坊条目 ID>",
                         help="Steam URL to test latency against")
     parser.add_argument("--timeout", type=int, default=3000, help="per-node delay timeout ms")
     parser.add_argument("--max-workers", type=int, default=8)

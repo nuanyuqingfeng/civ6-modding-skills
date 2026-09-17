@@ -1,6 +1,6 @@
 # 城邦编写（City-State Authoring）
 
-> 来源：`Cube_CityStates`（27 个自定义城邦）工程审查 + skill 自带数据库实查（标 ★）。
+> 来源：`工程 E`（27 个自定义城邦）工程审查 + skill 自带数据库实查（标 ★）。
 > 所有表名/列名/取值均已用 `DebugGameplay.sqlite` / `DebugConfiguration.sqlite` 复核。
 
 ---
