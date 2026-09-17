@@ -1,4 +1,4 @@
-# Validate a Civ6 upload workspace before upload
+﻿# Validate a Civ6 upload workspace before upload
 param(
     [Parameter(Mandatory=$true)][string]$Workspace,
     [string]$Tool = "D:\documents\Civ6WorkshopUploader\tool\Civ6WorkshopUploader.exe"

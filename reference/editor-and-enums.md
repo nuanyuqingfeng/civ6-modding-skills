@@ -119,7 +119,8 @@ AE（`Launch Asset Editor...`）的字段名与官方文档一样零散，教程
 
 ### 2.2 FireTuner —— 查运行时状态
 
-- 游戏安装 `Debug\` 目录下有 35 个 `.ltp`（Lua Tuner Panel）面板；
+- 游戏安装 `Debug\` 目录下有 **33** 个 `.ltp`（Lua Tuner Panel）面板（本机 2026-09-18 实测；
+  另有 `DefaultPanels.xml` 决定哪些面板自动加载，它本身不是 `.ltp`）；
   实测关键几个：**`City.ltp` / `Player.ltp` / `Players.ltp` / `Unit.ltp` / `Modifiers.ltp`**
 - 注意 **`Player.ltp` 与 `Players.ltp` 是两个不同文件**（教程特别标注
   `Player.ltp` **没有 s**）——按面板功能找，别按名字猜。

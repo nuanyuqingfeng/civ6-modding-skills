@@ -19,7 +19,7 @@
 | `GovernorModifiers` | 总督 → Modifier（"基础能力位"） | ★ **0 行** |
 | `GovernorPromotionConditions` | `EarliestGameEra` / `HiddenWithoutPrereqs` | 仅秘密结社总督 |
 | `GovernorReplaces` | 总督取代关系 | 0 行 |
-| `GovernorsCannotAssign` | 禁止派驻 | 0 行 |
+| `GovernorsCannotAssign` | 禁止派驻 | ★ **4 行**（4 个秘密结社总督，`CannotAssign=1`） |
 
 > ⚠ **`GovernorModifiers` 在 vanilla 里一行都没有** —— 说明"用 `GovernorModifiers` 挂总督基础能力"这条路**没有被官方数据验证过**。
 > 基础能力请走 `GovernorPromotions` 里 `BaseAbility=1` 的那一格 → `GovernorPromotionModifiers`（vanilla 12 个总督全部如此）。

@@ -16,6 +16,12 @@
 - Steam 客户端已运行并登录，账号拥有 Civ6（AppID `289070`）
 - 本地已有构建好的 mod 目录，包含 `.modinfo` 和其引用的全部文件
 - 已构建非 Trimmed 版 `Civ6WorkshopUploader.exe`
+  —— 上游源码：`https://github.com/Jianbao233/Civ6WorkshopUploader`（第三方 CLI，**不随本 skill 分发**）：
+  ```powershell
+  git clone https://github.com/Jianbao233/Civ6WorkshopUploader.git %TEMP%\Civ6WorkshopUploader
+  powershell -File release/scripts/build.ps1        # 内部即 dotnet publish -c Release -r win-x64
+  ```
+  构建产物路径写进 `tools/_paths.py` 的 `uploader` 键（或环境/`local_paths.json` 覆盖）。
 - Clash Verge（可选，网络差时使用）已运行
 
 ## Hard Rules

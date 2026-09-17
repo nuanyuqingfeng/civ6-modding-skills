@@ -1,0 +1,19 @@
+﻿id,助手displayName,助手availability,助手路径,助手备注首条,本次GP实测,本次UI实测,本次判定,是否在问题集
+Q-CityGetBuildingsGetBuildingsAtLocation,City:GetBuildings():GetBuildingsAtLocation(),UI,GetBuildings → GetBuildingsAtLocation,[作用] 返回指定单元格上属于该城市的所有建筑类型索引数组,nil/否,function/是,一致,否
+A-CityGetBuildQueueAddProgress,City:GetBuildQueue():AddProgress(),GamePlay,GetBuildQueue → AddProgress,[作用] 为城市当前生产项增加一定数量的生产力进度,function/是,nil/否,一致,否
+Q-CityGetBuildQueueCurrentlyBuilding,City:GetBuildQueue():CurrentlyBuilding(),GamePlay,GetBuildQueue → CurrentlyBuilding,[作用] 获取城市当前正在建造的内容的类型 ID,function/是,nil/否,一致,否
+A-CityGetBuildQueueFinishProgress,City:GetBuildQueue():FinishProgress(),GamePlay,GetBuildQueue → FinishProgress,[作用] 试图完成城市当前正在建造的项目,function/是,nil/否,一致,否
+Q-CityGetBuildQueueGetConstructionsAtLocation,City:GetBuildQueue():GetConstructionsAtLocation(),UI,GetBuildQueue → GetConstructionsAtLocation,[作用] 查询城市在指定单元格上的建造队列中的建筑类型索引数组,nil/否,function/是,一致,否
+Q-CityGetBuildQueueGetTurnsLeft,City:GetBuildQueue():GetTurnsLeft(),UI,GetBuildQueue → GetTurnsLeft,[作用] 获取城市建造队列中生产项目的剩余回合数,function/是,function/是,一致,否
+Q-CityGetDistrictsGetDistrict,City:GetDistricts():GetDistrict(),Both,GetDistricts → GetDistrict,[作用] 根据区域类型获取城市中的指定区域对象,function/是,function/是,一致,否
+Q-CityGetDistrictsGetDistrictGetLocation,City:GetDistricts():GetDistrict():GetLocation(),Both,GetDistricts → GetDistrict → GetLocation,[作用] 获取城市指定区域的所在位置坐标,nil/是,nil/是,一致,否
+Q-CityGetGrowthGetHousingGrowthModifier,City:GetGrowth():GetHousingGrowthModifier(),UI,GetGrowth → GetHousingGrowthModifier,[作用] 获取住房对城市人口增长速度的倍率修正系数,nil/否,function/是,一致,否
+Q-PlayerGetCultureIsPolicyActive,Player:GetCulture():IsPolicyActive(),Both,GetCulture → IsPolicyActive,[作用] 检查玩家是否激活了指定的政策卡,function/是,function/是,一致,否
+A-PlayerGetDiplomacyDeclareWarOn,Player:GetDiplomacy():DeclareWarOn(),GamePlay,GetDiplomacy → DeclareWarOn,[作用] 向目标玩家宣战,function/是,nil/否,一致,否
+Q-PlayerGetDiplomacyGetVisibilityOn,Player:GetDiplomacy():GetVisibilityOn(),Both,GetDiplomacy → GetVisibilityOn,[作用] 查询当前玩家对目标玩家的外交可见性级别,function/是,function/是,一致,否
+A-PlayerGetDiplomacySetVisibilityOn,Player:GetDiplomacy():SetVisibilityOn(),GamePlay,GetDiplomacy → SetVisibilityOn,[作用] 设置当前玩家对目标玩家的外交可见性级别,function/是,nil/否,一致,否
+Q-PlotHasFeatureBeenAdded,Plot:HasFeatureBeenAdded(),Both,HasFeatureBeenAdded,[作用] 判断单元格是否为人造地貌（例如建造者建造的人造林）,function/是,function/是,一致,否
+Q-PlotIsLake,Plot:IsLake(),Both,IsLake,[作用] 判断 Plot 是否为湖泊（Lake）,function/是,function/是,一致,否
+Q-PlotIsWater,Plot:IsWater(),Both,IsWater,[作用] 判断单元格是否为水域（海洋、海岸、湖泊）,function/是,function/是,一致,否
+A-UnitManagerInitUnitValidAdjacentHex,UnitManager.InitUnitValidAdjacentHex(),GamePlay,InitUnitValidAdjacentHex,[作用] 在指定坐标周围的有效相邻格中生成单位,function/是,nil/否,一致,否
+A-UIRequestPlayerOperation,UI.RequestPlayerOperation(),UI,RequestPlayerOperation,[作用] UI 向 Gameplay 发送操作请求,ERR/否,function/是,一致,否

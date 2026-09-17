@@ -4,6 +4,10 @@
 每次写代码前，先扫一遍确认不会重蹈覆辙。
 
 > 性质：防错清单，不是教程。只记录"以为对、实际错"的知识点。
+>
+> **编号即全家族引用键**（其它文档写作 `gotchas.md` §N）。历史上 **13 / 14 / 19 各重号一次**
+> （分属不同小节，重号会让人按号引用时指错条目）——重号项已加**稳定锚点 `[G13a]` / `[G13b]`** 之类，
+> 新写引用请优先用锚点（既有 `§3` / `§7` / `§26-27` / `§30` / `§31` / `§44` / `§52` / `§68` 均唯一，未变）。
 
 ## Fatal Errors
 
@@ -94,7 +98,7 @@
 
 12. **`Requirements.Inverse` (BOOLEAN NOT NULL) is universally supported on ALL RequirementType.** While only 92 of 1051 `Requirements` rows use Inverse=1 in official data (实测 `SELECT COUNT(*) FROM Requirements WHERE Inverse=1`), the engine respects the column on every type. Use `Inverse=1` on the Requirements row to negate ANY requirement — confirmed safe for `REQUIREMENT_UNIT_TYPE_MATCHES`, `REQUIREMENT_UNIT_TAG_MATCHES`, and all others. Do NOT use `Inverse` as a RequirementArgument (it's a column on the Requirements table, not an argument in RequirementArguments).
 
-13. **文本里绝对不可以出现单个 `'`、也不可以用 `\'` 或 `\` —— 唯一的隔离方式是连续两个 `''`**
+13. [G13a] **文本里绝对不可以出现单个 `'`、也不可以用 `\'` 或 `\` —— 唯一的隔离方式是连续两个 `''`**
     SQL 的字符串转义是**两个连续单引号 `''`**，用来与文本两端的定界 `'` 区分开。
     反斜杠**不是**转义符：`\'` 会让字符串在那里提前闭合，`\` 本身也是非法字符。
 
@@ -119,13 +123,13 @@
     另一条纪律：写含文本的 INSERT 时**不要用 PowerShell here-string / 重定向生成**（会引入转义层），用 Python/Node 显式 UTF-8 写入。
 
 
-13. **查询游戏数据 API 首选 SQLite。** `database/api.sqlite` (Lua API) 和 `database/DebugGameplay.sqlite` (游戏数据) 覆盖全部查询需求。详见 SKILL.md Rule 0.4。
+13. [G13b] **查询游戏数据 API 首选 SQLite。** `database/api.sqlite` (Lua API) 和 `database/DebugGameplay.sqlite` (游戏数据) 覆盖全部查询需求。详见 SKILL.md Rule 0.4。
 
-14. **`MODIFIER_*_ADJUST_PROPERTY` 的 ModifierArgument 用 `Key` + `Amount`；`REQUIREMENT_PLOT_PROPERTY_MATCHES` 的 RequirementArgument 用 `PropertyName` + `PropertyMinimum`。** — ModifierArgument 中无论玩家级还是单位级，设置 PROPERTY 值的参数名都是 `Key`。但 RequirementArgument 中检测 PROPERTY 用的是 `PropertyName`（以及 `PropertyMinimum` 阈值）。二者参数名不同，混用不会报错但永远不生效。`REQUIREMENT_PLAYER_PROPERTY_MATCHES` 等其他 PROPERTY 检测 RequirementType 也沿用 `PropertyName`。
+14. [G14a] **`MODIFIER_*_ADJUST_PROPERTY` 的 ModifierArgument 用 `Key` + `Amount`；`REQUIREMENT_PLOT_PROPERTY_MATCHES` 的 RequirementArgument 用 `PropertyName` + `PropertyMinimum`。** — ModifierArgument 中无论玩家级还是单位级，设置 PROPERTY 值的参数名都是 `Key`。但 RequirementArgument 中检测 PROPERTY 用的是 `PropertyName`（以及 `PropertyMinimum` 阈值）。二者参数名不同，混用不会报错但永远不生效。`REQUIREMENT_PLAYER_PROPERTY_MATCHES` 等其他 PROPERTY 检测 RequirementType 也沿用 `PropertyName`。
 
 ## UI Pitfalls
 
-14. **When replacing a UI script**, you must know the exact `LuaContext` ID from the base game's XML. Find these in `Base/Assets/UI/*.xml` — search for `<LuaContext ID="..."`.
+14. [G14b] **When replacing a UI script**, you must know the exact `LuaContext` ID from the base game's XML. Find these in `Base/Assets/UI/*.xml` — search for `<LuaContext ID="..."`.
 
 15. **PowerShell 5.1 `Set-Content -Encoding UTF8` 会自动写入 BOM。** — SQLite 和 Lua 5.4 不允许 BOM，会导致 `syntax error` 或静默跳过整个文件。替代方案：用 PowerShell 7 (`pwsh`) 的 `Set-Content -Encoding UTF8NoBOM`；或 5.1 下用 `[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))`。
 
@@ -135,7 +139,7 @@
 
 18. **Include files copy all content** into the including context's scope. Minimize local variables in them to avoid size bloat and name collisions.
 
-19. **UI 上下文禁止直接 `SetProperty`** — UI 侧 `Players[pid]:SetProperty(key, value)` 在多人游戏中不可靠，应统一走 `UI.RequestPlayerOperation(pid, PlayerOperations.EXECUTE_SCRIPT, { OnStart = handlerName, PropertyKey = key, Value = value })`。由 GP 侧 GameEvents handler 执行写入。同样适用于 Delta 增量：`{ PropertyKey = key, Delta = delta }`。handler 命名按项目规范定义。
+19. [G19a] **UI 上下文禁止直接 `SetProperty`** — UI 侧 `Players[pid]:SetProperty(key, value)` 在多人游戏中不可靠，应统一走 `UI.RequestPlayerOperation(pid, PlayerOperations.EXECUTE_SCRIPT, { OnStart = handlerName, PropertyKey = key, Value = value })`。由 GP 侧 GameEvents handler 执行写入。同样适用于 Delta 增量：`{ PropertyKey = key, Delta = delta }`。handler 命名按项目规范定义。
 
 39. **镜头名必须是引擎已注册镜头** — `UILens.CreateLensLayerHash("自定义名")` 静默不渲染，且无任何报错（症状："点击后无任何动作也没有报错"）。可用 vanilla 镜头：`"Hex_Coloring_Movement"`（绿色范围）、`"Hex_Coloring_Attack"`（红色目标指示）、`"Attack_Range"`（范围层）。目标指示器用三元组 `{"AttackRange_Target", sourcePlot, plotId}`（vanilla WMD 打击同款格式），sourcePlot 为发起地块对象。
 
@@ -166,7 +170,7 @@
 
 ## Type Annotation Pitfalls
 
-19. **Havok Script type annotations** (`:number`, `:string`, `:boolean`, `:table`) are optional but help catch errors.
+19. [G19b] **Havok Script type annotations** (`:number`, `:string`, `:boolean`, `:table`) are optional but help catch errors.
 
 20. **Don't use `== nil` for boolean checks** on game object methods — use the return value directly. Some functions return 0 instead of false.
 
@@ -289,7 +293,10 @@
 
 47. **`Modifiers.OwnerRequirementSetId = 'ON_TURN_STARTED'` 是伪条件集（每回合重评估）**
     该列**不是只能填 RequirementSetId** —— `ON_TURN_STARTED` 是引擎识别的伪值。
-    ★ vanilla 实测 66 行，**全部**是 `MODIFIER_PLAYER_DIPLOMACY_AGENDA_*`（议程需要周期性重估）。
+    ★ vanilla 实测 66 行，**全部**是 `MODIFIER_PLAYER_DIPLOMACY_*` —— 其中 44 行为
+    `..._AGENDA_*`（议程需要周期性重估），另 **22 行不含 `_AGENDA_`**（誓约 / 承诺 / 第三方评价等，
+    共 13 个 ModifierType，最多的是 `..._THIRD_PARTY_EFFECTS` 8 行）。
+    所以规律是"**外交类**修饰符普遍挂 `ON_TURN_STARTED`"，**不是**"只有议程才挂"。
     查库确认：除该伪值外，`OwnerRequirementSetId` 的取值与 `RequirementSets` 差集为空。
     ```sql
     SELECT OwnerRequirementSetId, COUNT(*) FROM Modifiers GROUP BY 1 ORDER BY 2 DESC;
@@ -387,7 +394,11 @@
 
 ---
 
-## UI / GP 双端 API 面差异（工程实测；标注为项目断言者未独立复核）
+## UI / GP 双端 API 面差异（工程实测）
+
+> **证据口径**：本节条目来自**工程实测**（家族内工程的实机观测），均为**项目断言、未经独立复核**；
+> 需要独立佐证时查 `database/api.sqlite` 的 `verify_status` / `runtime_gp` / `runtime_ui` 三列
+> （2026-09-08 FireTuner 全量实测，见 SKILL.md「API 核验字段」）。
 
 > **通用写法：探测方法存在性，而不是靠上下文标志分支。** 同一份 Core 文件要被 GP 和 UI 同时 `include()`，
 > 就写成「探测方法存在 → 用；不存在 → 换等价方法；都没有 → 走保守默认值」：

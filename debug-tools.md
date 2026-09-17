@@ -6,7 +6,8 @@
 {SteamLibrary}\steamapps\common\Sid Meier's Civilization VI\Debug\
 ```
 
-Contains **35 Lua Tuner Panel (`.ltp`) files** and `Civ6TunerPlugin.dll`. These are in-game debug/cheat panels.
+Contains **33 Lua Tuner Panel (`.ltp`) files** and `Civ6TunerPlugin.dll`.
+(count re-measured 2026-09-18 on the local install; all `.ltp` live directly in `Debug\`.) These are in-game debug/cheat panels.
 
 Available panels:
 - `Forge.ltp`, `Audio.ltp`, `City.ltp`, `Unit.ltp`, `Player.ltp`, `Players.ltp`
@@ -96,7 +97,7 @@ end
 
 ## Modding Workflow
 
-1. Create mod folder under `DLC/<ModName>/`
+1. Create mod folder under `Mods/<ModName>/`（= `%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods`，见 SKILL.md 环境路径总表 P2；`DLC\` 属游戏安装目录，**不要**往那里放 mod）
 2. Write `.modinfo`, Lua, XML, and data files
 3. Launch Civ6 and enable the mod
 4. Use the Tuner to debug/inspect game state

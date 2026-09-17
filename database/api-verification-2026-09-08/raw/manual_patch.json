@@ -1,0 +1,77 @@
+{
+ "ui|UI|GetGameParameters|GetSetValue": {
+  "true_name": "SetValue",
+  "exists": true,
+  "type": "function"
+ },
+ "ui|UI|GetGameParameters|GetGetValueAt": {
+  "true_name": "GetValueAt",
+  "exists": false,
+  "type": "nil"
+ },
+ "ui|UI|GetGameParameters|GetGetCount": {
+  "true_name": "GetCount",
+  "exists": false,
+  "type": "nil"
+ },
+ "ui|UI|GetGameParameters|GetGet": {
+  "true_name": "Get",
+  "exists": true,
+  "type": "function"
+ },
+ "ui|UI|GetGameParameters|GetRemoveAt": {
+  "true_name": "RemoveAt",
+  "exists": false,
+  "type": "nil"
+ },
+ "ui|UI|GetGameParameters|GetAppendValue": {
+  "true_name": "AppendValue",
+  "exists": false,
+  "type": "nil"
+ },
+ "ui|UI|GetGameParameters|GetGetKeyAt": {
+  "true_name": "GetKeyAt",
+  "exists": false,
+  "type": "nil"
+ },
+ "ui|UI|GetGameParameters|GetSetValueAt": {
+  "true_name": "SetValueAt",
+  "exists": false,
+  "type": "nil"
+ },
+ "ui|UI|GetGameParameters|GetGetAt": {
+  "true_name": "GetAt",
+  "exists": false,
+  "type": "nil"
+ },
+ "ui|UI|GetGameParameters|GetGetValue": {
+  "true_name": "GetValue",
+  "exists": true,
+  "type": "function"
+ },
+ "ui|UI|GetGameParameters|GetGetValueIndex": {
+  "true_name": "GetValueIndex",
+  "exists": false,
+  "type": "nil"
+ },
+ "ui|UI|GetGameParameters|GetContainsValue": {
+  "true_name": "ContainsValue",
+  "exists": false,
+  "type": "nil"
+ },
+ "ui|UI|GetGameParameters|GetInsertValueAt": {
+  "true_name": "InsertValueAt",
+  "exists": false,
+  "type": "nil"
+ },
+ "ui|UI|GetGameParameters|GetRemove": {
+  "true_name": "Remove",
+  "exists": true,
+  "type": "function"
+ },
+ "ui|UI|GetGameParameters|GetAdd": {
+  "true_name": "Add",
+  "exists": true,
+  "type": "function"
+ }
+}

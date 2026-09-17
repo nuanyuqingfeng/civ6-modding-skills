@@ -1,0 +1,17 @@
+GP_OBJ|UI.GetGameParameters()|table
+GPK|7|Add:function,Get:function,GetValue:function,Remove:function,SetValue:function,TypeName:string,__instances:table
+CMP|GetSetValue|orig=false|stripped=SetValue|true|function
+CMP|GetGetValueAt|orig=false|stripped=GetValueAt|false|nil
+CMP|GetGetCount|orig=false|stripped=GetCount|false|nil
+CMP|GetGet|orig=false|stripped=Get|true|function
+CMP|GetRemoveAt|orig=false|stripped=RemoveAt|false|nil
+CMP|GetAppendValue|orig=false|stripped=AppendValue|false|nil
+CMP|GetGetKeyAt|orig=false|stripped=GetKeyAt|false|nil
+CMP|GetSetValueAt|orig=false|stripped=SetValueAt|false|nil
+CMP|GetGetAt|orig=false|stripped=GetAt|false|nil
+CMP|GetGetValue|orig=false|stripped=GetValue|true|function
+CMP|GetGetValueIndex|orig=false|stripped=GetValueIndex|false|nil
+CMP|GetContainsValue|orig=false|stripped=ContainsValue|false|nil
+CMP|GetInsertValueAt|orig=false|stripped=InsertValueAt|false|nil
+CMP|GetRemove|orig=false|stripped=Remove|true|function
+CMP|GetAdd|orig=false|stripped=Add|true|function

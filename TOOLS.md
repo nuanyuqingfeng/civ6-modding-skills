@@ -16,6 +16,7 @@
 | `art/dds_io.py` | dds_io.py — Civ6 单 mip RGBA8 DDS 的最小读写（零外部依赖，纯标准库 + Pillow） | `python dds_io.py --selftest <某个既有.dds> [更多.dds ...]` |
 | `art/gen_modartxml.py` | gen_modartxml.py — Mod.Art.xml（AssetObjects..GameArtSpecification）生成器。 | `python gen_modartxml.py <projectRoot>            # 生成结果打印到 stdout<br>python gen_modartxml.py <projectRoot> --check    # 与项目现有 *.Art.xml 比对，只报告不写` |
 | `art/gen_tex.py` | 为 {MOD_NAME}/Textures/ 下的每个 dds 文件生成同名 .tex 文件。 | `python gen_tex.py [textures_dir] [assets_dir] [asset_map_json]` |
+| `art/make-icon.ps1` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
 | `art/make_atlas.py` | make_atlas.py — Civ6 多图网格图集（IconTextureAtlas）合成器。 | `python make_atlas.py [-Manifest art_manifest.json] [-ProjectRoot <path>]` |
 | `art/merge_icon_registration.py` | merge_icon_registration.py — 把 make_atlas.py 产出的注册片段幂等并入项目 | `python merge_icon_registration.py <projectRoot> --fragment <...>_registration.xml` |
 | `art/normalize_icon.py` | normalize_icon.py — Civ6 图标规范化预处理（art-pipeline「图标规范化」专属章节的引擎） | `python normalize_icon.py <in.png> [out.png] [--canvas 256] [--content 224] [--color 255]<br>python normalize_icon.py <in.png> --role unit_icon        # 用 registry 内置规范` |
@@ -36,17 +37,22 @@
 | `release/scripts/validate.ps1` | 上传前 validate 工作区（exit 0 才允许 upload） | `powershell -File validate.ps1 -Workspace <工作区>` |
 | `release/scripts/verify.ps1` | 上传后经 Steam API 验证（比对 time_updated / hcontent_file，识别假成功） | `powershell -File verify.ps1 -ItemId <工坊条目ID>` |
 | `scripts/check_lua_registration.py` | `.lua` 注册体检 —— 用「按角色判定」的规则找出真正不会被加载的脚本。 | `python check_lua_registration.py <工程根目录> [--modinfo <构建产物.modinfo>]` |
-| `scripts/check_pantry.py` | 示例工程 pantry 体检 —— 开 AssetEditor / cook 前必跑。 | `python workspace/_tools/check_pantry.py [--root <pantry 路径>] [--quiet]` |
+| `scripts/check_pantry.py` | pantry 体检：`.tex` 位置 / 重名 / depot 库路径 / 非 ASCII / `.tex`↔`.dds` 配对 —— 开 AssetEditor / cook 前必跑。（注：其中 `m_SourceFilePath` 期望 `D:\desktop\<stem>.png` 这一条是**示例工程（作者 mod 工程）的约定**，不是 Civ6 通用规则；别的工程会命中 `[src-convention]` 告警，按你自己工程的约定判断即可。） | `python check_pantry.py <工程根> [--tex-dir Textures] [--quiet]` |
 | `scripts/check_proj_content.py` | 核对 .civ6proj 的 <Content Include> 清单与实际磁盘内容是否闭合。 | `python check_proj_content.py <工程根目录>` |
 | `scripts/check_sql_antipatterns.py` | SQL 语义反模式静态扫描 —— 抓「语法完全合法、但语义恒假/恒错」的写法。 | `python check_sql_antipatterns.py <工程根目录> [--glob *.sql]` |
 | `scripts/check_sql_exec.py` | 全工程 SQL 执行排查 —— 抓「整条语句报废」类错误（非法转义 / 字符错位）。 | `python check_sql_exec.py [--root <工程根目录>] [--base <基础库>]` |
 | `scripts/check_types_kinds.py` | Types.Kind 合法性检查 —— 复现游戏加载期的 `Invalid Reference on Types.Kind`。 | `python check_types_kinds.py [--root <工程根目录>] [--db <基础库>] [--dirs Data,Mod_Adaptation]` |
-| `scripts/clear_ae_cache.py` | 清除 AssetEditor 依赖缓存（可再生文件，按「备份规范」不备份、直接删）。 | `python workspace/_tools/clear_ae_cache.py [--mod 示例工程] [--dry-run]` |
+| `scripts/clear_ae_cache.py` | 清除 AssetEditor 依赖缓存（可再生文件，按「备份规范」不备份、直接删）。 | `python clear_ae_cache.py [--mod <ModName>] [--dry-run]        # 动过贴图后必跑，否则 AssetEditor 结论是缓存假象` |
 | `scripts/normalize_eol.py` | 按「原版换行分层铁律」归一化 Civ6 工程的文本文件换行。 | `python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）<br>python normalize_eol.py <工程目录> --fix           # 就地归一化` |
 | `scripts/rgn_validate_runner.mjs` | rgn_validate 离线执行器 v2 — 核心判定逻辑提取自 @dsh-external/dsh-rgn-tools 的 | `node rgn_validate_runner.mjs [目录=cwd] [文件模式=*.sql] [checkNaming=true] [--base <基础库>] [--static]` |
 | `scripts/verify_trees.py` | Verify two directory trees are byte-identical (recursive SHA256 comparison). | `python verify_trees.py <dirA> <dirB>` |
 | `（语料执行器已移除）` | （已移除）_query 离线执行器 — 逻辑移植自 @dsh-external/dsh-rgn-tools 的 src/index.ts （已移除）Query() | `node （语料执行器已移除） --q <关键词> [--table terms\|story] [--lang zh\|en\|ja]` |
-| `tools/_paths.py` | 本机 Civ6 关键路径解析（P1–P6），全 civ6-modding/tools 共用。 | `1) `civ6-modding/local_paths.json`（个人环境文件，分享时不携带）` |
+| `tools/_paths.py` | 本机 Civ6 关键路径解析（P1–P6），全 civ6-modding/tools 共用。 | `python _paths.py        # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）` |
+| `（本地化工具已移除）/civ6_locale_extract.py` | civ6_locale_extract.py — 提取 mod 文本库全量 LOC tag × 8 语言为参考文件。 | `python civ6_locale_extract.py --root <工程目录> --out <输出.json> [--tag <LOC_前缀>]` |
+| `（本地化工具已移除）/civ6_locale_tool.py` | civ6_locale_tool.py — Civ6 文明 Mod 多语言本地化专用工具（防踩坑版） | `python civ6_locale_tool.py {extract\|lookup\|generate\|merge\|apply-edits\|update\|verify} [...]   (lookup 的词库为可选外部 （语料库已移除）：--db / （已移除的语料库环境变量）)` |
+| `（本地化工具已移除）/civ6_num_audit.py` | civ6_num_audit.py — 以 zh_Hans_CN 为基准的多语言数值一致性审计。 | `python civ6_num_audit.py --root <工程目录> [--out <报告.txt>]` |
+| `（本地化工具已移除）/civ6_pipeline.py` | civ6_pipeline.py — audit → lookup → merge → verify 单命令流水线 | `python civ6_pipeline.py run --root <工程目录> --names names.json --workdir out [--overwrite] [--strict] [--dry-run]` |
+| `（本地化工具已移除）/civ6_text_audit.py` | civ6_text_audit.py — Civ6 本地化文本审计工具（独立 CLI + 可被其他 skill 调用） | `python civ6_text_audit.py audit --root <工程目录> --out report.txt   \|   python civ6_text_audit.py diff-tags --base <主工程> --balance <补丁> --out diff.txt` |
 | `tools/local_flux.py` | 本地 FLUX.2-klein-4B 文生图封装（免费、离线、约 8–30s/张）。 | `python local_flux.py --prompt "..." --out x.png [--seed 42] [--size 1024]<br>python local_flux.py --prompt-file p.txt --out x.png --seeds 42,7,123   # 多 seed 取样挑图` |
 | `tools/modinfo_build.py` | 从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。 | `python modinfo_build.py <X.civ6proj>                 # 只生成到 <proj目录>/Build/X.modinfo<br>python modinfo_build.py <X.civ6proj> --deploy        # 复制 Content 文件 + 写 modinfo 到 Mods/<X>/` |
 | `tools/skill_manifest.py` | 名录生成器：扫描一个 skill 的脚本，从各自 docstring 抽出「用途 + 用法」， | `python skill_manifest.py <skill 目录名或绝对路径> [...]      # 指定 skill<br>python skill_manifest.py --all-civ6                          # 批量刷新全部 civ6-* skill` |
@@ -56,7 +62,7 @@
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 46 个脚本。
+共 52 个脚本。
 
 ## 第三方依赖（非标准库）
 

@@ -1,4 +1,4 @@
-# Remove a temporary Civ6 workshop upload workspace after a VERIFIED successful upload.
+﻿# Remove a temporary Civ6 workshop upload workspace after a VERIFIED successful upload.
 # Safety: only deletes paths strictly under $env:TEMP\Civ6WorkshopUploader\.
 # Never touches the Mods source dir or D:\documents\Civ6WorkshopUploader.
 param(

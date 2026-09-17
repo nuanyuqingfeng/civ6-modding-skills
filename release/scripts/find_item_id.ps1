@@ -1,4 +1,4 @@
-# Find workshop item IDs from local Steam logs
+﻿# Find workshop item IDs from local Steam logs
 param(
     [string]$ModName = "",
     [string]$LogDir = "F:\Steam\logs"
