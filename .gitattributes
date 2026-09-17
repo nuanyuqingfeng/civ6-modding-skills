@@ -1,0 +1,8 @@
+# 本仓库（skill 合集）自身文本统一 LF；mod 工程的换行口径见各 skill 的 gotchas（资产 LF / 代码配置 CRLF）。
+* text=auto eol=lf
+
+# 二进制
+*.sqlite binary
+*.json.gz binary
+*.png binary
+
