@@ -3,7 +3,7 @@
     "usage": "python _paths.py                          # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）\npython _paths.py --tool uploader            # 只打印某个外部工具的解析路径（供 shell 包装脚本调用）\npython _paths.py --path mods                # 同上，取 P1-P6 路径键；未找到 exit 1、键名非法 exit 2"
   },
   "scripts/check_pantry.py": {
-    "usage": "python check_pantry.py <工程根> [--tex-dir Textures] [--quiet]",
+    "usage": "python check_pantry.py --root <工程根> [--quiet]        # 注意：根目录只走 --root（不是位置参数），也没有贴图目录过滤选项",
     "purpose": "pantry 体检：`.tex` 位置 / 重名 / depot 库路径 / 非 ASCII / `.tex`↔`.dds` 配对 —— 开 AssetEditor / cook 前必跑。（注：其中 `m_SourceFilePath` 期望 `D:\\desktop\\<stem>.png` 这一条是**示例工程（作者 mod 工程）的约定**，不是 Civ6 通用规则；别的工程会命中 `[src-convention]` 告警，按你自己工程的约定判断即可。）"
   },
   "scripts/clear_ae_cache.py": {

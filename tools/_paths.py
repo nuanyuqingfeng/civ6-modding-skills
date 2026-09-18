@@ -173,11 +173,27 @@ if __name__ == "__main__":
     except Exception:
         pass
 
+    argv = sys.argv[1:]
+
+    # `-h` / `--help`：打印用法后退出。
+    # 此前 `--help` 不被识别 → 走到底部的自检分支，把"路径总表"当成 help 输出，
+    # 不会显示 `--tool` / `--path` 这两个真正有用的子命令（文档缺口）。
+    if argv and argv[0] in ("-h", "--help", "help"):
+        print("用法：")
+        print("  python _paths.py                      # 自检：打印 P1-P6 路径 + 外部工具解析结果（缺失标 [缺失]）")
+        print("  python _paths.py --tool <键>          # 只打印某外部工具路径（供 shell 包装脚本调用）")
+        print("  python _paths.py --path <键>          # 只打印某路径键（P1-P6）")
+        print("")
+        print("路径键（--path）：%s" % ", ".join(DEFAULTS))
+        print("工具键（--tool）：%s" % ", ".join(TOOL_DEFAULTS))
+        print("")
+        print("退出码：0 找到（打印路径）/ 1 未找到 / 2 键名非法或缺参")
+        raise SystemExit(0)
+
     # `--tool <键>` / `--path <键>`：把解析结果**单独打印**给 shell 包装脚本用
     # （PowerShell 侧无法 import Python 模块，此前只能各自写死路径 —— 实测
     #  ensure_uploader.ps1 因此把已装好的机器判成"缺工具"）。
     # 退出码：0 找到（打印路径）/ 1 未找到或键名非法。
-    argv = sys.argv[1:]
     if argv and argv[0] in ("-t", "--tool", "-p", "--path"):
         want_tool = argv[0] in ("-t", "--tool")
         if len(argv) < 2:

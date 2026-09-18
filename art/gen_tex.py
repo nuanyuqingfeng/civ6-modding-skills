@@ -402,6 +402,21 @@ def gen_tex(dds_path):
 
 
 def main():
+    # `-h` / `--help`：本脚本在**导入期**就读 sys.argv 定目录（见文件头部），
+    # 此前 `--help` 会被当成贴图目录 → FileNotFoundError 指向 "<cwd>\--help"。
+    # 这里在真正干活前拦下，给出用法而不是令人困惑的路径错误。
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        # 注意：TEXTURES_DIR 在导入期已把 "--help" 当成 argv[1] 吃掉了，
+        # 所以这里不能直接打印它（会显示 textures_dir=--help）。
+        _default = str(_PROJECT_ROOT / (_civ_name or "MOD_NAME") / "Textures")
+        print("用法：python gen_tex.py [textures_dir] [assets_dir] [asset_map_json]")
+        print("  为 textures_dir 下每个 .dds 生成同名 .tex（按 DDS 头推导格式/mip 等字段）")
+        print("  三个参数都可省；通常由 make_atlas.py / convert_art.ps1 自动调用，不直接跑。")
+        print(f"  省参数时的默认贴图目录：{_default}")
+        return 0
+    if not os.path.isdir(TEXTURES_DIR):
+        print(f"ERROR: 贴图目录不存在：{TEXTURES_DIR}", file=sys.stderr)
+        return 2
     dds_files = sorted(f for f in os.listdir(TEXTURES_DIR) if f.endswith(".dds"))
     print(f"Found {len(dds_files)} dds files")
     print(f"tex encoding = system ANSI ({TEX_ENCODING}), xml declaration = {XML_ENCODING}\n")

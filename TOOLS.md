@@ -43,8 +43,8 @@
 | `release/scripts/validate.ps1` | 上传前 validate 工作区（exit 0 才允许 upload） | `powershell -File validate.ps1 -Workspace <工作区>` |
 | `release/scripts/verify.ps1` | 上传后经 Steam API 验证（比对 time_updated / hcontent_file，识别假成功） | `powershell -File verify.ps1 -ItemId <工坊条目ID>` |
 | `scripts/check_lua_registration.py` | `.lua` 注册体检 —— 用「按角色判定」的规则找出真正不会被加载的脚本。 | `python check_lua_registration.py <工程根目录> [--modinfo <构建产物.modinfo>]` |
-| `scripts/check_pantry.py` | pantry 体检：`.tex` 位置 / 重名 / depot 库路径 / 非 ASCII / `.tex`↔`.dds` 配对 —— 开 AssetEditor / cook 前必跑。（注：其中 `m_SourceFilePath` 期望 `D:\desktop\<stem>.png` 这一条是**示例工程（作者 mod 工程）的约定**，不是 Civ6 通用规则；别的工程会命中 `[src-convention]` 告警，按你自己工程的约定判断即可。） | `python check_pantry.py <工程根> [--tex-dir Textures] [--quiet]` |
-| `scripts/check_proj_content.py` | 核对 .civ6proj 的 <Content Include> 清单与实际磁盘内容是否闭合。 | `python check_proj_content.py <工程根目录>` |
+| `scripts/check_pantry.py` | pantry 体检：`.tex` 位置 / 重名 / depot 库路径 / 非 ASCII / `.tex`↔`.dds` 配对 —— 开 AssetEditor / cook 前必跑。（注：其中 `m_SourceFilePath` 期望 `D:\desktop\<stem>.png` 这一条是**示例工程（作者 mod 工程）的约定**，不是 Civ6 通用规则；别的工程会命中 `[src-convention]` 告警，按你自己工程的约定判断即可。） | `python check_pantry.py --root <工程根> [--quiet]        # 注意：根目录只走 --root（不是位置参数），也没有贴图目录过滤选项` |
+| `scripts/check_proj_content.py` | 核对 .civ6proj 的 <Content Include> 清单与实际磁盘内容是否闭合。 | `python check_proj_content.py <工程根目录><br>python check_proj_content.py --root <工程根目录>     # 等价写法` |
 | `scripts/check_sql_antipatterns.py` | SQL 语义反模式静态扫描 —— 抓「语法完全合法、但语义恒假/恒错」的写法。 | `python check_sql_antipatterns.py <工程根目录> [--glob *.sql]` |
 | `scripts/check_sql_exec.py` | 全工程 SQL 执行排查 —— 抓「整条语句报废」类错误（非法转义 / 字符错位）。 | `python check_sql_exec.py [--root <工程根目录>] [--base <基础库>]` |
 | `scripts/check_types_kinds.py` | Types.Kind 合法性检查 —— 复现游戏加载期的 `Invalid Reference on Types.Kind`。 | `python check_types_kinds.py [--root <工程根目录>] [--db <基础库>] [--dirs Data,Mod_Adaptation]` |

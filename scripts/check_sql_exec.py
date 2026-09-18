@@ -23,22 +23,26 @@
     --root  工程根目录（默认当前工作目录）
     --base  基础库快照（默认 <本skill>/database/DebugGameplay.sqlite；原库只读，先复制到临时文件）
 
-退出码：0 = 无语法错误；1 = 有语法错误（可用于 CI / 提交前钩子）。
+退出码：0 = 无语法错误；1 = 有语法错误（可用于 CI / 提交前钩子）；2 = 参数错误。
 """
-import os, shutil, sqlite3, sys, tempfile
+import argparse, os, shutil, sqlite3, sys, tempfile
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SKILL_DB = os.path.normpath(os.path.join(HERE, '..', 'database', 'DebugGameplay.sqlite'))
 
-ROOT = os.getcwd()
-BASE = SKILL_DB
-if '--root' in sys.argv:
-    ROOT = sys.argv[sys.argv.index('--root') + 1]
-if '--base' in sys.argv:
-    BASE = sys.argv[sys.argv.index('--base') + 1]
-ROOT = os.path.abspath(ROOT)
+# 用 argparse 而非手写 sys.argv 扫描：此前 `--help` 不被识别，会**直接开始全量扫描**
+# （实测 2 分钟无输出，看起来像卡死）；`--root` 末尾缺值也会 IndexError。
+_ap = argparse.ArgumentParser(
+    description="全工程 SQL 执行排查 —— 抓「整条语句报废」类错误（非法转义 / 字符错位）")
+_ap.add_argument("--root", default=os.getcwd(), help="工程根目录（默认当前工作目录）")
+_ap.add_argument("--base", default=SKILL_DB,
+                 help="基础库快照（默认 <本skill>/database/DebugGameplay.sqlite；原库只读，先复制到临时文件）")
+_args = _ap.parse_args()
+
+ROOT = os.path.abspath(_args.root)
+BASE = _args.base
 
 if not os.path.isfile(BASE):
     print('ERROR: 基础库不存在: %s' % BASE)

@@ -2,7 +2,7 @@
 """Verify two directory trees are byte-identical (recursive SHA256 comparison).
 
 Usage: python verify_trees.py <dirA> <dirB>
-Exits 0 when identical, 1 otherwise.
+Exits 0 when identical, 1 otherwise; 2 on usage error.
 """
 import hashlib
 import os
@@ -24,6 +24,12 @@ def snapshot(root):
 
 
 def main():
+    if len(sys.argv) >= 2 and sys.argv[1] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    if len(sys.argv) < 3 or not os.path.isdir(sys.argv[1]) or not os.path.isdir(sys.argv[2]):
+        print("用法：python verify_trees.py <dirA> <dirB>（两个目录都必须存在）", file=sys.stderr)
+        return 2
     a, b = sys.argv[1], sys.argv[2]
     sa, sb = snapshot(a), snapshot(b)
     only_a = sorted(set(sa) - set(sb))
