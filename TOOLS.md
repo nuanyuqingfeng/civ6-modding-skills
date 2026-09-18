@@ -27,7 +27,7 @@
 | `art/verify_icon_atlas.py` | verify_icon_atlas.py — 图标图集落地自查（art-pipeline 第八节「完成标准」的可执行版） | `python verify_icon_atlas.py <projectRoot> [--icons a.xml b.xml] [--xlp a.xlp b.xlp]` |
 | `art/verify_tex_class.py` | verify_tex_class.py — 校验「.tex 的 m_ClassName」与其「XLP 注册类」是否匹配 | `python verify_tex_class.py --project <工程根>              # 只查类别匹配<br>python verify_tex_class.py --project <工程根> --full        # 全量贴图体检（见下）` |
 | `database/scripts/audit_schema_drift.py` | audit_schema_drift.py - guard the civ6-modding reference DB against | `python database/scripts/audit_schema_drift.py<br>python database/scripts/audit_schema_drift.py --game "F:/Steam/.../Sid Meier's Civilization VI"` |
-| `database/scripts/build_localization.py` | build_localization.py — 从**本机游戏安装**补全本地化文本库（含 DLC/资料片） | `python build_localization.py --report<br>python build_localization.py --build workspace/localization_full.sqlite` |
+| `database/scripts/build_localization.py` | build_localization.py — 从**本机游戏安装**按分层规则合成本地化文本库 | `python build_localization.py --report<br>python build_localization.py --build-main <主库.sqlite> --build-mode <模式库.sqlite>` |
 | `database/scripts/query_api.py` | Civ6 API Query Tool — 主源 api.sqlite（含子项 sub_func_name 与运行时核验字段）， | `python query_api.py --search <关键词>              # 搜 表名/函数名/子项名/真名/id（子项一并命中）<br>python query_api.py --search <关键词> --sub-only   # 只看"本身是子项"的条目` |
 | `database/scripts/query_civ6_db.py` | Civilization VI Mod Database Query Tool — SQLite CLI wrapper. | `（见脚本 docstring）` |
 | `database/scripts/query_effect_args.py` | query_effect_args.py — 查「某个 EffectType / ModifierType 该填哪些参数、参数能填什么值」 | `python query_effect_args.py --effect EFFECT_ADJUST_PLOT_YIELD<br>python query_effect_args.py --modifier MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_CHANGE` |
