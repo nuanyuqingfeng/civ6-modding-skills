@@ -46,6 +46,8 @@
 **建议顺序**（新 mod 从工程到线上）：
 
 ```
+new_project.py --name <ModName>      # ⓪ 从零建工程骨架（.civ6proj + 目录 + .gitignore/.gitattributes
+                                     #    + 自动派生 .modinfo）。已有工程跳过本步
 modinfo_build.py --deploy            # ① 生成 modinfo + 部署 Mods
 verify_mod_package.py                # ② 三处一致性 / 引用闭合体检
 （改过 .lua 时）python ../scripts/check_lua_registration.py <工程>
@@ -55,6 +57,9 @@ local_flux.py → workshop_cover.py    # ④ 底图 + 封面（模型只出无�
 ../release/scripts/validate.ps1 → upload.ps1 → verify.ps1
 workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/标签未被顺带改掉）
 ```
+
+> **新文明 / 新领袖**的数据与 LOC 推导见 `../civilization-authoring.md`、`../leader-authoring.md`；
+> 美术（图标/立绘）→ `civ6-asset-forge`，3D 模型引用 → `civ6-art-reference`，BGM/语音 → `civ6-audio-pipeline`。
 
 ---
 

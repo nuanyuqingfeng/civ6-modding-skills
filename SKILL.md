@@ -90,6 +90,8 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 
 | Type | Go To |
 |------|-------|
+| **从零新建工程**（"建一个新 mod / 新工程骨架"、要一个可构建的 `.civ6proj`） | → `python tools/new_project.py <目录> --name <ModName>`（生成 `.civ6proj` + 目录 + `.gitignore`/`.gitattributes`，并自动派生 `.modinfo`）；格式细节见 `project-setup.md`，**GUID 必须新生成**（工具内置全网查重） |
+| **新文明 / 新领袖的数据与文本** | → `civilization-authoring.md` / `leader-authoring.md`（表清单、LOC 推导、注册位置）；美术→`civ6-asset-forge`、3D 引用→`civ6-art-reference`、BGM/语音→`civ6-audio-pipeline` |
 | **UI panel** (XML + Lua) | → UI Routing ↓ |
 | **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节，图标规范化/占幅/边距规范查其第四节 |
 | **图标实机锯齿 / 边缘发硬 / 毛刺**（"游戏里图标不清晰"、"小尺寸档有锯齿"、接手他人图集想验中间档） | → `art-pipeline.md` **第 8.1 节「边缘质量门」**：`verify_icon_atlas.py --edge-qa` 体检 + `regen_atlas_tiers.py` 从母版重出。**注意结构校验查不出这类问题** |
