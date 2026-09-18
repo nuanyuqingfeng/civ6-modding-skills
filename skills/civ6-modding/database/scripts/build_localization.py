@@ -64,6 +64,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import json
 import os
 import re
 import sqlite3
@@ -85,6 +86,8 @@ except Exception:
     _paths = None
 
 DEFAULT_DB = os.path.join(SKILL_DIR, "database", "DebugLocalization.sqlite")
+# 模式文本库（Mode 类玩法单独成库）；与主库同目录，**同样不入库**（可从游戏文件重建）
+MODE_DB_NAME = "Localization_Mode.sqlite"
 
 # 本库 12 语言（与 DebugLocalization.sqlite.Languages 一致）
 OUR_LANGS = {"en_US", "zh_Hans_CN", "zh_Hant_HK", "ja_JP", "ko_KR",
@@ -100,10 +103,21 @@ LANG_ALIAS = {
 
 _ROW_RE = re.compile(r'<Row\s+Tag="([^"]+)"\s*>(.*?)</Row>', re.S)
 _REP_RE = re.compile(r'<Replace\s+Tag="([^"]+)"\s+Language="([^"]+)"\s*>(.*?)</Replace>', re.S)
-_TEXT_RE = re.compile(r"<Text>(.*?)</Text>", re.S)
+# ★ 同时匹配 `<Text>…</Text>` 与自闭合 `<Text/>`（后者表示空值）。
+#   官方用 `<Text/>` 声明"该 tag 存在但内容为空"（如 en_US 的
+#   LOC_DIPLO_KUDO_EXIT_ANY_ANY）；只认成对标签会**丢掉这些行**（实测少 2 行）。
+_TEXT_RE = re.compile(r"<Text\s*/>|<Text>(.*?)</Text>", re.S)
 _GENDER_RE = re.compile(r"<Gender>(.*?)</Gender>", re.S)
 _PLUR_RE = re.compile(r"<Plurality>(.*?)</Plurality>", re.S)
 _LANGDIR_RE = re.compile(r"^[a-z]{2}_[A-Za-z]{2,}$")
+
+
+def _text_of(block: str) -> str | None:
+    """从元素体里取 `<Text>`：自闭合 → `''`；成对 → 内容；都没有 → `None`。"""
+    m = _TEXT_RE.search(block)
+    if not m:
+        return None
+    return "" if m.group(1) is None else m.group(1)
 
 # 层级 rank：越小越先加载（越容易被后面覆盖）
 RANK_BASE, RANK_EXP1, RANK_EXP2, RANK_DLC = 0, 1, 2, 3
@@ -265,31 +279,32 @@ class Segment:
 # ====================================================================== 解析文本
 
 def parse_file(path: str) -> list[tuple[str, str, str, str, str]]:
-    """→ [(tag, language, text, gender, plurality)]。两种形态都解析。"""
+    """→ [(tag, language, text, gender, plurality)]。两种形态都解析（含自闭合 `<Text/>`）。"""
     out: list[tuple[str, str, str, str, str]] = []
     try:
         s = open(path, encoding="utf-8-sig", errors="replace").read()
     except OSError:
         return out
-    if "Text>" not in s:
+    if "Text" not in s:
         return out
     for m in _REP_RE.finditer(s):
-        t = _TEXT_RE.search(m.group(3))
-        if not t:
+        t = _text_of(m.group(3))
+        if t is None:
             continue
         lang = LANG_ALIAS.get(m.group(2).strip(), m.group(2).strip())
         g = _GENDER_RE.search(m.group(3))
         p = _PLUR_RE.search(m.group(3))
-        out.append((m.group(1).strip(), lang, t.group(1),
+        out.append((m.group(1).strip(), lang, t,
                     (g.group(1).strip() if g else None),
                     (p.group(1).strip() if p else None)))
     lang_dir = os.path.basename(os.path.dirname(path))
     if _LANGDIR_RE.match(lang_dir):
         lang = LANG_ALIAS.get(lang_dir, lang_dir)
         for m in _ROW_RE.finditer(s):
-            t = _TEXT_RE.search(m.group(2))
-            if t:
-                out.append((m.group(1).strip(), lang, t.group(1), None, None))
+            t = _text_of(m.group(2))
+            if t is None:
+                continue
+            out.append((m.group(1).strip(), lang, t, None, None))
     return out
 
 
@@ -362,19 +377,128 @@ CREATE TABLE IF NOT EXISTS LocalizedText (
 CREATE INDEX IF NOT EXISTS idx_localized_language ON LocalizedText(Language);
 """
 
+SIDE_TABLES_SCHEMA = """
+CREATE TABLE IF NOT EXISTS SkillAnnotation_Icons  ('Name' TEXT PRIMARY KEY, 'Remark' TEXT);
+CREATE TABLE IF NOT EXISTS SkillAnnotation_Colors ('Type' TEXT PRIMARY KEY, 'Remark' TEXT);
+"""
+
+# 侧表的随包备份（`DebugLocalization.sqlite` 不入库，人工成果靠它跨机器存活）
+SIDE_JSON = os.path.join(SKILL_DIR, "database", "annotations", "localization_side_tables.json")
+# 辅助注册表 + 视图的随包备份（保证换机器重建后仍是 10 表 + 3 视图）
+AUX_JSON = os.path.join(SKILL_DIR, "database", "annotations", "localization_aux_tables.json")
+
+
+def create_full_schema(db: str) -> tuple[int, int]:
+    """在库中建出官方本地化库的**完整** schema（辅助表 + 视图），缺则建、有则跳。
+
+    仅靠 `SCHEMA` 会只得到 `LocalizedText` 一张表，而官方库有 10 表 + 3 视图
+    （`Languages` / `LanguagePriorities` / `FontStyleSheets` / `EnglishText` 视图等）。
+    这些是**语言注册与字体样式**的查询基础，缺了会让相关工具失效。
+    → (建成/校验的表数, 视图数)；缺 JSON 时返回 (0, 0) 并提示。
+    """
+    if not os.path.isfile(AUX_JSON):
+        return 0, 0
+    with open(AUX_JSON, encoding="utf-8") as f:
+        payload = json.load(f)
+    con = sqlite3.connect(db)
+    try:
+        existing = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        n_t = n_v = 0
+        for t, spec in (payload.get("tables") or {}).items():
+            if t in existing:
+                continue
+            con.execute(spec["ddl"])
+            cols = spec.get("columns") or []
+            rows = spec.get("rows") or []
+            if rows and cols:
+                con.executemany(
+                    "INSERT OR IGNORE INTO %s (%s) VALUES (%s)"
+                    % (t, ",".join(cols), ",".join("?" * len(cols))), rows)
+            n_t += 1
+        have_v = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='view'")}
+        for v, spec in (payload.get("views") or {}).items():
+            if v in have_v:
+                continue
+            con.execute(spec["ddl"])
+            n_v += 1
+        con.commit()
+    finally:
+        con.close()
+    return n_t, n_v
+
+
+def restore_side_tables(db: str) -> tuple[int, int, int]:
+    """从随包 JSON 还原：两张人工标注侧表 + 「非官方来源」的行（extraRows）。
+
+    `DebugLocalization.sqlite` 不入 git，因此这些**不可再生**的内容必须靠随包 JSON 存活：
+      · `SkillAnnotation_Icons` / `SkillAnnotation_Colors`（人工标注侧表）
+      · `extraRows`：库中「游戏安装里没有」的行（本项目自造 tag，实测 64 行）
+
+    全部用 `INSERT OR IGNORE`（不覆盖既有）。
+    → (icons, colors, extra)；缺 JSON 时返回 (-1, -1, -1)。
+    """
+    if not os.path.isfile(SIDE_JSON):
+        return -1, -1, -1
+    with open(SIDE_JSON, encoding="utf-8") as f:
+        payload = json.load(f)
+    tabs = payload.get("tables") or {}
+    extra = payload.get("extraRows") or []
+    con = sqlite3.connect(db)
+    try:
+        con.executescript(SCHEMA)
+        con.executescript(SIDE_TABLES_SCHEMA)
+        n_i = n_c = 0
+        for row in tabs.get("icons") or []:
+            k = row.get("name") or row.get("Name")
+            if k:
+                con.execute("INSERT OR IGNORE INTO SkillAnnotation_Icons (Name, Remark) VALUES (?,?)",
+                            (k, row.get("remark")))
+                n_i += 1
+        for row in tabs.get("colors") or []:
+            k = row.get("type") or row.get("Type")
+            if k:
+                con.execute("INSERT OR IGNORE INTO SkillAnnotation_Colors (Type, Remark) VALUES (?,?)",
+                            (k, row.get("remark")))
+                n_c += 1
+        n_e = 0
+        for r in extra:
+            if not r.get("tag") or not r.get("language"):
+                continue
+            con.execute("INSERT OR IGNORE INTO LocalizedText "
+                        "(Language,Tag,Text,Gender,Plurality) VALUES (?,?,?,?,?)",
+                        (r["language"], r["tag"], r.get("text"), r.get("gender"), r.get("plurality")))
+            n_e += 1
+        con.commit()
+    finally:
+        con.close()
+    return n_i, n_c, n_e
+
 
 def write_db(out: str, main_rows: dict, mode_rows: dict | None, mode_action: str) -> None:
-    """写库。mode_action='replace' 时重建 LocalizedText（仅用于新建文件）。"""
+    """写库。mode_action='replace' 时重建 LocalizedText（仅用于新建文件）。
+
+    ★ **写入前 strip 首尾空白**（实测口径，勿改）：
+      游戏源文件常带尾随空格（如 `de_DE LOC_ABILITY_CAPTIVE_WORKERS_DESCRIPTION`
+      源文件结尾是 `. `、`LOC_CITIZEN_ETHIOPIA_FEMALE_7` 是 `'Taytu  '`），
+      但**引擎落盘时会 strip** —— 游戏运行时缓存里这两个值都没有尾随空格。
+      既有参考库来自该缓存，所以也是 strip 过的。
+      若不 strip，新写入的行会与库内既有的 182,812 行**口径不一致**
+      （实测产生 1,116 行「仅首尾空白」的内部不一致）。
+    `None` 归一为 `''`。
+    """
+    def norm(v):
+        return "" if v is None else v.strip()
+
     con = sqlite3.connect(out)
     try:
         con.executescript(SCHEMA)
         if mode_action == "replace":
             con.execute("DELETE FROM LocalizedText")
-        data = [(l, t, v[0], v[1], v[2]) for (l, t), v in main_rows.items()]
+        data = [(l, t, norm(v[0]), v[1], v[2]) for (l, t), v in main_rows.items()]
         con.executemany("INSERT OR REPLACE INTO LocalizedText "
                         "(Language,Tag,Text,Gender,Plurality) VALUES (?,?,?,?,?)", data)
         if mode_rows:
-            mdata = [(l, t, v[0], v[1], v[2]) for (l, t), v in mode_rows.items()]
+            mdata = [(l, t, norm(v[0]), v[1], v[2]) for (l, t), v in mode_rows.items()]
             con.executemany("INSERT OR IGNORE INTO LocalizedText "
                             "(Language,Tag,Text,Gender,Plurality) VALUES (?,?,?,?,?)", mdata)
         con.commit()
@@ -396,11 +520,25 @@ def main() -> int:
     ap.add_argument("--build-main", metavar="OUT", help="合成主文本库到 OUT")
     ap.add_argument("--build-mode", metavar="OUT", help="合成模式文本库到 OUT")
     ap.add_argument("--augment-main", action="store_true", help="向既有库补全主库内容")
+    ap.add_argument("--rebuild", action="store_true",
+                    help="★ 一键按规范重建两个库：就地补全 %s + 重建 %s"
+                         % (os.path.basename(DEFAULT_DB), MODE_DB_NAME))
     ap.add_argument("--apply-rewrites", action="store_true",
                     help="应用「实质不同」的覆盖（默认只加不改）")
     ap.add_argument("--dry-run", action="store_true", help="只统计不写盘")
     ap.add_argument("--list-seg", action="store_true", help="列出分段明细")
     args = ap.parse_args()
+
+    # --rebuild 等价于规范的两步；--apply-rewrites 在重建场景下默认开启
+    # （主库要 EXP2 优先，就必须覆盖既有 base 值）
+    if args.rebuild:
+        args.augment_main = True
+        args.apply_rewrites = True
+        args.build_mode = args.build_mode or os.path.join(SKILL_DIR, "database", MODE_DB_NAME)
+        print("=== --rebuild：按规范重建两个库 ===")
+        print("   主库  : %s（就地补全，保留侧表）" % DEFAULT_DB)
+        print("   模式库: %s（新建）" % args.build_mode)
+        print()
 
     game = args.game
     if not game and _paths is not None:
@@ -446,17 +584,80 @@ def main() -> int:
               "加 --apply-rewrites 才覆盖。" % (len(dm["changed"]), len(dmod["changed"])))
         return 0
 
-    # ---------------- 合成两个库 ----------------
-    if args.build_main or args.build_mode:
+    # ---------------- 就地补全主库（既有库） ----------------
+    if args.augment_main:
+        # 库不存在 = 换机器/首次：直接从游戏文件全量合成（"兜底"部分靠随包 JSON 还原）
+        if not os.path.isfile(args.db):
+            print("=== 既有库不存在 → 从游戏文件全量合成（首次/换机器）===")
+            if args.dry_run:
+                print("   [dry-run] 会新建 %s（%d 行）" % (args.db, len(main_new)))
+            else:
+                write_db(args.db, main_new, None, "replace")
+                n_t, n_v = create_full_schema(args.db)
+                if n_t or n_v:
+                    print("   辅助注册表/视图已建: 表=%d 视图=%d（源: annotations/%s）"
+                          % (n_t, n_v, os.path.basename(AUX_JSON)))
+                n_i, n_c, n_e = restore_side_tables(args.db)
+                if n_i < 0:
+                    print("   ⚠ 侧表备份 JSON 缺失（%s）——人工标注可能丢失"
+                          % os.path.basename(SIDE_JSON))
+                else:
+                    print("   侧表与自造行已还原: Icons=%d Colors=%d extraRows=%d（源: annotations/%s）"
+                          % (n_i, n_c, n_e, os.path.basename(SIDE_JSON)))
+            if not (args.build_main or args.build_mode):
+                return 0
+        else:
+            add = {k: v for k, v in main_new.items() if k not in old}
+            # 改写判定按 **strip 后** 比较：引擎落盘会 strip，源文件常有尾随空格；
+            # 只差首尾空白不算「实质改写」，否则会误报上千条。
+            chg = {k: v for k, v in main_new.items()
+                   if k in old and (v[0] or "").strip() != (old[k][0] or "").strip()}
+            print("=== 就地补全主库 ===")
+            print("   待新增: %d 行" % len(add))
+            print("   待改写: %d 行（%s）" % (len(chg), "会应用" if args.apply_rewrites else "跳过"))
+            if args.dry_run:
+                print("   [dry-run] 未写盘。")
+            else:
+                con = sqlite3.connect(args.db)
+                try:
+                    before = con.execute("SELECT COUNT(*) FROM LocalizedText").fetchone()[0]
+                    tabs_b = {r[0] for r in con.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'")}
+                    # ★ 新增行同样 strip，保证与库内既有行（源自引擎缓存、已 strip）同口径
+                    con.executemany("INSERT OR IGNORE INTO LocalizedText "
+                                    "(Language,Tag,Text,Gender,Plurality) VALUES (?,?,?,?,?)",
+                                    [(l, t, (v[0] or "").strip(), v[1], v[2])
+                                     for (l, t), v in add.items()])
+                    if args.apply_rewrites:
+                        con.executemany("UPDATE LocalizedText SET Text=?, Gender=?, Plurality=? "
+                                        "WHERE Language=? AND Tag=?",
+                                        [((v[0] or "").strip(), v[1], v[2], l, t)
+                                         for (l, t), v in chg.items()])
+                    con.commit()
+                    after = con.execute("SELECT COUNT(*) FROM LocalizedText").fetchone()[0]
+                    tabs_a = {r[0] for r in con.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table'")}
+                finally:
+                    con.close()
+                print("   %d 行 → %d 行（+%d）" % (before, after, after - before))
+                print("   侧表/表集合保留: %s" % ("是" if tabs_b == tabs_a else "*** 变化！***"))
+            # 侧表还原（换机器时库里没有这两张表 → 从随包 JSON 灌回）
+            if not args.dry_run:
+                n_i, n_c, n_e = restore_side_tables(args.db)
+                if n_i < 0:
+                    print("   ⚠ 侧表备份 JSON 缺失（%s）——人工标注可能丢失"
+                          % os.path.basename(SIDE_JSON))
+                else:
+                    print("   SkillAnnotation_* 与自造行已就位: Icons=%d Colors=%d extraRows=%d（源: annotations/%s）"
+                          % (n_i, n_c, n_e, os.path.basename(SIDE_JSON)))
+            if not (args.build_main or args.build_mode):
+                return 0
+
+    # ---------------- 合成主库到新文件（游戏文件权威 + 既有库兜底）----------------
+    if args.build_main:
         if args.dry_run:
             print("[dry-run] 未写盘。")
-            return 0
-        if args.build_main:
-            # 主库语义 = 「游戏文件权威、既有库兜底」：
-            #   · 游戏文件（EXP2>EXP1>base）定义了的键 → 用分层值（EXP2 优先）
-            #   · 游戏文件没有的键（如本项目自造 tag）→ 用既有库的值补上
-            # 这是**新建文件**，不改既有库，所以此处应用分层值是正确且必需的；
-            # --apply-rewrites 只对「就地改既有库」(--augment-main) 有意义。
+        else:
             merged = dict(main_new)
             filled = 0
             for k, v in old.items():
@@ -466,48 +667,15 @@ def main() -> int:
             print("=== 写主文本库（游戏文件权威 + 既有库兜底）===")
             print("   游戏分层值 %d + 既有库补缺 %d → 合计 %d"
                   % (len(main_new), filled, len(merged)))
-            print("   其中 EXP2/EXP1 改写覆盖了既有库值：见上方「实质不同」统计")
             write_db(args.build_main, merged, None, "replace")
-        if args.build_mode:
-            print("=== 写模式文本库 ===")
-            # 模式库：只装模式文本（不混主库），独立可用
-            write_db(args.build_mode, mode_new, None, "replace")
-        return 0
 
-    # ---------------- 就地补全既有库 ----------------
-    if args.augment_main:
-        if not os.path.isfile(args.db):
-            print("ERROR: 找不到既有库 %s" % args.db)
-            return 1
-        add = {k: v for k, v in main_new.items() if k not in old}
-        chg = {k: v for k, v in main_new.items()
-               if k in old and (v[0] or "") != (old[k][0] or "")
-               and (v[0] or "").strip() != (old[k][0] or "").strip()}
-        print("=== 就地补全 ===")
-        print("   待新增: %d 行" % len(add))
-        print("   待改写: %d 行（%s）" % (len(chg), "会应用" if args.apply_rewrites else "跳过"))
+    # ---------------- 合成模式库（独立成库，只加不覆盖）----------------
+    if args.build_mode:
         if args.dry_run:
-            print("   [dry-run] 未写盘。")
-            return 0
-        con = sqlite3.connect(args.db)
-        try:
-            before = con.execute("SELECT COUNT(*) FROM LocalizedText").fetchone()[0]
-            tabs_b = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            con.executemany("INSERT OR IGNORE INTO LocalizedText "
-                            "(Language,Tag,Text,Gender,Plurality) VALUES (?,?,?,?,?)",
-                            [(l, t, v[0], v[1], v[2]) for (l, t), v in add.items()])
-            if args.apply_rewrites:
-                con.executemany("UPDATE LocalizedText SET Text=?, Gender=?, Plurality=? "
-                                "WHERE Language=? AND Tag=?",
-                                [(v[0], v[1], v[2], l, t) for (l, t), v in chg.items()])
-            con.commit()
-            after = con.execute("SELECT COUNT(*) FROM LocalizedText").fetchone()[0]
-            tabs_a = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        finally:
-            con.close()
-        print("   %d 行 → %d 行（+%d）" % (before, after, after - before))
-        print("   侧表/表集合保留: %s" % ("是" if tabs_b == tabs_a else "*** 变化！***"))
-        return 0
+            print("[dry-run] 未写盘。")
+        else:
+            print("=== 写模式文本库（独立成库）===")
+            write_db(args.build_mode, mode_new, None, "replace")
 
     return 0
 

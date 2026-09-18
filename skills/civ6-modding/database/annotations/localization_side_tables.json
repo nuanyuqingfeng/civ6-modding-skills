@@ -1,0 +1,1635 @@
+{
+ "schemaVersion": 1,
+ "purpose": "Skill-only annotations migrated out of DebugLocalization.sqlite. That DB is rebuilt locally and not tracked in git, so these curated rows live here to survive on fresh machines.",
+ "warning": "Neither the side tables nor `extraRows` are official game content — never emit them into mod SQL. They exist so the skill can map icon/color names to Chinese remarks, and so non-official localization rows are not lost.",
+ "restore": "`python database/scripts/build_localization.py --rebuild` restores both the side tables and `extraRows` into the rebuilt DebugLocalization.sqlite.",
+ "counts": {
+  "icons": 241,
+  "colors": 51,
+  "extraRows": 64
+ },
+ "tables": {
+  "icons": [
+   {
+    "name": "ICON_ALLIANCE",
+    "remark": "同盟"
+   },
+   {
+    "name": "ICON_Ability",
+    "remark": "能力"
+   },
+   {
+    "name": "ICON_AdditionalContent",
+    "remark": "额外内容"
+   },
+   {
+    "name": "ICON_Amenities",
+    "remark": "宜居度"
+   },
+   {
+    "name": "ICON_AmenitiesInsufficient",
+    "remark": "宜居不足"
+   },
+   {
+    "name": "ICON_Army",
+    "remark": "军队"
+   },
+   {
+    "name": "ICON_Barbarian",
+    "remark": "野蛮人"
+   },
+   {
+    "name": "ICON_Bolt",
+    "remark": "闪电图标"
+   },
+   {
+    "name": "ICON_Bombard",
+    "remark": "轰击"
+   },
+   {
+    "name": "ICON_Bombard_Large",
+    "remark": "大号轰击图标"
+   },
+   {
+    "name": "ICON_Bullet",
+    "remark": "项目符号图标"
+   },
+   {
+    "name": "ICON_BulletGlow",
+    "remark": "发光项目符号"
+   },
+   {
+    "name": "ICON_Capital",
+    "remark": "首都"
+   },
+   {
+    "name": "ICON_CapitalLarge",
+    "remark": "大号首都图标"
+   },
+   {
+    "name": "ICON_Charges",
+    "remark": "使用次数/充能"
+   },
+   {
+    "name": "ICON_Charges_Large",
+    "remark": "大号充能图标"
+   },
+   {
+    "name": "ICON_CheckFail",
+    "remark": "校验失败"
+   },
+   {
+    "name": "ICON_CheckSuccess",
+    "remark": "校验成功"
+   },
+   {
+    "name": "ICON_Checkmark",
+    "remark": "勾选"
+   },
+   {
+    "name": "ICON_CheckmarkBlue",
+    "remark": "蓝色勾选"
+   },
+   {
+    "name": "ICON_Citizen",
+    "remark": "公民人口"
+   },
+   {
+    "name": "ICON_CityStateQuest",
+    "remark": "城邦任务"
+   },
+   {
+    "name": "ICON_CivicBoosted",
+    "remark": "市政提速"
+   },
+   {
+    "name": "ICON_Corps_Large",
+    "remark": "大军团"
+   },
+   {
+    "name": "ICON_Culture",
+    "remark": "文化"
+   },
+   {
+    "name": "ICON_CultureLarge",
+    "remark": "大号文化图标"
+   },
+   {
+    "name": "ICON_DECLARE_COLONIAL_WAR",
+    "remark": "殖民战争宣战"
+   },
+   {
+    "name": "ICON_DECLARE_FORMAL_WAR",
+    "remark": "正式战争宣战"
+   },
+   {
+    "name": "ICON_DECLARE_FRIENDSHIP",
+    "remark": "宣告友好"
+   },
+   {
+    "name": "ICON_DECLARE_HOLY_WAR",
+    "remark": "圣战宣战"
+   },
+   {
+    "name": "ICON_DECLARE_LIBERATION_WAR",
+    "remark": "解放战争宣战"
+   },
+   {
+    "name": "ICON_DECLARE_PROTECTORATE_WAR",
+    "remark": "保护国战争宣战"
+   },
+   {
+    "name": "ICON_DECLARE_RECONQUEST_WAR",
+    "remark": "收复战争宣战"
+   },
+   {
+    "name": "ICON_DECLARE_SURPRISE_WAR",
+    "remark": "突袭战争宣战"
+   },
+   {
+    "name": "ICON_DECLARE_TERRITORIAL_WAR",
+    "remark": "领土战争宣战"
+   },
+   {
+    "name": "ICON_DECLARE_WAR_MINOR_CIV",
+    "remark": "对城邦宣战"
+   },
+   {
+    "name": "ICON_DEFENSIVE_PACT",
+    "remark": "防御协定"
+   },
+   {
+    "name": "ICON_DEMAND_TRIBUTE",
+    "remark": "索要贡金"
+   },
+   {
+    "name": "ICON_DIPLOMATIC_DELEGATION",
+    "remark": "外交代表团"
+   },
+   {
+    "name": "ICON_District_ACROPOLIS",
+    "remark": "卫城区域"
+   },
+   {
+    "name": "ICON_District_AQUEDUCT",
+    "remark": "水渠"
+   },
+   {
+    "name": "ICON_District_BATH",
+    "remark": "浴场"
+   },
+   {
+    "name": "ICON_District_CAMPUS",
+    "remark": "学院"
+   },
+   {
+    "name": "ICON_District_CITY_CENTER",
+    "remark": "市中心"
+   },
+   {
+    "name": "ICON_District_COMMERCIAL_HUB",
+    "remark": "商业中心"
+   },
+   {
+    "name": "ICON_District_ENCAMPMENT",
+    "remark": "军营"
+   },
+   {
+    "name": "ICON_District_ENTERTAINMENT",
+    "remark": "娱乐中心"
+   },
+   {
+    "name": "ICON_District_HANSA",
+    "remark": "汉萨商会"
+   },
+   {
+    "name": "ICON_District_HARBOR",
+    "remark": "港口"
+   },
+   {
+    "name": "ICON_District_HOLY_SITE",
+    "remark": "圣地"
+   },
+   {
+    "name": "ICON_District_INDUSTRIAL_ZONE",
+    "remark": "工业区"
+   },
+   {
+    "name": "ICON_District_LAVRA",
+    "remark": "修道院"
+   },
+   {
+    "name": "ICON_District_MBANZA",
+    "remark": "姆班扎"
+   },
+   {
+    "name": "ICON_District_NEIGHBORHOOD",
+    "remark": "社区"
+   },
+   {
+    "name": "ICON_District_ROYAL_NAVY_DOCKYARD",
+    "remark": "皇家船坞"
+   },
+   {
+    "name": "ICON_District_SPACEPORT",
+    "remark": "航天港"
+   },
+   {
+    "name": "ICON_District_THEATER",
+    "remark": "剧院广场"
+   },
+   {
+    "name": "ICON_DownloadContent",
+    "remark": "下载内容"
+   },
+   {
+    "name": "ICON_Envoy",
+    "remark": "使者"
+   },
+   {
+    "name": "ICON_Exclamation",
+    "remark": "感叹号"
+   },
+   {
+    "name": "ICON_Faith",
+    "remark": "信仰"
+   },
+   {
+    "name": "ICON_FaithLarge",
+    "remark": "大号信仰图标"
+   },
+   {
+    "name": "ICON_Food",
+    "remark": "食物"
+   },
+   {
+    "name": "ICON_FoodDeficit",
+    "remark": "食物短缺"
+   },
+   {
+    "name": "ICON_FoodLarge",
+    "remark": "大号食物图标"
+   },
+   {
+    "name": "ICON_FoodPerTurn",
+    "remark": "每回合食物"
+   },
+   {
+    "name": "ICON_FoodSurplus",
+    "remark": "食物盈余"
+   },
+   {
+    "name": "ICON_Fortified",
+    "remark": "已设防"
+   },
+   {
+    "name": "ICON_Fortify",
+    "remark": "驻扎设防"
+   },
+   {
+    "name": "ICON_GIFT_UNIT",
+    "remark": "赠送单位"
+   },
+   {
+    "name": "ICON_GRANT_INFLUENCE_TOKEN",
+    "remark": "授予影响力代币"
+   },
+   {
+    "name": "ICON_Global",
+    "remark": "全局"
+   },
+   {
+    "name": "ICON_GoingTo",
+    "remark": "即将执行"
+   },
+   {
+    "name": "ICON_Gold",
+    "remark": "金币"
+   },
+   {
+    "name": "ICON_GoldLarge",
+    "remark": "大号金币图标"
+   },
+   {
+    "name": "ICON_Government",
+    "remark": "政体"
+   },
+   {
+    "name": "ICON_GreatAdmiral",
+    "remark": "大海军统帅"
+   },
+   {
+    "name": "ICON_GreatArtist",
+    "remark": "大艺术家"
+   },
+   {
+    "name": "ICON_GreatEngineer",
+    "remark": "大工程师"
+   },
+   {
+    "name": "ICON_GreatGeneral",
+    "remark": "大军事家"
+   },
+   {
+    "name": "ICON_GreatMerchant",
+    "remark": "大商人"
+   },
+   {
+    "name": "ICON_GreatMusician",
+    "remark": "大音乐家"
+   },
+   {
+    "name": "ICON_GreatProphet",
+    "remark": "大预言家"
+   },
+   {
+    "name": "ICON_GreatScientist",
+    "remark": "大科学家"
+   },
+   {
+    "name": "ICON_GreatWork_Artifact_Anc_Themed",
+    "remark": "主题化古文物"
+   },
+   {
+    "name": "ICON_GreatWork_Artifact_Ancient",
+    "remark": "古文物巨作"
+   },
+   {
+    "name": "ICON_GreatWork_Artifact_Class_Themed",
+    "remark": "主题化古典文物"
+   },
+   {
+    "name": "ICON_GreatWork_Artifact_Classical",
+    "remark": "古典文物巨作"
+   },
+   {
+    "name": "ICON_GreatWork_Artifact_Industrial",
+    "remark": "工业文物巨作"
+   },
+   {
+    "name": "ICON_GreatWork_Artifact_Industrial_Themed",
+    "remark": "主题化工业文物"
+   },
+   {
+    "name": "ICON_GreatWork_Artifact_Medieval",
+    "remark": "中世纪文物巨作"
+   },
+   {
+    "name": "ICON_GreatWork_Artifact_Medieval_Themed",
+    "remark": "主题化中世纪文物"
+   },
+   {
+    "name": "ICON_GreatWork_Artifact_Renaissance",
+    "remark": "文艺复兴文物巨作"
+   },
+   {
+    "name": "ICON_GreatWork_Artifact_Renaissance_Themed",
+    "remark": "主题化文艺复兴文物"
+   },
+   {
+    "name": "ICON_GreatWork_Landscape",
+    "remark": "风景画巨作"
+   },
+   {
+    "name": "ICON_GreatWork_Landscape_Themed",
+    "remark": "主题化风景画"
+   },
+   {
+    "name": "ICON_GreatWork_Music_Themed",
+    "remark": "主题化音乐"
+   },
+   {
+    "name": "ICON_GreatWork_Portrait",
+    "remark": "肖像画巨作"
+   },
+   {
+    "name": "ICON_GreatWork_Portrait_Themed",
+    "remark": "主题化肖像画"
+   },
+   {
+    "name": "ICON_GreatWork_Relic",
+    "remark": "圣物"
+   },
+   {
+    "name": "ICON_GreatWork_Relic_Themed",
+    "remark": "主题化圣物"
+   },
+   {
+    "name": "ICON_GreatWork_Religious",
+    "remark": "宗教题材巨作"
+   },
+   {
+    "name": "ICON_GreatWork_Religious_Themed",
+    "remark": "主题化宗教作品"
+   },
+   {
+    "name": "ICON_GreatWork_Sculpture",
+    "remark": "雕塑巨作"
+   },
+   {
+    "name": "ICON_GreatWork_Sculpture_Themed",
+    "remark": "主题化雕塑"
+   },
+   {
+    "name": "ICON_GreatWork_Writing",
+    "remark": "著作巨作"
+   },
+   {
+    "name": "ICON_GreatWork_Writing_Themed",
+    "remark": "主题化著作"
+   },
+   {
+    "name": "ICON_GreatWriter",
+    "remark": "大作家"
+   },
+   {
+    "name": "ICON_Host",
+    "remark": "房主"
+   },
+   {
+    "name": "ICON_HotjoiningPip",
+    "remark": "中途加入状态点"
+   },
+   {
+    "name": "ICON_Housing",
+    "remark": "住房"
+   },
+   {
+    "name": "ICON_HousingInsufficient",
+    "remark": "住房不足"
+   },
+   {
+    "name": "ICON_InfluencePerTurn",
+    "remark": "每回合影响力"
+   },
+   {
+    "name": "ICON_List",
+    "remark": "列表"
+   },
+   {
+    "name": "ICON_LocationPip",
+    "remark": "位置标记点"
+   },
+   {
+    "name": "ICON_MILITARY_ACCESS",
+    "remark": "军事通行权"
+   },
+   {
+    "name": "ICON_Movement",
+    "remark": "移动力"
+   },
+   {
+    "name": "ICON_Movement_Large",
+    "remark": "大号移动力图标"
+   },
+   {
+    "name": "ICON_New",
+    "remark": "新增标识"
+   },
+   {
+    "name": "ICON_Not",
+    "remark": "否定标识"
+   },
+   {
+    "name": "ICON_NotModReadyPip",
+    "remark": "模组未就绪点"
+   },
+   {
+    "name": "ICON_Nuclear",
+    "remark": "核武器"
+   },
+   {
+    "name": "ICON_OPEN_BORDERS",
+    "remark": "开放边境"
+   },
+   {
+    "name": "ICON_Occupied",
+    "remark": "被占领"
+   },
+   {
+    "name": "ICON_OfflineRedPingPig",
+    "remark": "离线红点"
+   },
+   {
+    "name": "ICON_OnlineGreenPingPip",
+    "remark": "正常延迟在线小点"
+   },
+   {
+    "name": "ICON_OnlinePip",
+    "remark": "在线状态小点"
+   },
+   {
+    "name": "ICON_OnlineYellowPingPig",
+    "remark": "高延迟在线黄点"
+   },
+   {
+    "name": "ICON_PROMISES_CITYSTATE",
+    "remark": "城邦相关承诺"
+   },
+   {
+    "name": "ICON_PROMISES_ESPIONAGE",
+    "remark": "间谍相关承诺"
+   },
+   {
+    "name": "ICON_PROMISES_RELIGION",
+    "remark": "宗教相关承诺"
+   },
+   {
+    "name": "ICON_PausedGreenPingPip",
+    "remark": "暂停绿延迟小点"
+   },
+   {
+    "name": "ICON_PausedPip",
+    "remark": "通用暂停点"
+   },
+   {
+    "name": "ICON_PausedYellowPingPig",
+    "remark": "暂停高延迟黄点"
+   },
+   {
+    "name": "ICON_Pillaged",
+    "remark": "被劫掠"
+   },
+   {
+    "name": "ICON_Plus",
+    "remark": "加号图标"
+   },
+   {
+    "name": "ICON_Policy",
+    "remark": "政策卡"
+   },
+   {
+    "name": "ICON_Position",
+    "remark": "坐标位置"
+   },
+   {
+    "name": "ICON_PressureDown",
+    "remark": "压力下降"
+   },
+   {
+    "name": "ICON_PressureDownLarge",
+    "remark": "大幅压力下降"
+   },
+   {
+    "name": "ICON_PressureHigh",
+    "remark": "高压"
+   },
+   {
+    "name": "ICON_PressureLow",
+    "remark": "低压"
+   },
+   {
+    "name": "ICON_PressureMedium",
+    "remark": "中压"
+   },
+   {
+    "name": "ICON_PressureUp",
+    "remark": "压力上升"
+   },
+   {
+    "name": "ICON_PressureUpLarge",
+    "remark": "大幅压力上升"
+   },
+   {
+    "name": "ICON_Production",
+    "remark": "产能"
+   },
+   {
+    "name": "ICON_ProductionLarge",
+    "remark": "大号产能图标"
+   },
+   {
+    "name": "ICON_ProductionQueue",
+    "remark": "生产队列"
+   },
+   {
+    "name": "ICON_Promotion",
+    "remark": "晋升"
+   },
+   {
+    "name": "ICON_RECALL_AMBASSADOR",
+    "remark": "召回大使"
+   },
+   {
+    "name": "ICON_REQUEST_ASSISTANCE",
+    "remark": "请求援助"
+   },
+   {
+    "name": "ICON_RESCHEDULE_TRADE",
+    "remark": "调整贸易"
+   },
+   {
+    "name": "ICON_RESIDENT_EMBASSY",
+    "remark": "常驻大使馆"
+   },
+   {
+    "name": "ICON_RESOURCE_ALUMINUM",
+    "remark": "铝"
+   },
+   {
+    "name": "ICON_RESOURCE_ANTIQUITY_SITE",
+    "remark": "古物遗迹资源"
+   },
+   {
+    "name": "ICON_RESOURCE_BANANAS",
+    "remark": "香蕉"
+   },
+   {
+    "name": "ICON_RESOURCE_CATTLE",
+    "remark": "牛"
+   },
+   {
+    "name": "ICON_RESOURCE_CINNAMON",
+    "remark": "肉桂"
+   },
+   {
+    "name": "ICON_RESOURCE_CITRUS",
+    "remark": "柑橘"
+   },
+   {
+    "name": "ICON_RESOURCE_CLOVES",
+    "remark": "丁香"
+   },
+   {
+    "name": "ICON_RESOURCE_COAL",
+    "remark": "煤炭"
+   },
+   {
+    "name": "ICON_RESOURCE_COCOA",
+    "remark": "可可"
+   },
+   {
+    "name": "ICON_RESOURCE_COFFEE",
+    "remark": "咖啡"
+   },
+   {
+    "name": "ICON_RESOURCE_COPPER",
+    "remark": "铜"
+   },
+   {
+    "name": "ICON_RESOURCE_COSMETICS",
+    "remark": "奢侈品化妆品"
+   },
+   {
+    "name": "ICON_RESOURCE_COTTON",
+    "remark": "棉花"
+   },
+   {
+    "name": "ICON_RESOURCE_CRABS",
+    "remark": "螃蟹"
+   },
+   {
+    "name": "ICON_RESOURCE_DEER",
+    "remark": "鹿"
+   },
+   {
+    "name": "ICON_RESOURCE_DIAMONDS",
+    "remark": "钻石"
+   },
+   {
+    "name": "ICON_RESOURCE_DYES",
+    "remark": "染料"
+   },
+   {
+    "name": "ICON_RESOURCE_FURS",
+    "remark": "毛皮"
+   },
+   {
+    "name": "ICON_RESOURCE_GOLD",
+    "remark": "黄金"
+   },
+   {
+    "name": "ICON_RESOURCE_GYPSUM",
+    "remark": "石膏"
+   },
+   {
+    "name": "ICON_RESOURCE_HORSE",
+    "remark": "马匹"
+   },
+   {
+    "name": "ICON_RESOURCE_INCENSE",
+    "remark": "熏香"
+   },
+   {
+    "name": "ICON_RESOURCE_IRON",
+    "remark": "铁"
+   },
+   {
+    "name": "ICON_RESOURCE_IVORY",
+    "remark": "象牙"
+   },
+   {
+    "name": "ICON_RESOURCE_JADE",
+    "remark": "玉石"
+   },
+   {
+    "name": "ICON_RESOURCE_MARBLE",
+    "remark": "大理石"
+   },
+   {
+    "name": "ICON_RESOURCE_MERCURY",
+    "remark": "水银"
+   },
+   {
+    "name": "ICON_RESOURCE_NITER",
+    "remark": "硝石"
+   },
+   {
+    "name": "ICON_RESOURCE_OIL",
+    "remark": "石油"
+   },
+   {
+    "name": "ICON_RESOURCE_PEARLS",
+    "remark": "珍珠"
+   },
+   {
+    "name": "ICON_RESOURCE_PERFUME",
+    "remark": "香水"
+   },
+   {
+    "name": "ICON_RESOURCE_RICE",
+    "remark": "稻米"
+   },
+   {
+    "name": "ICON_RESOURCE_SALT",
+    "remark": "盐"
+   },
+   {
+    "name": "ICON_RESOURCE_SHEEP",
+    "remark": "绵羊"
+   },
+   {
+    "name": "ICON_RESOURCE_SHIPWRECK",
+    "remark": "沉船遗迹"
+   },
+   {
+    "name": "ICON_RESOURCE_SILK",
+    "remark": "丝绸"
+   },
+   {
+    "name": "ICON_RESOURCE_SILVER",
+    "remark": "白银"
+   },
+   {
+    "name": "ICON_RESOURCE_SPICES",
+    "remark": "香料"
+   },
+   {
+    "name": "ICON_RESOURCE_STONE",
+    "remark": "石材"
+   },
+   {
+    "name": "ICON_RESOURCE_SUGAR",
+    "remark": "蔗糖"
+   },
+   {
+    "name": "ICON_RESOURCE_TEA",
+    "remark": "茶叶"
+   },
+   {
+    "name": "ICON_RESOURCE_TOBACCO",
+    "remark": "烟草"
+   },
+   {
+    "name": "ICON_RESOURCE_TOYS",
+    "remark": "玩具"
+   },
+   {
+    "name": "ICON_RESOURCE_TRUFFLES",
+    "remark": "松露"
+   },
+   {
+    "name": "ICON_RESOURCE_URANIUM",
+    "remark": "铀"
+   },
+   {
+    "name": "ICON_RESOURCE_WHALES",
+    "remark": "鲸鱼"
+   },
+   {
+    "name": "ICON_RESOURCE_WHEAT",
+    "remark": "小麦"
+   },
+   {
+    "name": "ICON_Range",
+    "remark": "射程"
+   },
+   {
+    "name": "ICON_Range_Large",
+    "remark": "大号射程图标"
+   },
+   {
+    "name": "ICON_Ranged",
+    "remark": "远程攻击"
+   },
+   {
+    "name": "ICON_RangedStrength_Large",
+    "remark": "大号远程战力"
+   },
+   {
+    "name": "ICON_Razed",
+    "remark": "城市夷平"
+   },
+   {
+    "name": "ICON_Ready",
+    "remark": "就绪"
+   },
+   {
+    "name": "ICON_Religion",
+    "remark": "宗教"
+   },
+   {
+    "name": "ICON_ReligionStat_Large",
+    "remark": "大号宗教统计"
+   },
+   {
+    "name": "ICON_Reports",
+    "remark": "报表"
+   },
+   {
+    "name": "ICON_ResyncingPip",
+    "remark": "重同步状态点"
+   },
+   {
+    "name": "ICON_Revert",
+    "remark": "回退"
+   },
+   {
+    "name": "ICON_Science",
+    "remark": "科技"
+   },
+   {
+    "name": "ICON_ScienceLarge",
+    "remark": "大号科技图标"
+   },
+   {
+    "name": "ICON_ShowMe",
+    "remark": "定位跳转"
+   },
+   {
+    "name": "ICON_Strength",
+    "remark": "战力"
+   },
+   {
+    "name": "ICON_Team",
+    "remark": "队伍"
+   },
+   {
+    "name": "ICON_TechBoosted",
+    "remark": "科技提速"
+   },
+   {
+    "name": "ICON_Terrain",
+    "remark": "地形"
+   },
+   {
+    "name": "ICON_ThemeBonus",
+    "remark": "主题化加成"
+   },
+   {
+    "name": "ICON_Therefore",
+    "remark": "推导标识"
+   },
+   {
+    "name": "ICON_Thermonuclear",
+    "remark": "热核装置"
+   },
+   {
+    "name": "ICON_Tourism",
+    "remark": "旅游业绩"
+   },
+   {
+    "name": "ICON_TourismLarge",
+    "remark": "大号旅游图标"
+   },
+   {
+    "name": "ICON_TradeRoute",
+    "remark": "贸易路线"
+   },
+   {
+    "name": "ICON_TradeRouteLarge",
+    "remark": "大号贸易路线"
+   },
+   {
+    "name": "ICON_TradingPost",
+    "remark": "贸易站"
+   },
+   {
+    "name": "ICON_TradingPostLarge",
+    "remark": "大号贸易站"
+   },
+   {
+    "name": "ICON_Turn",
+    "remark": "回合"
+   },
+   {
+    "name": "ICON_USE_NUCLEAR_WEAPON",
+    "remark": "使用核武器"
+   },
+   {
+    "name": "ICON_UnderSiege",
+    "remark": "被围困"
+   },
+   {
+    "name": "ICON_Unit",
+    "remark": "单位"
+   },
+   {
+    "name": "ICON_VIEW_DEMAND_TRIBUTE",
+    "remark": "查看贡金要求"
+   },
+   {
+    "name": "ICON_VIEW_MESSAGES",
+    "remark": "查看消息"
+   },
+   {
+    "name": "ICON_VisLimited",
+    "remark": "有限可见"
+   },
+   {
+    "name": "ICON_VisLimitedLarge",
+    "remark": "大号有限可见"
+   },
+   {
+    "name": "ICON_VisOpen",
+    "remark": "公开可见"
+   },
+   {
+    "name": "ICON_VisOpenLarge",
+    "remark": "大号公开可见"
+   },
+   {
+    "name": "ICON_VisSecret",
+    "remark": "私密可见"
+   },
+   {
+    "name": "ICON_VisSecretLarge",
+    "remark": "大号私密可见"
+   },
+   {
+    "name": "ICON_Whisper",
+    "remark": "私聊"
+   },
+   {
+    "name": "ICON_You",
+    "remark": "玩家自身标识"
+   }
+  ],
+  "colors": [
+   {
+    "type": "COLOR:131,147,158,255",
+    "remark": "RGBA颜色值"
+   },
+   {
+    "type": "COLOR:255,255,255,255",
+    "remark": "纯白RGBA"
+   },
+   {
+    "type": "COLOR:72,39,111,255",
+    "remark": "紫调RGBA"
+   },
+   {
+    "type": "COLOR:Civ6Blue",
+    "remark": "文明6蓝色"
+   },
+   {
+    "type": "COLOR:Civ6Red",
+    "remark": "文明6红色"
+   },
+   {
+    "type": "COLOR:Civ6Yellow",
+    "remark": "文明6黄色"
+   },
+   {
+    "type": "COLOR:ConnectionStatus_Connected",
+    "remark": "已连接状态色"
+   },
+   {
+    "type": "COLOR:ConnectionStatus_NotModReady",
+    "remark": "模组未就绪状态色"
+   },
+   {
+    "type": "COLOR:ConnectionStatus_Resyncing",
+    "remark": "重同步状态色"
+   },
+   {
+    "type": "COLOR:DiplomaticLabelCS",
+    "remark": "外交标签控件色"
+   },
+   {
+    "type": "COLOR:FoodDark",
+    "remark": "食物深色"
+   },
+   {
+    "type": "COLOR:Red",
+    "remark": "红色"
+   },
+   {
+    "type": "COLOR:ResCultureLabelCS",
+    "remark": "文化资源标签色"
+   },
+   {
+    "type": "COLOR:ResFaithLabelCS",
+    "remark": "信仰资源标签色"
+   },
+   {
+    "type": "COLOR:ResFoodLabelCS",
+    "remark": "食物资源标签色"
+   },
+   {
+    "type": "COLOR:ResGoldLabelCS",
+    "remark": "金币资源标签色"
+   },
+   {
+    "type": "COLOR:ResMilitaryLabelCS",
+    "remark": "军事资源标签色"
+   },
+   {
+    "type": "COLOR:ResProductionLabelCS",
+    "remark": "产能资源标签色"
+   },
+   {
+    "type": "COLOR:ResScienceLabelCS",
+    "remark": "科技资源标签色"
+   },
+   {
+    "type": "COLOR:StagingStatus_Invalid",
+    "remark": "暂存无效状态色"
+   },
+   {
+    "type": "COLOR:StatGoodCS",
+    "remark": "正面数值统计色"
+   },
+   {
+    "type": "COLOR:SuzerainDark",
+    "remark": "宗主国深色"
+   },
+   {
+    "type": "COLORButtonCS",
+    "remark": "按钮控件色"
+   },
+   {
+    "type": "COLOR_Blue",
+    "remark": "基础蓝色"
+   },
+   {
+    "type": "COLOR_Civ6DarkRed",
+    "remark": "文明6暗红色"
+   },
+   {
+    "type": "COLOR_Civ6Green",
+    "remark": "文明6绿色"
+   },
+   {
+    "type": "COLOR_Civ6Red",
+    "remark": "文明6红色"
+   },
+   {
+    "type": "COLOR_Civ6Yellow",
+    "remark": "文明6黄色"
+   },
+   {
+    "type": "COLOR_FLOAT_CULTURE",
+    "remark": "文化浮动数值色"
+   },
+   {
+    "type": "COLOR_FLOAT_DIPLOMATIC",
+    "remark": "外交浮动数值色"
+   },
+   {
+    "type": "COLOR_FLOAT_FAITH",
+    "remark": "信仰浮动数值色"
+   },
+   {
+    "type": "COLOR_FLOAT_FOOD",
+    "remark": "食物浮动数值色"
+   },
+   {
+    "type": "COLOR_FLOAT_GOLD",
+    "remark": "金币浮动数值色"
+   },
+   {
+    "type": "COLOR_FLOAT_MILITARY",
+    "remark": "军事浮动数值色"
+   },
+   {
+    "type": "COLOR_FLOAT_PRODUCTION",
+    "remark": "产能浮动数值色"
+   },
+   {
+    "type": "COLOR_FLOAT_SCIENCE",
+    "remark": "科技浮动数值色"
+   },
+   {
+    "type": "COLOR_GREEN",
+    "remark": "基础绿色"
+   },
+   {
+    "type": "COLOR_LIGHTBLUE",
+    "remark": "浅蓝色"
+   },
+   {
+    "type": "COLOR_MEDIUM_GREEN",
+    "remark": "中绿色"
+   },
+   {
+    "type": "COLOR_RED",
+    "remark": "基础红色"
+   },
+   {
+    "type": "COLOR_WHITE",
+    "remark": "基础白色"
+   },
+   {
+    "type": "ColorStatBadCS",
+    "remark": "负面数值统计色"
+   },
+   {
+    "type": "color:ChatMessage_Global",
+    "remark": "全局聊天文字色"
+   },
+   {
+    "type": "color:ChatMessage_Help",
+    "remark": "帮助聊天文字色"
+   },
+   {
+    "type": "color:ChatMessage_Team",
+    "remark": "队伍聊天文字色"
+   },
+   {
+    "type": "color:ChatMessage_Whisper",
+    "remark": "私聊聊天文字色"
+   },
+   {
+    "type": "color:ChatPlayerName",
+    "remark": "玩家名聊天色"
+   },
+   {
+    "type": "color:Green",
+    "remark": "绿色"
+   },
+   {
+    "type": "color:Happiness",
+    "remark": "幸福度颜色"
+   },
+   {
+    "type": "color:ModStatusGreen",
+    "remark": "模组正常状态绿"
+   },
+   {
+    "type": "color:ModStatusYellow",
+    "remark": "模组警告状态黄"
+   }
+  ]
+ },
+ "extraRows": [
+  {
+   "language": "en_US",
+   "tag": "LOC_PEDIA_UNITS_PAGE_UNIT_ROVER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "As the world edged towar its frozen end, those destined to face the final moment placed their hopes in a certain individual. Their blessed him/her, wishing he/she would lead them to a brighter tomorrow.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "en_US",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_DARK_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Please march on. May victory prevail the lasting night. I pray for your safe return.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "en_US",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_WIND_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "I heard your request... But I prefer to handle this my way.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "en_US",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_EMPEROR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "In bygone days, I stood by your side as you established Jinzhou City. You tasked me with safeguarding its prosperity.[NEWLINE]                                                                        ——Sentinel of Jinzhou - Jue",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "en_US",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_GUIDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Participate in history, make choices and witness the development of civilizations.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "en_US",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_FOUNDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Long ago, when you first brought the Black Shores into existence on this island... You once wove the threads of this world together, but then you left, roving the boundaries between this realm and the next.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "en_US",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_SURVIVOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "\"My mentor... the one I follow... Please... I beg you to end this Möbius loop, this endless cycle...\"",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "en_US",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_ASTRAL_MODULATOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "From the Etheric Sea to Sonoro, from time to space... Your story... begins here.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hans_CN",
+   "tag": "LOC_PEDIA_UNITS_PAGE_UNIT_ROVER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "世界在凛冽中迈入死寂，必将经历那个时刻的人们将希望交付给你。他们祝福你，愿你替他们抵达那个足够温暖的未来。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hans_CN",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_DARK_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "只管向前吧，愿你们穿越长夜，胜利归来。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hans_CN",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_WIND_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "我已收到你的求助，接下来……该按我的风格解决了。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hans_CN",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_EMPEROR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "今州文明是您昔日携我所创。您命我驻守于此，保此地文明兴盛，不衰不替。[NEWLINE]                                                                        ——今州岁主-角",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hans_CN",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_GUIDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "作为历史的参与者，介入、选择、见证文明的发展。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hans_CN",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_FOUNDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "你曾在这里建立黑海岸，将整个索拉里斯联系在一起，但后来，你留下权柄，独自离开，四处漂泊，寻找新的答案。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hans_CN",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_SURVIVOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "“我的导师……我所追随的人……请你终结这莫比乌斯的循环……”",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hans_CN",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_ASTRAL_MODULATOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "从天空海到索诺拉，从时间到空间……这里，就是起点了。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hant_HK",
+   "tag": "LOC_PEDIA_UNITS_PAGE_UNIT_ROVER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "世界在凜冽中邁入死寂，必將經歷那個時刻的人們將希望交付給你。他們祝福你，願你替他們抵達那個足夠溫暖的未來。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hant_HK",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_DARK_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "只管向前吧，願你們穿越長夜，勝利歸來。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hant_HK",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_WIND_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "我已收到你的求助，接下來……該按我的風格解決了。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hant_HK",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_EMPEROR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "今州文明是您昔日攜我所創。您命我駐守於此，保此地文明興盛，不衰不替。[NEWLINE]                                                                        ——今州歲主-角",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hant_HK",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_GUIDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "作為歷史的參與者，介入、選擇、見證文明的發展。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hant_HK",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_FOUNDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "你曾在這裡建立黑海岸，將整個索拉里斯聯繫在一起，但後來，你留下權柄，獨自離開，四處漂泊，尋找新的答案。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hant_HK",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_SURVIVOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "「我的導師……我所追隨的人……請你終結這莫比烏斯的循環……」",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "zh_Hant_HK",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_ASTRAL_MODULATOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "從天空海到索諾拉，從時間到空間……這裡，就是起點了。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "es_ES",
+   "tag": "LOC_PEDIA_UNITS_PAGE_UNIT_ROVER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "A medida que el mundo se acercaba a su fin congelado, aquellos destinados a enfrentar el momento final depositaron sus esperanzas en cierto individuo. Lo/la bendijeron, deseando que los guiara hacia un mañana más brillante.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "es_ES",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_DARK_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Por favor, marcha. Que la victoria prevalezca sobre la noche duradera. Rezo por tu regreso seguro.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "es_ES",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_WIND_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Escuché tu petición... Pero prefiero manejar esto a mi manera.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "es_ES",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_EMPEROR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "En días pasados, estuve a tu lado mientras establecías la ciudad de Jinzhou. Me encargaste salvaguardar su prosperidad.[NEWLINE]                                                                        ——Centinela de Jinzhou - Jue",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "es_ES",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_GUIDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Participa en la historia, toma decisiones y sé testigo del desarrollo de las civilizaciones.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "es_ES",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_FOUNDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Hace mucho tiempo, cuando trajiste a la existencia por primera vez las Costas Negras en esta isla... Una vez tejiste los hilos de este mundo juntos, pero luego te fuiste, vagando por los límites entre este reino y el siguiente.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "es_ES",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_SURVIVOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "\"Mi mentor... a quien sigo... Por favor... te ruego que termines este bucle de Möbius, este ciclo interminable...\"",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "es_ES",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_ASTRAL_MODULATOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Desde el Mar Etérico hasta Sonoro, desde el tiempo hasta el espacio... Tu historia... comienza aquí.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ko_KR",
+   "tag": "LOC_PEDIA_UNITS_PAGE_UNIT_ROVER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "세상이 차갑게 얼어붙어 죽음으로 향하는 가운데, 그 최후의 순간을 맞이해야 할 이들은 그대에게 희망을 맡겼습니다. 그들은 그대를 축복하며, 그대가 그들을 따뜻한 미래로 인도해주기를 바랍니다.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ko_KR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_DARK_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "그냥 앞으로 나아가십시오. 긴 밤을 지나 승리를 거두고 무사히 돌아오기를 기원합니다.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ko_KR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_WIND_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "도움 요청은 들었소. 이제…… 내 방식으로 처리하겠소.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ko_KR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_EMPEROR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "진주 문명은 옛날 그대가 나와 함께 세우신 것입니다. 그대는 나에게 이곳에 주둔하여 문명이 쇠퇴하지 않고 번영하도록 지켜달라 명하셨습니다.[NEWLINE]                                                                        ——진주 수주 - 각",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ko_KR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_GUIDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "역사의 참여자로서, 개입하고 선택하며 문명의 발전을 지켜보십시오.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ko_KR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_FOUNDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "그대는 이곳에 검은 해안을 세우고 솔라리스 전체를 하나로 엮었으나, 이후 권한을 남겨두고 홀로 떠나 방황하며 새로운 답을 찾았습니다.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ko_KR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_SURVIVOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "『스승님…… 제가 따르는 분…… 부디 이 뫼비우스의 순환을 끝내주십시오……』",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ko_KR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_ASTRAL_MODULATOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "하늘바다에서 소노라까지, 시간에서 공간까지…… 여기가 바로 시작입니다.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "de_DE",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_ASTRAL_MODULATOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Vom Ätherischen Meer bis zur Sonoro-Sphäre, von der Zeit bis zum Raum … hier beginnt alles.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "de_DE",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_DARK_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Marschiert nur weiter. Möget ihr die lange Nacht durchqueren und siegreich zurückkehren.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "de_DE",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_EMPEROR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Die Zivilisation von Jinzhou hast du einst gemeinsam mit mir erschaffen. Du hast mir aufgetragen, diesen Ort zu bewachen und dafür zu sorgen, dass seine Zivilisation gedeiht und niemals verfällt.[NEWLINE]                                                                        ——Das Hütende von Jinzhou – Jue",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "de_DE",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_FOUNDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Einst hast du hier die Schwarzen Küsten errichtet und ganz Solaris miteinander verbunden. Doch später hast du deine Macht zurückgelassen, bist allein fortgegangen und umhergestreift, um neue Antworten zu finden.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "de_DE",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_GUIDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Greife als Beteiligter an der Geschichte ein, triff Entscheidungen und werde Zeuge der Entwicklung von Zivilisationen.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "de_DE",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_SURVIVOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "„Mein Mentor … der Mensch, dem ich folge … Bitte … ich flehe dich an, beende diese Möbiusschleife … diesen endlosen Kreislauf …“",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "de_DE",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_WIND_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Ich habe deinen Hilferuf erhalten. Jetzt … werde ich das auf meine Art lösen.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "de_DE",
+   "tag": "LOC_PEDIA_UNITS_PAGE_UNIT_ROVER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Als Die Welt ihrem eisigen Ende entgegenschritt, vertrauten die Menschen, die diesen Augenblick unweigerlich erleben würden, dir ihre Hoffnung an. Sie segneten dich und wünschten sich, dass du an ihrer Stelle eine ausreichend warme Zukunft erreichst.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "fr_FR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_ASTRAL_MODULATOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "De la Mer éthérée à Sonora, du temps à l’espace… c’est ici que tout commence.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "fr_FR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_DARK_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Continuez d’avancer. Puissiez-vous traverser la longue nuit et revenir victorieux.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "fr_FR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_EMPEROR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "C’est toi qui as fondé jadis la civilisation de Jinzhou avec moi. Tu m’as ordonné de veiller sur ces terres et de faire prospérer leur civilisation, sans jamais la laisser décliner.[NEWLINE]                                                                        ——Sentinelle de Jinzhou - Jue",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "fr_FR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_FOUNDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Autrefois, tu as fondé ici le Littoral noir et relié tout Solaris. Mais tu as ensuite abandonné ton autorité, tu es parti seul et tu as erré en quête de nouvelles réponses.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "fr_FR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_GUIDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Participez à l'histoire, faites des choix et soyez témoin du développement des civilisations.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "fr_FR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_SURVIVOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "« Mon mentor… la personne que je suis… Je t'en prie… mets fin à cette boucle de Möbius… à ce cycle sans fin… »",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "fr_FR",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_WIND_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "J'ai reçu ton appel à l'aide. À présent… je vais régler ça à ma façon.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "fr_FR",
+   "tag": "LOC_PEDIA_UNITS_PAGE_UNIT_ROVER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "Alors que le Monde s'enfonçait dans un silence glacial, ceux qui étaient destinés à vivre cet instant t'ont confié leurs espoirs. Ils t'ont béni, espérant que tu atteindrais pour eux un avenir suffisamment chaleureux.",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ja_JP",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_ASTRAL_MODULATOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "天空海からソノラへ、時から空間へ……ここが、始まりだ。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ja_JP",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_DARK_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "ただ前へ進もう。長い夜を越え、勝利とともに帰還できるよう願っている。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ja_JP",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_EMPEROR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "今州の文明は、かつてあなたが私とともに築いたもの。あなたは私にここを守り、この地の文明を栄えさせ、決して衰退させぬよう命じた。[NEWLINE]                                                                        ——今州の歳主・角",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ja_JP",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_FOUNDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "かつてあなたはここにブラックショアを築き、ソラリス全体をひとつに結び付けた。だが後に、権能を残して独り去り、各地をさすらい、新たな答えを探し求めた。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ja_JP",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_GUIDER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "歴史の当事者として介入し、選択し、文明の発展を見届ける。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ja_JP",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_SURVIVOR_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "「私の師……私が従う人……どうか、このメビウスの輪を……この終わりなき循環を終わらせて……」",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ja_JP",
+   "tag": "LOC_PEDIA_UNITPROMOTIONS_PAGE_PROMO_ROVER_WIND_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "助けを求める声は届いた。これからは……私のやり方で片を付けよう。",
+   "gender": null,
+   "plurality": null
+  },
+  {
+   "language": "ja_JP",
+   "tag": "LOC_PEDIA_UNITS_PAGE_UNIT_ROVER_QYQXP_CHAPTER_HISTORY_PARA_1",
+   "text": "世界が凍てつく静寂へと歩みを進める中、必ずその時を迎える運命にある人々は、あなたに希望を託す。彼らはあなたを祝福し、自分たちに代わって、十分に温かな未来へ辿り着くことを願う。",
+   "gender": null,
+   "plurality": null
+  }
+ ]
+}

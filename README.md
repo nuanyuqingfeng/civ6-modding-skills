@@ -118,11 +118,24 @@ python skills/civ6-modding/tools/_paths.py       # 打印 P1–P6 与外部工�
 | `DebugConfiguration.sqlite` | 1.1 MiB | 官方 FrontEnd 配置快照（`Maps`、`GameModeItems`/`Rulesets` 等） |
 | `source_index.sqlite` | 29.1 MiB | 官方行级来源索引 + 人工 `dlc_dependency` 标注 |
 
-> ⚠️ **`DebugLocalization.sqlite` 不随包**（唯一例外）：它是**分层重建的派生库**
-> （基础游戏 62 MB → 含 DLC 全量约 116 MB），可从你自己的游戏安装数十秒重建，故不入库。
-> 首次使用前按 [`skills/civ6-modding/database/README.md`](skills/civ6-modding/database/README.md)
-> **§零** 的四步流程生成（`build_localization.py --augment-main --apply-rewrites`）；
-> 人工标注侧表 `SkillAnnotation_*` 会在该流程中原样保留。
+> ⚠️ **两个本地化文本库不随包**（唯一例外）：它们是**分层重建的派生库**，可从你自己的游戏安装数十秒重建，故不入库。
+>
+> | 不随包的库 | 内容 | 重建后规模 |
+> |---|---|---|
+> | `DebugLocalization.sqlite` | 主文本库：Base + EXP1 + EXP2 + 全部领袖/文明 DLC（`EXP2>EXP1>base`，排除情景与 Mode）+ 人工标注侧表 | 336,125 行 / 约 116 MB |
+> | `Localization_Mode.sqlite` | 模式文本库：8 个 GAMEMODE（英雄/秘密结社/塔防/行业与公司/风云变幻/蛮族氏族/天启/树随机） | 15,417 行 / 5.2 MB |
+>
+> 首次使用前**一条命令重建两个库**：
+>
+> ```bash
+> python skills/civ6-modding/database/scripts/build_localization.py --rebuild --dry-run  # 预演
+> python skills/civ6-modding/database/scripts/build_localization.py --rebuild            # 实际重建
+> ```
+>
+> 验收：`SELECT COUNT(*) FROM LocalizedText` → **336125**，`SkillAnnotation_*` → **241 / 51**。
+> 人工标注（`SkillAnnotation_*`）、本项目自造本地化行、以及 7 张语言注册表 + 3 个视图，
+> 都靠 `database/annotations/*.json` 随包保存并在重建时自动灌回——
+> **换机器不会丢**。完整流程与口径见 [`skills/civ6-modding/database/README.md`](skills/civ6-modding/database/README.md) §零。
 > **不重建也能用**：只影响「查 DLC/资料片的官方文本」，基础游戏文本与其余工具均不受影响。
 
 逐库的用途、可再生性与重建口径见 [`skills/civ6-modding/database/README.md`](skills/civ6-modding/database/README.md)。
@@ -166,7 +179,8 @@ python skills/civ6-modding/tools/_paths.py       # 打印 P1–P6 与外部工�
    只读查询类工具（SQLite / 文档）跨平台可用。
 2. **参考库基本随包**（含 58 MiB 的 `DebugGameplay.sqlite`）：clone 体积偏大是预期；
    若只想跑校验器，保留 `DebugGameplay.sqlite` 即可。
-   唯一例外是 `DebugLocalization.sqlite`（不随包，按 §五 的说明本机重建）。
+   唯一例外是两个本地化文本库（`DebugLocalization` / `Localization_Mode`）——
+   不随包，按 §五 的说明用 `--rebuild` 一条命令本机重建。
 3. **游戏版本敏感**：图标尺寸、artdef/XLP 条目、DB 列等结论基于当前版本实测；
    升级 DLC/补丁后建议用各 skill 的校验器复验。
 4. **晋升图标（类别③）生成管线已作废**：只保留尺寸/格式规格
