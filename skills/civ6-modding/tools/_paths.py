@@ -36,6 +36,13 @@ TOOL_DEFAULTS = {
     "luac": r"E:\SoftWares\Lua\5.1\luac.exe",
     "ws_root": os.path.join(os.environ.get("TEMP", r"C:\Windows\Temp"), "civ6-ws"),
     "steam_logs": r"F:\Steam\logs",
+    # --- 可选外部工具（**不属于必需链路，缺失不影响任何流程**）---
+    # NVTT（NVIDIA Texture Tools）自带的 DDS 诊断三件套。**不随本 skill 分发**：
+    # NVTT 是 NVIDIA 专有 SDK 许可（不是 MIT），与 art/bin/texconv.exe 的可再分发口径不同。
+    # 工程 DDS 一律未压缩 RGBA8 且单 mip（见 art-pipeline §484），**用不到 BCn 压缩**，
+    # 所以这里只登记"本机已装则可选调用"的路径键，绝不作为依赖。
+    # 用途仅限诊断：nvddsinfo 读 DDS 头、nvimgdiff 比对两张图。
+    "nvtt_dir": r"C:\Program Files\NVIDIA Corporation\NVIDIA Texture Tools",
 }
 
 
@@ -132,7 +139,10 @@ def summary() -> str:
 
 
 def tool(key: str, must_exist: bool = True) -> str | None:
-    """取外部工具路径。key ∈ uploader/sd_cpp/imagemagick/luac/ws_root/steam_logs。"""
+    """取外部工具路径。key ∈ uploader/sd_cpp/imagemagick/luac/ws_root/steam_logs/nvtt_dir。
+
+    `nvtt_dir` 是**可选**工具（NVTT 安装目录）：缺失返回 None 属正常，调用方须容忍。
+    """
     if key not in TOOL_DEFAULTS:
         raise KeyError("未知工具键：%s（可选：%s）" % (key, ", ".join(TOOL_DEFAULTS)))
     cand = _load_overrides().get(key) or TOOL_DEFAULTS[key]
@@ -163,11 +173,27 @@ if __name__ == "__main__":
     except Exception:
         pass
 
+    argv = sys.argv[1:]
+
+    # `-h` / `--help`：打印用法后退出。
+    # 此前 `--help` 不被识别 → 走到底部的自检分支，把"路径总表"当成 help 输出，
+    # 不会显示 `--tool` / `--path` 这两个真正有用的子命令（文档缺口）。
+    if argv and argv[0] in ("-h", "--help", "help"):
+        print("用法：")
+        print("  python _paths.py                      # 自检：打印 P1-P6 路径 + 外部工具解析结果（缺失标 [缺失]）")
+        print("  python _paths.py --tool <键>          # 只打印某外部工具路径（供 shell 包装脚本调用）")
+        print("  python _paths.py --path <键>          # 只打印某路径键（P1-P6）")
+        print("")
+        print("路径键（--path）：%s" % ", ".join(DEFAULTS))
+        print("工具键（--tool）：%s" % ", ".join(TOOL_DEFAULTS))
+        print("")
+        print("退出码：0 找到（打印路径）/ 1 未找到 / 2 键名非法或缺参")
+        raise SystemExit(0)
+
     # `--tool <键>` / `--path <键>`：把解析结果**单独打印**给 shell 包装脚本用
     # （PowerShell 侧无法 import Python 模块，此前只能各自写死路径 —— 实测
     #  ensure_uploader.ps1 因此把已装好的机器判成"缺工具"）。
     # 退出码：0 找到（打印路径）/ 1 未找到或键名非法。
-    argv = sys.argv[1:]
     if argv and argv[0] in ("-t", "--tool", "-p", "--path"):
         want_tool = argv[0] in ("-t", "--tool")
         if len(argv) < 2:

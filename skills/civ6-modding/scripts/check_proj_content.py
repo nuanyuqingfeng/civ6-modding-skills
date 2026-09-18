@@ -7,12 +7,14 @@
 
 用法:
     python check_proj_content.py <工程根目录>
+    python check_proj_content.py --root <工程根目录>     # 等价写法
 
 输出:
     1) Content 清单里指向磁盘上不存在文件的条目（悬空清单项）
     2) 磁盘上属于「应入库」类别但不在 Content 清单里的文件（漏登记）
-退出码: 0 全部闭合；1 存在问题。
+退出码: 0 全部闭合；1 存在问题；2 用法错误。
 """
+import argparse
 import os
 import re
 import sys
@@ -33,7 +35,21 @@ SKIP_FILE_SUFFIX = (".art.xml", ".civ6proj", ".modinfo")
 
 
 def main():
-    root = os.path.abspath(sys.argv[1])
+    # 用 argparse 而非裸 sys.argv[1]：此前 `--help` 会被当成路径，抛出
+    # FileNotFoundError 指向 "<cwd>\--help"，看起来像路径错误而不是用法提示。
+    ap = argparse.ArgumentParser(
+        description="核对 .civ6proj 的 <Content Include> 清单与实际磁盘内容是否闭合")
+    ap.add_argument("root_pos", nargs="?", help="工程根目录（位置参数写法）")
+    ap.add_argument("--root", dest="root_opt", help="工程根目录（与位置参数等价）")
+    ap.add_argument("--quiet", action="store_true", help="只打印汇总")
+    args = ap.parse_args()
+    root_arg = args.root_opt or args.root_pos
+    if not root_arg:
+        ap.error("需要给工程根目录，如：python check_proj_content.py <工程根>")
+    root = os.path.abspath(root_arg)
+    if not os.path.isdir(root):
+        print("ERROR: 目录不存在: %s" % root)
+        return 1
     proj = None
     for name in os.listdir(root):
         if name.endswith(".civ6proj"):
@@ -54,8 +70,9 @@ def main():
     # 1) 清单项 -> 磁盘
     dangling = sorted(p for p in listed if not os.path.isfile(os.path.join(root, p)))
     print("\n[1] 清单指向但磁盘缺失: %d" % len(dangling))
-    for p in dangling:
-        print("    - " + p)
+    if not args.quiet:
+        for p in dangling:
+            print("    - " + p)
 
     # 2) 磁盘 -> 清单
     on_disk = []
@@ -72,8 +89,9 @@ def main():
 
     missing = sorted(p for p in on_disk if p not in listed)
     print("\n[2] 磁盘存在但未登记进 Content: %d" % len(missing))
-    for p in missing:
-        print("    - " + p)
+    if not args.quiet:
+        for p in missing:
+            print("    - " + p)
 
     print("\n磁盘应入库文件总数: %d" % len(on_disk))
     ok = not dangling and not missing

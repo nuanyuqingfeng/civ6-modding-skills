@@ -160,12 +160,18 @@ ADD new unit/building/district
 Modifier/PROPERTY 设计
 ├─ 作用域决策 → 见下文"写前三问"
 ├─ ATTACH 模式 → reference/WORKSHOP_PATTERNS.md
-└─ 参数分类   → reference/MODIFIER_ARGUMENTS.md
+├─ 参数分类   → reference/MODIFIER_ARGUMENTS.md
+├─ **参数取值域（该 Effect 的参数能填什么）** → `python database/scripts/query_effect_args.py --effect <EFFECT_X>`
+│    （或 `--modifier <MODIFIER_X>` 自动解析到 Effect；`--arg <参数名>` 反查）
+└─ **某效果原版怎么实现的（照抄现成链）** → 查 `DynamicModifiers ⋈ Modifiers ⋈ ModifierArguments`
+     + `TraitModifiers`/`CivilizationTraits` 等绑定表（见下"写前先搜现成实现"）
 
 ADD tech/civic/policy   → database.md
 ADD resource/feature    → database.md
 REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "LoadOrder"（优先查 .civ6proj）
 ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
+                         批量插图标/查图标名悬空 → `python art/iconify_text.py <工程根> --audit`
+                         DLC 文本查不到 → `python database/scripts/build_localization.py --report`
 ```
 
 ### 4.1 多语言文本 / 本地化（**Civ6 侧规则**）
@@ -180,6 +186,32 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 3. **默认多语言合并进原 SQL**，不新增分语言文件；UTF-8 / CRLF / 注释 / 尾逗号保持原样。
 4. **先查原版有没有现成 tag**：`SELECT Text FROM LocalizedText WHERE Tag='LOC_X' AND Language='zh_Hans_CN'`
    （`database/DebugLocalization.sqlite`）——能复用就复用，文案还与官方逐字一致。
+   > ⚠️ **该库是「基础游戏」快照**（15,237 tag × 12 语言），**不含任何 DLC/资料片文本**：
+   > `LOC_LEADER_MANSA_MUSA_NAME`（曼萨穆萨）、`LOC_DISTRICT_PRESERVE_NAME`（保护区）、
+   > `LOC_GOVERNOR_THE_DEFENDER_NAME`（维克多）**全部查不到**。别据此断定"官方没这个 tag"。
+   >
+   > **需要 DLC 覆盖时按分层规则合成**（`build_localization.py`）：
+   >
+   > | 库 | 内容 | 规则 |
+   > |---|---|---|
+   > | **主文本库** | Base + EXP1 + EXP2 + 全部领袖/文明 DLC | `EXP2 > EXP1 > base`，其它领袖包只补缺不覆盖；**排除情景与 Mode** |
+   > | **模式文本库** | 8 个 GAMEMODE（英雄/秘密结社/塔防/行业与公司/风云变幻/蛮族氏族/天启/树随机） | 单独成库，只加不覆盖 |
+   >
+   > ```bash
+   > python database/scripts/build_localization.py --report          # 只读：分段 + 分层 + 差异统计
+   > python database/scripts/build_localization.py --build-main <主库.sqlite>
+   > python database/scripts/build_localization.py --build-mode <模式库.sqlite>
+   > ```
+   >
+   > 主库语义是「**游戏文件权威、既有库兜底**」：游戏文件定义了的键取分层值（EXP2 优先），
+   > 没有的键（如项目自造 tag）用既有库补——**既有行一行不丢**。
+   >
+   > ⚠️ **不要试图用游戏运行时缓存补全**：`%LOCALAPPDATA%\...\Cache\DebugLocalization.sqlite`
+   > 实测恒为 base 15,229 tag，**连当前加载的 mod 文本都没有**（同目录的 `DebugGameplay.sqlite`
+   > 却含本局全部内容），与本局模式/mods 无关——它不反映"加载了什么"。
+   > 权威分段判据在 `.modinfo`：新式看 `<ActionCriteria>` 里 `ConfigurationId=GAMEMODE_*`，
+   > 旧式（仅 `VikingsScenario`）看 `<Properties><RuleSet>` 的 `RULESET_SCENARIO_*`；
+   > 模式清单的权威表是 `DebugConfiguration.sqlite → GameModeItems`（8 行），**不在 Gameplay 库**。
 5. 写入后逐条复核：标签齐缺失（八语言）、空值、标记漂移；改动量大时按 `validation.md` 的清单过一遍。
 
 > 文本与图标/颜色的对照数据在本 skill 内：`database/DebugLocalization.sqlite`（官方文本 + 手工标注侧表
@@ -194,6 +226,59 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 - 查看含中文文件优先用 Read 工具，避免 PowerShell 打印中文（控制台乱码多为显示问题，不代表文件损坏）。
 - 禁止 PowerShell here-string 管道/重定向/`Set-Content`/`Out-File` 写入含中文内容；不要用 `sed`/`awk` 处理含中文文件，改用 Python 或 Node.js 并显式 UTF-8 读写。
 - 不要为了修编码而整文件重写、全文件格式化或全文件字符串替换。
+
+---
+
+## 写前先搜现成实现（硬性 · 先查再写）
+
+写任何 Modifier / Requirement **之前**，先在官方库里搜「这个效果原版是怎么实现的」——
+**别凭记忆拼 ModifierType + 参数**。原版几乎总有同类效果可以照抄，照抄的链路一定是对的。
+
+```bash
+# ★ 首选：一条命令直接列出「某对象/某效果的完整 Modifier 链」（含参数与条件集）
+python database/scripts/search_impl.py --object 农场              # 按对象（中文名或 Type）
+python database/scripts/search_impl.py --object TRAIT_CIVILIZATION_KHMER_BARAYS
+python database/scripts/search_impl.py --modifier ADJUST_PLOT_YIELD   # 按关键词反查谁在用它
+python database/scripts/search_impl.py --effect EFFECT_ADJUST_PLOT_YIELD
+python database/scripts/search_impl.py --list-objects             # 看支持哪些对象类别
+```
+
+它会输出 `ModifierId [EffectType] 参数: …` + `作用域` + 条件集（含 `REQUIREMENTSET_TEST_ANY`
+这类**或**逻辑），并自动展开两条嵌套链：**ATTACH_MODIFIER**（递归取 `ModifierId`）与
+**GRANT_ABILITY**（取 `AbilityType` → 展开该能力下属全部 Modifier）。递归自带**防环 + 限深**
+（官方数据里 ATTACH 链存在成环写法）。
+
+需要手写 SQL 时，等价链路：
+
+```sql
+-- 1) 找效果：反查「哪些 Modifier 用了这个 Effect」
+SELECT d.ModifierType, d.CollectionType, m.ModifierId
+FROM DynamicModifiers d JOIN Modifiers m ON m.ModifierType = d.ModifierType
+WHERE d.EffectType LIKE '%YIELD%';
+
+-- 2) 看参数：这个 Modifier 到底填了什么
+SELECT Name, Type, Value FROM ModifierArguments WHERE ModifierId = '<上一步的 ID>';
+
+-- 3) 看条件：它的 RequirementSet 由哪些 Requirement 组成
+SELECT * FROM RequirementSetRequirements WHERE RequirementSetId = '<上一步的 ReqSet>';
+SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
+```
+
+- **参数该填什么值** → `python database/scripts/query_effect_args.py --effect <EFFECT_X>`
+  （给参数签名 + **`DatabaseKind`→`Types` 的权威取值全集** + 官方实际用过的值）；
+- **Modifier 挂在哪张表** → `DynamicModifiers.CollectionType` 决定作用域，绑定表见
+  `reference/WORKSHOP_PATTERNS.md`；不同对象挂载路径不同（Trait 走 `TraitModifiers`、
+  文明走 `CivilizationTraits` 中转、总督晋升走 `GovernorPromotionSets` 中转）；
+  完整绑定路径表见 `search_impl.py` 的 `OBJECT_TYPES`（6 种 kind）。
+
+> 教训（来自 ModTools 5.4 的实践，2026-09 吸收）：它的校验器在报「未知 EffectType」时
+> **会把操作指引一起打出来**——「用 `search <效果词>` 查现成实现，不要凭记忆断言」。
+> 把方法论编进错误信息，比写在文档里更不容易被忽略；本 skill 的 `rgn_validate` 在检测到
+> Modifier/Effect 类悬空引用时也会追加同样的下一步指引。
+>
+> ⚠️ 反向教训：ModTools 的注册表把总督晋升写成 `GovernorPromotions.GovernorType`，而本库
+> schema 里**没有这一列**（真实链路是中间表 `GovernorPromotionSets`）——照抄外部工具的
+> 表/列假设前，先 `PRAGMA table_info` 核对。
 
 ---
 
@@ -494,6 +579,9 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `reference/events_enhanced.json` (1.2MB) | 增强事件（`query_events.py` 查询） |
 | `database/schema-annotated.md` | 常用多列表注解（列定义/必填/示例值） |
 | `reference/MODIFIER_ARGUMENTS.md` | Modifier 参数分类 |
+| `database/scripts/query_effect_args.py` | **Effect/Modifier 参数取值域查询**（参数签名 + `DatabaseKind`→`Types` 权威全集 + 官方实际用值；支持 `--effect` / `--modifier` / `--arg` / `--search` / `--dump-json`） |
+| `database/scripts/search_impl.py` | **「某对象/效果原版怎么实现」反查**（14 类对象 × 6 种绑定路径；递归展开 ATTACH / GRANT_ABILITY / 嵌套 REQSET，自带防环限深；支持 `--object` / `--modifier` / `--effect` / `--json`） |
+| `database/scripts/build_localization.py` | **分层合成两个本地化文本库**（主库 / 模式库）：从游戏安装按 `.modinfo` 权威分段（main/mode/scenario），主库 `EXP2>EXP1>base` + 既有库兜底，Mode 单独成库只加不覆盖；`--report` 只读 / `--build-main` / `--build-mode` / `--augment-main`；不删行、不动 schema、不应用 `<Delete>` |
 | `reference/WORKSHOP_PATTERNS.md` | 高级 SQL 模式 |
 | `reference/TYPE_NAME_MAPPING.md` | Type→名称 + Trait→Modifier 关联链 |
 | `database/modifiers-guide.md` | Modifier 系统指南 |
