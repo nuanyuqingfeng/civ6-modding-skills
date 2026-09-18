@@ -54,6 +54,7 @@ import argparse
 import json
 import os
 import re
+import sqlite3
 import sys
 
 try:
@@ -81,14 +82,61 @@ def q(v):
     return "'" + s.replace("'", "''") + "'"
 
 
+_ROWS = []          # [(table, rowdict)] —— 生成时记账，末尾做 NOT NULL 自检
+
+
 def ins(table, cols, row):
+    _ROWS.append((table, row))
     return "INSERT OR REPLACE INTO %s (%s) VALUES (%s);" % (
         table, ", ".join(cols), ", ".join(q(row.get(c)) for c in cols))
+
+
+def _notnull_map():
+    """→ {表名: [NOT NULL 且无默认值的列]}。库缺失时返回 {}（跳过该项校验）。
+
+    ★ 这张表是**从库实测**来的，不是猜的：例如实测 Civilizations.StartingCivilizationLevelType
+    与 CivilizationLeaders.CapitalName 都是 NOT NULL —— 漏了它们，生成的 SQL 会在
+    游戏加载时报 `NOT NULL constraint failed`，而**在工具侧静默通过**。
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    out = {}
+    for name in ("DebugGameplay.sqlite", "DebugConfiguration.sqlite"):
+        p = os.path.join(os.path.dirname(here), "database", name)
+        if not os.path.isfile(p):
+            continue
+        try:
+            con = sqlite3.connect("file:%s?mode=ro" % p.replace("\\", "/"), uri=True)
+            for (t,) in con.execute("SELECT name FROM sqlite_master WHERE type='table'"):
+                cols = [r[1] for r in con.execute("PRAGMA table_info(%s)" % t)
+                        if (r[3] or r[5]) and r[4] is None]
+                if cols:
+                    out[t] = cols
+            con.close()
+        except Exception:
+            continue
+    return out
+
+
+def check_notnull(problems):
+    """按库实测的 NOT NULL 约束校验已记账的行。"""
+    schema = _notnull_map()
+    if not schema:
+        return False                       # 库不可用 → 跳过，不误报
+    seen = set()
+    for table, row in _ROWS:
+        for c in schema.get(table, []):
+            if row.get(c) is None:
+                key = (table, c)
+                if key not in seen:
+                    seen.add(key)
+                    problems.append("%s.%s 是 NOT NULL（实测约束），规格里必须给出" % (table, c))
+    return True
 
 
 def build(spec):
     """→ (gameplay_sql, config_sql, text_sql, problems, warns, tags)"""
     problems, warns = [], []
+    _ROWS.clear()
     civ = spec.get("civilization") or {}
     leaders = spec.get("leaders") or []
     text = spec.get("text") or {}
@@ -181,8 +229,15 @@ def build(spec):
             if not tbl:
                 warns.append("named_places 项缺 table（如 NamedMountainCivilizations），已跳过")
                 continue
-            g.append(ins(tbl, ["CivilizationType", "Name"],
-                         {"CivilizationType": cid, "Name": t.get("name")}))
+            # ★ 列名**不是** `Name`：实测为 `Named<Kind>Type`
+            #   NamedMountainCivilizations → NamedMountainType；NamedRiverCivilizations →
+            #   NamedRiverType；7 张表（Mountain/River/Volcano/Desert/Lake/Ocean/Sea）同构。
+            col = t.get("column")
+            if not col:
+                base = tbl[:-len("Civilizations")] if tbl.endswith("Civilizations") else tbl
+                col = base + "Type"
+            g.append(ins(tbl, ["CivilizationType", col],
+                         {"CivilizationType": cid, col: t.get("name")}))
 
     for ld in leaders:
         lt = ld["type"]
@@ -289,6 +344,7 @@ def build(spec):
         elif not blk:
             warns.append("文本 %s 完全没有内容（会显示原始 tag）" % tag)
 
+    check_notnull(problems)
     return ("\n".join(g) + "\n", "\n".join(c) + "\n", "\n".join(t) + "\n",
             problems, warns, sorted(set(all_tags) | set(text)))
 
