@@ -5,17 +5,22 @@ r"""verify_suk_portrait.py — Suk 选人界面适配素材与接线的只读校
 配套 `reference/ui-leader-portrait.md`。**只读，不写盘**。退出码 0 = 全过。
 
 检查项（对应参考文档 §6.1）：
-  1. 每张 `_Suk` 贴图 `.dds` ↔ `.tex` 成对，且 `.tex` 的 m_Width/m_Height == DDS 实际宽高；
+  1. 每张 `SUK_UI_*` 贴图 `.dds` ↔ `.tex` 成对，且 `.tex` 的 m_Width/m_Height == DDS 实际宽高；
   2. `m_ClassName == UserInterface`、`m_Tags` 仅含 `UserInterface`
-     —— 这是本类最大的坑：`FALLBACK_NEUTRAL_*_Suk` 与 3D 回退同前缀，
-     误判成 `Leader_Fallback` 会导致「类别与 XLP 参数不匹配」→ 静默变 error asset；
-  3. 每张 `_Suk` 贴图都被某个 `UITexture` 类 XLP 登记（否则不进 BLP = 界面空白）；
+     —— 本类历史最大的坑：旧名 `FALLBACK_NEUTRAL_*_Suk` 与 3D 回退**同前缀**，
+     误判成 `Leader_Fallback` 会导致「类别与 XLP 参数不匹配」→ 静默变 error asset。
+     **2026-09-18 起素材已迁到独立命名空间 `SUK_UI_*`**，与该歧义从根上解耦；
+     本校验器仍会把未迁移的旧 `_Suk` 名**报为 legacy 告警**（exit 2），提示跑迁移工具；
+  3. 每张 `SUK_UI_*` 贴图都被某个 `UITexture` 类 XLP 登记（否则不进 BLP = 界面空白）；
   4. SQL 中 Portrait / PortraitBackground 指向的贴图在磁盘存在（无悬空）；
   5. 行尾：`.tex` / `.xlp` = LF；`.sql` = CRLF。
 
 用法：
     python verify_suk_portrait.py --project <工程根>
-    python verify_suk_portrait.py --project <工程根> --suffix _Suk
+    python verify_suk_portrait.py --project <工程根> --namespace SUK_UI
+
+迁移旧命名（`FALLBACK_NEUTRAL_*_Suk` → `SUK_UI_PORTRAIT_*` 等）用
+`migrate_suk_namespace.py <工程根> --write`。
 """
 import argparse
 import os
@@ -72,9 +77,20 @@ def find_files(root):
 def main():
     ap = argparse.ArgumentParser(description="Suk 适配素材与接线只读校验")
     ap.add_argument("--project", required=True)
-    ap.add_argument("--suffix", default="_Suk", help="贴图后缀，默认 _Suk")
+    ap.add_argument("--namespace", default="SUK_UI",
+                    help="本类素材的独立命名空间前缀，默认 SUK_UI（新命名 = <NS>_PORTRAIT_<KEY> / <NS>_BACKGROUND_<KEY>）")
+    ap.add_argument("--legacy-suffix", default="_Suk",
+                    help="历史命名后缀，默认 _Suk；命中即报 legacy 告警（提示跑 migrate_suk_namespace.py）")
     ap.add_argument("--json", action="store_true", help="以 JSON 输出")
     a = ap.parse_args()
+
+    def is_suk(stem):
+        """→ (是否本类素材, 是否 legacy 旧命名)。两套并存以便驱动迁移。"""
+        if stem.startswith(a.namespace + "_"):
+            return True, False
+        if stem.endswith(a.legacy_suffix):
+            return True, True
+        return False, False
 
     root = os.path.abspath(a.project)
     if not os.path.isdir(root):
@@ -88,11 +104,22 @@ def main():
 
     fails, warns, infos = [], [], []
 
-    # ---- 目标贴图集合：文件名含后缀的 .tex ----
-    targets = [p for p in tex_files if os.path.splitext(os.path.basename(p))[0].endswith(a.suffix)]
+    # ---- 目标贴图集合：命名空间前缀（新）或 legacy 后缀（旧）----
+    targets, legacy = [], []
+    for p in tex_files:
+        stem = os.path.splitext(os.path.basename(p))[0]
+        hit, is_legacy = is_suk(stem)
+        if hit:
+            targets.append(p)
+            if is_legacy:
+                legacy.append(stem)
+    if legacy:
+        warns.append("发现 %d 个 **legacy 命名**贴图（%s* / *%s）—— 该命名借用了官方 FALLBACK_ 模板前缀、"
+                     "易与 3D 回退混淆。迁移：migrate_suk_namespace.py <工程根> --write"
+                     % (len(legacy), legacy[0][:34], a.legacy_suffix))
     if not targets:
-        infos.append("未发现 *%s.tex —— 本工程尚未做 Suk 适配（或后缀不同，用 --suffix 指定）"
-                     % a.suffix)
+        infos.append("未发现 Suk 适配贴图（新名 %s_*，旧名 *%s）—— 本工程可能未做该适配"
+                     % (a.namespace, a.legacy_suffix))
 
     tex_names = set()
     for p in targets:
@@ -142,8 +169,8 @@ def main():
         if n not in ui_entries:
             fails.append("%s: 未被任何 UITexture XLP 登记 → 不会进 BLP，界面空白" % n)
 
-    # ---- [3b] 反向：XLP 里登记了但磁盘没有的 _Suk 条目 ----
-    for e in sorted(x for x in ui_entries if x.endswith(a.suffix)):
+    # ---- [3b] 反向：XLP 里登记了但磁盘没有的本类条目 ----
+    for e in sorted(x for x in ui_entries if is_suk(x)[0]):
         if e not in tex_names:
             fails.append("XLP 条目 %s 无对应 Textures/*.tex（悬空）" % e)
 
@@ -151,7 +178,7 @@ def main():
     refs = []
     for p in sql_files:
         t = open(p, encoding="utf-8", errors="replace").read()
-        if a.suffix not in t:
+        if a.namespace not in t and a.legacy_suffix not in t:
             continue
         for m in re.finditer(r"Portrait = '([^']+)'", t):
             refs.append((p, "Portrait", m.group(1)))
@@ -187,18 +214,18 @@ def main():
             fails.append("%s: .xlp 应为 LF，实含 %d 个 CRLF" % (os.path.basename(p), crlf))
     for p in sql_files:
         t = open(p, encoding="utf-8", errors="replace").read()
-        if a.suffix not in t:
+        if a.namespace not in t and a.legacy_suffix not in t:
             continue
         crlf, lf, bom = eol_of(p)
         if lf:
-            fails.append("%s: 含 %s 的 .sql 应为 CRLF，实含 %d 个裸 LF"
-                         % (os.path.basename(p), a.suffix, lf))
+            fails.append("%s: 含 %s 素材名的 .sql 应为 CRLF，实含 %d 个裸 LF"
+                         % (os.path.basename(p), a.namespace, lf))
 
     # ---- 输出 ----
     print("=" * 72)
     print("Suk 适配校验：%s" % root)
     print("=" * 72)
-    print("  目标 .tex（*%s）: %d" % (a.suffix, len(targets)))
+    print("  目标 .tex（%s_*）: %d" % (a.namespace, len(targets)))
     print("  UITexture XLP 条目 : %d" % len(ui_entries))
     print("  SQL 引用(含后缀)   : %d" % len(refs))
     print()

@@ -41,7 +41,7 @@ FROM Players WHERE Domain = ? AND LeaderType = ?
 |---|---|
 | `suk selection` / `Sukritact` / `Civ Selection Screen` / `选人界面` / `领袖选择界面` | **强关联** → 走本流程 |
 | `PortraitBackground` / `Players` 表的 `Portrait` 列 | **强关联** → 走本流程 |
-| `UILeaders.xlp` / `FALLBACK_NEUTRAL_*_Suk` | **强关联**（这就是本流程的产物命名） |
+| `UILeaders.xlp` / `SUK_UI_*`（旧名 `FALLBACK_NEUTRAL_*_Suk`） | **强关联**（这就是本流程的产物命名） |
 | `领袖立绘` / `领袖选择背景`（未指明 Suk） | **弱关联** → 先问清是**原版界面**还是 **Suk 界面**：<br>原版 3D 走 `leader-2d.md`；Suk 2D 走本流程 |
 | `加载界面`（`IMG_LOADING_*`） | **不关联**（那是 `LoadingInfo` 表，另一条链） |
 
@@ -120,29 +120,43 @@ FROM Players WHERE Domain = ? AND LeaderType = ?
 | `m_SourceFilePath` | `D:\desktop\<stem>.png`（ASCII 虚拟路径，pantry 铁律） |
 | 行尾 | `.tex` / `.xlp` = **LF**；`.sql` = **CRLF** |
 
-### 4.4 ⚠ 类别陷阱（本类最容易踩的坑）
+### 4.4 命名空间：**不得借用官方模板前缀**（本类最容易踩的坑）
 
-素材名是 `FALLBACK_NEUTRAL_{KEY}_Suk`，**与 3D 回退贴图同前缀，但类别完全不同**：
+Suk 适配素材进**独立命名空间**：
 
-| 贴图 | 用途 | `m_ClassName` | 注册在 |
+| 贴图 | 用途 | 应有 `m_ClassName` | 注册在 |
 |---|---|---|---|
-| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP` | 3D 领袖回退 | `Leader_Fallback` | `LeaderFallbacks.xlp` |
-| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP_Suk` | **Suk 2D 立绘** | **`UserInterface`** | `UILeaders.xlp`（`UITexture`） |
+| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP` | 3D 领袖回退（**官方模板**） | `Leader_Fallback` | `LeaderFallbacks.xlp` |
+| `SUK_UI_PORTRAIT_CARTETHYIA_QYQXP` | **选人界面 2D 立绘** | **`UserInterface`** | `UILeaders.xlp`（`UITexture`） |
+| `SUK_UI_BACKGROUND_CARTETHYIA_QYQXP` | 选人界面背景 | **`UserInterface`** | `UILeaders.xlp`（`UITexture`） |
 
-`civ6-modding/art/gen_tex.py` 的 `is_fallback()` 原本是**纯前缀判断**，
-会把 `_Suk` 误判成 `Leader_Fallback` → 产生「类别与所绑定 XLP 参数不匹配」，
-cooker 报 `has class 'X', but is bound to parameter 'Y' which does not accept this class`，
-**且 XLP cook 仍显示 success**，条目被静默替换成 error asset（界面立绘空白）。
+规则：**`FALLBACK_` / `LEADER_` / `ICON_` 等前缀是官方语义**，第三方界面适配一律走
+`<适配对象短名>_UI_<KIND>_<KEY>`（Suk 适配＝`SUK_UI_*`）。
 
-> 该判断已在 2026-09-17 修正（`gen_tex.py` 的 `_UI_PORTRAIT_SUFFIXES` 显式排除 `_Suk`）。
-> **新增同类 UI 立绘后缀时，往 `_UI_PORTRAIT_SUFFIXES` 里加**，不要再写前缀特例。
-> 交付前务必自查：`grep m_ClassName` 确认 `_Suk` 贴图是 `UserInterface`。
+> **为什么曾经踩坑**：早期素材名为 `FALLBACK_NEUTRAL_{KEY}_Suk`——借用了官方 3D 回退前缀，
+> 于是"同前缀、不同类别"。`gen_tex.py` 的 `is_fallback()` 原为**纯前缀判断**，
+> 会把这类 2D 立绘误判成 `Leader_Fallback` → 「类别与所绑定 XLP 参数不匹配」，
+> cooker 报 `has class 'X', but is bound to parameter 'Y' which does not accept this class`，
+> **且 XLP cook 仍显示 success**，条目被静默替换成 error asset（界面立绘空白）。
+>
+> 2026-09-17 先用「后缀例外表」压住（`_UI_PORTRAIT_SUFFIXES`），
+> 2026-09-18 起改为**迁入独立命名空间**，歧义从根上消失；
+> 例外表退化为 legacy 兼容，待旧工程迁完即可删。
+> 旧命名工程一次性迁移：`scripts/migrate_suk_namespace.py <工程根> --write`。
+
+> ⚠ 改名的**前提**已实测确认：`Players.Portrait` / `PortraitBackground` 是**自由字符串列**，
+> 界面代码读值后交给 Image 控件显示——贴图名本身没有任何格式要求。
+> "必须沿用 `_Suk` 后缀"只是跨工程沿用的**惯例**，不是技术约束。
+
+**交付前务必自查**：`python scripts/verify_suk_portrait.py --project <工程根>`
+（含 legacy 命名告警、类别、尺寸、XLP 登记、悬空引用、行尾；不依赖文件名约定的
+最终防线另有 `civ6-modding/art/verify_tex_class.py`）。
 
 ### 4.5 连线（接线）
 
 | # | 位置 | 要做什么 |
 |---|---|---|
-| 1 | `Textures/` | 新增 `FALLBACK_NEUTRAL_{KEY}_Suk.{dds,tex}` + `PORTRAIT_{KEY}_BACKGROUND_Suk.{dds,tex}` |
+| 1 | `Textures/` | 新增 `SUK_UI_PORTRAIT_{KEY}.{dds,tex}` + `SUK_UI_BACKGROUND_{KEY}.{dds,tex}` |
 | 2 | `Mod_Adaptation/Suk/Suk_Portrait_RGN.sql` | `UPDATE Players SET Portrait=…, PortraitBackground=… WHERE LeaderType=…` |
 | 3 | `XLPs/*.xlp`（`UITexture` 类） | 每个贴图一条 `<m_EntryID>` + `<m_ObjectName>` |
 | 4 | `*.civ6proj` | Folder + Content + `FrontEndAction`（带 `Criteria`，见下） |

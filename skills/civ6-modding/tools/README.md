@@ -35,6 +35,8 @@
 |---|---|---|---|
 | `skill_manifest.py` | **名录生成器**：扫 skill 下脚本 → 从 docstring/argparse 抽「用途 + 用法」→ 生成/刷新 `<skill>/TOOLS.md`（人工备注块受保护、幂等、可 `--check` 做漂移检测） | `python skill_manifest.py <skill 名或路径> [...]` / `--all-civ6` / `--check` | 0 / 1 |
 | `_paths.py` | **本机路径单一真源**（P1–P6 + 外部工具）。其它工具统一 `import _paths` 取路径；也可直接跑来自检本机环境 | `python _paths.py` | 0 |
+| `new_project.py` | **从零建工程骨架**：生成 `.civ6proj`（5 个 CDATA 块 + ItemGroup）+ 目录 + `.gitignore`/`.gitattributes`，并自动派生 `.modinfo`。★ GUID 内置全网查重（禁止复制示例 GUID） | `python new_project.py <目录> --name <ModName> [--title-en … --title-zh …] [--deploy]` | 0 / 1 / 2 |
+| `civ_leader_data.py` | **新文明/新领袖数据与文本推导**：规格 JSON → `Data/CivLeader_*.sql`（Civilizations/Leaders/Traits/CivilizationLeaders/城市名…）+ `Data/Config_*.sql`（Players/PlayerItems）+ `Text/Text_*.sql`（8 语言）。★ 列名全部取自 `database/*.sqlite` 实测；含 LOC tag 闭包与语言齐缺自检 | `python civ_leader_data.py <spec.json> --project <工程根> [--write|--check]`（示例规格 `../reference/civ-leader-spec.example.json`） | 0 / 1 / 2 |
 | `modinfo_build.py` | 从 `.civ6proj` **派生 `.modinfo`**（等价 ModBuddy 构建）并可选部署到 Mods；顺带做 XML 良构 + 动作文件引用闭合自检 | `python modinfo_build.py <X.civ6proj> [--deploy] [--mods-root <目录>]` | 0 / 1 |
 | `verify_mod_package.py` | **交付包体检**：源工程 ↔ Mods 副本 ↔ 上传工作区 三处 SHA256 一致性；modinfo 悬空引用 / 漏登记文件 / 本地化语言清点。**剥离与 cook 产物双感知**（`.lua` 命中「副本 == strip(源)」、`BLPs/**`+`.dep` 源工程本就没有 → 均按预期放行，`--strict` 可强制逐字节） | `python verify_mod_package.py --src <工程> --mods <Mods副本> [--ws <content>] [--files a,b] [--strict]` | 0 / 1 |
 | `strip_comments.py` | **发布前剥离注释（默认仅 `.lua`）**，字符串感知；`.lua` 剥离后自动 `luac -p` **差分**自检（仅「原文能过、剥离后不过」才算失败）。只动**发布副本**，源工程保留注释；`--src` 核对「发布副本 == strip(源)」；`--all-exts` 恢复旧的全类型剥离 | `python strip_comments.py <Mods副本> [--src <源工程>] [--dry-run] [--keep-lines] [--all-exts]` | 0 / 1 / 2 |
@@ -46,6 +48,8 @@
 **建议顺序**（新 mod 从工程到线上）：
 
 ```
+new_project.py --name <ModName>      # ⓪ 从零建工程骨架（.civ6proj + 目录 + .gitignore/.gitattributes
+                                     #    + 自动派生 .modinfo）。已有工程跳过本步
 modinfo_build.py --deploy            # ① 生成 modinfo + 部署 Mods
 verify_mod_package.py                # ② 三处一致性 / 引用闭合体检
 （改过 .lua 时）python ../scripts/check_lua_registration.py <工程>
@@ -55,6 +59,9 @@ local_flux.py → workshop_cover.py    # ④ 底图 + 封面（模型只出无�
 ../release/scripts/validate.ps1 → upload.ps1 → verify.ps1
 workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/标签未被顺带改掉）
 ```
+
+> **新文明 / 新领袖**的数据与 LOC 推导见 `../civilization-authoring.md`、`../leader-authoring.md`；
+> 美术（图标/立绘）→ `civ6-asset-forge`，3D 模型引用 → `civ6-art-reference`，BGM/语音 → `civ6-audio-pipeline`。
 
 ---
 
@@ -99,6 +106,14 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
 - **`workshop_cover.py`**：中文标题**必须**由真实字体排版。扩散模型渲染中文得到形近伪字
   （实测 `人类玩家所有单位` → `义凵薊丨劦…`），拉丁长句也会掉字母（`CIVILIZATION` → `CIVILLZATION`）。
   另外**封面一律不署名**（项目约定，作者只写在 `.modinfo` 的 `Authors` 与代码里）。
+  **预览图（`--preview`）的缩放执行端已迁到 `art/make_workshop_preview.py`**（默认 512×512）——
+  本脚本只做排版，写完委托那条采定管线；原先各写一份 `resize()` 正是封面发糊的来源。
+- **工坊预览图为什么会糊（`art/make_workshop_preview.py`）**：根因不是尺寸、也不是源图，
+  而是**缩放方式**——`magick -resize` 不写 `-filter` 时走 **Mitchell（偏软）**，实测锐度
+  2,592.6；`-filter Lanczos` 4,842.4；**Lanczos 逐级减半 + unsharp 13,047.4**（采定）。
+  两条铁律：① **已达标 512 成品不要再缩**（工具默认直通，`--force-resize` 才重采样）；
+  ② 别裸用 `magick -resize`。执行端改用 Pillow 是因为它**必须显式写 `Image.LANCZOS`**，
+  从根上消灭"忘写 `-filter` 就发糊"。细节见 `art-pipeline.md` 第九·补节。
 - **`local_flux.py`**：Google 生图（`gemini-*-image`）配额耗尽时，本地 FLUX 是唯一免费自动渠道；
   但它**不能出中文文字**，也不要拿它做图标（图标剪影走 `art/normalize_icon.py`：把已有主体图
   裁边/等比/居中并涂成白色剪影（`--color 255`、unit 图标用 `--role unit_icon`），再由

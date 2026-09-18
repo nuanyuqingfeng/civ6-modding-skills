@@ -1,6 +1,6 @@
 {
   "tools/_paths.py": {
-    "usage": "python _paths.py        # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）"
+    "usage": "python _paths.py                          # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）\npython _paths.py --tool uploader            # 只打印某个外部工具的解析路径（供 shell 包装脚本调用）\npython _paths.py --path mods                # 同上，取 P1-P6 路径键；未找到 exit 1、键名非法 exit 2"
   },
   "scripts/check_pantry.py": {
     "usage": "python check_pantry.py <工程根> [--tex-dir Textures] [--quiet]",

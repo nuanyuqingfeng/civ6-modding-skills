@@ -90,6 +90,7 @@ THIRD_PARTY = {
         ("art/apply_fow.py", "numpy、Pillow"),
         ("art/dds_io.py", "Pillow"),
         ("art/make_atlas.py", "Pillow"),
+        ("art/make_workshop_preview.py", "Pillow、numpy（--qa 指标）"),
         ("art/normalize_icon.py", "numpy、Pillow、scipy"),
         ("art/regen_atlas_tiers.py", "numpy、Pillow"),
         ("art/survey_icon_atlas.py", "numpy、Pillow、scipy"),
@@ -160,6 +161,23 @@ def _comment_block(path: str) -> str:
     """
     text = open(path, encoding="utf-8-sig", errors="replace").read()
     text = re.sub(r"^#![^\n]*\n", "", text)              # 先剥 shebang
+
+    # PowerShell 惯例：`param(...)` 置于文件最前，用途注释紧随其后。
+    # 不跳过它，头部注释块判据会整段失效 —— 实测 `release/scripts/ensure_uploader.ps1`
+    # 与 `art/make-icon.ps1` 因此被误标「无 docstring，待补」、用法列还错写成
+    # 「库：被其它脚本 import，无独立 CLI」（两者其实都有独立 CLI）。
+    m_param = re.match(r"\s*param\s*\(", text)
+    if m_param:
+        depth = 0
+        for i in range(m_param.end() - 1, len(text)):
+            if text[i] == "(":
+                depth += 1
+            elif text[i] == ")":
+                depth -= 1
+                if depth == 0:
+                    text = text[i + 1:]
+                    break
+
     m = re.match(r"\s*/\*(.*?)\*/", text, re.S)          # JS/MJS 块注释（含 JSDoc）
     if not m:
         m = re.match(r"\s*<#(.*?)#>", text, re.S)        # PowerShell 块注释
@@ -353,7 +371,10 @@ def process(target: str, check_only: bool) -> int:
     old = open(out_path, encoding="utf-8").read() if os.path.isfile(out_path) else ""
     manual = extract_manual(old)
     if manual:
-        new = re.sub(re.escape(MANUAL_BEGIN) + r".*?" + re.escape(MANUAL_END), manual, new, flags=re.S)
+        # 用函数作替换体：manual 里的反斜杠（如 `.\Civ6WorkshopUploader.exe`）会被
+        # re.sub 当成替换转义序列（\C 直接抛 bad escape）—— 传字符串是错的。
+        new = re.sub(re.escape(MANUAL_BEGIN) + r".*?" + re.escape(MANUAL_END),
+                     lambda m: manual, new, flags=re.S)
 
     if check_only:
         if old != new:

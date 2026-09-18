@@ -59,7 +59,7 @@ languages:
 
 1. 总督 24px 徽章是**八边形**（上下切角），单位晋升是**五边形盾形**——两者规格、配色、图集完全是两套，**禁止互相套用**（详见 `reference/governor-art/specs.md` §2.3「与单位晋升的区别」、`reference/governor-art.md`「边界」节，与 `reference/promotion-icon-sizes.md` 的盾形轮廓表）。
 2. 「晋升」一词要分清：**单位晋升**（原类别③，生成管线已作废、仅存尺寸规格）与**总督晋升徽章**（类别①，现行管线）不是同一件事。
-3. 「领袖立绘」要分清：**类别④**是给 3D 引擎当纸片人的 `_TEXTURE`/`_OPACITY`（走 `Leaders.artdef`）；**类别⑤**是给 Suk 这类 2D 选人界面用的 `_Suk` UI 贴图（走 `UITexture` XLP）。两者同名前缀 `FALLBACK_NEUTRAL_*` 但**类别不同**，详见 `reference/ui-leader-portrait.md` §4.4。
+3. 「领袖立绘」要分清：**类别④**是给 3D 引擎当纸片人的 `_TEXTURE`/`_OPACITY`（走 `Leaders.artdef`）；**类别⑤**是给 Suk 这类 2D 选人界面用的 `SUK_UI_*` UI 贴图（走 `UITexture` XLP）。两者同名前缀 `FALLBACK_NEUTRAL_*` 但**类别不同**，详见 `reference/ui-leader-portrait.md` §4.4。
 
 **范围外的相邻任务**：png→dds/.tex 转换与素材导入 → `civ6-modding` 的 `art-pipeline.md`；
 原版素材引用链查询/克隆（ArtDef/XLP 四层引用、cook 层排查）→ `civ6-art-reference`。
@@ -89,7 +89,7 @@ languages:
 | 关键词 | 判定 |
 |---|---|
 | `suk selection` / `Sukritact` / `Civ Selection Screen` / `选人界面` / `领袖选择界面` | **强关联** → 类别⑤ |
-| `PortraitBackground` / `Players` 表的 `Portrait` 列 / `FALLBACK_NEUTRAL_*_Suk` | **强关联** → 类别⑤ |
+| `PortraitBackground` / `Players` 表的 `Portrait` 列 / `SUK_UI_*`（旧名 `FALLBACK_NEUTRAL_*_Suk`） | **强关联** → 类别⑤ |
 | `领袖立绘` / `领袖选择背景`（**未**指明 Suk） | **弱关联** → 先问清是**原版界面**还是 **Suk 界面**：原版 3D 走类别④；Suk 2D 走类别⑤ |
 | `加载界面`（`IMG_LOADING_*`） | **不关联**（`LoadingInfo` 表，另一条链） |
 
@@ -186,7 +186,7 @@ languages:
 | ① 总督 | `XLPs/Icons.xlp`（贴图加进去）+ `IconTextureAtlases` 图集 + `IconDefinitions` | — | — | `Governors` 表列（`Image` / `PortraitImage` / `PortraitImageSelected`） |
 | ② 忠诚度/宗教 | `XLPs/UILensModels.xlp`、`XLPs/StrategicView_UILenses.xlp` | `ArtDefs/Overlay.artdef`、`ArtDefs/StrategicView.artdef` | `Materials/*_material.mtl`、`Assets/*_Box.ast` | 复用官方几何（Overlay `HexModelGeo` / Pressure `PipModelGeo`），不自建几何 |
 | ④ 2D 领袖 | `XLPs/leader_{PACK}.xlp`、`XLPs/Leader_LightRigs.xlp` | `ArtDefs/Leaders.artdef` | `Geometries/*.geo`、`Materials/*.mtl`、`LightRigs/*.lrg`、`EnvironmentLights/*.env`、`Textures/*.tex`、`Assets/*.ast` | 每个领袖一套 6 类；聚合模板按领袖数复制块 |
-| ⑤ UI 立绘/Suk | `XLPs/*.xlp`（**`m_ClassName=UITexture`** 的那一个，如 `UILeaders.xlp`） | — | `Textures/*_Suk.{dds,tex}`（`UserInterface`） | `Players` 表 `Portrait`/`PortraitBackground` 列 + **`FrontEndAction` 挂 `Criteria`**（未启用 Suk 时不加载） |
+| ⑤ UI 立绘/Suk | `XLPs/*.xlp`（**`m_ClassName=UITexture`** 的那一个，如 `UILeaders.xlp`） | — | `Textures/SUK_UI_*.{dds,tex}`（`UserInterface`） | `Players` 表 `Portrait`/`PortraitBackground` 列 + **`FrontEndAction` 挂 `Criteria`**（未启用 Suk 时不加载） |
 | ⑥ 历史时刻 | `UI_PrideMoments.xlp`（`m_ClassName=UITexture`，`PackageName=UI/PrideMoments`） | — | `Textures/Moment_*.{dds,tex}`（`UserInterface`，456×332） | `MomentIllustrations` 表（四列，`Texture` **带 `.dds` 后缀**） |
 
 > 原类别③ 单位晋升图标的声明层落点已随管线作废**移出本节**；仅存的事实值
@@ -209,11 +209,13 @@ languages:
    - 带 alpha 的贴图 → `PF_R8G8B8A8_UNORM` + `bUseMips=false`（texconv 必须带 `-m 1`）；OPACITY 用单通道 `PF_R8_UNORM`
    - `gen_tex.py` 默认把 `m_ClassName` 写成 `UserInterface`，**出 `.tex` 后必须手工改类别**，可直接照抄 `templates/` 下的对应模板字段顺序
    - **UI 立绘 / 选人界面贴图 → `UserInterface`**（`m_Tags` 单条 `UserInterface`）。
-     ⚠ `FALLBACK_NEUTRAL_{X}_Suk` 与 3D 回退贴图**同前缀但类别不同**：
-     3D 回退是 `Leader_Fallback`（注册在 `LeaderFallbacks.xlp`），
-     `_Suk` UI 立绘必须是 `UserInterface`（注册在 `UITexture` XLP）。
-     `gen_tex.py` 的 `is_fallback()` 已显式排除 `_Suk`（`_UI_PORTRAIT_SUFFIXES`）；
-     **新增同类 UI 后缀请往该常量里加**，不要再写前缀特例。详见 `reference/ui-leader-portrait.md` §4.4
+     ★ **命名空间铁律**：第三方界面适配素材**不得借用官方模板前缀**
+     （`FALLBACK_` = 官方 3D 回退 = `Leader_Fallback`，`LEADER_`/`ICON_` 同理），
+     一律走 `<适配对象短名>_UI_<KIND>_<KEY>`——Suk 选人界面适配＝`SUK_UI_*`
+     （立绘 `SUK_UI_PORTRAIT_{KEY}` / 背景 `SUK_UI_BACKGROUND_{KEY}`）。
+     **`Players.Portrait` 是自由字符串列**，贴图名无格式要求，所以改名无技术约束。
+     旧命名（`FALLBACK_NEUTRAL_{X}_Suk`）迁移：`scripts/migrate_suk_namespace.py <工程根> --write`。
+     详见 `reference/ui-leader-portrait.md` §4.4
 
 ### 6.3 素材搬运边界（避免污染工程 pantry）
 

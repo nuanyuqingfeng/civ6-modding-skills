@@ -162,6 +162,29 @@ if __name__ == "__main__":
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
+
+    # `--tool <键>` / `--path <键>`：把解析结果**单独打印**给 shell 包装脚本用
+    # （PowerShell 侧无法 import Python 模块，此前只能各自写死路径 —— 实测
+    #  ensure_uploader.ps1 因此把已装好的机器判成"缺工具"）。
+    # 退出码：0 找到（打印路径）/ 1 未找到或键名非法。
+    argv = sys.argv[1:]
+    if argv and argv[0] in ("-t", "--tool", "-p", "--path"):
+        want_tool = argv[0] in ("-t", "--tool")
+        if len(argv) < 2:
+            print("用法：python _paths.py (--tool|--path) <键名>", file=sys.stderr)
+            raise SystemExit(2)
+        key = argv[1]
+        try:
+            val = tool(key) if want_tool else get(key)
+        except KeyError as e:
+            print(str(e), file=sys.stderr)
+            raise SystemExit(2)
+        if val:
+            print(val)
+            raise SystemExit(0)
+        print("MISSING %s" % key, file=sys.stderr)
+        raise SystemExit(1)
+
     print("本机 Civ6 路径：")
     print(summary())
     print("\n外部工具路径：")

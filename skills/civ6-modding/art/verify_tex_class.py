@@ -11,7 +11,10 @@ r"""verify_tex_class.py — 校验「.tex 的 m_ClassName」与其「XLP 注册�
 条目被静默替换成 error asset（界面空白/贴图不显示，且不报错）。
 
 历史教训（2026-09-17）：`gen_tex.py` 曾按名字前缀判断类别，把
-`FALLBACK_NEUTRAL_*_Suk`（UI 立绘，应 `UserInterface`）误写成 `Leader_Fallback`。
+`FALLBACK_NEUTRAL_*_Suk`（第三方界面立绘，应 `UserInterface`）误写成 `Leader_Fallback`。
+该命名已于 2026-09-18 废弃并迁入独立命名空间 `SUK_UI_*`（迁移工具
+civ6-asset-forge/scripts/migrate_suk_namespace.py）——迁名的**动因正是**这类
+"借用官方前缀导致同前缀不同类别"的歧义。
 当时**没有任何校验器能发现**（`align_tex_format.py` 明确不碰 `m_ClassName`；
 `verify_icon_atlas.py` 只走 `IconTextureAtlases` 路径；`check_pantry.py` 只查配对）。
 

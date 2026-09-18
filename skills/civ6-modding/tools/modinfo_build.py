@@ -133,7 +133,7 @@ def main() -> int:
         dest_dir = os.path.join(proj_dir, "Build")
         os.makedirs(dest_dir, exist_ok=True)
         dest = os.path.join(dest_dir, mod_name + ".modinfo")
-        open(dest, "w", encoding="utf-8", newline="\n").write(text)
+        open(dest, "w", encoding="utf-8", newline="\r\n").write(text.replace("\r\n", "\n"))
         print("OK  ->  %s" % dest)
         print("    （未部署；加 --deploy 才会复制到 Mods 目录）")
         return 0
@@ -159,7 +159,10 @@ def main() -> int:
         return 1
 
     dest = os.path.join(mod_dir, mod_name + ".modinfo")
-    open(dest, "w", encoding="utf-8", newline="\n").write(text)
+    # .modinfo 属配置类文本 → CRLF（换行分层铁律，见 gotchas.md §68）。
+    # 原先写 LF，而 ModBuddy 构建/部署出的 modinfo 是 CRLF（实测线上 Ragunna_Pack.modinfo
+    # CRLF=1114 / LF=0）——两者混用会让「工具产物 vs ModBuddy 产物」出现伪不一致。
+    open(dest, "w", encoding="utf-8", newline="\r\n").write(text.replace("\r\n", "\n"))
     print("OK  ->  %s" % dest)
 
     bad = [f for f in action_files(text.split("<Files>")[0])

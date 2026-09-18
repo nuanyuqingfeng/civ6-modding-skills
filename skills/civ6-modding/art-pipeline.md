@@ -75,15 +75,46 @@ Python 3 + **Pillow**（`make_atlas.py` 组版）、**numpy + scipy**（`normali
 
 ### 二.1 ⚠ `.tex` 类别（`m_ClassName`）是硬约束，且**不能靠名字猜**
 
-`gen_tex.py` 判 `m_ClassName` 用的是「**前缀判断 + `_UI_PORTRAIT_SUFFIXES` 例外表**」
-（`is_fallback()`，脚本 285–311 行）：以 `FALLBACK_NEUTRAL_` 开头者 → `Leader_Fallback`，
-**但以 `_UI_PORTRAIT_SUFFIXES`（当前仅 `_Suk`）结尾的显式排除在外** → `UserInterface`，
-其余 → `UserInterface`。**但同前缀不代表同类别**：
+`gen_tex.py` 判 `m_ClassName` 用的是「`FALLBACK_` 前缀 → `Leader_Fallback`，其余 → `UserInterface`」。
 
 | 贴图名 | 真实用途 | 应有 `m_ClassName` | 注册在 |
 |---|---|---|---|
-| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP` | 3D 领袖回退 | `Leader_Fallback` | `LeaderFallbacks.xlp` |
-| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP_Suk` | **UI 选人界面 2D 立绘** | **`UserInterface`** | `UILeaders.xlp`（`UITexture`） |
+| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP` | 3D 领袖回退（官方模板） | `Leader_Fallback` | `LeaderFallbacks.xlp` |
+| `SUK_UI_PORTRAIT_CARTETHYIA_QYQXP` | **选人界面 2D 立绘**（第三方适配） | **`UserInterface`** | `UILeaders.xlp`（`UITexture`） |
+
+#### 命名空间铁律：第三方界面素材**不得借用官方模板前缀**
+
+**`FALLBACK_` / `LEADER_` / `ICON_` 等前缀是官方语义**（`FALLBACK_*`＝3D 回退，
+固定对应 `Leader_Fallback` 类）。第三方界面适配的素材**一律进自己的独立命名空间**：
+
+```
+<适配对象短名>_UI_<KIND>_<KEY>          例：SUK_UI_PORTRAIT_<KEY> / SUK_UI_BACKGROUND_<KEY>
+```
+
+> **这条铁律是有代价换来的。** 历史上一度把 Suk 选人界面的 2D 立绘命名为
+> `FALLBACK_NEUTRAL_<KEY>_Suk`（借用了官方 3D 回退前缀），于是：
+> 同前缀、不同类别，`gen_tex.py` 被迫维护一张 `_UI_PORTRAIT_SUFFIXES` 例外表，
+> 且 skill 文档、两个校验器都要反复解释"这两类为何同前缀"——后人极易把 UI 立绘
+> 误当 3D 回退。2026-09-18 起素材迁入 `SUK_UI_*` 独立命名空间，该歧义从根上消失，
+> 例外表退化为 legacy 兼容（见下）。
+>
+> **为什么当时"看起来非这么做不可"**：`Players.Portrait` / `PortraitBackground` 是
+> **自由字符串列**，界面代码读值后交给 Image 控件显示——贴图名本身**没有任何**格式要求。
+> 所谓"必须沿用某后缀"只是跨工程沿用的**惯例**，不是技术约束。
+
+**新纳入第三方界面适配时**：选一个不与官方前缀重叠的短名（如 `SUK`），
+按 `<短名>_UI_<KIND>_<KEY>` 命名，然后：
+`civ6-asset-forge/scripts/gen_suk_portrait.py`（生成）/ `verify_suk_portrait.py`（校验）。
+
+> **legacy 兼容**：`gen_tex.py` 的 `_UI_PORTRAIT_SUFFIXES = ("_Suk",)` 仍保留，
+> 用于尚未迁移的旧工程；某工程报 `*_Suk` 贴图时，跑
+> `migrate_suk_namespace.py <工程根> --write` 一次性迁移（会同时改文件名、`.tex` 内部
+> 三字段、XLP 与 SQL 引用）。**全部工程迁移完成后，该常量与 `is_fallback()` 里的
+> 那次判断可一并删除。** 迁移后**必须重新 cook**（新名字＝新 BLP 条目）。
+
+> ⚠ **多情绪槽命名（`FALLBACK_<STATE>_LEADER_<KEY>`）**：这是另一套并存写法
+> （`civ6-mod-developer` 的手工路线在用）。`is_fallback()` 用 `FALLBACK_` 前缀判据，
+> 对 `NEUTRAL/HAPPY/UNHAPPY/ENRAGED` 四槽**全部命中**，无需特例。
 
 类别写错的后果是**静默**的：cooker 报
 `has class 'X', but is bound to parameter 'Y' which does not accept this class`，
@@ -656,6 +687,45 @@ python <skill>\art\apply_fow.py --input <图标.png|dds> [--output <路径>] \
 
 ---
 
+## 九·补、工坊预览图（`make_workshop_preview.py`）
+
+工坊预览图（Steam cover，即上传工作区的 `image.png`）是**唯一有「≤ 1 MB 硬上限」**的素材，
+很容易为了压体积而做糊。2026-09 本项目实测把根因定位清楚了：**不是尺寸、也不是源图质量，
+而是缩放方式**——
+
+| 同一源图 → 同一目标尺寸的缩放方式 | 锐度（Laplacian 方差） |
+|---|---|
+| ImageMagick **默认滤镜 / Mitchell**（`magick -resize` 不写 `-filter` 时走这条） | 2,592.6 |
+| `-filter Lanczos` 单步 | 4,842.4 |
+| **Lanczos 逐级减半 + unsharp**（采定） | **13,047.4** |
+
+即"封面太模糊"几乎总是**单步降采样 + 默认滤镜偏软**造成的，与母版好坏无关。
+
+**采定管线**（`art/make_workshop_preview.py`，由 `tools/workshop_cover.py` 复用）：
+
+1. 剥掉无用 alpha（母版 alpha 恒 255 时纯属浪费编码）；
+2. **Lanczos 逐级减半**（3840→1920→960→512）——避免单步大幅降采样的混叠/发闷；
+3. **unsharp 中度锐化**（`radius=0.7 percent=85 threshold=2`，等价 IM `0x0.7+0.85+0.02`）——
+   锐化量经「锐度 vs 振铃」实测择优；
+4. PNG 最高压缩 + strip。
+
+```bash
+python <skill>\art\make_workshop_preview.py <母版.png> --out <ws>\image.png --qa
+python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png   # 直通，不重采样
+```
+
+**两条铁律**：
+
+- ★ **已达标（512×512）的成品不要再缩**。工具对「输入 == 目标」默认**直通**（一像素不改），
+  要强制重采样得显式 `--force-resize`。本项目台账记的验收口径就是「直接作为 `image.png` 上传、
+  **不再二次缩放**」——上一轮那个 512 成品再缩一次只会更糊。
+- ★ **不要用 `magick -resize` 裸缩**。默认 Mitchell 偏软；这也是为什么执行端用 Pillow
+  （必须显式写 `Image.LANCZOS`，从根上消灭"忘写 `-filter` 就发糊"）。
+
+**质量指标**（`--qa`）：`sharpness`（Laplacian 方差，采定档 ≈1.3 万）与 `ringing`
+（锐化振铃，**相对未锐化参考**算，随锐化量单调：无锐化 ≈2.7 / 采定 ≈17 / 200% ≈31）。
+振铃指标必须拿未锐化中间图当参考——用锐化图自身的邻居算会被源图纹理淹没而失效（实测过）。
+
 ## 十、art 目录工具索引（2026-09 汇总）
 
 | 工具 | 干什么 | 何时用 |
@@ -670,6 +740,7 @@ python <skill>\art\apply_fow.py --input <图标.png|dds> [--output <路径>] \
 | `apply_fow.py` | 生成迷雾「羊皮纸」FOW 变体 | 该类别原版有 `_FOW` 时（建筑/区域/资源有，项目没有） |
 | `gen_tex.py` | 按 DDS 头生成 `.tex`（GBK/ANSI 编码，别存 UTF-8） | 一般不直接调，make_atlas/convert_art 会调 |
 | `gen_modartxml.py` | 生成/核对 `Mod.Art.xml` | 新增或改了 XLP/Artdef 时 `--check` |
+| `make_workshop_preview.py` | **工坊预览图生成**（Lanczos 逐级减半 + unsharp，默认 512×512）；**已达标成品直通不二次缩放**；`--qa` 出锐度/振铃指标 | 出/换工坊封面 `image.png`（第九·补节） |
 
 `verify_icon_atlas.py` 的实战产出（本项目 2026-09 首跑）：一次抓出 2 个此前无人发现的既有问题——
 `RGN_Product_Font.dds` 被引用但文件不存在（7 条 IconDefinitions 悬空）、

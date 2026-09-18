@@ -16,8 +16,9 @@
 | `art/dds_io.py` | dds_io.py — Civ6 单 mip RGBA8 DDS 的最小读写（零外部依赖，纯标准库 + Pillow） | `python dds_io.py --selftest <某个既有.dds> [更多.dds ...]` |
 | `art/gen_modartxml.py` | gen_modartxml.py — Mod.Art.xml（AssetObjects..GameArtSpecification）生成器。 | `python gen_modartxml.py <projectRoot>            # 生成结果打印到 stdout<br>python gen_modartxml.py <projectRoot> --check    # 与项目现有 *.Art.xml 比对，只报告不写` |
 | `art/gen_tex.py` | 为 {MOD_NAME}/Textures/ 下的每个 dds 文件生成同名 .tex 文件。 | `python gen_tex.py [textures_dir] [assets_dir] [asset_map_json]` |
-| `art/make-icon.ps1` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
+| `art/make-icon.ps1` | Civ6 白色扁平图标管线（v2 阈值版）： | `powershell -File make-icon.ps1 -Subject "a lighthouse" -Out "D:\out\icon.png" [-Seed 42]<br>powershell -File make-icon.ps1 -Subject "a sword" -Out out.png -SdDir "D:\sd-cpp"` |
 | `art/make_atlas.py` | make_atlas.py — Civ6 多图网格图集（IconTextureAtlas）合成器。 | `python make_atlas.py [-Manifest art_manifest.json] [-ProjectRoot <path>]` |
+| `art/make_workshop_preview.py` | make_workshop_preview.py — 工坊预览图（Steam cover）生成器 | `python make_workshop_preview.py <master.png> --out <ws>/image.png --qa<br>python make_workshop_preview.py <已有512.png> --out <ws>/image.png` |
 | `art/merge_icon_registration.py` | merge_icon_registration.py — 把 make_atlas.py 产出的注册片段幂等并入项目 | `python merge_icon_registration.py <projectRoot> --fragment <...>_registration.xml` |
 | `art/normalize_icon.py` | normalize_icon.py — Civ6 图标规范化预处理（art-pipeline「图标规范化」专属章节的引擎） | `python normalize_icon.py <in.png> [out.png] [--canvas 256] [--content 224] [--color 255]<br>python normalize_icon.py <in.png> --role unit_icon        # 用 registry 内置规范` |
 | `art/regen_atlas_tiers.py` | regen_atlas_tiers.py — 图集中间档「母版重出」工具（修复被压对比/锐化的档位） | `python regen_atlas_tiers.py <projectRoot> --report<br>python regen_atlas_tiers.py <projectRoot> --atlas ATLAS_X --master 256 --sizes 32,50,80` |
@@ -32,7 +33,7 @@
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） | `powershell -File clash_api.ps1 -Method GET -Path "/proxies" -OutFile resp.txt` |
 | `release/scripts/clash_proxy.py` | Clash Verge 代理节点测速与自动选优（上传工坊网络差时用） | `python clash_proxy.py [--url <工坊链接>] [--timeout 3000] [--max-workers 8]（测完自动选最优节点为 GLOBAL，无关闭开关）` |
 | `release/scripts/cleanup.ps1` | 删除临时上传工作区（真上传成功并验证后才跑） | `powershell -File cleanup.ps1 -Workspace $env:TEMP\civ6-ws\<ModName>` |
-| `release/scripts/ensure_uploader.ps1` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
+| `release/scripts/ensure_uploader.ps1` | ensure_uploader.ps1 —— 工坊上传器的"自适应保障"（与音频模板 ensure_template.py 同口径） | `powershell -File ensure_uploader.ps1                 # 只检查，缺就提示（exit 2）<br>powershell -File ensure_uploader.ps1 -Confirmed      # 允许联网 clone + 构建` |
 | `release/scripts/find_item_id.ps1` | 从本机 Steam 日志反查工坊条目 ID | `powershell -File find_item_id.ps1 -ModName <ModName>` |
 | `release/scripts/upload.ps1` | 上传 / 更新工坊条目（日志默认写 <tool目录>\logs） | `powershell -File upload.ps1 -Workspace <工作区> [-TimeoutSeconds 1800]` |
 | `release/scripts/validate.ps1` | 上传前 validate 工作区（exit 0 才允许 upload） | `powershell -File validate.ps1 -Workspace <工作区>` |
@@ -47,9 +48,13 @@
 | `scripts/normalize_eol.py` | 按「原版换行分层铁律」归一化 Civ6 工程的文本文件换行。 | `python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）<br>python normalize_eol.py <工程目录> --fix           # 就地归一化` |
 | `scripts/rgn_validate_runner.mjs` | rgn_validate 离线执行器 v2 — 核心判定逻辑提取自 @dsh-external/dsh-rgn-tools 的 | `node rgn_validate_runner.mjs [目录=cwd] [文件模式=*.sql] [checkNaming=true] [--base <基础库>] [--static]` |
 | `scripts/verify_trees.py` | Verify two directory trees are byte-identical (recursive SHA256 comparison). | `python verify_trees.py <dirA> <dirB>` |
-| `tools/_paths.py` | 本机 Civ6 关键路径解析（P1–P6），全 civ6-modding/tools 共用。 | `python _paths.py        # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）` |
+| `tools/_paths.py` | 本机 Civ6 关键路径解析（P1–P6），全 civ6-modding/tools 共用。 | `python _paths.py                          # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）
+python _paths.py --tool uploader            # 只打印某个外部工具的解析路径（供 shell 包装脚本调用）
+python _paths.py --path mods                # 同上，取 P1-P6 路径键；未找到 exit 1、键名非法 exit 2` |
+| `tools/civ_leader_data.py` | civ_leader_data.py — 新文明 / 新领袖的**数据与文本机械推导**（规格 JSON → SQL） | `python civ_leader_data.py <spec.json> --project <工程根>          # 预演（不写盘）<br>python civ_leader_data.py <spec.json> --project <工程根> --write` |
 | `tools/local_flux.py` | 本地 FLUX.2-klein-4B 文生图封装（免费、离线、约 8–30s/张）。 | `python local_flux.py --prompt "..." --out x.png [--seed 42] [--size 1024]<br>python local_flux.py --prompt-file p.txt --out x.png --seeds 42,7,123   # 多 seed 取样挑图` |
 | `tools/modinfo_build.py` | 从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。 | `python modinfo_build.py <X.civ6proj>                 # 只生成到 <proj目录>/Build/X.modinfo<br>python modinfo_build.py <X.civ6proj> --deploy        # 复制 Content 文件 + 写 modinfo 到 Mods/<X>/` |
+| `tools/new_project.py` | new_project.py — 从零生成 Civ6 ModBuddy 工程骨架（`.civ6proj` + 目录 + 版本控制骨架） | `python new_project.py "D:\documents\Firaxis ModBuddy\Civilization VI\MyMod" --name MyMod<br>python new_project.py <目录> --name MyMod --title-en "My Mod" --title-zh "我的模组"` |
 | `tools/skill_manifest.py` | 名录生成器：扫描一个 skill 的脚本，从各自 docstring 抽出「用途 + 用法」， | `python skill_manifest.py <skill 目录名或绝对路径> [...]      # 指定 skill<br>python skill_manifest.py --all-civ6                          # 批量刷新全部 civ6-* skill` |
 | `tools/strip_comments.py` | 发布前剥离代码注释（**默认只剥离 Lua**），只作用于**发布副本**，不动源工程。 | `python strip_comments.py <目标目录>                 # 就地剥离（默认仅 .lua）<br>python strip_comments.py <目标目录> --dry-run        # 只统计，不写` |
 | `tools/verify_mod_package.py` | 交付包体检：源工程 ↔ Mods 副本 ↔ 上传工作区 三处一致性 + .modinfo 结构与引用闭合。 | `python verify_mod_package.py --src <源工程目录> --mods <Mods/<ModName>>` |
@@ -57,7 +62,7 @@
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 47 个脚本。
+共 50 个脚本。
 
 ## 第三方依赖（非标准库）
 
@@ -66,6 +71,7 @@
 - `art/apply_fow.py` → numpy、Pillow
 - `art/dds_io.py` → Pillow
 - `art/make_atlas.py` → Pillow
+- `art/make_workshop_preview.py` → Pillow、numpy（--qa 指标）
 - `art/normalize_icon.py` → numpy、Pillow、scipy
 - `art/regen_atlas_tiers.py` → numpy、Pillow
 - `art/survey_icon_atlas.py` → numpy、Pillow、scipy
@@ -115,6 +121,9 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 ### 新 mod 从工程到线上的推荐顺序
 
 ```
+⓪ Push-Location <tool 目录>; .\Civ6WorkshopUploader.exe new -w <ws>; Pop-Location
+                                                        # 首建骨架（★ cwd 必须是 exe 目录，否则 Template not found）
+                                                        更新已有条目跳过此步，复用旧 workspace
 ① python tools/modinfo_build.py <X.civ6proj> --deploy   # 生成 .modinfo + 部署到 Mods
 ② python tools/verify_mod_package.py --src <工程> --mods <Mods副本>
                                                         # 三处一致性 + 引用闭合
@@ -123,10 +132,21 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 ④ python tools/workshop_meta.py <spec.json> --out <ws>/workshop.json --record <桌面存档>
 ⑤ python tools/local_flux.py … → python tools/workshop_cover.py …
                                                         # 底图（模型，无文字）+ 封面（真实字体排版）
+                                                        封面加 --preview <ws>/image.png 即成为工坊预览图
+                                                        （已达标 512 成品直通、不二次缩放；不放 = 保留线上原图）
+   或只需缩放：python art/make_workshop_preview.py <母版> --out <ws>/image.png --qa
+                                                        # ★ 预览图缩放的执行端在 art/（单一真源）
+                                                        #   别用 magick -resize 裸缩（默认 Mitchell 偏软 → 发糊）
 ⑥ release/scripts/validate.ps1 → upload.ps1 → verify.ps1
 ⑦ python tools/workshop_item_check.py <id>              # 线上复核
 ⑧ release/scripts/cleanup.ps1 -Workspace <ws>           # 真成功后才删工作区
+⑨ （下架）.\Civ6WorkshopUploader.exe remove -w <ws> -i <id>   # 不可逆，只删线上
 ```
+
+> 上传工具的完整命令面（`new` / `validate` / `upload` / `remove`）、退出码
+> （`0` 成功 / `1` 硬错误 / `2` validate 提示级不阻断）与 workspace 结构见
+> [`release.md`](release.md)「Hard Rules」。**别用来路不明的预编译 zip 替换本机
+> `tool\`**（上游无 Releases/tag/CI）——判据与实测见同节。
 
 ### 详细说明与踩坑
 

@@ -16,14 +16,15 @@
 | `scripts/gen_loyalty_art.py` | 文明6 忠诚度图标注册链生成：XLP / ArtDef / mtl / ast + Art.xml、civ6proj 补注册。 | `python gen_loyalty_art.py --project "<工程路径>" --civ-types CIVILIZATION_RAGUNNA_QYQXP[,CIVILIZATION_X2...]` |
 | `scripts/gen_religion_art.py` | 文明6 新宗教（自定义宗教类型）压力/镜头图标注册链生成。 | `python gen_religion_art.py --project "<工程路径>" --religion-types RELIGION_CUSTOM_RGN[,RELIGION_X2...]` |
 | `scripts/gen_suk_portrait.py` | gen_suk_portrait.py — Sukritact's Civ Selection Screen 适配素材与接线生成器 | `python gen_suk_portrait.py --project <工程根> --check<br>python gen_suk_portrait.py --project <工程根> --write` |
+| `scripts/migrate_suk_namespace.py` | migrate_suk_namespace.py — 把「Suk 选人界面适配」素材从**官方前缀借用**迁到**独立命名空间** | `python migrate_suk_namespace.py <工程根>                  # 预演（默认，不写盘）<br>python migrate_suk_namespace.py <工程根> --check          # 只体检：有待迁移项则 exit 2` |
 | `scripts/process_leader_png.py` | process_leader_png.py — Civ6 2D 领袖立绘 PNG -> TEXTURE/OPACITY 1024x1024 素材生成器 | `python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA_QYQXP` |
 | `scripts/process_loyalty_icon.py` | 文明6 忠诚度/宗教图标合成：图标 + 黑色光晕模板 → PNG 组。 | `python process_loyalty_icon.py --kind {loyalty\|religion} (--icon <png> \| --project <工程>) --suffix <后缀> [--out-dir <目录>] [--fit-mode {core,extent}]` |
 | `scripts/psd_inspect.py` | PSD 结构检视 + 图层导出（类别⑥ 历史时刻模板反推用）。 | `python psd_inspect.py <psd或目录> [--pick 1,4,18] [--all] [--export-layers] [--out <目录>]` |
 | `scripts/verify_badge.py` | verify_badge.py - 总督 24px 徽章几何/配色验证 | `python verify_badge.py 生成.png                  # 只做几何自洽校验<br>python verify_badge.py 生成.png 官方格.png        # 与官方对照，输出 IoU 与配色误差` |
 | `scripts/verify_moment.py` | verify_moment.py — 历史时刻插画与接线的只读校验器 | `python verify_moment.py --project <工程根><br>python verify_moment.py --project <工程根> --coverage-min 75 --coverage-max 99` |
-| `scripts/verify_suk_portrait.py` | verify_suk_portrait.py — Suk 选人界面适配素材与接线的只读校验器 | `python verify_suk_portrait.py --project <工程根><br>python verify_suk_portrait.py --project <工程根> --suffix _Suk` |
+| `scripts/verify_suk_portrait.py` | verify_suk_portrait.py — Suk 选人界面适配素材与接线的只读校验器 | `python verify_suk_portrait.py --project <工程根><br>python verify_suk_portrait.py --project <工程根> --namespace SUK_UI` |
 
-共 13 个脚本。
+共 14 个脚本。
 
 ## 第三方依赖（非标准库）
 

@@ -14,7 +14,7 @@
 并在 `Criteria = Suk_Portrait` 下改写 `Players`（未启用 Suk 时行为完全不变）。
 
 本脚本按兄弟工程（工程 A / 工程 D / 工程 B/C）已实证的约定产出：
-`_Suk` 后缀贴图 + `UPDATE Players` + XLP 条目 + `.civ6proj` 接线，**幂等**。
+`SUK_UI_*` 命名空间贴图 + `UPDATE Players` + XLP 条目 + `.civ6proj` 接线，**幂等**。
 
 ## 素材工艺（实测自兄弟工程既有产物，可确定性复现）
 
@@ -89,7 +89,14 @@ MAX_W = 1024
 ALPHA_THR = 8
 BG_W, BG_H = 1440, 1080    # 兄弟工程实证的 Suk 背景尺寸（4:3）
 BG_CROP_X = 240            # 1920→1440 的中心裁切起点
-SUK_SUFFIX = "_Suk"
+SUK_SUFFIX = "_Suk"        # legacy 命名后缀：**仅用于识别未迁移的旧素材**，不再用于生成
+UI_NS = "SUK_UI"           # 独立命名空间前缀。见下表——
+# ★ 为什么不再复用 `FALLBACK_NEUTRAL_*_Suk`：
+#   `FALLBACK_*` 是**官方 Leader_Fallback 模板的固定命名**（3D 回退，类 `Leader_Fallback`），
+#   而 Suk 适配是 **UI 贴图（类 `UserInterface`）**。同前缀不同类别会让
+#   `gen_tex.py` 的 is_fallback() 必须额外维护一张例外表，且到处都要解释"为何同前缀"，
+#   后人极易把 UI 立绘误当 3D 回退。迁到独立命名空间后该歧义从根上消失。
+#   通用规则：第三方界面适配素材走 `<适配对象短名>_UI_<KIND>_<KEY>`，不复用官方模板前缀。
 SUK_DIR = os.path.join("Mod_Adaptation", "Suk")
 SUK_SQL = "Suk_Portrait_RGN.sql"
 CRITERION = "Suk_Portrait"
@@ -317,8 +324,8 @@ def gen_assets(files, srcs, check):
             continue
         por, pst = make_portrait(load_any(s["portrait"]))
         bg, bst = make_background(load_any(s["bg"]))
-        pname = "FALLBACK_NEUTRAL_%s%s" % (s["key"], SUK_SUFFIX)
-        bname = "PORTRAIT_%s_BACKGROUND%s" % (s["key"], SUK_SUFFIX)
+        pname = "%s_PORTRAIT_%s" % (UI_NS, s["key"])
+        bname = "%s_BACKGROUND_%s" % (UI_NS, s["key"])
         if not check:
             write_dds(os.path.join(files["textures"], pname + ".dds"), por)
             write_dds(os.path.join(files["textures"], bname + ".dds"), bg)
@@ -339,7 +346,7 @@ def gen_sql(files, srcs, check):
         "-- Sukritact's Civ Selection Screen 适配（由 gen_suk_portrait.py 生成）",
         "-- 触发：Suk 选人界面启用时（Criteria %s）；未启用则不加载，原版界面行为不变" % CRITERION,
         "-- 说明：Suk 是纯 2D 选人界面，读 Players.Portrait / PortraitBackground 显示立绘与背景。",
-        "--       此处把二者指向专为 Suk 准备的 _Suk 素材；未定义的领袖 UPDATE 影响 0 行，无副作用。",
+        "--       此处把二者指向专为 Suk 准备的 %s_* 素材；未定义的领袖 UPDATE 影响 0 行，无副作用。" % UI_NS,
         "",
     ]
     for lt, s in ok:
@@ -361,7 +368,7 @@ def gen_sql(files, srcs, check):
 
 
 def gen_xlp(files, srcs, check):
-    """向选定的 UITexture XLP 幂等追加 _Suk 条目（只含素材齐备者）。"""
+    """向选定的 UITexture XLP 幂等追加 SUK_UI_* 条目（只含素材齐备者）。"""
     path, text = pick_ui_xlp(files)
     if not path:
         return None, 0
