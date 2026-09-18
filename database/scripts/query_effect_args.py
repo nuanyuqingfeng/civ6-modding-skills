@@ -276,6 +276,11 @@ def main() -> int:
         return 0
 
     if args.effect:
+        if not any((declared_args(con, args.effect), observed_args(con, args.effect))):
+            print("无结果：%s" % args.effect)
+            print("提示：用 `python search_impl.py --effect %s` 看原版哪些 ModifierType/对象用了它；" % args.effect)
+            print("      或用 `python search_impl.py --modifier <关键词>` 从关键词反查。")
+            return 1
         return 0 if print_effect(con, args.effect, args.list_kind) else _miss(args.effect)
 
     if args.modifier:
@@ -337,6 +342,7 @@ def main() -> int:
 def _miss(q: str, what: str = "EffectType") -> int:
     print("无结果：%s 『%s』" % (what, q))
     print("提示：用 --search <关键词> 模糊搜；或确认基础库是否含该内容。")
+    print("      查「原版谁在用它」→ `python search_impl.py --modifier <关键词>`。")
     return 1
 
 

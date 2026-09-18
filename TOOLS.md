@@ -27,10 +27,12 @@
 | `art/verify_icon_atlas.py` | verify_icon_atlas.py — 图标图集落地自查（art-pipeline 第八节「完成标准」的可执行版） | `python verify_icon_atlas.py <projectRoot> [--icons a.xml b.xml] [--xlp a.xlp b.xlp]` |
 | `art/verify_tex_class.py` | verify_tex_class.py — 校验「.tex 的 m_ClassName」与其「XLP 注册类」是否匹配 | `python verify_tex_class.py --project <工程根>              # 只查类别匹配<br>python verify_tex_class.py --project <工程根> --full        # 全量贴图体检（见下）` |
 | `database/scripts/audit_schema_drift.py` | audit_schema_drift.py - guard the civ6-modding reference DB against | `python database/scripts/audit_schema_drift.py<br>python database/scripts/audit_schema_drift.py --game "F:/Steam/.../Sid Meier's Civilization VI"` |
+| `database/scripts/build_localization.py` | build_localization.py — 从**本机游戏安装**补全本地化文本库（含 DLC/资料片） | `python build_localization.py --report<br>python build_localization.py --build workspace/localization_full.sqlite` |
 | `database/scripts/query_api.py` | Civ6 API Query Tool — 主源 api.sqlite（含子项 sub_func_name 与运行时核验字段）， | `python query_api.py --search <关键词>              # 搜 表名/函数名/子项名/真名/id（子项一并命中）<br>python query_api.py --search <关键词> --sub-only   # 只看"本身是子项"的条目` |
 | `database/scripts/query_civ6_db.py` | Civilization VI Mod Database Query Tool — SQLite CLI wrapper. | `（见脚本 docstring）` |
 | `database/scripts/query_effect_args.py` | query_effect_args.py — 查「某个 EffectType / ModifierType 该填哪些参数、参数能填什么值」 | `python query_effect_args.py --effect EFFECT_ADJUST_PLOT_YIELD<br>python query_effect_args.py --modifier MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_CHANGE` |
 | `database/scripts/query_events.py` | Civ6 Event Query Tool — 直接查 events_enhanced.json，无需中间索引。 | `（见脚本 docstring）` |
+| `database/scripts/search_impl.py` | search_impl.py — 反查「某个游戏对象/效果，原版是怎么实现的」 | `python search_impl.py --object 农场<br>python search_impl.py --object TRAIT_CIVILIZATION_KHMER_BARAYS` |
 | `release/scripts/build.ps1` | 构建非 Trimmed 版 Civ6WorkshopUploader（勿用 PublishTrimmed，会卡 PreparingContent） | `powershell -File build.ps1（内部 dotnet publish -c Release -r win-x64）` |
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） | `powershell -File clash_api.ps1 -Method GET -Path "/proxies" -OutFile resp.txt` |
 | `release/scripts/clash_proxy.py` | Clash Verge 代理节点测速与自动选优（上传工坊网络差时用） | `python clash_proxy.py [--url <工坊链接>] [--timeout 3000] [--max-workers 8]（测完自动选最优节点为 GLOBAL，无关闭开关）` |
@@ -64,7 +66,7 @@ python _paths.py --path mods                # 同上，取 P1-P6 路径键；未
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 52 个脚本。
+共 54 个脚本。
 
 ## 第三方依赖（非标准库）
 

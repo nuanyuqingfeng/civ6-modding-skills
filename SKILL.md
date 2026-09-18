@@ -171,6 +171,7 @@ ADD resource/feature    → database.md
 REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "LoadOrder"（优先查 .civ6proj）
 ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
                          批量插图标/查图标名悬空 → `python art/iconify_text.py <工程根> --audit`
+                         DLC 文本查不到 → `python database/scripts/build_localization.py --report`
 ```
 
 ### 4.1 多语言文本 / 本地化（**Civ6 侧规则**）
@@ -185,6 +186,12 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 3. **默认多语言合并进原 SQL**，不新增分语言文件；UTF-8 / CRLF / 注释 / 尾逗号保持原样。
 4. **先查原版有没有现成 tag**：`SELECT Text FROM LocalizedText WHERE Tag='LOC_X' AND Language='zh_Hans_CN'`
    （`database/DebugLocalization.sqlite`）——能复用就复用，文案还与官方逐字一致。
+   > ⚠️ **该库是基础游戏快照，不含 DLC/资料片文本**（实测 15,237 tag）。查 DLC 内容（资料片领袖、
+   > 保护区、马格努斯总督…）会**查不到**，别据此断定"官方没有这个 tag"。
+   > 需要 DLC 覆盖时用 `python database/scripts/build_localization.py --report` 看缺口：
+   > `--augment` 向现有库**只加不改**地补全（`INSERT OR IGNORE`，既有行与 `SkillAnnotation_*`
+   > 侧表原样保留），`--build <out>` 新建到独立文件不动现有库。
+   > 补全后库体量约 62 MB → 126 MB，属**可选增强**，不补也能正常做基础游戏内容。
 5. 写入后逐条复核：标签齐缺失（八语言）、空值、标记漂移；改动量大时按 `validation.md` 的清单过一遍。
 
 > 文本与图标/颜色的对照数据在本 skill 内：`database/DebugLocalization.sqlite`（官方文本 + 手工标注侧表
@@ -207,6 +214,22 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 写任何 Modifier / Requirement **之前**，先在官方库里搜「这个效果原版是怎么实现的」——
 **别凭记忆拼 ModifierType + 参数**。原版几乎总有同类效果可以照抄，照抄的链路一定是对的。
 
+```bash
+# ★ 首选：一条命令直接列出「某对象/某效果的完整 Modifier 链」（含参数与条件集）
+python database/scripts/search_impl.py --object 农场              # 按对象（中文名或 Type）
+python database/scripts/search_impl.py --object TRAIT_CIVILIZATION_KHMER_BARAYS
+python database/scripts/search_impl.py --modifier ADJUST_PLOT_YIELD   # 按关键词反查谁在用它
+python database/scripts/search_impl.py --effect EFFECT_ADJUST_PLOT_YIELD
+python database/scripts/search_impl.py --list-objects             # 看支持哪些对象类别
+```
+
+它会输出 `ModifierId [EffectType] 参数: …` + `作用域` + 条件集（含 `REQUIREMENTSET_TEST_ANY`
+这类**或**逻辑），并自动展开两条嵌套链：**ATTACH_MODIFIER**（递归取 `ModifierId`）与
+**GRANT_ABILITY**（取 `AbilityType` → 展开该能力下属全部 Modifier）。递归自带**防环 + 限深**
+（官方数据里 ATTACH 链存在成环写法）。
+
+需要手写 SQL 时，等价链路：
+
 ```sql
 -- 1) 找效果：反查「哪些 Modifier 用了这个 Effect」
 SELECT d.ModifierType, d.CollectionType, m.ModifierId
@@ -225,13 +248,17 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
   （给参数签名 + **`DatabaseKind`→`Types` 的权威取值全集** + 官方实际用过的值）；
 - **Modifier 挂在哪张表** → `DynamicModifiers.CollectionType` 决定作用域，绑定表见
   `reference/WORKSHOP_PATTERNS.md`；不同对象挂载路径不同（Trait 走 `TraitModifiers`、
-  文明走 `CivilizationTraits` 中转、单位能力走 `UnitAbilityModifiers`）；
-- **ATTACH / GRANT_ABILITY 嵌套** → 递归展开时**必须防环 + 限深**（原版存在 `ATTACH_MODIFIER`
-  自引用/成环的写法）；`RequirementId` 以 `REQSET_` 开头的是嵌套条件集，要递归进去。
+  文明走 `CivilizationTraits` 中转、总督晋升走 `GovernorPromotionSets` 中转）；
+  完整绑定路径表见 `search_impl.py` 的 `OBJECT_TYPES`（6 种 kind）。
 
 > 教训（来自 ModTools 5.4 的实践，2026-09 吸收）：它的校验器在报「未知 EffectType」时
 > **会把操作指引一起打出来**——「用 `search <效果词>` 查现成实现，不要凭记忆断言」。
-> 把方法论编进错误信息，比写在文档里更不容易被忽略。
+> 把方法论编进错误信息，比写在文档里更不容易被忽略；本 skill 的 `rgn_validate` 在检测到
+> Modifier/Effect 类悬空引用时也会追加同样的下一步指引。
+>
+> ⚠️ 反向教训：ModTools 的注册表把总督晋升写成 `GovernorPromotions.GovernorType`，而本库
+> schema 里**没有这一列**（真实链路是中间表 `GovernorPromotionSets`）——照抄外部工具的
+> 表/列假设前，先 `PRAGMA table_info` 核对。
 
 ---
 
@@ -533,6 +560,8 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `database/schema-annotated.md` | 常用多列表注解（列定义/必填/示例值） |
 | `reference/MODIFIER_ARGUMENTS.md` | Modifier 参数分类 |
 | `database/scripts/query_effect_args.py` | **Effect/Modifier 参数取值域查询**（参数签名 + `DatabaseKind`→`Types` 权威全集 + 官方实际用值；支持 `--effect` / `--modifier` / `--arg` / `--search` / `--dump-json`） |
+| `database/scripts/search_impl.py` | **「某对象/效果原版怎么实现」反查**（14 类对象 × 6 种绑定路径；递归展开 ATTACH / GRANT_ABILITY / 嵌套 REQSET，自带防环限深；支持 `--object` / `--modifier` / `--effect` / `--json`） |
+| `database/scripts/build_localization.py` | **从本机游戏安装补全本地化库（含 DLC）**：`--report` 看缺口 / `--augment` 只加不改地补全 / `--build` 新建独立库；不删不覆盖既有行与 `SkillAnnotation_*` 侧表 |
 | `reference/WORKSHOP_PATTERNS.md` | 高级 SQL 模式 |
 | `reference/TYPE_NAME_MAPPING.md` | Type→名称 + Trait→Modifier 关联链 |
 | `database/modifiers-guide.md` | Modifier 系统指南 |

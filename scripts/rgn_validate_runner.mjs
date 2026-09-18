@@ -412,6 +412,19 @@ function runExecMode() {
         L.push('── 拼写建议（编辑距离 ≤2）──')
         L.push(...suggestions.slice(0, 10))
       }
+      // 悬空的是 Modifier/Effect/Requirement 类标识符时，多半是「凭记忆拼了个不存在的东西」。
+      // 追加可执行的下一步指引：去官方库里搜现成实现，而不是继续猜。
+      const doms = new Set(dangling.map(d => String(d.dom || '')))
+      if ([...doms].some(x => /Modifier|Effect|Requirement|Trait|Ability/i.test(x))) {
+        L.push('')
+        L.push('── 下一步：先搜原版怎么实现的，别继续猜 ──')
+        L.push('  node scripts/rgn_validate_runner.mjs 只能告诉你「引用不闭合」；')
+        L.push('  要查「这个效果原版用哪个 ModifierType / 参数填什么 / 挂在什么条件下」：')
+        L.push('    python database/scripts/search_impl.py --modifier <关键词>     # 按关键词反查现成实现')
+        L.push('    python database/scripts/search_impl.py --object <对象名>       # 从对象侧列全部 Modifier 链')
+        L.push('    python database/scripts/query_effect_args.py --effect <EFFECT_X>  # 该 Effect 的参数取值域')
+        L.push('  原版几乎总有同类效果可照抄，照抄的链路一定是对的。')
+      }
     } else {
       L.push(mat.ok
         ? '✅ 未发现悬空引用（项目新增引用全部闭合）'
