@@ -161,6 +161,23 @@ def _comment_block(path: str) -> str:
     """
     text = open(path, encoding="utf-8-sig", errors="replace").read()
     text = re.sub(r"^#![^\n]*\n", "", text)              # 先剥 shebang
+
+    # PowerShell 惯例：`param(...)` 置于文件最前，用途注释紧随其后。
+    # 不跳过它，头部注释块判据会整段失效 —— 实测 `release/scripts/ensure_uploader.ps1`
+    # 与 `art/make-icon.ps1` 因此被误标「无 docstring，待补」、用法列还错写成
+    # 「库：被其它脚本 import，无独立 CLI」（两者其实都有独立 CLI）。
+    m_param = re.match(r"\s*param\s*\(", text)
+    if m_param:
+        depth = 0
+        for i in range(m_param.end() - 1, len(text)):
+            if text[i] == "(":
+                depth += 1
+            elif text[i] == ")":
+                depth -= 1
+                if depth == 0:
+                    text = text[i + 1:]
+                    break
+
     m = re.match(r"\s*/\*(.*?)\*/", text, re.S)          # JS/MJS 块注释（含 JSDoc）
     if not m:
         m = re.match(r"\s*<#(.*?)#>", text, re.S)        # PowerShell 块注释

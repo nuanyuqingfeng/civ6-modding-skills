@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$To = "$env:USERPROFILE\Civ6WorkshopUploader",
     [string]$Repo = "https://github.com/Jianbao233/Civ6WorkshopUploader",
     [switch]$Confirmed,
@@ -23,12 +23,31 @@
 
 $ErrorActionPreference = "Continue"
 
+# 本 skill 根的 tools/_paths.py —— 本机路径的**单一真源**（会先读 local_paths.json）。
+# ★ 必须优先问它：本脚本原来的默认 -To 是 "$env:USERPROFILE\Civ6WorkshopUploader"，
+#   与本机实际安装位置无关，导致**已经装好上传器的机器也被判成"缺工具"**（实测 exit 2），
+#   进而白跑一次 clone + dotnet publish。凡本脚本要定位路径，一律先走 _paths.py。
+$SkillRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+$PathsPy = Join-Path $SkillRoot "tools\_paths.py"
+
+function Resolve-FromPaths {
+    if (-not (Test-Path -LiteralPath $PathsPy)) { return $null }
+    $py = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if (-not $py) { return $null }
+    $out = & $py $PathsPy --tool uploader 2>$null
+    if ($LASTEXITCODE -eq 0 -and $out) { return ($out | Select-Object -First 1).Trim() }
+    return $null
+}
+
 function Find-Existing {
-    $cands = @(
+    $cands = @()
+    $viaPaths = Resolve-FromPaths
+    if ($viaPaths) { $cands += $viaPaths }
+    $cands += @(
         (Join-Path $To "tool\Civ6WorkshopUploader.exe"),
         (Join-Path $To "artifacts\publish\Civ6WorkshopUploader\release_win-x64\Civ6WorkshopUploader.exe")
     )
-    foreach ($c in $cands) { if (Test-Path -LiteralPath $c) { return $c } }
+    foreach ($c in $cands) { if ($c -and (Test-Path -LiteralPath $c)) { return $c } }
     $cmd = Get-Command Civ6WorkshopUploader.exe -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
     return $null
