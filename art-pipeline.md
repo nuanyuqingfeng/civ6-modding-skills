@@ -484,6 +484,22 @@ python art/normalize_icon.py --role improvement_icon --show
 - 所有 DDS 统一 `R8G8B8A8_UNORM` 且**一律单 mip**：texconv 必须显式 `-m 1`——缺省或 `-m 0` 都会生成完整 mip 链（如 1440 宽图 11 级、体积 +1/3），与 AssetEditor `.tex` 的 `bUseMips=false` 约定冲突。转换后核对 DDS 头 `mips=1` 与文件大小再交付。
 - **技术名区分大小写**（schema pattern 已放开）：忠诚度贴图为混合大小写（`Loyalty_Overlay_*`、`StrategicView_Loyalty_*`），artdef/XLP 引用处必须逐字符一致。
 
+### 关于 NVIDIA Texture Tools（NVTT）—— 用不上，且**不随包**
+
+本机若装了 **NVTT（NVIDIA Texture Tools Exporter / `nvtt_export.exe`）**，注意它**不是本管线的依赖**：
+
+- **格式用不上**：NVTT 的强项是 BC1–BC7 / BC6H / ASTC 等 GPU 压缩格式，而 Civ6 工程 DDS
+  **一律未压缩 `R8G8B8A8_UNORM`**（本节上一条 + 实测：本项目 238 个 DDS 全部为 RGBA8）；
+  多 mip 也只出现在领袖立绘/压力图这类 `bUseMips=true` 的资产上，由 `.tex` 声明，**不需要外部压缩器**。
+- **PNG→DDS 已有内置件**：走 `art/bin/texconv.exe`（Microsoft DirectXTex，**MIT，随包分发**）。
+- **许可不同（关键）**：NVTT 是 NVIDIA **专有 SDK 许可**（`LICENSE.TXT`），
+  **不满足 `art/bin/` 的「许可允许再分发」准入条件**，因此**不进随包目录**；
+  只在 `tools/_paths.py` 登记**可选**路径键 `nvtt_dir`（缺失即返回 None，任何流程不得依赖它）。
+- **唯一残余用途是诊断**：`nvddsinfo` 看 DDS 头、`nvimgdiff` 比两图。
+  但同类需求优先用**零依赖**的 `art/dds_io.py --selftest`（纯标准库 + Pillow，只读 128 字节头）。
+
+> 一句话：**不要为了转 DDS 去装 NVTT**，也不要把它放进随包目录。
+
 ### manifest 示例
 
 ```jsonc
@@ -741,6 +757,7 @@ python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png
 | `gen_tex.py` | 按 DDS 头生成 `.tex`（GBK/ANSI 编码，别存 UTF-8） | 一般不直接调，make_atlas/convert_art 会调 |
 | `gen_modartxml.py` | 生成/核对 `Mod.Art.xml` | 新增或改了 XLP/Artdef 时 `--check` |
 | `make_workshop_preview.py` | **工坊预览图生成**（Lanczos 逐级减半 + unsharp，默认 512×512）；**已达标成品直通不二次缩放**；`--qa` 出锐度/振铃指标 | 出/换工坊封面 `image.png`（第九·补节） |
+| `iconify_text.py` | **文本图标化**：按中文关键词给游戏文本插 `[ICON_x]`（幂等防重复、保编码换行），并用**官方图标全表 + 工程 Icons XML** 校验图标名；`--audit` 只查悬空图标名 | 批量给文本加图标、或**排查「图标不显示」**（见第十·补节） |
 
 `verify_icon_atlas.py` 的实战产出（本项目 2026-09 首跑）：一次抓出 2 个此前无人发现的既有问题——
 `RGN_Product_Font.dds` 被引用但文件不存在（7 条 IconDefinitions 悬空）、
@@ -751,3 +768,34 @@ python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png
 被压对比（45px 边界中间调仅 20.4%，原版 45.3%），修复后 43.6%；顺带全工程体检又抓出
 `DISTRICTS`(6) / `PRODUCT`(5) / `RESOURCES`(4) 共 15 个同类受损档 —— 全部由结构校验 PASS、
 只有边缘门能发现。
+
+## 十·补、文本图标化与「图标不显示」排查（`iconify_text.py`）
+
+前面各节的校验器管的都是**美术侧**（图集落地、格子非空、XLP 登记、`.tex` 对齐）。但图标
+不显示还有**另一半原因在文本侧**：`[ICON_x]` 里的 `x` 解析不到。两个方向必须都查：
+
+| 症状 | 病因层 | 用哪个工具 |
+|---|---|---|
+| 图标空白，但图集/贴图都正常 | **文本侧**：`[ICON_x]` 的 `x` 解析不到 | `iconify_text.py --audit` |
+| 图标空白，文本写法也对 | **美术侧**：图集没落地 / 格子空 / 没进 XLP | `verify_icon_atlas.py` |
+
+`iconify_text.py --audit` 把文本里出现的每个 `[ICON_x]` 拿去**两个来源**核对，解析不到就是悬空：
+
+1. **官方原版**：`reference/sources/civ6-icon-tags.sql` 的 4836 个 `[ICON_*]` 全表；
+2. **本工程自定义**：工程 `Data/*.xml`、`Mod_Adaptation/**/*.xml` 里 `IconDefinitions` /
+   `IconTextureAtlases` 声明的名字（如 `RESOURCE_AUREO_RGN`）。
+
+> 实测（本项目 2026-09）：全局审计 `Text/` 下全部 `.sql`，**0 处悬空**；同一跑法能识别
+> 377 个工程自定义图标名 + 36 个图集名。
+
+**批量加图标**用 `--check` 预演 → `--write` 写入。两个必须知道的实现要点：
+
+- **幂等**：关键词左侧若已是同名 `[ICON_x]`（允许夹空白、大小写不敏感）则跳过，重复跑不叠加；
+- **长词优先**：`旅游业绩` 先于 `旅游`、`大预言家` 先于 `预言家`，避免切错。
+
+写入时**保持原编码（含 BOM 判定）与换行**（`newline=""`，防 Windows 把 `\r\n` 变成 `\r\r\n`），
+且只改写 `Text` 字段的引号内 span —— 列顺序任意（工程里既有 `(Language, Tag, Text)` 也有
+`(Tag, Language, Text)`）、多行 `VALUES` 与元组间 `-- 注释` 均已支持。
+
+> ⚠ **图标名写错不报错、只是不显示**（本节 §3 起反复强调的静默失败）。所以「批量加图标」
+> 必须配 `--audit`，否则等于批量制造静默失败。

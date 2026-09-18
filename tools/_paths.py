@@ -36,6 +36,13 @@ TOOL_DEFAULTS = {
     "luac": r"E:\SoftWares\Lua\5.1\luac.exe",
     "ws_root": os.path.join(os.environ.get("TEMP", r"C:\Windows\Temp"), "civ6-ws"),
     "steam_logs": r"F:\Steam\logs",
+    # --- 可选外部工具（**不属于必需链路，缺失不影响任何流程**）---
+    # NVTT（NVIDIA Texture Tools）自带的 DDS 诊断三件套。**不随本 skill 分发**：
+    # NVTT 是 NVIDIA 专有 SDK 许可（不是 MIT），与 art/bin/texconv.exe 的可再分发口径不同。
+    # 工程 DDS 一律未压缩 RGBA8 且单 mip（见 art-pipeline §484），**用不到 BCn 压缩**，
+    # 所以这里只登记"本机已装则可选调用"的路径键，绝不作为依赖。
+    # 用途仅限诊断：nvddsinfo 读 DDS 头、nvimgdiff 比对两张图。
+    "nvtt_dir": r"C:\Program Files\NVIDIA Corporation\NVIDIA Texture Tools",
 }
 
 
@@ -132,7 +139,10 @@ def summary() -> str:
 
 
 def tool(key: str, must_exist: bool = True) -> str | None:
-    """取外部工具路径。key ∈ uploader/sd_cpp/imagemagick/luac/ws_root/steam_logs。"""
+    """取外部工具路径。key ∈ uploader/sd_cpp/imagemagick/luac/ws_root/steam_logs/nvtt_dir。
+
+    `nvtt_dir` 是**可选**工具（NVTT 安装目录）：缺失返回 None 属正常，调用方须容忍。
+    """
     if key not in TOOL_DEFAULTS:
         raise KeyError("未知工具键：%s（可选：%s）" % (key, ", ".join(TOOL_DEFAULTS)))
     cand = _load_overrides().get(key) or TOOL_DEFAULTS[key]

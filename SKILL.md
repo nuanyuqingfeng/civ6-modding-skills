@@ -160,12 +160,17 @@ ADD new unit/building/district
 Modifier/PROPERTY 设计
 ├─ 作用域决策 → 见下文"写前三问"
 ├─ ATTACH 模式 → reference/WORKSHOP_PATTERNS.md
-└─ 参数分类   → reference/MODIFIER_ARGUMENTS.md
+├─ 参数分类   → reference/MODIFIER_ARGUMENTS.md
+├─ **参数取值域（该 Effect 的参数能填什么）** → `python database/scripts/query_effect_args.py --effect <EFFECT_X>`
+│    （或 `--modifier <MODIFIER_X>` 自动解析到 Effect；`--arg <参数名>` 反查）
+└─ **某效果原版怎么实现的（照抄现成链）** → 查 `DynamicModifiers ⋈ Modifiers ⋈ ModifierArguments`
+     + `TraitModifiers`/`CivilizationTraits` 等绑定表（见下"写前先搜现成实现"）
 
 ADD tech/civic/policy   → database.md
 ADD resource/feature    → database.md
 REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "LoadOrder"（优先查 .civ6proj）
 ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
+                         批量插图标/查图标名悬空 → `python art/iconify_text.py <工程根> --audit`
 ```
 
 ### 4.1 多语言文本 / 本地化（**Civ6 侧规则**）
@@ -194,6 +199,39 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 - 查看含中文文件优先用 Read 工具，避免 PowerShell 打印中文（控制台乱码多为显示问题，不代表文件损坏）。
 - 禁止 PowerShell here-string 管道/重定向/`Set-Content`/`Out-File` 写入含中文内容；不要用 `sed`/`awk` 处理含中文文件，改用 Python 或 Node.js 并显式 UTF-8 读写。
 - 不要为了修编码而整文件重写、全文件格式化或全文件字符串替换。
+
+---
+
+## 写前先搜现成实现（硬性 · 先查再写）
+
+写任何 Modifier / Requirement **之前**，先在官方库里搜「这个效果原版是怎么实现的」——
+**别凭记忆拼 ModifierType + 参数**。原版几乎总有同类效果可以照抄，照抄的链路一定是对的。
+
+```sql
+-- 1) 找效果：反查「哪些 Modifier 用了这个 Effect」
+SELECT d.ModifierType, d.CollectionType, m.ModifierId
+FROM DynamicModifiers d JOIN Modifiers m ON m.ModifierType = d.ModifierType
+WHERE d.EffectType LIKE '%YIELD%';
+
+-- 2) 看参数：这个 Modifier 到底填了什么
+SELECT Name, Type, Value FROM ModifierArguments WHERE ModifierId = '<上一步的 ID>';
+
+-- 3) 看条件：它的 RequirementSet 由哪些 Requirement 组成
+SELECT * FROM RequirementSetRequirements WHERE RequirementSetId = '<上一步的 ReqSet>';
+SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
+```
+
+- **参数该填什么值** → `python database/scripts/query_effect_args.py --effect <EFFECT_X>`
+  （给参数签名 + **`DatabaseKind`→`Types` 的权威取值全集** + 官方实际用过的值）；
+- **Modifier 挂在哪张表** → `DynamicModifiers.CollectionType` 决定作用域，绑定表见
+  `reference/WORKSHOP_PATTERNS.md`；不同对象挂载路径不同（Trait 走 `TraitModifiers`、
+  文明走 `CivilizationTraits` 中转、单位能力走 `UnitAbilityModifiers`）；
+- **ATTACH / GRANT_ABILITY 嵌套** → 递归展开时**必须防环 + 限深**（原版存在 `ATTACH_MODIFIER`
+  自引用/成环的写法）；`RequirementId` 以 `REQSET_` 开头的是嵌套条件集，要递归进去。
+
+> 教训（来自 ModTools 5.4 的实践，2026-09 吸收）：它的校验器在报「未知 EffectType」时
+> **会把操作指引一起打出来**——「用 `search <效果词>` 查现成实现，不要凭记忆断言」。
+> 把方法论编进错误信息，比写在文档里更不容易被忽略。
 
 ---
 
@@ -494,6 +532,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `reference/events_enhanced.json` (1.2MB) | 增强事件（`query_events.py` 查询） |
 | `database/schema-annotated.md` | 常用多列表注解（列定义/必填/示例值） |
 | `reference/MODIFIER_ARGUMENTS.md` | Modifier 参数分类 |
+| `database/scripts/query_effect_args.py` | **Effect/Modifier 参数取值域查询**（参数签名 + `DatabaseKind`→`Types` 权威全集 + 官方实际用值；支持 `--effect` / `--modifier` / `--arg` / `--search` / `--dump-json`） |
 | `reference/WORKSHOP_PATTERNS.md` | 高级 SQL 模式 |
 | `reference/TYPE_NAME_MAPPING.md` | Type→名称 + Trait→Modifier 关联链 |
 | `database/modifiers-guide.md` | Modifier 系统指南 |

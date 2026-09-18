@@ -16,6 +16,7 @@
 | `art/dds_io.py` | dds_io.py — Civ6 单 mip RGBA8 DDS 的最小读写（零外部依赖，纯标准库 + Pillow） | `python dds_io.py --selftest <某个既有.dds> [更多.dds ...]` |
 | `art/gen_modartxml.py` | gen_modartxml.py — Mod.Art.xml（AssetObjects..GameArtSpecification）生成器。 | `python gen_modartxml.py <projectRoot>            # 生成结果打印到 stdout<br>python gen_modartxml.py <projectRoot> --check    # 与项目现有 *.Art.xml 比对，只报告不写` |
 | `art/gen_tex.py` | 为 {MOD_NAME}/Textures/ 下的每个 dds 文件生成同名 .tex 文件。 | `python gen_tex.py [textures_dir] [assets_dir] [asset_map_json]` |
+| `art/iconify_text.py` | iconify_text.py — 给游戏文本自动插入 `[ICON_x]` 标记（文本图标化） | `python iconify_text.py <工程根> --audit<br>python iconify_text.py <工程根> --check` |
 | `art/make-icon.ps1` | Civ6 白色扁平图标管线（v2 阈值版）： | `powershell -File make-icon.ps1 -Subject "a lighthouse" -Out "D:\out\icon.png" [-Seed 42]<br>powershell -File make-icon.ps1 -Subject "a sword" -Out out.png -SdDir "D:\sd-cpp"` |
 | `art/make_atlas.py` | make_atlas.py — Civ6 多图网格图集（IconTextureAtlas）合成器。 | `python make_atlas.py [-Manifest art_manifest.json] [-ProjectRoot <path>]` |
 | `art/make_workshop_preview.py` | make_workshop_preview.py — 工坊预览图（Steam cover）生成器 | `python make_workshop_preview.py <master.png> --out <ws>/image.png --qa<br>python make_workshop_preview.py <已有512.png> --out <ws>/image.png` |
@@ -28,6 +29,7 @@
 | `database/scripts/audit_schema_drift.py` | audit_schema_drift.py - guard the civ6-modding reference DB against | `python database/scripts/audit_schema_drift.py<br>python database/scripts/audit_schema_drift.py --game "F:/Steam/.../Sid Meier's Civilization VI"` |
 | `database/scripts/query_api.py` | Civ6 API Query Tool — 主源 api.sqlite（含子项 sub_func_name 与运行时核验字段）， | `python query_api.py --search <关键词>              # 搜 表名/函数名/子项名/真名/id（子项一并命中）<br>python query_api.py --search <关键词> --sub-only   # 只看"本身是子项"的条目` |
 | `database/scripts/query_civ6_db.py` | Civilization VI Mod Database Query Tool — SQLite CLI wrapper. | `（见脚本 docstring）` |
+| `database/scripts/query_effect_args.py` | query_effect_args.py — 查「某个 EffectType / ModifierType 该填哪些参数、参数能填什么值」 | `python query_effect_args.py --effect EFFECT_ADJUST_PLOT_YIELD<br>python query_effect_args.py --modifier MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_CHANGE` |
 | `database/scripts/query_events.py` | Civ6 Event Query Tool — 直接查 events_enhanced.json，无需中间索引。 | `（见脚本 docstring）` |
 | `release/scripts/build.ps1` | 构建非 Trimmed 版 Civ6WorkshopUploader（勿用 PublishTrimmed，会卡 PreparingContent） | `powershell -File build.ps1（内部 dotnet publish -c Release -r win-x64）` |
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） | `powershell -File clash_api.ps1 -Method GET -Path "/proxies" -OutFile resp.txt` |
@@ -62,7 +64,7 @@ python _paths.py --path mods                # 同上，取 P1-P6 路径键；未
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 50 个脚本。
+共 52 个脚本。
 
 ## 第三方依赖（非标准库）
 

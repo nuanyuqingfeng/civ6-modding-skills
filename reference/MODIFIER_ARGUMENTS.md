@@ -1,6 +1,18 @@
 # 文明6 Mod开发 - ModifierArguments参数类型参考
 
 > 📖 这是详细参考文档。快速查阅请查看 [SKILL.md](../SKILL.md)
+>
+> ⚠️ **本文档是「按参数名分类」的速查表，不是逐 Effect 的权威定义。**
+> 要查**某个具体 EffectType / ModifierType 的参数签名与取值域**（含 `DatabaseKind`→`Types`
+> 的权威取值全集、必填性、Min/Max、官方实际用过的值），用：
+>
+> ```bash
+> python database/scripts/query_effect_args.py --effect EFFECT_ADJUST_PLOT_YIELD
+> python database/scripts/query_effect_args.py --modifier MODIFIER_PLAYER_CITIES_ADJUST_CITY_YIELD_CHANGE
+> python database/scripts/query_effect_args.py --arg YieldType      # 反查：谁在用这个参数、能填什么
+> ```
+>
+> 本文档下面的表可作为「参数名 → 大致用途」的第一眼参考，但**具体填值以工具输出为准**。
 
 ---
 
@@ -267,13 +279,13 @@ VALUES ('MY_GPP_MOD', 'Amount', 'ARGTYPE_IDENTITY', '2');
 ## 数据来源
 
 - **数据库**: `DebugGameplay.sqlite`
-- **表**: `ModifierArguments`
-- **分析时间**: 2026-04-15
+- **表**: `ModifierArguments` / `GameEffectArguments` / `DynamicModifiers` / `Types`
 - **总记录数**: 约10,000+条
-- **不同参数名**: 324个
-- **不同ModifierType**: 871种
+- **不同参数名**: 328个（实测）
+- **不同 ModifierType**: 995种（实测，`DynamicModifiers`）
+- **逐 Effect 取值域**: 用 `database/scripts/query_effect_args.py` 实时查（勿把本文档当定义源）
 
 ---
 
-*文档版本: v1.0*  
-*数据提取时间: 2026-04-15*
+*文档版本: v1.1*
+*数据提取时间: 2026-04-15；2026-09-18 补注「本文是分类速查、非权威定义源」并指向 `query_effect_args.py`*
