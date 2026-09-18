@@ -106,18 +106,24 @@ python skills/civ6-modding/tools/_paths.py       # 打印 P1–P6 与外部工�
 
 ---
 
-## 五、离线参考库（**全部随包分发**）
+## 五、离线参考库（**绝大部分随包分发**）
 
-`skills/civ6-modding/database/` 是"写代码前先查库"的离线数据源，**全部随仓库分发**：
+`skills/civ6-modding/database/` 是"写代码前先查库"的离线数据源：
 
 | 文件 | 体积 | 说明 |
 |---|---|---|
 | `api.sqlite` | 2.5 MB | 4857 条 Lua API + **人工实测核验列**（2026-09-08 FireTuner 全量），不可再生 |
 | `api-verification-2026-09-08/` | 6.2 MB | 上表核验列的**原始凭证**：FireTuner 实跑输出、全量 CSV、人工复核清单与报告 |
 | `DebugGameplay.sqlite` | 58.2 MiB | 官方 gameplay 库快照（427 表）—— **`rgn_validate` 的基础库**、SQL 查询主库 |
-| `DebugLocalization.sqlite` | 62.1 MiB | 官方本地化文本（8 语言）+ 手工配色/图标名标注表，含不可再生的人工成果 |
-| `DebugConfiguration.sqlite` | 1.1 MiB | 官方 FrontEnd 配置快照（`Maps` 等） |
+| `DebugConfiguration.sqlite` | 1.1 MiB | 官方 FrontEnd 配置快照（`Maps`、`GameModeItems`/`Rulesets` 等） |
 | `source_index.sqlite` | 29.1 MiB | 官方行级来源索引 + 人工 `dlc_dependency` 标注 |
+
+> ⚠️ **`DebugLocalization.sqlite` 不随包**（唯一例外）：它是**分层重建的派生库**
+> （基础游戏 62 MB → 含 DLC 全量约 116 MB），可从你自己的游戏安装数十秒重建，故不入库。
+> 首次使用前按 [`skills/civ6-modding/database/README.md`](skills/civ6-modding/database/README.md)
+> **§零** 的四步流程生成（`build_localization.py --augment-main --apply-rewrites`）；
+> 人工标注侧表 `SkillAnnotation_*` 会在该流程中原样保留。
+> **不重建也能用**：只影响「查 DLC/资料片的官方文本」，基础游戏文本与其余工具均不受影响。
 
 逐库的用途、可再生性与重建口径见 [`skills/civ6-modding/database/README.md`](skills/civ6-modding/database/README.md)。
 
@@ -158,8 +164,9 @@ python skills/civ6-modding/tools/_paths.py       # 打印 P1–P6 与外部工�
 
 1. **以 Windows 为主**：路径自举、ModBuddy/AssetEditor/cooker、工坊上传均假定 Windows；
    只读查询类工具（SQLite / 文档）跨平台可用。
-2. **参考库全部随包**（含 58 MiB 的 `DebugGameplay.sqlite` 与 62 MiB 的 `DebugLocalization.sqlite`）：
-   clone 体积偏大是预期；若只想跑校验器，保留 `DebugGameplay.sqlite` 即可。
+2. **参考库基本随包**（含 58 MiB 的 `DebugGameplay.sqlite`）：clone 体积偏大是预期；
+   若只想跑校验器，保留 `DebugGameplay.sqlite` 即可。
+   唯一例外是 `DebugLocalization.sqlite`（不随包，按 §五 的说明本机重建）。
 3. **游戏版本敏感**：图标尺寸、artdef/XLP 条目、DB 列等结论基于当前版本实测；
    升级 DLC/补丁后建议用各 skill 的校验器复验。
 4. **晋升图标（类别③）生成管线已作废**：只保留尺寸/格式规格
