@@ -4,30 +4,82 @@
 > **2026-09-18 二次修订**：`DebugLocalization.sqlite` 改为**本机重建、不入库**（见 §零），
 > 其余参考库仍随仓库分发。
 
-## 零、`DebugLocalization.sqlite` —— 本机重建，不入库 ⚠️
+## 零、两个本地化文本库 —— 本机重建，不入库 ⚠️
 
-**为什么不入库**：它是**分层重建的派生库**（62 MB → 约 116 MB）。放进 git 会让仓库体积翻倍，
-且每次游戏版本/DLC 变动都要重传一个百兆二进制；而它在本机**数十秒即可重建**。
-不可再生的人工成果（`SkillAnnotation_Colors` / `SkillAnnotation_Icons` 侧表）已由重建流程保留。
+本目录下有**两个**本地化文本库，都**不进 git**、都在本机落地使用（直接可用，无需联网）：
 
-**重建流程**（换机器 / 游戏更新后 / 想补 DLC 文本时跑）：
+| 库 | 内容 | 期望规模 | 体积 |
+|---|---|---|---|
+| `DebugLocalization.sqlite` | **主文本库**：Base + EXP1 + EXP2 + 全部领袖/文明 DLC（`EXP2>EXP1>base`，**排除情景与 Mode**）+ `SkillAnnotation_*` 人工标注侧表 | 336,125 行 / 28,060 tag / 12 语言 | 约 116 MB |
+| `Localization_Mode.sqlite` | **模式文本库**：8 个 GAMEMODE（英雄 / 秘密结社 / 塔防 / 行业与公司 / 风云变幻 / 蛮族氏族 / 天启 / 树随机）独立成库 | 15,417 行 / 1,360 tag / 12 语言 | 5.2 MB |
+
+**为什么都不入库**：两者都是**分层重建的派生库**，可从本机游戏安装数十秒重建。
+主库尤其如此（62 MB → 116 MB），放进 git 会让仓库体积翻倍、且每次游戏版本/DLC 变动
+都要重传一个百兆二进制。不可再生的人工成果（`SkillAnnotation_Colors` / `SkillAnnotation_Icons`）
+已由重建流程原样保留。
+
+> 两库**互不覆盖**：主库不含模式文本，模式库只装模式文本。二者有 239 个交集键，
+> 其中 238 个是模式对主库值的改写（如「消灭蛮族哨站」→「驱散蛮族哨站」）；
+> **运行时若同时启用模式，应按「模式库胜出」合并使用**。
+
+### 一键重建（推荐）
 
 ```bash
 # 0) 前置：本机已装游戏，且 tools/_paths.py 能解析到 game 键
 python skills/civ6-modding/tools/_paths.py          # 自检，game 键应为 [OK]
 
-# 1) 只读预览：分段（main/mode/scenario）+ 分层 + 与现有库的差异统计
+# 1) 只读预览（分段 + 分层 + 与现有库的差异统计，不写盘）
 python skills/civ6-modding/database/scripts/build_localization.py --report
 
-# 2) 就地替换（关键：--augment-main 只加行 + 应用 EXP2 覆盖；侧表原样保留）
-python skills/civ6-modding/database/scripts/build_localization.py --augment-main --apply-rewrites --dry-run
-python skills/civ6-modding/database/scripts/build_localization.py --augment-main --apply-rewrites
+# 2) 一键按规范重建两个库（--rebuild = 就地补全主库 + 重建模式库）
+python skills/civ6-modding/database/scripts/build_localization.py --rebuild --dry-run
+python skills/civ6-modding/database/scripts/build_localization.py --rebuild
 
-# 3) 验收（三项都要过）
+# 3) 验收（期望三项依次为 336125 / 241 / 51）
 python skills/civ6-modding/database/scripts/audit_schema_drift.py
 python -c "import sqlite3;c=sqlite3.connect(r'skills/civ6-modding/database/DebugLocalization.sqlite');print(c.execute('SELECT COUNT(*) FROM LocalizedText').fetchone()[0], c.execute('SELECT COUNT(*) FROM SkillAnnotation_Icons').fetchone()[0], c.execute('SELECT COUNT(*) FROM SkillAnnotation_Colors').fetchone()[0])"
-#   期望：336125 行 / 241 / 51
 ```
+
+**也可分步执行**（等价于 `--rebuild`）：
+
+```bash
+# 主库：就地补全（保留侧表；--apply-rewrites 才会用 EXP2 覆盖既有 base 值）
+python skills/civ6-modding/database/scripts/build_localization.py --augment-main --apply-rewrites
+# 模式库：独立新建（只加不覆盖）
+python skills/civ6-modding/database/scripts/build_localization.py --build-mode skills/civ6-modding/database/Localization_Mode.sqlite
+```
+
+> **幂等**：重复跑 `--rebuild` 安全。主库第二次跑会显示「待新增 0 行 / 待改写 0 行」
+> 且**文件字节不变**；模式库会整库重写（内容一致，仅 SQLite 页布局可能不同）。
+
+### 重建时靠什么保住"不可再生"的内容
+
+两个库都不入库，但有三种内容**无法从游戏文件重新生成**，已导出为随包 JSON，
+`--rebuild` 会自动灌回（首次/换机器时这几步是必需的）：
+
+| 随包 JSON | 内容 | 行数 | 作用 |
+|---|---|---|---|
+| `annotations/localization_side_tables.json` | `SkillAnnotation_Icons` / `SkillAnnotation_Colors` | 241 / 51 | 图标名·颜色名 → 中文备注（人工标注） |
+| ↑ 同上（`extraRows` 段） | 库中「游戏安装里没有」的行 | 64 | 本项目自造 tag（`_QYQXP_` 百科文本），不重建就丢 |
+| `annotations/localization_aux_tables.json` | 7 张语言注册表 + 3 个视图的 DDL 与数据 | 95 | 换机器重建后仍是 **10 表 + 3 视图**，而不是只剩 `LocalizedText` |
+
+手动导出（侧表有改动时跑）：
+
+```bash
+python skills/civ6-modding/database/scripts/export_side_tables.py          # 导出侧表 + extraRows
+python skills/civ6-modding/database/scripts/export_side_tables.py --check  # 与库比对，有漂移 exit 1
+```
+
+> ⚠️ 若跳过这两份 JSON，重建会得到「只有 `LocalizedText` 一张表、缺 7 张注册表与 3 视图、
+> 且没有项目自造 tag」的残缺库——**不报错**，只是后续按 `Languages` / `FontStyleSheets` 查询
+> 或查 `_QYQXP_` 文本时才失败。重建后请按上面的验收命令确认 `336125 / 241 / 51`。
+
+### 空白口径（实测，勿"顺手优化"）
+
+引擎落盘时**会 strip 首尾空白**（游戏源文件常带尾随空格，如 `de_DE` 的
+`LOC_ABILITY_CAPTIVE_WORKERS_DESCRIPTION` 源文件结尾是 `. `，运行时缓存里没有）。
+因此重建写入时统一 `strip()`，否则新写的行会与库内既有行口径不一致
+（实测会造出 2,868 行"仅首尾空白"的内部矛盾）。
 
 **重建规则（已实测固定，勿随意改）**
 
@@ -39,14 +91,7 @@ python -c "import sqlite3;c=sqlite3.connect(r'skills/civ6-modding/database/Debug
 | 模式清单权威表 | `DebugConfiguration.sqlite → GameModeItems`（8 行），**不在** Gameplay 库 |
 | 删行 | **不应用任何 `<Delete Tag>`**（删除是加载域作用域，静态合成会误删其它环境仍有用的文本） |
 | 侧表 | `SkillAnnotation_*` 与既有行**一行不丢**（`--augment-main` 用 `INSERT OR IGNORE` + 仅更新 `LocalizedText`） |
-| 期望规模 | 336,125 行 / 28,060 tag / 12 语言 |
-
-**模式文本另建一库**（只加不覆盖，独立可用）：
-
-```bash
-python skills/civ6-modding/database/scripts/build_localization.py --build-mode <输出目录>/Localization_Mode.sqlite
-# 期望：15,417 行 / 1,360 tag；与主库有 239 个交集键，其中 238 个是模式改写（合并时模式应胜出）
-```
+| 分段闭合 | 磁盘 368 个 `.xml` = main 267 + mode 46 + scenario 55 |
 
 > ⚠️ **不要用游戏运行时缓存补全**：`%LOCALAPPDATA%\...\Cache\DebugLocalization.sqlite`
 > 实测恒为 base 15,229 tag，**连当前加载的本 mod 文本都没有**（同目录 `DebugGameplay.sqlite`
@@ -74,7 +119,8 @@ python skills/civ6-modding/database/scripts/build_localization.py --build-mode <
 
 | 文件 | 为什么 |
 |---|---|
-| `DebugLocalization.sqlite` | **分层重建的派生库**（约 116 MB），数十秒可重建；侧表在重建中保留（见 §零） |
+| `DebugLocalization.sqlite` | **分层重建的主文本库**（约 116 MB），数十秒可重建；侧表在重建中保留（见 §零） |
+| `Localization_Mode.sqlite` | **分层重建的模式文本库**（5.2 MB），同样可从游戏文件重建（见 §零） |
 | `local_paths.json` | **个人环境配置**（本机路径），不是参考库；写入它之后所有脚本按本机路径解析 |
 | `__pycache__/`、`*.log` | 运行缓存与日志，可再生 |
 

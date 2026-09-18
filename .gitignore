@@ -8,11 +8,13 @@ __pycache__/
 #   入库  ：database/DebugGameplay.sqlite      官方 gameplay 库快照（rgn_validate 的基础库）
 #   入库  ：database/DebugConfiguration.sqlite 官方 FrontEnd 配置快照
 #   入库  ：database/source_index.sqlite       官方行级来源索引 + 人工 dlc_dependency 标注
-#   ★ 不入库：database/DebugLocalization.sqlite
-#       理由：它是**分层重建的派生库**（62 MB → 约 116 MB），可从本机游戏安装数十秒重建；
-#             放进 git 会让仓库体积与每次更新成本都翻倍。
-#       本机**直接就地替换**（`--augment-main`，保留 SkillAnnotation_* 人工标注侧表），
-#       重建流程见 database/README.md「DebugLocalization 重建」。换机器按该流程重建即可。
+#   ★ 不入库：database/DebugLocalization.sqlite   主文本库
+#   ★ 不入库：database/Localization_Mode.sqlite   模式文本库
+#       理由：两者都是**分层重建的派生库**（主库 62 MB → 约 116 MB；模式库 5.2 MB），
+#             可从本机游戏安装数十秒重建；放进 git 会让仓库体积与每次更新成本都翻倍。
+#       本机**直接落地使用**（主库就地替换、保留 SkillAnnotation_* 人工标注侧表；
+#       模式库独立成库），重建流程见 database/README.md「§零 两个本地化文本库」。
+#       一键重建：python database/scripts/build_localization.py --rebuild
 # 仅排除**本机个人配置**（local_paths.json）与运行缓存/日志 —— 它们不是"参考库"。
 *.sqlite
 !database/api.sqlite

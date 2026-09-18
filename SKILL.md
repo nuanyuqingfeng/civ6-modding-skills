@@ -190,21 +190,25 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
    > `LOC_LEADER_MANSA_MUSA_NAME`（曼萨穆萨）、`LOC_DISTRICT_PRESERVE_NAME`（保护区）、
    > `LOC_GOVERNOR_THE_DEFENDER_NAME`（维克多）**全部查不到**。别据此断定"官方没这个 tag"。
    >
-   > **需要 DLC 覆盖时按分层规则合成**（`build_localization.py`）：
+   > **需要 DLC 覆盖时按分层规则合成**（`build_localization.py`）。两个库都在
+   > `database/` 下**本机落地、不入 git**（可从游戏文件数十秒重建）：
    >
-   > | 库 | 内容 | 规则 |
-   > |---|---|---|
-   > | **主文本库** | Base + EXP1 + EXP2 + 全部领袖/文明 DLC | `EXP2 > EXP1 > base`，其它领袖包只补缺不覆盖；**排除情景与 Mode** |
-   > | **模式文本库** | 8 个 GAMEMODE（英雄/秘密结社/塔防/行业与公司/风云变幻/蛮族氏族/天启/树随机） | 单独成库，只加不覆盖 |
+   > | 库 | 内容 | 规则 | 期望规模 |
+   > |---|---|---|---|
+   > | `DebugLocalization.sqlite`（主） | Base + EXP1 + EXP2 + 全部领袖/文明 DLC | `EXP2 > EXP1 > base`，其它领袖包只补缺不覆盖；**排除情景与 Mode** | 336,125 行 |
+   > | `Localization_Mode.sqlite`（模式） | 8 个 GAMEMODE（英雄/秘密结社/塔防/行业与公司/风云变幻/蛮族氏族/天启/树随机） | 独立成库，只加不覆盖 | 15,417 行 |
    >
    > ```bash
-   > python database/scripts/build_localization.py --report          # 只读：分段 + 分层 + 差异统计
-   > python database/scripts/build_localization.py --build-main <主库.sqlite>
-   > python database/scripts/build_localization.py --build-mode <模式库.sqlite>
+   > python database/scripts/build_localization.py --report            # 只读：分段 + 分层 + 差异统计
+   > python database/scripts/build_localization.py --rebuild --dry-run # 一键重建两库（预演）
+   > python database/scripts/build_localization.py --rebuild           # 实际重建
    > ```
    >
    > 主库语义是「**游戏文件权威、既有库兜底**」：游戏文件定义了的键取分层值（EXP2 优先），
-   > 没有的键（如项目自造 tag）用既有库补——**既有行一行不丢**。
+   > 没有的键（如项目自造 tag）用既有库补——**既有行一行不丢**，`SkillAnnotation_*` 侧表原样保留。
+   > 两库**互不覆盖**：有 239 个交集键、其中 238 个是模式对主库的改写；
+   > **运行时若同时启用模式，按「模式库胜出」合并使用**。
+   > 完整重建流程与验收口径见 `database/README.md` §零。
    >
    > ⚠️ **不要试图用游戏运行时缓存补全**：`%LOCALAPPDATA%\...\Cache\DebugLocalization.sqlite`
    > 实测恒为 base 15,229 tag，**连当前加载的 mod 文本都没有**（同目录的 `DebugGameplay.sqlite`
@@ -581,7 +585,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `reference/MODIFIER_ARGUMENTS.md` | Modifier 参数分类 |
 | `database/scripts/query_effect_args.py` | **Effect/Modifier 参数取值域查询**（参数签名 + `DatabaseKind`→`Types` 权威全集 + 官方实际用值；支持 `--effect` / `--modifier` / `--arg` / `--search` / `--dump-json`） |
 | `database/scripts/search_impl.py` | **「某对象/效果原版怎么实现」反查**（14 类对象 × 6 种绑定路径；递归展开 ATTACH / GRANT_ABILITY / 嵌套 REQSET，自带防环限深；支持 `--object` / `--modifier` / `--effect` / `--json`） |
-| `database/scripts/build_localization.py` | **分层合成两个本地化文本库**（主库 / 模式库）：从游戏安装按 `.modinfo` 权威分段（main/mode/scenario），主库 `EXP2>EXP1>base` + 既有库兜底，Mode 单独成库只加不覆盖；`--report` 只读 / `--build-main` / `--build-mode` / `--augment-main`；不删行、不动 schema、不应用 `<Delete>` |
+| `database/scripts/build_localization.py` | **分层合成两个本地化文本库**（主库 / 模式库）：从游戏安装按 `.modinfo` 权威分段（main/mode/scenario），主库 `EXP2>EXP1>base` + 既有库兜底，Mode 独立成库只加不覆盖；`--rebuild` 一键重建两库 / `--report` 只读 / `--build-main` / `--build-mode` / `--augment-main`；不删行、不动 schema、不应用 `<Delete>`。两库均**不入 git**（可重建），见 `database/README.md` §零 |
 | `reference/WORKSHOP_PATTERNS.md` | 高级 SQL 模式 |
 | `reference/TYPE_NAME_MAPPING.md` | Type→名称 + Trait→Modifier 关联链 |
 | `database/modifiers-guide.md` | Modifier 系统指南 |
