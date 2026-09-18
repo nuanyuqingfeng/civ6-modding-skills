@@ -1,0 +1,73 @@
+{
+  "_comment": "civ_leader_data.py 的规格示例。列名全部来自 database/*.sqlite 实测；用法见 tools/README.md 与 civilization-authoring.md / leader-authoring.md。",
+  "domain": "Players:Expansion2_Players",
+
+  "civilization": {
+    "type": "CIVILIZATION_RGN_X",
+    "name": "LOC_CIVILIZATION_RGN_X_NAME",
+    "adjective": "LOC_CIVILIZATION_RGN_X_ADJECTIVE",
+    "description": "LOC_CIVILIZATION_RGN_X_DESCRIPTION",
+    "starting_level": "CIVILIZATION_LEVEL_FULL_CIV",
+    "traits": ["TRAIT_RGN_X_ABILITY"],
+    "cities": ["CityOne", "CityTwo"],
+    "citizens": ["CitizenOne", { "name": "CitizenTwo", "female": 1, "modern": 1 }],
+    "music_override": 1,
+    "start_bias_terrains": [{ "terrain": "TERRAIN_COAST", "tier": 1 }],
+    "info": {
+      "header": "LOC_CIVILIZATION_RGN_X_HEADER",
+      "caption": "LOC_CIVILIZATION_RGN_X_CAPTION",
+      "sort_index": 10
+    },
+    "icon": "ICON_CIVILIZATION_RGN_X",
+    "ability_name": "LOC_TRAIT_RGN_X_ABILITY_NAME",
+    "ability_description": "LOC_TRAIT_RGN_X_ABILITY_DESCRIPTION",
+    "ability_icon": "ICON_TRAIT_RGN_X"
+  },
+
+  "leaders": [
+    {
+      "type": "LEADER_RGN_Y",
+      "name": "LOC_LEADER_RGN_Y_NAME",
+      "inherit_from": "LEADER_DEFAULT",
+      "sex": "Male",
+      "traits": ["TRAIT_RGN_Y_ABILITY"],
+      "quote": "LOC_LEADER_RGN_Y_QUOTE",
+      "capital": "CityOne",
+      "icon": "ICON_LEADER_RGN_Y",
+      "ability_name": "LOC_TRAIT_RGN_Y_ABILITY_NAME",
+      "ability_description": "LOC_TRAIT_RGN_Y_ABILITY_DESCRIPTION",
+      "ability_icon": "ICON_TRAIT_RGN_Y",
+      "player_color": "PLAYERCOLOR_RGN_X",
+      "portrait": "SUK_UI_PORTRAIT_RGN_Y",
+      "portrait_background": "SUK_UI_BACKGROUND_RGN_Y",
+      "player_items": [
+        {
+          "type": "UNIT",
+          "name": "LOC_UNIT_RGN_Z_NAME",
+          "description": "LOC_UNIT_RGN_Z_DESCRIPTION",
+          "icon": "ICON_UNIT_RGN_Z",
+          "sort_index": 1
+        }
+      ]
+    }
+  ],
+
+  "text": {
+    "LOC_CIVILIZATION_RGN_X_NAME": {
+      "en_US": "", "zh_Hans_CN": "", "zh_Hant_HK": "",
+      "ja_JP": "", "ko_KR": "", "de_DE": "", "es_ES": "", "fr_FR": ""
+    },
+    "LOC_CIVILIZATION_RGN_X_ADJECTIVE": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_CIVILIZATION_RGN_X_DESCRIPTION": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_CIVILIZATION_RGN_X_HEADER": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_CIVILIZATION_RGN_X_CAPTION": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_TRAIT_RGN_X_ABILITY_NAME": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_TRAIT_RGN_X_ABILITY_DESCRIPTION": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_LEADER_RGN_Y_NAME": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_LEADER_RGN_Y_QUOTE": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_TRAIT_RGN_Y_ABILITY_NAME": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_TRAIT_RGN_Y_ABILITY_DESCRIPTION": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_UNIT_RGN_Z_NAME": { "en_US": "", "zh_Hans_CN": "" },
+    "LOC_UNIT_RGN_Z_DESCRIPTION": { "en_US": "", "zh_Hans_CN": "" }
+  }
+}
