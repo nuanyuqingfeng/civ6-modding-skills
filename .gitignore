@@ -2,17 +2,20 @@
 __pycache__/
 *.pyc
 
-# ---- 数据库纳管规则（2026-09-18：参考库全部随仓库分发）----------------------
-# 用户裁决：**所有参考库都随 skill 一起开源**（含官方快照）。
-#   入库：database/api.sqlite                官方 Lua API + 2026-09-08 FireTuner 实测核验列（人工成果）
-#   入库：database/DebugLocalization.sqlite  官方本地化文本 + SkillAnnotation_* 手工标注侧表
-#   入库：database/DebugGameplay.sqlite      官方 gameplay 库快照（rgn_validate 的基础库）
-#   入库：database/DebugConfiguration.sqlite 官方 FrontEnd 配置快照
-#   入库：database/source_index.sqlite       官方行级来源索引 + 人工 dlc_dependency 标注
+# ---- 数据库纳管规则（2026-09-18 二次修订：DebugLocalization 改为本机重建、不入库）
+# 用户裁决：
+#   入库  ：database/api.sqlite                官方 Lua API + 2026-09-08 FireTuner 实测核验列（人工成果）
+#   入库  ：database/DebugGameplay.sqlite      官方 gameplay 库快照（rgn_validate 的基础库）
+#   入库  ：database/DebugConfiguration.sqlite 官方 FrontEnd 配置快照
+#   入库  ：database/source_index.sqlite       官方行级来源索引 + 人工 dlc_dependency 标注
+#   ★ 不入库：database/DebugLocalization.sqlite
+#       理由：它是**分层重建的派生库**（62 MB → 约 116 MB），可从本机游戏安装数十秒重建；
+#             放进 git 会让仓库体积与每次更新成本都翻倍。
+#       本机**直接就地替换**（`--augment-main`，保留 SkillAnnotation_* 人工标注侧表），
+#       重建流程见 database/README.md「DebugLocalization 重建」。换机器按该流程重建即可。
 # 仅排除**本机个人配置**（local_paths.json）与运行缓存/日志 —— 它们不是"参考库"。
 *.sqlite
 !database/api.sqlite
-!database/DebugLocalization.sqlite
 !database/DebugGameplay.sqlite
 !database/DebugConfiguration.sqlite
 !database/source_index.sqlite
