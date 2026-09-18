@@ -75,32 +75,46 @@ Python 3 + **Pillow**（`make_atlas.py` 组版）、**numpy + scipy**（`normali
 
 ### 二.1 ⚠ `.tex` 类别（`m_ClassName`）是硬约束，且**不能靠名字猜**
 
-`gen_tex.py` 判 `m_ClassName` 用的是「**前缀判断 + `_UI_PORTRAIT_SUFFIXES` 例外表**」
-（`is_fallback()`）：凡 `FALLBACK_` 开头者 → `Leader_Fallback`，
-**但以 `_UI_PORTRAIT_SUFFIXES`（当前仅 `_Suk`）结尾的显式排除在外** → `UserInterface`，
-其余 → `UserInterface`。**但同前缀不代表同类别**：
+`gen_tex.py` 判 `m_ClassName` 用的是「`FALLBACK_` 前缀 → `Leader_Fallback`，其余 → `UserInterface`」。
 
 | 贴图名 | 真实用途 | 应有 `m_ClassName` | 注册在 |
 |---|---|---|---|
-| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP` | 3D 领袖回退 | `Leader_Fallback` | `LeaderFallbacks.xlp` |
-| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP_Suk` | **UI 选人界面 2D 立绘** | **`UserInterface`** | `UILeaders.xlp`（`UITexture`） |
+| `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP` | 3D 领袖回退（官方模板） | `Leader_Fallback` | `LeaderFallbacks.xlp` |
+| `SUK_UI_PORTRAIT_CARTETHYIA_QYQXP` | **选人界面 2D 立绘**（第三方适配） | **`UserInterface`** | `UILeaders.xlp`（`UITexture`） |
 
-#### 两套 `FALLBACK_` 命名约定（2026-09-18 厘清，别再退回单约定判据）
+#### 命名空间铁律：第三方界面素材**不得借用官方模板前缀**
 
-| 约定 | 样例 | 一手证据 |
-|---|---|---|
-| **A** 原版 / 单情绪槽 | `FALLBACK_NEUTRAL_<KEY>` | 原版 `FallbackLeaders.artdef` 等 **111 处全部是 `FALLBACK_NEUTRAL`**（无 HAPPY/UNHAPPY/ENRAGED 兄弟项）；本项目 `Textures/` 6 个 `.tex` 同形 |
-| **B** 多情绪槽 | `FALLBACK_HAPPY_LEADER_<KEY>` | `civ6-mod-developer` 的 `construct/机制补入指南.md` 定义 4 槽（NEUTRAL/HAPPY/UNHAPPY/ENRAGED）；其 SongRenzong 产物有 8 个该类 `.tex`（4 槽 × 2 领袖） |
+**`FALLBACK_` / `LEADER_` / `ICON_` 等前缀是官方语义**（`FALLBACK_*`＝3D 回退，
+固定对应 `Leader_Fallback` 类）。第三方界面适配的素材**一律进自己的独立命名空间**：
 
-**两套互不包含**：B 的前缀不含 `NEUTRAL`，A 的名字里没有 `_LEADER_` 中缀。所以历史上两种写法
-各只能覆盖一套——「只认 `FALLBACK_NEUTRAL_`」在 B 上错 3 例，「要求含 `_LEADER_`」在 A 上错 4 例
-（同一 9 例真值集实测）。**判据已统一为「`FALLBACK_` 前缀 − UI 后缀」**，两套同时命中；
-对约定 A 的既有输出**零变化**（本项目 238 个贴图名逐个回放，判定变化数 = 0）。
+```
+<适配对象短名>_UI_<KIND>_<KEY>          例：SUK_UI_PORTRAIT_<KEY> / SUK_UI_BACKGROUND_<KEY>
+```
 
-> **代价与边界**：判错的后果正是下面那段「静默」——约定 B 的 HAPPY/UNHAPPY/ENRAGED 若被判成
-> `UserInterface`，会被 LeaderFallback 包**整体剔除**，表现是**领袖 3D 形象 fallback 成官方领袖**
-> （如艳后）。这类问题的唯一有效防线是 `art/verify_tex_class.py`（校验 `.tex` 类别 ↔ 所绑 XLP 类，
-> **不依赖文件名约定**），发布前必跑。
+> **这条铁律是有代价换来的。** 历史上一度把 Suk 选人界面的 2D 立绘命名为
+> `FALLBACK_NEUTRAL_<KEY>_Suk`（借用了官方 3D 回退前缀），于是：
+> 同前缀、不同类别，`gen_tex.py` 被迫维护一张 `_UI_PORTRAIT_SUFFIXES` 例外表，
+> 且 skill 文档、两个校验器都要反复解释"这两类为何同前缀"——后人极易把 UI 立绘
+> 误当 3D 回退。2026-09-18 起素材迁入 `SUK_UI_*` 独立命名空间，该歧义从根上消失，
+> 例外表退化为 legacy 兼容（见下）。
+>
+> **为什么当时"看起来非这么做不可"**：`Players.Portrait` / `PortraitBackground` 是
+> **自由字符串列**，界面代码读值后交给 Image 控件显示——贴图名本身**没有任何**格式要求。
+> 所谓"必须沿用某后缀"只是跨工程沿用的**惯例**，不是技术约束。
+
+**新纳入第三方界面适配时**：选一个不与官方前缀重叠的短名（如 `SUK`），
+按 `<短名>_UI_<KIND>_<KEY>` 命名，然后：
+`civ6-asset-forge/scripts/gen_suk_portrait.py`（生成）/ `verify_suk_portrait.py`（校验）。
+
+> **legacy 兼容**：`gen_tex.py` 的 `_UI_PORTRAIT_SUFFIXES = ("_Suk",)` 仍保留，
+> 用于尚未迁移的旧工程；某工程报 `*_Suk` 贴图时，跑
+> `migrate_suk_namespace.py <工程根> --write` 一次性迁移（会同时改文件名、`.tex` 内部
+> 三字段、XLP 与 SQL 引用）。**全部工程迁移完成后，该常量与 `is_fallback()` 里的
+> 那次判断可一并删除。** 迁移后**必须重新 cook**（新名字＝新 BLP 条目）。
+
+> ⚠ **多情绪槽命名（`FALLBACK_<STATE>_LEADER_<KEY>`）**：这是另一套并存写法
+> （`civ6-mod-developer` 的手工路线在用）。`is_fallback()` 用 `FALLBACK_` 前缀判据，
+> 对 `NEUTRAL/HAPPY/UNHAPPY/ENRAGED` 四槽**全部命中**，无需特例。
 
 类别写错的后果是**静默**的：cooker 报
 `has class 'X', but is bound to parameter 'Y' which does not accept this class`，

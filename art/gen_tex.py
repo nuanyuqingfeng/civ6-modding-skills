@@ -282,48 +282,32 @@ def get_source_png(name_no_ext):
     return os.path.join(ASSETS_DIR, friendly + ".png")
 
 
-# UI 立绘/背景后缀：这些贴图虽与 3D 回退同前缀，但类别必须是 UserInterface。
-# 由 Sukritact's Civ Selection Screen 适配引入（civ6-asset-forge/scripts/gen_suk_portrait.py）。
+# legacy：Suk 适配素材的**旧**命名后缀。2026-09-18 起该类素材已迁到**独立命名空间**
+# `SUK_UI_PORTRAIT_*` / `SUK_UI_BACKGROUND_*`（迁移工具：
+# civ6-asset-forge/scripts/migrate_suk_namespace.py）——不再与 `FALLBACK_` 共享前缀，
+# 因此新命名**不需要**任何例外表。本常量仅为兼容尚未迁移的旧工程而保留；
+# 全部工程迁移完成后，可连同 is_fallback() 里那次判断一并删除。
 _UI_PORTRAIT_SUFFIXES = ("_Suk",)
 
 
 def is_fallback(name):
     """判断是否为 Fallback 前景立绘（3D 领袖回退用的 Leader_Fallback 贴图）。
 
-    ★ **判据必须同时覆盖两套并存命名约定**（2026-09-18 实测厘清，此前只覆盖 A）：
+    **`FALLBACK_` 前缀即 Leader_Fallback** —— 这是官方模板的固定命名，按约定
+    **不再被第三方界面素材借用**：第三方适配进各自的独立命名空间
+    （Suk 选人界面适配＝`SUK_UI_*`），从而从根上避免"同前缀不同类别"的歧义。
 
-    | 约定 | 样例 | 出处（一手证据） |
-    |---|---|---|
-    | **A** 原版 / 单一槽 | `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP` | 原版 `FallbackLeaders.artdef` 等 **111 处全为 `FALLBACK_NEUTRAL`**，无其它状态位；本项目 6 个 `.tex` 同形 |
-    | **B** 多情绪槽 | `FALLBACK_HAPPY_LEADER_SONG_RENZONG` | `civ6-mod-developer` 的 `construct/机制补入指南.md`（4 槽定义）+ 其 SongRenzong 产物（4 槽 × 2 领袖 = 8 个 `.tex`，全为 `Leader_Fallback`） |
+    历史例外（legacy，仅为兼容未迁移的旧工程）：
+    `FALLBACK_NEUTRAL_{X}_Suk` 是 Suk 选人界面的 **2D UI 立绘**（类别 `UserInterface`），
+    与 3D 回退同前缀。旧工程必须排除它，否则 cooker 报
+    `has class 'X', but is bound to parameter 'Y' which does not accept this class`，
+    且 **XLP cook 仍显示 success**、条目被静默替换成 error asset。
+    该类素材现名 `SUK_UI_PORTRAIT_{X}`。
 
-    两套**互不包含**：B 的前缀是 `FALLBACK_{HAPPY,UNHAPPY,ENRAGED}_`（不含 `NEUTRAL`），
-    A 的名字里**没有** `_LEADER_` 中缀。故「只认 `FALLBACK_NEUTRAL_`」与
-    「要求含 `_LEADER_`」各只能覆盖一套，实测在 9 例真值集上分别错 3 / 错 4。
-    早期只认 NEUTRAL 时，B 的 HAPPY/UNHAPPY/ENRAGED 会被打成 `UserInterface`，
-    进而被 LeaderFallback 包**整体剔除**，表现为「领袖 fallback 成官方领袖」。
-
-    因此判据放宽为：**凡 `FALLBACK_` 开头，除 UI 立绘后缀外，一律 Leader_Fallback**
-    —— 两套约定同时命中，且对约定 A 的既有输出**零变化**（A 的图本就以 `FALLBACK_` 开头）。
-
-    ⚠ 但仍须显式排除 UI 立绘后缀：`FALLBACK_NEUTRAL_{X}` 与 `FALLBACK_NEUTRAL_{X}_Suk`
-    同前缀而**类别完全不同**：
-
-      FALLBACK_NEUTRAL_CARTETHYIA_QYQXP      -> Leader_Fallback（3D 回退，带 mip，
-                                                注册在 LeaderFallback XLP）
-      FALLBACK_NEUTRAL_CARTETHYIA_QYQXP_Suk  -> UserInterface （Suk 选人界面的 2D 立绘，
-                                                单 mip，注册在 UITexture XLP）
-
-    若 _Suk 被判成 Leader_Fallback，会出现「类别与所绑定的 XLP 参数不匹配」：
-    cooker 报 `has class 'X', but is bound to parameter 'Y' which does not accept
-    this class`，且 XLP cook 仍显示 success，条目被静默替换成 error asset
-    （详见 civ6-asset-forge/reference/loyalty-icon.md「类别是硬约束」一节）。
-
-    新增同类 UI 后缀时**往 _UI_PORTRAIT_SUFFIXES 里加**，而不是再写前缀特例。
-    最终防线仍是 `verify_tex_class.py`（校验 `.tex` 类别 ↔ 所绑 XLP 类是否匹配）——
-    它不依赖文件名约定，是这类静默替换唯一能拦住的地方。
+    新增同类 UI 素材时**不要再借用 `FALLBACK_` 前缀**，改用独立命名空间；
+    最终防线始终是 `verify_tex_class.py`（校验 `.tex` 类别 ↔ 所绑 XLP 类，**不依赖文件名**）。
     """
-    if name.endswith(_UI_PORTRAIT_SUFFIXES):
+    if name.endswith(_UI_PORTRAIT_SUFFIXES):   # legacy 兼容；全部工程迁移后可删
         return False
     return name.startswith("FALLBACK_")
 
