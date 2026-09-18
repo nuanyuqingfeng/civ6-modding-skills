@@ -76,7 +76,7 @@ Python 3 + **Pillow**（`make_atlas.py` 组版）、**numpy + scipy**（`normali
 ### 二.1 ⚠ `.tex` 类别（`m_ClassName`）是硬约束，且**不能靠名字猜**
 
 `gen_tex.py` 判 `m_ClassName` 用的是「**前缀判断 + `_UI_PORTRAIT_SUFFIXES` 例外表**」
-（`is_fallback()`，脚本 285–311 行）：以 `FALLBACK_NEUTRAL_` 开头者 → `Leader_Fallback`，
+（`is_fallback()`）：凡 `FALLBACK_` 开头者 → `Leader_Fallback`，
 **但以 `_UI_PORTRAIT_SUFFIXES`（当前仅 `_Suk`）结尾的显式排除在外** → `UserInterface`，
 其余 → `UserInterface`。**但同前缀不代表同类别**：
 
@@ -84,6 +84,23 @@ Python 3 + **Pillow**（`make_atlas.py` 组版）、**numpy + scipy**（`normali
 |---|---|---|---|
 | `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP` | 3D 领袖回退 | `Leader_Fallback` | `LeaderFallbacks.xlp` |
 | `FALLBACK_NEUTRAL_CARTETHYIA_QYQXP_Suk` | **UI 选人界面 2D 立绘** | **`UserInterface`** | `UILeaders.xlp`（`UITexture`） |
+
+#### 两套 `FALLBACK_` 命名约定（2026-09-18 厘清，别再退回单约定判据）
+
+| 约定 | 样例 | 一手证据 |
+|---|---|---|
+| **A** 原版 / 单情绪槽 | `FALLBACK_NEUTRAL_<KEY>` | 原版 `FallbackLeaders.artdef` 等 **111 处全部是 `FALLBACK_NEUTRAL`**（无 HAPPY/UNHAPPY/ENRAGED 兄弟项）；本项目 `Textures/` 6 个 `.tex` 同形 |
+| **B** 多情绪槽 | `FALLBACK_HAPPY_LEADER_<KEY>` | `civ6-mod-developer` 的 `construct/机制补入指南.md` 定义 4 槽（NEUTRAL/HAPPY/UNHAPPY/ENRAGED）；其 SongRenzong 产物有 8 个该类 `.tex`（4 槽 × 2 领袖） |
+
+**两套互不包含**：B 的前缀不含 `NEUTRAL`，A 的名字里没有 `_LEADER_` 中缀。所以历史上两种写法
+各只能覆盖一套——「只认 `FALLBACK_NEUTRAL_`」在 B 上错 3 例，「要求含 `_LEADER_`」在 A 上错 4 例
+（同一 9 例真值集实测）。**判据已统一为「`FALLBACK_` 前缀 − UI 后缀」**，两套同时命中；
+对约定 A 的既有输出**零变化**（本项目 238 个贴图名逐个回放，判定变化数 = 0）。
+
+> **代价与边界**：判错的后果正是下面那段「静默」——约定 B 的 HAPPY/UNHAPPY/ENRAGED 若被判成
+> `UserInterface`，会被 LeaderFallback 包**整体剔除**，表现是**领袖 3D 形象 fallback 成官方领袖**
+> （如艳后）。这类问题的唯一有效防线是 `scripts/verify_tex_class.py`（校验 `.tex` 类别 ↔ 所绑 XLP 类，
+> **不依赖文件名约定**），发布前必跑。
 
 类别写错的后果是**静默**的：cooker 报
 `has class 'X', but is bound to parameter 'Y' which does not accept this class`，
