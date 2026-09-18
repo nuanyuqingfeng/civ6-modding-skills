@@ -186,12 +186,32 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 3. **默认多语言合并进原 SQL**，不新增分语言文件；UTF-8 / CRLF / 注释 / 尾逗号保持原样。
 4. **先查原版有没有现成 tag**：`SELECT Text FROM LocalizedText WHERE Tag='LOC_X' AND Language='zh_Hans_CN'`
    （`database/DebugLocalization.sqlite`）——能复用就复用，文案还与官方逐字一致。
-   > ⚠️ **该库是基础游戏快照，不含 DLC/资料片文本**（实测 15,237 tag）。查 DLC 内容（资料片领袖、
-   > 保护区、马格努斯总督…）会**查不到**，别据此断定"官方没有这个 tag"。
-   > 需要 DLC 覆盖时用 `python database/scripts/build_localization.py --report` 看缺口：
-   > `--augment` 向现有库**只加不改**地补全（`INSERT OR IGNORE`，既有行与 `SkillAnnotation_*`
-   > 侧表原样保留），`--build <out>` 新建到独立文件不动现有库。
-   > 补全后库体量约 62 MB → 126 MB，属**可选增强**，不补也能正常做基础游戏内容。
+   > ⚠️ **该库是「基础游戏」快照**（15,237 tag × 12 语言），**不含任何 DLC/资料片文本**：
+   > `LOC_LEADER_MANSA_MUSA_NAME`（曼萨穆萨）、`LOC_DISTRICT_PRESERVE_NAME`（保护区）、
+   > `LOC_GOVERNOR_THE_DEFENDER_NAME`（维克多）**全部查不到**。别据此断定"官方没这个 tag"。
+   >
+   > **需要 DLC 覆盖时按分层规则合成**（`build_localization.py`）：
+   >
+   > | 库 | 内容 | 规则 |
+   > |---|---|---|
+   > | **主文本库** | Base + EXP1 + EXP2 + 全部领袖/文明 DLC | `EXP2 > EXP1 > base`，其它领袖包只补缺不覆盖；**排除情景与 Mode** |
+   > | **模式文本库** | 8 个 GAMEMODE（英雄/秘密结社/塔防/行业与公司/风云变幻/蛮族氏族/天启/树随机） | 单独成库，只加不覆盖 |
+   >
+   > ```bash
+   > python database/scripts/build_localization.py --report          # 只读：分段 + 分层 + 差异统计
+   > python database/scripts/build_localization.py --build-main <主库.sqlite>
+   > python database/scripts/build_localization.py --build-mode <模式库.sqlite>
+   > ```
+   >
+   > 主库语义是「**游戏文件权威、既有库兜底**」：游戏文件定义了的键取分层值（EXP2 优先），
+   > 没有的键（如项目自造 tag）用既有库补——**既有行一行不丢**。
+   >
+   > ⚠️ **不要试图用游戏运行时缓存补全**：`%LOCALAPPDATA%\...\Cache\DebugLocalization.sqlite`
+   > 实测恒为 base 15,229 tag，**连当前加载的 mod 文本都没有**（同目录的 `DebugGameplay.sqlite`
+   > 却含本局全部内容），与本局模式/mods 无关——它不反映"加载了什么"。
+   > 权威分段判据在 `.modinfo`：新式看 `<ActionCriteria>` 里 `ConfigurationId=GAMEMODE_*`，
+   > 旧式（仅 `VikingsScenario`）看 `<Properties><RuleSet>` 的 `RULESET_SCENARIO_*`；
+   > 模式清单的权威表是 `DebugConfiguration.sqlite → GameModeItems`（8 行），**不在 Gameplay 库**。
 5. 写入后逐条复核：标签齐缺失（八语言）、空值、标记漂移；改动量大时按 `validation.md` 的清单过一遍。
 
 > 文本与图标/颜色的对照数据在本 skill 内：`database/DebugLocalization.sqlite`（官方文本 + 手工标注侧表
@@ -561,7 +581,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `reference/MODIFIER_ARGUMENTS.md` | Modifier 参数分类 |
 | `database/scripts/query_effect_args.py` | **Effect/Modifier 参数取值域查询**（参数签名 + `DatabaseKind`→`Types` 权威全集 + 官方实际用值；支持 `--effect` / `--modifier` / `--arg` / `--search` / `--dump-json`） |
 | `database/scripts/search_impl.py` | **「某对象/效果原版怎么实现」反查**（14 类对象 × 6 种绑定路径；递归展开 ATTACH / GRANT_ABILITY / 嵌套 REQSET，自带防环限深；支持 `--object` / `--modifier` / `--effect` / `--json`） |
-| `database/scripts/build_localization.py` | **从本机游戏安装补全本地化库（含 DLC）**：`--report` 看缺口 / `--augment` 只加不改地补全 / `--build` 新建独立库；不删不覆盖既有行与 `SkillAnnotation_*` 侧表 |
+| `database/scripts/build_localization.py` | **分层合成两个本地化文本库**（主库 / 模式库）：从游戏安装按 `.modinfo` 权威分段（main/mode/scenario），主库 `EXP2>EXP1>base` + 既有库兜底，Mode 单独成库只加不覆盖；`--report` 只读 / `--build-main` / `--build-mode` / `--augment-main`；不删行、不动 schema、不应用 `<Delete>` |
 | `reference/WORKSHOP_PATTERNS.md` | 高级 SQL 模式 |
 | `reference/TYPE_NAME_MAPPING.md` | Type→名称 + Trait→Modifier 关联链 |
 | `database/modifiers-guide.md` | Modifier 系统指南 |
