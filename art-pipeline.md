@@ -99,7 +99,7 @@ Python 3 + **Pillow**（`make_atlas.py` 组版）、**numpy + scipy**（`normali
 
 > **代价与边界**：判错的后果正是下面那段「静默」——约定 B 的 HAPPY/UNHAPPY/ENRAGED 若被判成
 > `UserInterface`，会被 LeaderFallback 包**整体剔除**，表现是**领袖 3D 形象 fallback 成官方领袖**
-> （如艳后）。这类问题的唯一有效防线是 `scripts/verify_tex_class.py`（校验 `.tex` 类别 ↔ 所绑 XLP 类，
+> （如艳后）。这类问题的唯一有效防线是 `art/verify_tex_class.py`（校验 `.tex` 类别 ↔ 所绑 XLP 类，
 > **不依赖文件名约定**），发布前必跑。
 
 类别写错的后果是**静默**的：cooker 报
