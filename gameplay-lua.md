@@ -295,7 +295,7 @@ pPlot:SetProperty("MY_PLOT_FLAG", someValue);
 <Requirement>
     <Row RequirementId="REQ_MY_PLOT_PROP" RequirementType="REQUIREMENT_PLOT_PROPERTY_MATCHES">
         <PropertyName>MY_PLOT_FLAG</PropertyName>
-        <PropertyValue>1</PropertyValue>
+        <PropertyMinimum>1</PropertyMinimum>
     </Row>
 </Requirement>
 ```

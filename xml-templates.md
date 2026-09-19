@@ -381,6 +381,10 @@ Format: `Horizontal,Vertical`
 | `B` | — | **向上（内部）** |
 | `C` | 向右（全局正向） | 向下（全局正向） |
 
+- **符号规则（先记这个）**：左对齐(`L`)与右对齐(`R`)正负相反，上对齐(`T`)与下对齐(`B`)正负相反 —— **正值恒指向容器内部**。
+  `L`→右 / `R`→**左** / `T`→下 / `B`→**上** / `C`→无镜像（右/下）。
+- ⚠ 负值**不一定**是 bug，只表示「往容器外推」；需确认是否故意（本工程实测 `R,T` 负值 6 处均为正常运行面板）。
+- ⚠ 注意 `Anchor="C,B"` 是**两轴分别锚定**（X 用 `C`、Y 用 `B`），Y 轴走 B 的镜像，**不经过 C 规则**。
 - `R,B` + `Offset="17,8"` → 从右下角向左 17、向上 8（vanilla `WorldBuilderMenu.xml:14` WBAConfirmButton）
 - `L,B` + `Offset="20,8"` → 从左下角向右 20、向上 8（vanilla `WorldBuilderMenu.xml:15` WBACancelButton）
 - `C,B` + `Offset="0,15"` → 底部居中，向上 15（vanilla `BoostUnlockedPopup.xml` 协议按钮）

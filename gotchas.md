@@ -62,7 +62,7 @@
 
 6. **LuaEvents automatically clean up** — no need to `.Remove()`.
 
-7. **GamePlay 脚本 `Events.*` 和 `GameEvents.*` 均可用，不可用 `LuaEvents.*`。** `LuaEvents.*` 是 UI 上下文的广播系统，GP 侧不可用。UI 侧不可用 `GameEvents.*`。
+7. **GamePlay 脚本 `Events.*` 和 `GameEvents.*` 均可用；UI 侧不可用 `GameEvents.*`（整条为 `nil`）。** `LuaEvents.*` 是 UI 上下文的广播系统 —— GP 侧虽存在同名 table，但**与 UI 侧不是同一实例**，跨端推送一律用 `ReportingEvents.SendLuaEvent`（见 §36）。
 
 > **⚠ 三条总线互不镜像 —— 用错总线是「静默无效」，必须按事件查表，不要凭印象**（2026-09 修订）
 >
@@ -224,13 +224,13 @@
      ```lua
      ReportingEvents.SendLuaEvent('Name', { key = value })
      ```
-     UI 侧 `LuaEvents.Name.Add(handler)` 接收。GP 中直接调用 `LuaEvents.Name(...)` 也能工作，但 `SendLuaEvent` 是官方跨 Lua 状态的 API。
+     UI 侧 `LuaEvents.Name.Add(handler)` 接收。**GP 侧的 `LuaEvents` 表与 UI 侧不是同一实例**，不要依赖 GP 直调 `LuaEvents.Name(...)` 到达 UI —— 跨端推送统一用 `SendLuaEvent`（官方跨 Lua 状态的 API）。
 
 37. **按钮触发的 UI→GP 动作必须走 `EXECUTE_SCRIPT`，禁止跨端通过 `ExposedMembers` 调用** — 按钮回调中触发的一切 GP 函数调用（升级、增益切换、购买等）统一使用 `UI.RequestPlayerOperation(EXECUTE_SCRIPT)`。`ExposedMembers` 仅限 GP 同端跨文件共享，禁止跨端暴露给 UI；UI 被动读取用 PROPERTY / Core 共享读取函数。
 
 38. **UI 可直接读取 PROPERTY，共享读取函数放 Core 文件** — `Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")` 在 UI 侧同样可用。将读取函数定义在 Core 文件中，GP 和 UI 各自 `include()` 即可；跨端不需要也不允许用 `ExposedMembers` 包装。
 
-43. **ForgeUI `Offset` 正值恒指向容器内部，按锚点镜像翻转** — `Anchor` 是 `L/C/R × T/C/B` 九宫格，Offset 的正值方向不是全局坐标系而是相对锚点：`L`→右、`R`→**左**、`T`→下、`B`→**上**、`C`→全局正向（右/下）。症状：同一面板中一个按钮正常、另一个"贴屏幕边缘/面板外"，通常就是 `R,B`/`B` 系锚点写了负值（或镜像错值）。例：`R,B` + `Offset="-80,33"` = 向右 80 推出右缘；正确应为 `"80,33"`（向左）。vanilla 佐证 `WorldBuilderMenu.xml:14-15`（`R,B`/`L,B` 均正值正常）、`BoostUnlockedPopup.xml:38`（`C,B` + `0,15` 向上）。规避：角落锚点先按上表反推符号；或统一用 `C,*` 锚点 + 正值，无镜像歧义。详见 `xml-templates.md` "Anchor Syntax Reference"。
+43. **ForgeUI `Offset` 正负号：左对齐(L)与右对齐(R)相反，上对齐(T)与下对齐(B)相反 —— 正值恒指向容器内部** — `Anchor` 是 `L/C/R × T/C/B` 九宫格，Offset 正值方向不是全局坐标系而是相对锚点镜像翻转：`L`→右、`R`→**左**、`T`→下、`B`→**上**；`C` 无镜像（正值即屏幕正向：右/下）。⚠ 不要把「负值」一概判为 bug —— 负值只是「往容器外推」，本工程 45 个 UI XML 实测 `R,T` 负值 6 处均在正常运行面板中；`B` 锚点 28 正 0 负（镜像零反例）。症状：同一面板中一个按钮正常、另一个"贴屏幕边缘/面板外"，通常就是 `R,B`/`B` 系锚点写了负值（或镜像错值）。例：`R,B` + `Offset="-80,33"` = 向右 80 推出右缘；正确应为 `"80,33"`（向左）。vanilla 佐证 `WorldBuilderMenu.xml:14-15`（`R,B`/`L,B` 均正值正常）、`BoostUnlockedPopup.xml:38`（`C,B` + `0,15` 向上）。规避：角落锚点先按上表反推符号；或统一用 `C,*` 锚点 + 正值，无镜像歧义。详见 `xml-templates.md` "Anchor Syntax Reference"。
 
 ---
 
@@ -411,13 +411,13 @@
     | API | 实测差异 | 处置 |
     |---|---|---|
     | `Unit:GetMovesRemaining()` | UI 返回 4.5 / **GP 返回 4（整数截断）** | 统一改用分数接口 `GetMovementMovesRemaining()` |
-    | `Plot:IsValidFoundLocation()` | UI 可用；**GP 恒 `false`** | 用 `GetCities():IsValidFoundLocation(x,y)`（仅 GP） |
+    | `Plot:IsValidFoundLocation()` | **UI + GP 均可**（见 §67 定案） | 直接用它；GP 侧另有 `GetCities():IsValidFoundLocation(x,y)`，实测逐格结果一致 |
     | `GetPastTimeline` | **仅 UI** | UI 采集后经 `EXECUTE_SCRIPT` 回灌 GP |
     | `Game.SetProperty` | **仅 GP** | —— |
     | `GetNumBeliefsEarned` | **仅 UI** | GP 侧用 `GetStats:GetNumBeliefsInReligion` |
     | `Unit:GetUnitType` | **仅 UI**（GP 只有 `GetType` 返回索引） | 上面的探测式写法 |
 
-    ⚠ `Plot:IsValidFoundLocation()` 在 `database/api.sqlite` 里标 `availability=Both` —— 即「**存在但语义错**」，查库查不出来，只有实测能发现。**这类差异是"查 API 库"覆盖不到的地带。**
+    ✅ `Plot:IsValidFoundLocation()` 在 `database/api.sqlite` 里标 `availability=Both`，且 `runtime_gp` / `runtime_ui` **均为 `function`**（FireTuner 已核验）—— 库标得对，**以 §67 为准，本节旧结论已作废**。
 
 58. **`ContextPtr:AddUpdate` / `RemoveUpdate` 在 Civ6 不存在** —— 逐帧回调用 `ContextPtr:SetUpdate(fn)` / `SetUpdate(nil)`。
     ⚠ `SetUpdate` **只在 context 可见时被调度**。

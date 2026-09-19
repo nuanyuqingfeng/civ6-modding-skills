@@ -128,7 +128,7 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
 | Script not loading | Wrong registration | Use `AddGameplayScripts`, not `AddUserInterfaces` |
-| Event not firing | Wrong event system | Use `GameEvents.*`, not `Events.*` |
+| Event not firing | Wrong event system | 按事件实际所在总线查 `reference/events_enhanced.json`（1081 条）的 `eventSystem` 字段：`Events` 与 `GameEvents` **按事件划分**，不可二选一；UI 侧 `GameEvents` 为 `nil` |
 | Crash on nil | Missing nil check | Add `if pPlayer ~= nil then` |
 | Data lost on save | Not using SetProperty | Use `Game:SetProperty()` for persistence |
 | Multiplayer desync | `math.random()` | Use `Game.GetRandNum(n)` |
