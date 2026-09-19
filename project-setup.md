@@ -452,7 +452,13 @@ Hand-friendly XML with a single `<Mod id="GUID" version="V">` root.
 
 1. **Mod ID must be a valid GUID** — generate a new one per mod. In `.civ6proj`, the `<Guid>` becomes
    `<Mod id>` in the exported `.modinfo`.
-2. **`AddUserInterfaces` references only the `.xml`** — the matching `.lua` goes in `ImportFiles`.
+2. **UI `.lua` 按角色三分类判定登记位置**（不是「一律进 ImportFiles」）：
+
+   | 情形 | 登记方式 |
+   |---|---|
+   | UI `.xml` 的**同名 `.lua`**（上下文脚本） | **不需要任何加载动作** —— 引擎随 `.xml` 自动加载；只需进打包清单（`.civ6proj` `<Content>`）。实测：本工程 `UI/` 下 20 个 `.lua` 全部有同名 `.xml`，`AddUserInterfaces` 里**只列 20 个 `.xml`，零个 `.lua`** |
+   | 被 `include()` 的共享/扩展件（如 `Core_*.lua`） | 进 `ImportFiles` |
+   | 取代原版同名 UI 文件（官方 Replacement 惯例） | 进 `ImportFiles`（文件名与原版一致）**或** `ReplaceUIScript`（需填 `<LuaContext>` = 原版 Context 名 + `<LuaReplace>` = 你的路径；工坊实测 215 处先例，LoadOrder 普遍取高值如 6054/99999 以压过原版） |
 3. **File list 按文件类别区分，不是"所有文件都列"**：
    - `.modinfo`: `<Files><File>` block；`.civ6proj`: `<Content Include="X">` entries。
    - **XML / SQL / Lua**：**一定需要写进清单** —— 新增/删除/改名时同步条目。
@@ -483,18 +489,37 @@ Hand-friendly XML with a single `<Mod id="GUID" version="V">` root.
 | **游戏文本** (LocalizedText) | **InGame 仅** | `UpdateText` |
 | **Lua 脚本** | **InGame 仅** | `AddGameplayScripts` |
 | **UI XML** | **InGame 仅** | `AddUserInterfaces` (Context=InGame) |
-| **UI Lua** | **InGame 仅** | `ImportFiles` |
-| **Core 共享 Lua** | **InGame 仅** | `ImportFiles` |
+| **UI Lua（与同名 XML 配套）** | **InGame 仅** | **无需加载动作**（引擎随 XML 自动加载）；仅被 `include` 的共享件或取代原版的才进 `ImportFiles` / `ReplaceUIScript` |
+| **Core 共享 Lua（被 include）** | **InGame 仅** | `ImportFiles` |
 
 ### 关键规则
 
 1. **Config = FrontEnd 专属** — `Players`、`PlayerItems` 表仅存在于 FrontEnd 数据库，写入它们的 SQL 必须在 `<FrontEndActions>` 的 `<UpdateDatabase>` 中注册。放入 InGame 会导致 `no such table: Players`。
 
 2. **Colors 和 Icons 双侧注册** — `Colors`、`PlayerColors`、`IconTextureAtlases` 表在 FrontEnd 和 InGame 数据库中都存在，因此颜色和图标文件必须在两侧分别注册（`UpdateColors` / `UpdateIcons`），漏掉一侧会导致对应上下文缺少颜色或图标。
+   **交付前必查的双侧注册清单**（漏一端 = 静默失效，不报错）：
+
+   | 内容 | FrontEnd | InGame | 漏了的症状 |
+   |---|---|---|---|
+   | `Colors` / `PlayerColors` | ✅ | ✅ | 选人界面有配色，进游戏变默认色 |
+   | `IconTextureAtlases` (Icons) | ✅ | ✅ | 选人界面有图标，游戏内空白 |
+   | `.dep` (Art) | ✅ | ✅ | 选人界面有立绘/图标，游戏内不显示 |
+   | `Players` / `PlayerItems` (Config) | ✅ | ❌ 仅前端 | 放进 InGame 会 `no such table` |
+   | 游戏数据 (Civ/Units/Buildings…) | ❌ | ✅ 仅游戏内 | 前端不需要 |
+   | 游戏内文本 (`UpdateText`) | ✅(仅 Config 用的 LOC) | ✅ | 前端缺则 mod 列表显示原始 key |
+
+   > **口诀**：*凡是「选人界面看得见、游戏里也看得见」的东西，两端都要注册*
+   > —— 即 **Colors / Icons / Art**；Config 只需前端。
+   > 实测反例：`FHB_Shuai` 漏了 InGame `UpdateColors`，表现为进游戏后玩家颜色不对。
 
 3. **文本用 UpdateText，不是 UpdateDatabase** — 即使 LocalizedText 以 SQL (`INSERT INTO LocalizedText`) 书写，也改用 `<UpdateText>` 动作。SQL 和 XML 格式均可。`Text_Config_*.sql` 仅 FrontEnd 需要，其余游戏文本 InGame 即可。
 
 4. **类型定义和 Modifiers 分开注册** — 类型定义（建筑、单位、文明等）和 Modifiers 表分别放在独立的 `UpdateDatabase` 动作中，便于控制加载顺序。
+5. **`.dep` 文件名 = 工程名** — 由 `.Art.xml` 的 `<id><name text="…"/>` 决定（ModBuddy 构建时生成
+   `<name>.dep`）。实测 12 个工程里 11 个用 `<工程名>.dep`；**不要用 mod 标题的 LOC key**
+   （反例：某工程写成 `LOC_XXX_MOD_TITLE.dep`，与全家族惯例不符）。
+   改 `.dep` 名时需同步：`.Art.xml` 的 `<name>`、`.civ6proj`/`.modinfo` 里 `UpdateArt` 的 `<File>`、
+   `<Files>` 清单条目，以及磁盘文件本身。
 
 ### ModBuddy 的 `Mod Info → Custom Properties` 面板（≠ 模板变量）
 
