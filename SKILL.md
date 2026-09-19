@@ -186,7 +186,7 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 3. **默认多语言合并进原 SQL**，不新增分语言文件；UTF-8 / CRLF / 注释 / 尾逗号保持原样。
 4. **先查原版有没有现成 tag**：`SELECT Text FROM LocalizedText WHERE Tag='LOC_X' AND Language='zh_Hans_CN'`
    （`database/DebugLocalization.sqlite`）——能复用就复用，文案还与官方逐字一致。
-   > ⚠️ **该库是「基础游戏」快照**（15,237 tag × 12 语言），**不含任何 DLC/资料片文本**：
+   > ⚠️ **该库是「基础游戏」快照**（实测 **28,060 tag × 12 语言**），**不含任何 DLC/资料片文本**：
    > `LOC_LEADER_MANSA_MUSA_NAME`（曼萨穆萨）、`LOC_DISTRICT_PRESERVE_NAME`（保护区）、
    > `LOC_GOVERNOR_THE_DEFENDER_NAME`（维克多）**全部查不到**。别据此断定"官方没这个 tag"。
    >
@@ -216,7 +216,27 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
    > 权威分段判据在 `.modinfo`：新式看 `<ActionCriteria>` 里 `ConfigurationId=GAMEMODE_*`，
    > 旧式（仅 `VikingsScenario`）看 `<Properties><RuleSet>` 的 `RULESET_SCENARIO_*`；
    > 模式清单的权威表是 `DebugConfiguration.sqlite → GameModeItems`（8 行），**不在 Gameplay 库**。
-5. 写入后逐条复核：标签齐缺失（八语言）、空值、标记漂移；改动量大时按 `validation.md` 的清单过一遍。
+
+#### 语言分级制度（写文本前先定语种数）
+
+**默认基线 L0 = 三语**：`zh_Hans_CN` + `zh_Hant_HK` + `en_US`。
+
+**判定优先级：项目 `AGENTS.md` 的要求 ＞ skill 默认 L0。**
+项目里明确要求更多或更少语种时，**以项目内部要求为准**；没说就按 L0 三语。
+
+| 级别 | 语种 |
+|---|---|
+| **L0（默认）** | `zh_Hans_CN` / `zh_Hant_HK` / `en_US` |
+| **L1（可选扩展）** | `ja_JP` / `ko_KR` / `de_DE` / `es_ES` / `fr_FR` / `it_IT` / `pl_PL` / `pt_BR` / `ru_RU` |
+
+> **语言文本库（DebugLocalization.sqlite）保持全量 12 语言维护，不按分级裁剪** ——
+> 分级只约束「本项目交付多少语种」，不约束查询库。
+> 实测该库 12 语言：`en_US` / `fr_FR` / `de_DE` / `it_IT` / `es_ES` / `ja_JP` / `ru_RU` /
+> `pl_PL` / `ko_KR` / `zh_Hant_HK` / `zh_Hans_CN` / `pt_BR`（28,060 tag）。
+>
+> ⚠️ 旧的「八语言复核」口径会**漏检 `it_IT` / `pl_PL` / `pt_BR` / `ru_RU` 四种**，已废止。
+
+5. 写入后逐条复核：标签齐缺失（**按上方「语言分级制度」定的语种数**）、空值、标记漂移；改动量大时按 `validation.md` 的清单过一遍。
 
 > 文本与图标/颜色的对照数据在本 skill 内：`database/DebugLocalization.sqlite`（官方文本 + 手工标注侧表
 > `SkillAnnotation_Colors` / `SkillAnnotation_Icons`）与 `reference/sources/` 的两份社区常量表。
@@ -610,7 +630,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 |--------|------|------|
 | `database/DebugGameplay.sqlite` | **61,014,016 字节（58.2 MiB）** | 游戏数据（427 表）；`rgn_validate` 的基础库、SQL 查询主库 |
 | `database/api.sqlite` | 2.5 MB | Lua API（4857 行；含 2026-09-08 FireTuner 实测核验列，见下节；**原始记录随包**：`database/api-verification-2026-09-08/`） |
-| `database/DebugLocalization.sqlite` | **65,081,344 字节（62.1 MiB）** | 官方本地化文本（8 语言）+ `SkillAnnotation_*` 手工标注侧表 |
+| `database/DebugLocalization.sqlite` | **106,811,392 字节（101.9 MiB）** | 官方本地化文本（**12 语言**）+ `SkillAnnotation_*` 手工标注侧表 |
 | `database/DebugConfiguration.sqlite` | 1.1 MiB | FrontEnd 配置数据（`Maps` 等） |
 | `database/source_index.sqlite` | 29.1 MiB | 官方行级来源索引 + 人工 `dlc_dependency` 标注 |
 | `database/api-verification-2026-09-08/` | 6.2 MiB | API 核验原始记录 |
