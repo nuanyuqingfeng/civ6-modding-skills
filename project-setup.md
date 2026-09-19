@@ -7,7 +7,7 @@ but consume it differently:
 
 | File | Created by | Used by | Current Status |
 |------|-----------|---------|----------------|
-| `.civ6proj` | ModBuddy IDE (MSBuild XML) | ModBuddy build / packaging | **Wheelers in use** |
+| `.civ6proj` | ModBuddy IDE (MSBuild XML) | ModBuddy build / packaging | **在用**（两者并存） |
 | `.modinfo` | Hand OR by Build → Export | Game runtime loader | **Distribution format** |
 
 ModBuddy builds a `.modinfo` from the `.civ6proj` automatically when packaging a mod (Build menu).

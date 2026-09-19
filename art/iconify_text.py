@@ -15,7 +15,7 @@ Civ6 文本里写 `[ICON_Science]` 会在游戏内渲染成图标。手工加很
 
 一个 `[ICON_X]` 要能渲染，X 必须能从**任一**注册源解析到：
 
-1. **官方原版**：`reference/sources/civ6-icon-tags.sql`（4836 个 `[ICON_*]` 全表，
+1. **官方原版**：`reference/sources/civ6-icon-tags.sql`（5056 个 `[ICON_*]` 全表，
    社区整理，随 skill 分发）；
 2. **本工程自定义**：项目 Icons XML（`Data/*.xml`、`Mod_Adaptation/**/*.xml`）里
    声明的 `IconDefinitions` / `IconTextureAtlases` 名，以及字体图集名。

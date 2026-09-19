@@ -781,7 +781,7 @@ python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png
 
 `iconify_text.py --audit` 把文本里出现的每个 `[ICON_x]` 拿去**两个来源**核对，解析不到就是悬空：
 
-1. **官方原版**：`reference/sources/civ6-icon-tags.sql` 的 4836 个 `[ICON_*]` 全表；
+1. **官方原版**：`reference/sources/civ6-icon-tags.sql` 的 5056 个 `[ICON_*]` 全表；
 2. **本工程自定义**：工程 `Data/*.xml`、`Mod_Adaptation/**/*.xml` 里 `IconDefinitions` /
    `IconTextureAtlases` 声明的名字（如 `RESOURCE_AUREO_RGN`）。
 

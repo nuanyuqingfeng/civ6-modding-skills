@@ -135,7 +135,7 @@ INSERT OR REPLACE INTO TypeTags (Type, Tag) VALUES ('LEADER_MYCS', 'CLASS_MYMOD_
 
 | 项 | 规格 |
 |---|---|
-| 图标尺寸 | ★ `22, 30, 32, 36, 40, 44, 48, 64, 68, 80, 256`（14 档，见 `art-pipeline.md` 尺寸表 `citystate_icon`） |
+| 图标尺寸 | ★ `22, 30, 32, 36, 40, 44, 48, 64, 68, 80, 256`（11 档，见 `art-pipeline.md` 尺寸表 `citystate_icon`） |
 | 命名 | `ICON_CIVILIZATION_<X>_<size>.dds` + `IconTextureAtlases` + `IconDefinitions` |
 | 注册 | `Icons.xlp`（`m_PackageName=UI/Icons`）+ `<Mod>.Art.xml` 的 `UITexture` 库 |
 | 3D | 城邦一般**不需要**自定义 3D 模型（纯 2D 图标即可） |
