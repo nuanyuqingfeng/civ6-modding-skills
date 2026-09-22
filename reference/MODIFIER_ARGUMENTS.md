@@ -269,12 +269,42 @@ VALUES ('MY_GPP_MOD', 'Amount', 'ARGTYPE_IDENTITY', '2');
 | `MODIFIER_PLAYER_CITIES_ADJUST_YIELD` | `YieldType`, `Amount` | - |
 | `MODIFIER_CITY_ADJUST_YIELD_PER_POPULATION` | `YieldType`, `Amount` | - |
 | `MODIFIER_UNIT_ADJUST_COMBAT_STRENGTH` | `Amount` | `Key`, `Max` |
+| `MODIFIER_UNIT_ADJUST_BASE_COMBAT_STRENGTH` | `Amount` | `Type`（见下方专节） |
 | `MODIFIER_UNIT_ADJUST_MOVEMENT` | `Amount` | - |
 | `MODIFIER_PLAYER_CITIES_ADJUST_BUILDING_PRODUCTION` | `BuildingType`, `Amount` | - |
 | `MODIFIER_PLAYER_DISTRICTS_ADJUST_GREAT_PERSON_POINTS` | `DistrictType`, `GreatPersonClassType`, `Amount` | - |
 | `MODIFIER_CITY_ADJUST_AMENITIES` | `Amount` | - |
 | `MODIFIER_CITY_ADJUST_HOUSING` | `Amount` | - |
 | `MODIFIER_PLAYER_UNITS_ADJUST_COMBAT_STRENGTH` | `Amount` | `UnitType` |
+
+## `MODIFIER_UNIT_ADJUST_BASE_COMBAT_STRENGTH` 的 `Type` 参数
+
+> 本节依据引擎层逆向结果记录（非 `Types` 表可查的取值域，`ModifierArguments` 也无独立枚举表）。
+
+`Type` 用于限定「基础战斗力」加成生效的战斗场景，**可选项**：
+
+| `Type` 取值 | 生效场景 |
+|---|---|
+| `MELEE` | 近战 |
+| `ANTIAIR` | 对空 |
+| `RANGED` | 远程 |
+| `BOMBARD` | 攻城 / 轰击 |
+| *（留空 / 不写该参数）* | **所有场景**，即无差别加基础战斗力 |
+
+```sql
+-- 只在近战时生效 +10
+INSERT INTO ModifierArguments (ModifierId, Name, Type, Value)
+VALUES ('MY_MOD', 'Type', 'ARGTYPE_IDENTITY', 'MELEE');
+INSERT INTO ModifierArguments (ModifierId, Name, Type, Value)
+VALUES ('MY_MOD', 'Amount', 'ARGTYPE_IDENTITY', '10');
+
+-- 所有场景 +10（留空 Type）
+INSERT INTO ModifierArguments (ModifierId, Name, Type, Value)
+VALUES ('MY_MOD', 'Amount', 'ARGTYPE_IDENTITY', '10');
+```
+
+> 注意：不要与 `MODIFIER_UNIT_ADJUST_COMBAT_STRENGTH` 混淆——后者的 `Type` 无此语义，
+> 它的 `Key` / `Max` 是「从单位 Property 读取加成」用的。
 
 ## 数据来源
 
@@ -288,4 +318,4 @@ VALUES ('MY_GPP_MOD', 'Amount', 'ARGTYPE_IDENTITY', '2');
 ---
 
 *文档版本: v1.1*
-*数据提取时间: 2026-04-15；2026-09-18 补注「本文是分类速查、非权威定义源」并指向 `query_effect_args.py`*
+*数据提取时间: 2026-04-15；2026-09-18 补注「本文是分类速查、非权威定义源」并指向 `query_effect_args.py`；2026-09-20 补 `MODIFIER_UNIT_ADJUST_BASE_COMBAT_STRENGTH` 的 `Type` 取值域（引擎逆向）*

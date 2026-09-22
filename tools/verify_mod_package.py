@@ -58,11 +58,17 @@ def find_modinfo(mods_dir: str) -> str:
 # ── 剥离感知：发布副本的 .lua 已剥注释，不能按逐字节比 ──────────────
 _STRIP_TOOLS = os.path.dirname(os.path.abspath(__file__))
 
-# cook 产物：只存在于 Mods 副本，每次 Rebuild All 重新生成；源工程本就没有
-#   `.dep` 由 ModBuddy 构建时从 `.civ6proj` 的 `(Mod Art Dependency File)` 占位符派生，
-#   文件名随 mod 名变化（如 `<ModName>.dep`），故按后缀判定而不是写死某个名字。
+# cook 产物：只存在于 Mods 副本，每次 Rebuild All 重新生成；源工程本就没有。
+#   `.dep` 由 `Civ6AssetCooker` 生成（`--mode Dependency` 专用，或任意 cook 模式的副产物），
+#   文件名 = <ModName>.dep，落点是 cooker 的 CWD（可用 `--dependency_root` 指定）。
+#   ★ 它虽属「源工程没有」的产物，但**不是可忽略项**：ModBuddy 会把它写进 .modinfo 的
+#     <UpdateArt> 与顶层 <Files>；缺失/未替换时游戏只写一行 ERROR、美术全空（静默失效）。
+#     故在下面的 check_art_dep() 里单独硬检查，不参与「漏登记」软放行。
 COOK_ARTIFACT_PREFIXES = ("platforms/windows/blps/", "platforms/macos/blps/")
 COOK_ARTIFACT_SUFFIXES = (".dep",)
+
+# ModBuddy 占位符：只允许出现在 .civ6proj 里；派生出的 .modinfo 必须已替换为 <ModName>.dep
+ART_DEP_PLACEHOLDER = "(Mod Art Dependency File)"
 
 
 def is_cook_artifact(rel: str) -> bool:
@@ -151,6 +157,30 @@ def main() -> int:
         problems += 0 if ok else 1
         print("%-44s %s  %s" % (rel, " / ".join(rows),
                                 "OK" if ok else "<== 不一致"))
+
+    # ── <UpdateArt> / .dep 硬检查（静默失效类，必须拦） ──────────────
+    try:
+        modinfo_text = open(modinfo, encoding="utf-8-sig").read()
+    except Exception:
+        modinfo_text = ""
+    if ART_DEP_PLACEHOLDER in modinfo_text:
+        problems += 1
+        print("\n占位符残留：.modinfo 里仍含 %r —— 应替换为 <ModName>.dep。"
+              "\n  游戏症状：ERROR: Invalid file reference in action ... in <Files>?，且美术/图标全空。"
+              % ART_DEP_PLACEHOLDER)
+    m_art = re.search(r"<UpdateArt[^>]*>\s*<File>([^<]+)</File>", modinfo_text)
+    if m_art:
+        dep_rel = m_art.group(1).strip()
+        dep_abs = os.path.join(mods_dir, dep_rel.replace("/", os.sep))
+        if not os.path.isfile(dep_abs):
+            problems += 1
+            print("\n<UpdateArt> 指向 %s，但 Mods 副本里不存在该 .dep（美术将静默失效）。" % dep_rel)
+            print("  生成：Civ6AssetCooker_FinalRelease.exe --mode Dependency --platform Windows \\")
+            print("        --pantry <源工程> --dependency_root <源工程> --config <SDK>\\AssetModTools\\Cooker\\Civ6.cfg \\")
+            print("        <源工程>\\<ModName>.Art.xml")
+        elif dep_rel not in declared:
+            problems += 1
+            print("\n.dep 未登记进 modinfo 顶层 <Files>：%s（游戏会报 'did you forgot to add it in <Files>?'）" % dep_rel)
 
     dangling = [f for f in declared if not os.path.isfile(os.path.join(mods_dir, f.replace("/", os.sep)))]
     if dangling:

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""按「原版换行分层铁律」归一化 Civ6 工程的文本文件换行。
+"""归一化文本文件换行：mod 工程按「原版分层铁律」，skill 仓库一律 LF（`--repo-skill`）。
 
 为什么需要分层（2026-09-16 原版随机抽样实测，Base / DLC / SDK Assets 各 ≤40）：
 
@@ -14,12 +14,24 @@
       .fgx(25/25) .wig(25/25) .dds .bik .bnk .wem .png
   另外逐文件做 NUL 检测：任何文件命中即跳过（防个别资产是二进制却被按文本改写）。
 
+模式:
+  ① **mod 工程**（默认）：按上面的「分层铁律」——资产类 LF、代码/配置类 CRLF。
+  ② **skill 仓库**（`--repo-skill`）：**一律 LF**。skill 仓库不是 civ6 工程，
+     无须迁就原版口径；两仓库 `.gitattributes` 均为 `* text=auto eol=lf`。
+     该模式额外覆盖 `.md/.py/.ps1/.json/.txt/.csv` 等**分层表未定义**的扩展名
+     （默认模式下它们被归入"非目标扩展名跳过"，这正是工作区 CRLF 残留的原因）。
+
 用法:
     python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）
     python normalize_eol.py <工程目录> --fix           # 就地归一化
     python normalize_eol.py <工程目录> --fix --quiet
     python normalize_eol.py <工程目录> --only .lua,.xml
     python normalize_eol.py <工程目录> --exclude workspace,.git
+    python normalize_eol.py <skill仓库> --repo-skill --fix   # skill 自身清理（全 LF）
+
+诊断工作区漂移（推荐先用它看清单，再决定是否 --fix）:
+    git -C <仓库> ls-files --eol | grep w/crlf
+    # i/lf + w/crlf = 索引正确、仅工作区漂移 → 归一化不会改变已提交内容
 
 退出码: 0 已达成目标风格（或 --fix 后全部完成）；1 仍存在偏离（报告模式）。
 """
@@ -41,6 +53,15 @@ LF_EXT = {
 # 目标换行为 CRLF 的扩展名：原版代码/配置系
 CRLF_EXT = {
     ".lua", ".sql", ".xml", ".modinfo", ".civ6proj", ".ini",
+}
+# ── skill 仓库自身（`--repo-skill`）：**一律 LF** ──────────────────────
+# 与 mod 工程的「分层铁律」不同：skill 仓库不是 civ6 工程，无需迁就原版口径，
+# 且两仓库的 .gitattributes 都声明 `* text=auto eol=lf`。这些扩展名在原版分层表里
+# **没有条目**，早先会被归入"非目标扩展名跳过"，导致工作区 CRLF 长期残留
+# （表现为 `git ls-files --eol` 报 `i/lf w/crlf`：索引正确、工作区漂移）。
+SKILL_EXT = {
+    ".md", ".py", ".ps1", ".json", ".txt", ".csv", ".jsonc", ".yml", ".yaml",
+    ".toml", ".cfg", ".ini", ".sh", ".mjs", ".cjs", ".ts",
 }
 # 真二进制：换行概念不适用，直接排除（不参与统计）
 BINARY_EXT = {
@@ -79,7 +100,11 @@ def to_lf(raw: bytes) -> bytes:
 
 
 def convert(raw: bytes, target: str) -> bytes:
-    """归一化换行；不动 BOM，也不增删文件末尾换行。"""
+    """归一化换行；不动 BOM，也不增删文件末尾换行。
+
+    注意：无换行的文件（`eol_kind == "NONE"`）不走这里 —— 调用方已直接计为符合，
+    避免对单行 JSON 之类做无意义写盘。
+    """
     lf = to_lf(raw)
     if target == "LF":
         return lf
@@ -95,6 +120,9 @@ def main() -> int:
                     help="只处理这些扩展名，逗号分隔（如 .lua,.xml）")
     ap.add_argument("--exclude", default=None,
                     help="额外排除的目录名，逗号分隔")
+    ap.add_argument("--repo-skill", action="store_true",
+                    help="按 **skill 仓库** 口径处理：目标一律 LF（含 .md/.py/.ps1/.json/.txt/.csv 等），"
+                         "用于清理 skill 自身的工作区行尾漂移；不要用于 mod 工程")
     ap.add_argument("--quiet", action="store_true", help="只打印汇总")
     args = ap.parse_args()
 
@@ -111,6 +139,15 @@ def main() -> int:
     if args.only:
         only = {"." + e.strip().lstrip(".").lower() for e in args.only.split(",") if e.strip()}
 
+    # 目标表：默认 = 原版分层铁律；--repo-skill = skill 仓库（全 LF，含分层表未定义的扩展名）
+    target_map = dict(TARGET)
+    if args.repo_skill:
+        for _e in SKILL_EXT:
+            target_map[_e] = "LF"
+        # 分层表里原本要求 CRLF 的，在 skill 仓库里也应为 LF
+        for _e in CRLF_EXT:
+            target_map[_e] = "LF"
+
     changed, ok, skipped_bin, skipped_other = [], 0, [], 0
     for dp, dns, fns in os.walk(root):
         dns[:] = [d for d in dns if d not in skip_dirs]
@@ -120,7 +157,7 @@ def main() -> int:
                 continue
             if ext in BINARY_EXT:
                 continue
-            target = TARGET.get(ext)
+            target = target_map.get(ext)
             if not target:
                 skipped_other += 1
                 continue
@@ -137,6 +174,11 @@ def main() -> int:
                 continue
             kind = eol_kind(raw)
             if kind == target:
+                ok += 1
+                continue
+            if kind == "NONE":
+                # 无任何换行（如单行 JSON）：转换是 no-op，报"需归一化"只会制造噪声与
+                # 无意义的写盘。计为已符合，不动文件。
                 ok += 1
                 continue
             new = convert(raw, target)

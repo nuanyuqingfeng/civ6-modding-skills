@@ -356,9 +356,9 @@ On hot reload, `OnContextInitialize(isReload:boolean)` receives `isReload=true` 
 
 ---
 
-## 2. Lua Broadcast Events (`LuaEvents.*`) — Broadcasting to all UI contexts
+## 2. Lua Broadcast Events (`LuaEvents.*`) — 同端广播（UI 各上下文 / GP 各文件）
 
-No need to unregister — auto-cleanup on context teardown.
+No need to unregister — auto-cleanup on context teardown. GP 侧同样可用：GP 文件之间经同一总线跨文件派发，注册/触发双向可达，表格按引用传递。
 
 ```lua
 -- Subscribe
@@ -381,8 +381,9 @@ LuaEvents.ReportScreen_Open()
 ```
 
 **LuaEvents data rules**:
-- Only pass **simple types**: string, number, boolean.
-- Tables are OK if they contain **only pure Lua data** (no C++ objects, no UI controls).
+- Tables are passed **by reference**（同端同步派发）：handler 对表的改写调用方立即可读，无需 return 事件；调用方触发后再改表，handler 持有的同一张表同样同步可见（双向活表）。
+- Simple types（string, number, boolean）按值传递。
+- Tables may contain **only pure Lua data** — no C++ objects, no UI controls.
 - Never pass UI controls or game engine objects — the owning context may delete them before the receiver processes the event.
 
 **LuaEvents 共享表传参** — 无需额外返回值事件：
@@ -554,29 +555,25 @@ end);
 
 Plus 24 `ScenarioCommand_*` events for Pirates scenario (`python database/scripts/query_events.py --search ScenarioCommand`).
 
-#### Custom GameEvents
+#### GP 跨文件自定义钩子（LuaEvents）
 
-Define custom hooks for GP 同端跨文件共享（禁止跨端暴露给 UI）：
+GP 文件之间用 `LuaEvents` 做同端跨文件通信（注册/触发双向可达；表格按引用传递，handler 回写结果、调用方无需 return 即可读）。GP 侧 `LuaEvents` 与 UI 侧不是同一实例，跨端仍用 `ReportingEvents`：
 
-**Gameplay file A:**
+**Gameplay file A（接收端，文件加载期注册）：**
 ```lua
-ExposedMembers.GameEvents = GameEvents;
-
-function ReadData(params)
+LuaEvents.MyModReadData.Add(function(params)
     params.result = Game:GetProperty("MY_KEY");
-end
-GameEvents.ReadMyData.Add(ReadData);
+end)
 ```
 
-**Gameplay file B（同一 GP 状态，同端跨文件）:**
+**Gameplay file B（触发端，同一 GP 状态）：**
 ```lua
-GameEvents = ExposedMembers.GameEvents;
 local params = {};
-GameEvents.ReadMyData.Call(params);
-local data = params.result;
+LuaEvents.MyModReadData(params);
+local data = params.result;   -- handler 已同步回写
 ```
 
-**UI 侧禁止**通过 `ExposedMembers` 获取 `GameEvents` 跨端调用。UI→GP 动作只能走 `PlayerOperations` + `EXECUTE_SCRIPT`；UI 读取 GP 数据用 PROPERTY 或 Core 共享读取函数。
+**UI 侧禁止**跨端调用 GP 的 LuaEvents。UI→GP 动作只能走 `PlayerOperations` + `EXECUTE_SCRIPT`；UI 读取 GP 数据用 PROPERTY 或 Core 共享读取函数。
 
 ---
 
@@ -585,9 +582,9 @@ local data = params.result;
 | You are in... | Use... | Notes |
 |--------------|--------|-------|
 | UI Lua context | `Events.*` | Must `.Remove()` in `OnShutdown()` |
-| UI Lua context | `LuaEvents.*` | Auto-cleanup. Only pass simple types. |
+| UI Lua context / GamePlay Lua script | `LuaEvents.*` | Auto-cleanup；表格按引用传递，禁传 C++ 对象 |
 | GamePlay Lua script | `Events.*` **或** `GameEvents.*` | 二选一，**按事件定**（见下） |
-| Raising an event cross-context | `LuaEvents.*` | Name after the raising context. |
+| Raising an event cross-context（同端：UI 上下文间 / GP 文件间） | `LuaEvents.*` | Name after the raising context/file. |
 | Reacting to game state change | **查 `eventSystem` 后决定** | ⚠ 不可一律用 `Events.*`，见 Gotcha 8 |
 
 > **选总线三步法（禁止凭印象）**
@@ -601,13 +598,13 @@ local data = params.result;
 
 2. **GameEvents.* not available in UI** — Don't use `GameEvents.*` in UI Lua contexts. It won't exist.
 
-3. **LuaEvents.* not available in GamePlay** — GP scripts can't use `LuaEvents.*`. Use `GameEvents.*` or `Events.*` instead.
+3. **`LuaEvents.*` 在 GamePlay 可用（同端跨文件）** — GP 脚本间用 `LuaEvents.X.Add()` 注册、`LuaEvents.X(...)` 触发，表格按引用传递；但 GP↔UI 不互通（GP→UI 用 `ReportingEvents.SendLuaEvent`）。引擎事件仍按 `eventSystem` 选 `GameEvents.*` / `Events.*`。
 
-4. **Don't pass C++ objects through LuaEvents*** — Only pass strings, numbers, booleans, and pure Lua tables. C++ objects (Units, Cities, Controls) may be deleted after the event is raised but before the receiver processes it.
+4. **Don't pass C++ objects through LuaEvents*** — Tables are passed by reference（同端实时同步）；C++ objects (Units, Cities, Controls) may be deleted after the event is raised but before the receiver processes them.
 
 5. **Events.* uses colon notation** — Sometimes engine events have both a dot method and a colon method. Be consistent: `.Add()` and `.Remove()` for subscriptions.
 
-6. **LuaEvents are broadcast to ALL contexts** — Every loaded UI context receives every `LuaEvents.*` message. Use unique names to avoid conflicts between mods.
+6. **LuaEvents are broadcast to ALL contexts on the same side** — Every loaded UI context (UI side) / every loaded GP file (GamePlay side) receives every `LuaEvents.*` message fired from that side; GP↔UI 不互通。Use unique names to avoid conflicts between mods.
 
 7. **Context load order matters** — When a context loads, it subscribes to events. Already-fired events won't be replayed. Use `LoadScreenClose` or manual re-initialization for late-loading contexts.
 
