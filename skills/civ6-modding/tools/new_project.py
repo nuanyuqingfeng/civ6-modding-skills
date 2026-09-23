@@ -177,14 +177,16 @@ def civ6proj(name, guid, title, teaser, desc, author, has_config, has_text):
             '    <File>%s</File>' % text_file,
             '  </UpdateText>',
         ]
-    ingame += ['  <UpdateArt id="Art"><File>(Mod Art Dependency File)</File></UpdateArt>']
+    # 写真实 <Name>.dep —— 不要写 '(Mod Art Dependency File)' 占位符：
+    # 那是 ModBuddy 内部 token，若原样进 .modinfo 会导致 UpdateArt 静默失效（美术全空）。
+    ingame += ['  <UpdateArt id="Art"><File>%s.dep</File></UpdateArt>' % name]
 
     front = []
     if has_config:
         front += ['  <UpdateDatabase id="Config"><File>%s</File></UpdateDatabase>' % cfg_file]
     if has_text:
         front += ['  <UpdateText id="Text_Config"><File>%s</File></UpdateText>' % text_file]
-    front += ['  <UpdateArt id="Art"><File>(Mod Art Dependency File)</File></UpdateArt>']
+    front += ['  <UpdateArt id="Art"><File>%s.dep</File></UpdateArt>' % name]
 
     content = ['    <Content Include="%s"><SubType>Content</SubType></Content>' % data_file]
     if has_config:

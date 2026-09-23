@@ -62,7 +62,7 @@
 
 6. **LuaEvents automatically clean up** — no need to `.Remove()`.
 
-7. **GamePlay 脚本 `Events.*` 和 `GameEvents.*` 均可用，不可用 `LuaEvents.*`。** `LuaEvents.*` 是 UI 上下文的广播系统，GP 侧不可用。UI 侧不可用 `GameEvents.*`。
+7. **GamePlay 脚本 `Events.*` / `GameEvents.*` / `LuaEvents.*` 均可用；UI 侧不可用 `GameEvents.*`（整条为 `nil`）。** `LuaEvents.*` 是同端广播系统：UI 侧跨 UI 上下文、GP 侧跨 GP 文件均可用（表格按引用传递，handler 回写调用方立即可读）；GP 侧与 UI 侧**不是同一实例**，跨端推送一律用 `ReportingEvents.SendLuaEvent`（见 §36）。
 
 > **⚠ 三条总线互不镜像 —— 用错总线是「静默无效」，必须按事件查表，不要凭印象**（2026-09 修订）
 >
@@ -72,7 +72,7 @@
 >
 > | `eventSystem` | 条数 | 注册方式 |
 > |---|---|---|
-> | `LuaEvents` | 481 | `LuaEvents.X.Add()`（UI 上下文互播；GP 侧不可用） |
+> | `LuaEvents` | 481 | `LuaEvents.X.Add()`（同端广播：UI 上下文互播 / GP 文件间跨文件） |
 > | `Events` | 470 | `Events.X.Add()` |
 > | `GameEvents` | 130 | `GameEvents.X.Add()` |
 >
@@ -86,15 +86,43 @@
 >
 > **⚠ `GameEvents.X` 不是存在性探针**——它对**任意**名字都返回 table（自动建表）。只能用 `type(Events.X) == "table"` 判断事件是否存在；对不存在的事件写 `Events.X.Add()`，**UI 侧会直接抛 `attempt to index a nil value` 并中断该函数后续所有初始化**。引擎未暴露到 `Events.*` 的 48 个事件在 `events_enhanced.json` 中标 `availability: "None"`（这 48 条的 `eventSystem` 同为 `GameEvents`，即「按名字该走 GameEvents，但实际哪一层都订阅不到」）。
 
-8. **Never pass C++ objects or UI controls across `LuaEvents`.** The owning context may delete them before the receiver processes the event, causing crashes. Pass only string/number/boolean or pure-Lua tables.
+8. **Never pass C++ objects or UI controls across `LuaEvents`.** The owning context may delete them before the receiver processes the event, causing crashes. Tables are passed by reference（同端实时同步）；C++ 对象禁止。
 
 ## Database Pitfalls
 
-9. **Load order matters.** Use `LoadOrder="-100"` for schema changes/data removal. Use `LoadOrder="0"` (default) for standard content. Use `LoadOrder="100"` for scenario content.
+9. **Load order matters.** 顺序分**两级**，按粒度选用，二者是互补而非替代：
+   | 层级 | 手段 | 作用范围 | 适用 |
+   |---|---|---|---|
+   | **动作级** | `<Properties><LoadOrder>N</LoadOrder></Properties>` | 整个 `UpdateDatabase` 动作之间 | 跨动作定序；官方阶梯 `-100`（schema/remove）/ `0`（常规）/ `100`（情景） |
+   | **文件级** | `<File Priority="N">` | **同一个动作内部**的各个 `<File>` | 同动作内有多文件且相互有依赖时 —— 这是**唯一**能给同动作内文件定序的手段 |
 
-10. **Higher `Priority` values load later.** Removal XML typically gets `Priority="1"` to run first. Standard data gets no Priority attribute (runs later, after removals).
+   **两者可以并用**：常见形态就是「一个动作 + `LoadOrder`」内部再用 `Priority` 排好文件次序（官方 `Expansion2Core` 即此形态）。
+   **不必为了定序而强行拆分动作** —— 同一逻辑单元的文件放一个动作、用 `Priority` 排内部次序，是更常见的做法（本项目 `Anomaly_Database` 即此形态）。
 
-11. **To remove data, use `<Delete>` tags** in XML with higher priority (lower Priority number).
+   **动作划分判据**（完整决策树见 `reference/action-splitting.md`）：
+   - **必须拆（4 类）**：① Config 库 vs Gameplay 库；② 表**两侧都有**（Colors/PlayerColors/Icons/Text/Art）→ **两端各一个动作**，漏一端**静默失效**；③ `criteria` 不一致（一个动作只能绑一个 criteria）；④ 依赖其他 mod 的动作（`<Include>`）
+   - **可选拆（2 类）**：① Types 定义 vs 遍历/Modifier 逻辑（**Types 早、遍历晚**，理由见 §11c）；② 文件极多（建议 **≥50**；官方有 **192** 与 **87** 的先例，阈值别定低）
+   - **默认：同类文件合并、且不写 `Priority`**
+
+10. **同一动作内，同 `Priority`（含都省略）的 `<File>` 按路径字母序执行，不按声明序。** 实测：`Expansion2.modinfo` 声明 `...Leaders → Units → UnitAbilities → UnitPromotions`，`Modding.log` 实际执行为 `...Leaders → UnitAbilities → UnitPromotions → Units`（= 严格字典序）。
+   ⚠ **声明顺序看起来正确却无效**，这是最容易踩的一条：依赖方若字母序在前，就会 `no such table`。
+   **修正**：给同动作内每个文件显式 `Priority`（数值越大越先）；或把有依赖的内容拆进不同动作、用 `LoadOrder` 定序。两种都可，见第 9/11 条。
+
+11. **`Priority`（文件级）数值越大越先执行**，与直觉相反（官方 `Expansion2Core` 自注可证：`Schema.sql Priority="2"` 带 `<!-- Schema comes first -->`，实测先于 `Priority="1"` 的 `RemoveData.xml`）。
+   它是**同一动作内定序的唯一手段**，与 `LoadOrder`（动作级）分工不同、可并用：
+   - 想让若干文件待在**同一个动作**里又要有先后 → 用 `Priority`（不必拆动作）
+   - 想让内容分属**不同动作**、按动作整体排序 → 用 `LoadOrder`
+   两者配合的典型：`Anomaly_Database`（`LoadOrder=90000`）内三个 SQL 用 `Priority="3"/"2"/"1"` 定序。
+
+11c. **Types 早加载、遍历/Modifier 逻辑晚加载** —— 为什么这样分（三条理由缺一不可）：
+   1. **Types 先加载才能被其他逻辑遍历到** —— 遍历要在 `Types`（及依赖它的表）里查目标；Types 后到则遍历得到**空集**。
+   2. **遍历延迟才能遍历到其他 mod 的部分** —— 遍历是**全库扫描**语义，越晚执行越能覆盖其他 mod（尤其加载较晚、写得不够规范的 mod）已写入的行。
+   3. **对环境影响小** —— 遍历会把全库已有行一并纳入处理；推后等于把自己隔离在「上游已定型」之后，不易被其他 mod 不规范的遍历波及（或反过来波及它们），是风险最小的位置。
+   **来源**：成熟第三方工程惯例（`示例工程` `RGN_Types` LO=200 → `RGN_Modifiers` LO=600005；`工程 I`/`工程 C`/`工程 A` 同构）。**官方 0 例**（反而 70 个动作合并二者）→ 别对外称「官方要求」。
+
+11b. **To remove data, use `<Delete>` tags** in XML. 移除动作应**早于**主数据，两种写法都对：
+   - 独立动作 + `LoadOrder="-100"`（官方 `Expansion2Core` 风格）
+   - 与主数据同动作 + 给移除文件更大的 `Priority`（如 `2`，主数据不写）
 
 12. **`Requirements.Inverse` (BOOLEAN NOT NULL) is universally supported on ALL RequirementType.** While only 92 of 1051 `Requirements` rows use Inverse=1 in official data (实测 `SELECT COUNT(*) FROM Requirements WHERE Inverse=1`), the engine respects the column on every type. Use `Inverse=1` on the Requirements row to negate ANY requirement — confirmed safe for `REQUIREMENT_UNIT_TYPE_MATCHES`, `REQUIREMENT_UNIT_TAG_MATCHES`, and all others. Do NOT use `Inverse` as a RequirementArgument (it's a column on the Requirements table, not an argument in RequirementArguments).
 
@@ -123,7 +151,7 @@
     另一条纪律：写含文本的 INSERT 时**不要用 PowerShell here-string / 重定向生成**（会引入转义层），用 Python/Node 显式 UTF-8 写入。
 
 
-13. [G13b] **查询游戏数据 API 首选 SQLite。** `database/api.sqlite` (Lua API) 和 `database/DebugGameplay.sqlite` (游戏数据) 覆盖全部查询需求。详见 SKILL.md Rule 0.4。
+13. [G13b] **查询游戏数据 API 首选 SQLite。** `database/api.sqlite` (Lua API) 和 `database/DebugGameplay.sqlite` (游戏数据) 覆盖全部查询需求。详见 SKILL.md「写前三问 / 查询三级阶梯」（SKILL.md 无 Rule 编号体系，原文此处为悬空引用）。
 
 14. [G14a] **`MODIFIER_*_ADJUST_PROPERTY` 的 ModifierArgument 用 `Key` + `Amount`；`REQUIREMENT_PLOT_PROPERTY_MATCHES` 的 RequirementArgument 用 `PropertyName` + `PropertyMinimum`。** — ModifierArgument 中无论玩家级还是单位级，设置 PROPERTY 值的参数名都是 `Key`。但 RequirementArgument 中检测 PROPERTY 用的是 `PropertyName`（以及 `PropertyMinimum` 阈值）。二者参数名不同，混用不会报错但永远不生效。`REQUIREMENT_PLAYER_PROPERTY_MATCHES` 等其他 PROPERTY 检测 RequirementType 也沿用 `PropertyName`。
 
@@ -144,6 +172,7 @@
 39. **镜头名必须是引擎已注册镜头** — `UILens.CreateLensLayerHash("自定义名")` 静默不渲染，且无任何报错（症状："点击后无任何动作也没有报错"）。可用 vanilla 镜头：`"Hex_Coloring_Movement"`（绿色范围）、`"Hex_Coloring_Attack"`（红色目标指示）、`"Attack_Range"`（范围层）。目标指示器用三元组 `{"AttackRange_Target", sourcePlot, plotId}`（vanilla WMD 打击同款格式），sourcePlot 为发起地块对象。
 
 40. **Civ 6 是偏移坐标系统（奇偶行错位），手工 `{dx,dy}` 方向偏移只有东西方向正确** — 斜向格按行奇偶错位，症状：1 环高亮"总有一个在 2 环"、同方向直线遍历整体歪斜。邻格遍历一律用引擎函数：`Map.GetAdjacentPlot(x, y, DirectionTypes)`（单格、有序）或 `Map.GetAdjacentPlots(x, y)`（返回 6 邻格，BFS 分层扩展用）。直线延伸：`Map.GetAdjacentPlot(curX, curY, direction)` 逐格迭代。
+   - **`Map.GetAdjacentPlots` 返回的是「带空洞」的表，禁直接 `ipairs`** — 它按方向下标 1..6 填充，**越界方向直接缺席**（键留空洞、不填 nil）：南北边缘与四角实测北缘只剩 `{2,3,4,5}`、南缘只剩 `{1,2,5,6}`；`ipairs` 撞到第一个空洞就停 → **整表漏遍历**。症状（示例工程 2026-09-18 实机）：BFS 选格一层都扩展不出去，边缘合法落点为 0 → 按钮「按了没反应」、高亮不画、点击退化成普通移动、GP 复算同样拒收；各类「一环扫描」（邻火山/邻海岸/邻陆地/声骸落点）在北缘静默返回否。官方 API 文档对该接口的示例本身就是 `for i = 1, 6 do if adjPlots[i] ~= nil then`（按下标 + 判空，从不用 ipairs）——这就是权威判据。东西边缘不受影响：`Map.IsWrapX()` 为真时环绕格会补齐 6 个键。**修法**：按数字键升序重建密集数组再 `ipairs`（既补全空洞又保持引擎方向序，内部格逐元素不变、行为向后兼容）；参考实现 `RGNDenseTable`（示例工程 `ImportFiles/Core_RGN.lua`）。**同类审查口径**：其它引擎返回表看官方示例——用 `ipairs` 的（`Map.GetNeighborPlots` / `Units.GetUnitsInPlot` / `Units.GetUnitsInPlotLayerID` / `GetActivationHighlightPlots` / `GetTimeline` 等）是密集数组可直穿；只有 `GetAdjacentPlots` 是按下标填充的，改遍历方式前先确认「这段循环是否必须走完全部邻居」。
 
 41. **`LuaEvents.WorldInput_WBSelectPlot` 回调签名固定为 `(plotId, plotEdge, boolDown, rButton)`** — 第 3 参是"按下/释放"（boolDown），不是左键标志；第 4 参才是右键。参数错位会静默失败：左键点击被误判为"释放+右键"直接 return、右键取消失效。悬停地块用 `LuaEvents.WorldInput_WBMouseOverPlot(plotID)`，配合 `Map.GetPlotByIndex`。
 
@@ -224,13 +253,13 @@
      ```lua
      ReportingEvents.SendLuaEvent('Name', { key = value })
      ```
-     UI 侧 `LuaEvents.Name.Add(handler)` 接收。GP 中直接调用 `LuaEvents.Name(...)` 也能工作，但 `SendLuaEvent` 是官方跨 Lua 状态的 API。
+     UI 侧 `LuaEvents.Name.Add(handler)` 接收。**GP 侧的 `LuaEvents` 表与 UI 侧不是同一实例**，不要依赖 GP 直调 `LuaEvents.Name(...)` 到达 UI —— 跨端推送统一用 `SendLuaEvent`（官方跨 Lua 状态的 API）。
 
-37. **按钮触发的 UI→GP 动作必须走 `EXECUTE_SCRIPT`，禁止跨端通过 `ExposedMembers` 调用** — 按钮回调中触发的一切 GP 函数调用（升级、增益切换、购买等）统一使用 `UI.RequestPlayerOperation(EXECUTE_SCRIPT)`。`ExposedMembers` 仅限 GP 同端跨文件共享，禁止跨端暴露给 UI；UI 被动读取用 PROPERTY / Core 共享读取函数。
+37. **按钮触发的 UI→GP 动作必须走 `EXECUTE_SCRIPT`，禁止跨端通过 `ExposedMembers` 调用** — 按钮回调中触发的一切 GP 函数调用（升级、增益切换、购买等）统一使用 `UI.RequestPlayerOperation(EXECUTE_SCRIPT)`。GP 同端跨文件通信用 `LuaEvents`，`ExposedMembers` 禁止跨端暴露给 UI；UI 被动读取用 PROPERTY / Core 共享读取函数。
 
 38. **UI 可直接读取 PROPERTY，共享读取函数放 Core 文件** — `Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")` 在 UI 侧同样可用。将读取函数定义在 Core 文件中，GP 和 UI 各自 `include()` 即可；跨端不需要也不允许用 `ExposedMembers` 包装。
 
-43. **ForgeUI `Offset` 正值恒指向容器内部，按锚点镜像翻转** — `Anchor` 是 `L/C/R × T/C/B` 九宫格，Offset 的正值方向不是全局坐标系而是相对锚点：`L`→右、`R`→**左**、`T`→下、`B`→**上**、`C`→全局正向（右/下）。症状：同一面板中一个按钮正常、另一个"贴屏幕边缘/面板外"，通常就是 `R,B`/`B` 系锚点写了负值（或镜像错值）。例：`R,B` + `Offset="-80,33"` = 向右 80 推出右缘；正确应为 `"80,33"`（向左）。vanilla 佐证 `WorldBuilderMenu.xml:14-15`（`R,B`/`L,B` 均正值正常）、`BoostUnlockedPopup.xml:38`（`C,B` + `0,15` 向上）。规避：角落锚点先按上表反推符号；或统一用 `C,*` 锚点 + 正值，无镜像歧义。详见 `xml-templates.md` "Anchor Syntax Reference"。
+43. **ForgeUI `Offset` 正负号：左对齐(L)与右对齐(R)相反，上对齐(T)与下对齐(B)相反 —— 正值恒指向容器内部** — `Anchor` 是 `L/C/R × T/C/B` 九宫格，Offset 正值方向不是全局坐标系而是相对锚点镜像翻转：`L`→右、`R`→**左**、`T`→下、`B`→**上**；`C` 无镜像（正值即屏幕正向：右/下）。⚠ 不要把「负值」一概判为 bug —— 负值只是「往容器外推」，本工程 45 个 UI XML 实测 `R,T` 负值 6 处均在正常运行面板中；`B` 锚点 28 正 0 负（镜像零反例）。症状：同一面板中一个按钮正常、另一个"贴屏幕边缘/面板外"，通常就是 `R,B`/`B` 系锚点写了负值（或镜像错值）。例：`R,B` + `Offset="-80,33"` = 向右 80 推出右缘；正确应为 `"80,33"`（向左）。vanilla 佐证 `WorldBuilderMenu.xml:14-15`（`R,B`/`L,B` 均正值正常）、`BoostUnlockedPopup.xml:38`（`C,B` + `0,15` 向上）。规避：角落锚点先按上表反推符号；或统一用 `C,*` 锚点 + 正值，无镜像歧义。详见 `xml-templates.md` "Anchor Syntax Reference"。
 
 ---
 
@@ -332,6 +361,12 @@
     -- DOMAIN_LAND/0 = 57 ; DOMAIN_LAND/1 = 1 ; DOMAIN_SEA/0 = 8
     ```
     **禁止 `Domain='DOMAIN_SEA'` + `Coast=1`。**
+    > **易混点**：`Domain` / `Coast` 只决定「**哪个域的单位来建、站在哪类格子**」；
+    > 「**这一格允不允许建**」是**另一层**，由 `Improvement_ValidResources` / `_ValidTerrains` / `_ValidFeatures` 决定，
+    > 且 **资源条目优先于地形/地貌** —— 地块上有资源时**只看资源条目**，地形/地貌条件被跳过。
+    > 即：`Domain='DOMAIN_SEA'` + `Coast=0` 只是拿到了入场券，**能不能落在这一格还得过 Valid* 那一关**。
+    > 完整规则、实测对照表与 `EnforceTerrain` 例外见 `database/schema-annotated.md`
+    > 「Improvement 的三张「可建造条件」表」一节。
 
 52. **SQL `LIKE ('%A%' OR '%B%')` 是陷阱：括号表达式先求值为整数 `0`**
     症状：多关键词搜索**一条都搜不到**，且**不报错**。
@@ -411,13 +446,13 @@
     | API | 实测差异 | 处置 |
     |---|---|---|
     | `Unit:GetMovesRemaining()` | UI 返回 4.5 / **GP 返回 4（整数截断）** | 统一改用分数接口 `GetMovementMovesRemaining()` |
-    | `Plot:IsValidFoundLocation()` | UI 可用；**GP 恒 `false`** | 用 `GetCities():IsValidFoundLocation(x,y)`（仅 GP） |
+    | `Plot:IsValidFoundLocation()` | **UI + GP 均可**（见 §67 定案） | 直接用它；GP 侧另有 `GetCities():IsValidFoundLocation(x,y)`，实测逐格结果一致 |
     | `GetPastTimeline` | **仅 UI** | UI 采集后经 `EXECUTE_SCRIPT` 回灌 GP |
     | `Game.SetProperty` | **仅 GP** | —— |
     | `GetNumBeliefsEarned` | **仅 UI** | GP 侧用 `GetStats:GetNumBeliefsInReligion` |
     | `Unit:GetUnitType` | **仅 UI**（GP 只有 `GetType` 返回索引） | 上面的探测式写法 |
 
-    ⚠ `Plot:IsValidFoundLocation()` 在 `database/api.sqlite` 里标 `availability=Both` —— 即「**存在但语义错**」，查库查不出来，只有实测能发现。**这类差异是"查 API 库"覆盖不到的地带。**
+    ✅ `Plot:IsValidFoundLocation()` 在 `database/api.sqlite` 里标 `availability=Both`，且 `runtime_gp` / `runtime_ui` **均为 `function`**（FireTuner 已核验）—— 库标得对，**以 §67 为准，本节旧结论已作废**。
 
 58. **`ContextPtr:AddUpdate` / `RemoveUpdate` 在 Civ6 不存在** —— 逐帧回调用 `ContextPtr:SetUpdate(fn)` / `SetUpdate(nil)`。
     ⚠ `SetUpdate` **只在 context 可见时被调度**。
@@ -675,6 +710,46 @@
     ⚠ **`m_SourceFilePath` 是不可对齐项**：官方是 `//civ6/main/ArtDev/...` depot 路径，
     但本工程（及多数 mod 工程）的约定是 `D:/desktop/<stem>.png` **ASCII 虚拟路径** ——
     照抄官方会破坏 pom 约定甚至让 AssetEditor 崩溃。**格式对齐只针对格式类字段，值类字段一律不碰。**
+
+
+
+## Modifier 附加（ATTACH_MODIFIER）的永久性 —— 位置型效果会无上限叠加
+
+72. **`EFFECT_ATTACH_MODIFIER` 分发「位置型」子 modifier：附加是一次性的，条件失效不会自动摘除**（2026-09 实机实测）
+
+    症状：单位能力把子 modifier attach 到 `COLLECTION_PLAYER_DISTRICTS`（或任意集合）上，
+    子 modifier 带 `SubjectRequirementSetId` 限定「单位在此区域」这类**动态**条件。
+    实机表现为：**条件命中过一次，收益就永久留在该主体上**；单位反复进出区域即可无限叠加，
+    收益无上限增长（本项目罗蕾莱实测复现）。
+
+    根因（观测）：**附加没有「失效回收」语义**。attach 发生那一刻命中条件的集合成员才被挂上子 modifier；
+    之后条件不再成立（单位离开区域）时，引擎**不会**回收先前已附加的实例 —— 收益就此永久留在该主体上。
+    挂在内层 modifier 上的 `SubjectRequirementSetId` 只决定「附加瞬间是否成立」，不构成持续开关。
+    ★ **要害是「永久」，不是「叠了几层」**：反复进出只是把「永久」放大成「无上限永久」；
+    即使只进出一次，缺陷依然存在（城市白拿一份不会消失的增益）。
+
+    ★ 与既有条目的区别：`reference/WORKSHOP_PATTERNS.md:290`、`:382` 与 `gotchas.md` §49
+    记录的是「ATTACH 每触发一次就叠一层」，针对**多发来源**（多建筑/多晋升）场景；
+    本条是**另一个触发源**——同一主体**反复重新满足条件**（单位进出）同样累积，
+    且**永不自动回收**。两者机制不同，需分别防范。
+
+    处方：**内层 modifier 换成「按条件重算」的原版常规类型**，而不是给它加防重复。
+    本项目罗蕾莱修法即为此例：0 环 attach 外层保持不动，只把内层由自定义的
+    `MODIFIER_SINGLE_CITY_ADJUST_HAPPINESS_YIELD_RGN`（快乐度分层产出）换为原版
+    `MODIFIER_SINGLE_CITY_ADJUST_CITY_YIELD_MODIFIER`（+10% 全产出）+
+    `MODIFIER_SINGLE_CITY_ADJUST_ENTERTAINMENT`（+3 宜居度）。
+    换成这类类型后效果随条件重算，**不需要**任何防重复手段。
+
+    ⚠ **`SubjectStackLimit = 1` 不是本坑的解**：它只能把「无上限叠加」压成「恒定一份」，
+    「附加后永不失效」依旧 —— 单位离开区域后城市仍白拿增益，只是不再增长。
+    该列解决的是另一类问题：同一 `ModifierId` 被**多个来源**重复挂（见 §49）。
+
+    判定法：写任何 `EFFECT_ATTACH_MODIFIER` 之前先自问——
+    **「条件失效时，谁来摘掉这个 modifier？」** 答不出来就是本条 bug。
+    实机验证只要一步：让单位进入触发区域再**离开**，看增益是否随之消失。
+
+
+
 
 
 

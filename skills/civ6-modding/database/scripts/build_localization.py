@@ -42,7 +42,9 @@
 
 - **两种语言承载**：目录名定语言（`Text/<lang>/…`，`<Row Tag><Text>`）
   与属性定语言（`*Translations*`，`<Replace Tag Language><Text>`）——都要认，否则漏一半语言；
-- **`<File Priority="N">` 参与排序**（越大越晚加载、越优先覆盖）；
+- **`<File Priority="N">` 参与排序**（★ **数值越大越先执行**，与直觉相反；见 `gotchas.md` §11）。
+  实测判据：`Expansion2.modinfo` 给 `RemoveText.xml` 用 `Priority="2"`、给 `Translations_Text.xml` 用无 Priority；
+  `RemoveText` 删掉的 tag 被 `Translations` 重新定义后**在引擎库中依然存在** ⇒ `Priority=2` 先跑。
 - **首尾空白归一**：引擎落盘会 `.strip()`，比对时需归一，否则 1,116 行噪声会被误判为改写；
 - 统计口径：`<Row>` 插入 / `<Replace>` 覆盖，两者语义不同。
 
@@ -311,13 +313,20 @@ def parse_file(path: str) -> list[tuple[str, str, str, str, str]]:
 def load_layered(seg: Segment, cls: str) -> dict[tuple[str, str], tuple[str, str, str, int, str]]:
     """按 (排序键) 加载某一类，返回 {(lang,tag): (text, gender, plur, rank, dlc)}。
 
-    排序键 = (rank, priority, path)：rank 决定 EXP2>EXP1>base>dlc，priority 越大越晚，
-    路径作稳定 tie-break。后写覆盖先写（模拟加载顺序）。
+    排序键 = (rank, -priority, path)：rank 决定 EXP2>EXP1>base>dlc；
+    priority **越大越先执行**（引擎实测，见模块 docstring），故按 **降序** 遍历、
+    后写覆盖先写 ⇒ 最终生效的是 **priority 较小（或无 Priority）** 的文件，与引擎一致。
+    路径作稳定 tie-break。
+
+    ★ 2026-09-22 修正：此前按 priority **升序** 遍历（last-write-wins ⇒ 大 priority 胜），
+      与引擎相反。官方数据中未观测到「同 tag 跨 priority 值冲突」的样本（故对官方主库无差异），
+      但方向本身是错的，第三方 mod 场景会取到错误的文本。
     """
     files = []
     for dlc, rel, pr in seg.disk_files(cls):
         files.append((seg.tier_of(dlc), pr, rel, dlc))
-    files.sort(key=lambda t: (t[0], t[1], t[2]))
+    # priority 降序：越大越先执行；后写覆盖先写 ⇒ 小 priority 生效（与引擎一致）
+    files.sort(key=lambda t: (t[0], -t[1], t[2]))
 
     rows: dict[tuple[str, str], tuple[str, str, str, int, str]] = {}
     for rank, pr, rel, dlc in files:

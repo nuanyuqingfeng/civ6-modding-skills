@@ -104,12 +104,27 @@ Use `<Delete>` tags in XML loaded before your data:
 </GameData>
 ```
 
-Load removal XML first with high Priority (lower number):
+移除动作要早于主数据。两种写法都有效，按「想控制动作之间还是动作内部」选用。
+> **默认不必为它拆动作**（动作划分判据见 `reference/action-splitting.md`）：只有 `criteria` 不一致、或库归属不同时，才**必须**拆。
+
+**写法 A：独立动作 + `LoadOrder="-100"`**（控制动作之间的先后）：
+```xml
+<!-- 移除先跑 -->
+<UpdateDatabase id="MyRemove" criteria="MyCriteria">
+    <Properties><LoadOrder>-100</LoadOrder></Properties>
+    <File>Data/MyRemoveData.xml</File>
+</UpdateDatabase>
+<!-- 主数据后跑（默认 LoadOrder=0） -->
+<UpdateDatabase id="MyData" criteria="MyCriteria">
+    <File>Data/MyGameplayData.xml</File>
+</UpdateDatabase>
+```
+
+**写法 B：同一动作内用文件级 `Priority`**（控制动作内部各文件的先后，无需拆动作）—— **数值越大越先**（反直觉）：
 ```xml
 <UpdateDatabase id="MyData" criteria="MyCriteria">
-    <Properties><LoadOrder>-100</LoadOrder></Properties>
-    <File Priority="1">Data/MyRemoveData.xml</File>   <!-- Runs first -->
-    <File>Data/MyGameplayData.xml</File>              <!-- Runs after -->
+    <File Priority="2">Data/MyRemoveData.xml</File>   <!-- 数值大 → 先跑 -->
+    <File>Data/MyGameplayData.xml</File>              <!-- 无 Priority → 后跑 -->
 </UpdateDatabase>
 ```
 

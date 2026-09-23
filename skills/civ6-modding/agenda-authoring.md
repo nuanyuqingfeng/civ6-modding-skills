@@ -83,6 +83,9 @@ SELECT Name, Value FROM RequirementArguments WHERE RequirementId='...';
 
 ## 五、注册顺序（全部 `INSERT OR REPLACE`，幂等）
 
+> ⚠️ **这里的「顺序」指同一个 SQL 文件内 `INSERT` 语句的先后（表内插入序），不是加载动作的顺序。**
+> 加载动作的划分与排序是另一回事 —— 见 `reference/action-splitting.md`。
+
 写 `.civ6proj` 的 `UpdateDatabase` 清单也在其中：
 
 1. `Types` — 新 Trait 需 `('TRAIT_X','KIND_TRAIT')`；新 Agenda 通常只注册 Trait 的 Kind

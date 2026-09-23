@@ -37,9 +37,10 @@
 | `release/scripts/build.ps1` | 构建非 Trimmed 版 Civ6WorkshopUploader（勿用 PublishTrimmed，会卡 PreparingContent） | `powershell -File build.ps1（内部 dotnet publish -c Release -r win-x64）` |
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） | `powershell -File clash_api.ps1 -Method GET -Path "/proxies" -OutFile resp.txt` |
 | `release/scripts/clash_proxy.py` | Clash Verge 代理节点测速与自动选优（上传工坊网络差时用） | `python clash_proxy.py [--url <工坊链接>] [--timeout 3000] [--max-workers 8]（测完自动选最优节点为 GLOBAL，无关闭开关）` |
-| `release/scripts/cleanup.ps1` | 删除临时上传工作区（真上传成功并验证后才跑） | `powershell -File cleanup.ps1 -Workspace $env:TEMP\civ6-ws\<ModName>` |
+| `release/scripts/cleanup.ps1` | 删除临时上传工作区（真上传成功并验证后才跑）。三重守卫：仅在 $env:TEMP\civ6-ws\ 之下 / 工作区自身非 reparse point / 先摘内部链接再递归删——content 是 junction 时 Mods 副本不受影响 | `powershell -File cleanup.ps1 -Workspace $env:TEMP\civ6-ws\<ModName>` |
 | `release/scripts/ensure_uploader.ps1` | ensure_uploader.ps1 —— 工坊上传器的"自适应保障"（与音频模板 ensure_template.py 同口径） | `powershell -File ensure_uploader.ps1                 # 只检查，缺就提示（exit 2）<br>powershell -File ensure_uploader.ps1 -Confirmed      # 允许联网 clone + 构建` |
 | `release/scripts/find_item_id.ps1` | 从本机 Steam 日志反查工坊条目 ID | `powershell -File find_item_id.ps1 -ModName <ModName>` |
+| `release/scripts/make_workspace.ps1` | 建工坊上传工作区（首选入口）：content 用 junction 指向 Mods 副本（不物理复制 751 MB）→ workshop.json → mod_id.txt → 剥离注释 → validate，幂等可重跑 | `powershell -File make_workspace.ps1 -ModDir <Mods/<ModName>> [-ItemId <工坊ID>] [-Src <源工程>] [-WsRoot <根>] [-NoStrip] [-Force] [-SkipValidate]` |
 | `release/scripts/upload.ps1` | 上传 / 更新工坊条目（日志默认写 <tool目录>\logs） | `powershell -File upload.ps1 -Workspace <工作区> [-TimeoutSeconds 1800]` |
 | `release/scripts/validate.ps1` | 上传前 validate 工作区（exit 0 才允许 upload） | `powershell -File validate.ps1 -Workspace <工作区>` |
 | `release/scripts/verify.ps1` | 上传后经 Steam API 验证（比对 time_updated / hcontent_file，识别假成功） | `powershell -File verify.ps1 -ItemId <工坊条目ID>` |
@@ -50,24 +51,26 @@
 | `scripts/check_sql_exec.py` | 全工程 SQL 执行排查 —— 抓「整条语句报废」类错误（非法转义 / 字符错位）。 | `python check_sql_exec.py [--root <工程根目录>] [--base <基础库>]` |
 | `scripts/check_types_kinds.py` | Types.Kind 合法性检查 —— 复现游戏加载期的 `Invalid Reference on Types.Kind`。 | `python check_types_kinds.py [--root <工程根目录>] [--db <基础库>] [--dirs Data,Mod_Adaptation]` |
 | `scripts/clear_ae_cache.py` | 清除 AssetEditor 依赖缓存（可再生文件，按「备份规范」不备份、直接删）。 | `python clear_ae_cache.py [--mod <ModName>] [--dry-run]        # 动过贴图后必跑，否则 AssetEditor 结论是缓存假象` |
-| `scripts/normalize_eol.py` | 按「原版换行分层铁律」归一化 Civ6 工程的文本文件换行。 | `python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）<br>python normalize_eol.py <工程目录> --fix           # 就地归一化` |
+| `scripts/normalize_eol.py` | 归一化文本文件换行：mod 工程按「原版分层铁律」，skill 仓库一律 LF（`--repo-skill`）。 | `python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）<br>python normalize_eol.py <工程目录> --fix           # 就地归一化` |
 | `scripts/rgn_validate_runner.mjs` | rgn_validate 离线执行器 v2 — 核心判定逻辑提取自 @dsh-external/dsh-rgn-tools 的 | `node rgn_validate_runner.mjs [目录=cwd] [文件模式=*.sql] [checkNaming=true] [--base <基础库>] [--static]` |
 | `scripts/verify_trees.py` | Verify two directory trees are byte-identical (recursive SHA256 comparison). | `python verify_trees.py <dirA> <dirB>` |
 | `tools/_paths.py` | 本机 Civ6 关键路径解析（P1–P6），全 civ6-modding/tools 共用。 | `python _paths.py                          # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）
 python _paths.py --tool uploader            # 只打印某个外部工具的解析路径（供 shell 包装脚本调用）
 python _paths.py --path mods                # 同上，取 P1-P6 路径键；未找到 exit 1、键名非法 exit 2` |
 | `tools/civ_leader_data.py` | civ_leader_data.py — 新文明 / 新领袖的**数据与文本机械推导**（规格 JSON → SQL） | `python civ_leader_data.py <spec.json> --project <工程根>          # 预演（不写盘）<br>python civ_leader_data.py <spec.json> --project <工程根> --write` |
+| `tools/cook_dep.py` | cook_dep.py — 从 <ModName>.Art.xml 生成 <ModName>.dep（AssetObjects..GameDependencyData）。 | `python cook_dep.py <工程根><br>python cook_dep.py <工程根> --out "<Mods>/<ModName>"` |
 | `tools/local_flux.py` | 本地 FLUX.2-klein-4B 文生图封装（免费、离线、约 8–30s/张）。 | `python local_flux.py --prompt "..." --out x.png [--seed 42] [--size 1024]<br>python local_flux.py --prompt-file p.txt --out x.png --seeds 42,7,123   # 多 seed 取样挑图` |
 | `tools/modinfo_build.py` | 从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。 | `python modinfo_build.py <X.civ6proj>                 # 只生成到 <proj目录>/Build/X.modinfo<br>python modinfo_build.py <X.civ6proj> --deploy        # 复制 Content 文件 + 写 modinfo 到 Mods/<X>/` |
 | `tools/new_project.py` | new_project.py — 从零生成 Civ6 ModBuddy 工程骨架（`.civ6proj` + 目录 + 版本控制骨架） | `python new_project.py "D:\documents\Firaxis ModBuddy\Civilization VI\MyMod" --name MyMod<br>python new_project.py <目录> --name MyMod --title-en "My Mod" --title-zh "我的模组"` |
 | `tools/skill_manifest.py` | 名录生成器：扫描一个 skill 的脚本，从各自 docstring 抽出「用途 + 用法」， | `python skill_manifest.py <skill 目录名或绝对路径> [...]      # 指定 skill<br>python skill_manifest.py --all-civ6                          # 批量刷新全部 civ6-* skill` |
 | `tools/strip_comments.py` | 发布前剥离代码注释（**默认只剥离 Lua**），只作用于**发布副本**，不动源工程。 | `python strip_comments.py <目标目录>                 # 就地剥离（默认仅 .lua）<br>python strip_comments.py <目标目录> --dry-run        # 只统计，不写` |
-| `tools/verify_mod_package.py` | 交付包体检：源工程 ↔ Mods 副本 ↔ 上传工作区 三处一致性 + .modinfo 结构与引用闭合。 | `python verify_mod_package.py --src <源工程目录> --mods <Mods/<ModName>>` |
+| `tools/verify_mod_package.py` | 交付包体检：源工程 ↔ Mods 副本 ↔ 上传工作区 三处一致性 + .modinfo 结构与引用闭合。三类预期差异自动放行：剥离（.lua 命中 strip(源)）、cook 产物（BLPs 与 .dep 源工程本就没有）、美术引用管线文件（见 ART_PIPELINE_EXTS，按规范不进 Content 与 Files）。ImportFiles/ 之下不豁免，须三处齐全。UpdateArt 与 .dep 另做独立硬检查，不参与软放行 | `python verify_mod_package.py --src <源工程目录> --mods <Mods/<ModName>> [--ws <上传工作区 content>] [--files a/b.lua,c.lua] [--strict]
+--strict = 关掉全部放行，逐字节 + 零未登记（默认关闭）` |
 | `tools/workshop_cover.py` | 工坊封面合成：生图模型出的底图/徽记 + **确定性 CJK 排版**。 | `python workshop_cover.py --bg bg_7.png --emblem emblem.png         --line1 "人类玩家所有单位" --line2 "可以建立城市"         --subtitle "CIVILIZATION VI MOD"         --master "D:\desktop\X_Surface.png" --preview out/image.png` |
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 55 个脚本。
+共 57 个脚本。
 
 ## 第三方依赖（非标准库）
 
@@ -111,7 +114,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 | `sd_cpp` | 本地生图（stable-diffusion.cpp + FLUX 权重） |
 | `imagemagick` | ImageMagick（图标阈值 / 裁边） |
 | `luac` | Lua 5.1 语法检查 |
-| `ws_root` | 上传临时工作区根（`%TEMP%\civ6-ws`） |
+| `ws_root` | 上传临时工作区根；`content/` 用 junction 指向 Mods 副本（见 `release/scripts/make_workspace.ps1`） |
 | `steam_logs` | Steam 日志目录（反查工坊条目 ID） |
 
 > 完整路径表与各键本机取值见 `civ6-modding/tools/README.md` 第 2 节。
@@ -126,14 +129,19 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 ### 新 mod 从工程到线上的推荐顺序
 
 ```
-⓪ Push-Location <tool 目录>; .\Civ6WorkshopUploader.exe new -w <ws>; Pop-Location
-                                                        # 首建骨架（★ cwd 必须是 exe 目录，否则 Template not found）
-                                                        更新已有条目跳过此步，复用旧 workspace
-① python tools/modinfo_build.py <X.civ6proj> --deploy   # 生成 .modinfo + 部署到 Mods
-② python tools/verify_mod_package.py --src <工程> --mods <Mods副本>
+⓪ python tools/modinfo_build.py <X.civ6proj> --deploy   # 生成 .modinfo + 部署到 Mods
+                                                        # ★ 一切工作区/剥离动作都必须在本次 deploy 之后
+① python tools/verify_mod_package.py --src <工程> --mods <Mods副本>
                                                         # 三处一致性 + 引用闭合
-③ python scripts/check_lua_registration.py <工程>       # 改过 .lua 时
+② python scripts/check_lua_registration.py <工程>       # 改过 .lua 时
    scripts/README.md「标准验证顺序」①–⑥                  # 改过 SQL 时（另有 ⓿ 运行时库）
+③ release/scripts/make_workspace.ps1 -ModDir <Mods副本> -ItemId <ID> -Src <源工程>
+                                                        # 建工作区（首选入口，幂等）：
+                                                        #   content 用 junction 指向 Mods，不物理复制
+                                                        #   → workshop.json → mod_id.txt → 剥离注释 → validate
+                                                        # ★ 内置剥离，不必再单独跑 strip_comments.py
+                                                        # ★ 别再用 new -w 铺骨架；也别 Copy-Item 751 MB。
+                                                        #   DSH 会话 TEMP 每会话独立 → 每次重建，别想复用
 ④ python tools/workshop_meta.py <spec.json> --out <ws>/workshop.json --record <桌面存档>
 ⑤ python tools/local_flux.py … → python tools/workshop_cover.py …
                                                         # 底图（模型，无文字）+ 封面（真实字体排版）
@@ -145,6 +153,8 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 ⑥ release/scripts/validate.ps1 → upload.ps1 → verify.ps1
 ⑦ python tools/workshop_item_check.py <id>              # 线上复核
 ⑧ release/scripts/cleanup.ps1 -Workspace <ws>           # 真成功后才删工作区
+                                                        # 三重守卫；content 是 junction 时日志会打印
+                                                        # 「已摘除链接 → <Mods 路径>」，属正常
 ⑨ （下架）.\Civ6WorkshopUploader.exe remove -w <ws> -i <id>   # 不可逆，只删线上
 ```
 
@@ -157,6 +167,21 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 
 `tools/` 的**用法细节、顺序理由、每条教训的出处**写在 `tools/README.md`：
 本文件的工具表是自动索引（防"找不到"），README 是使用说明（防"用错"），两者互补。
+
+#### 美术引用管线文件不进 `.modinfo` 的 `<Files>` 是规范行为
+
+美术引用链路上的文件不写进 `.civ6proj` 的 `<Content Include>`，也不进 `.modinfo` 顶层
+`<Files>` —— 它们由 cook 链路承载（pantry → cooker → `BLPs` / `.dep`）。
+豁免清单见 `verify_mod_package.py` 的 `ART_PIPELINE_EXTS`（按扩展名判定：`.artdef` /
+`.xlp` / `.tex` / `.dds` / `.mtl` / `.geo` / `.ast` / `.lrg` / `.env` / `.fgx` / `.wig` /
+`.anm` / `.s3d` / `.blb`）。
+
+#### ★ 例外：`ImportFiles/` 之下不豁免（显式导入通道）
+
+美术素材若走「不经 XLP 直接导入」，落点是 `ImportFiles/<子目录>/`。这类文件属**显式导入
+通道**而非 cook 链路，与其它 ImportFiles 文件同等对待，须 `.civ6proj` 的 `<Content>` +
+`<ImportFiles>` 加载动作 + `.modinfo` 顶层 `<Files>` 三处齐全。故 `verify_mod_package.py`
+对 `ImportFiles/` 前缀一律不豁免，其下素材漏登记照报。
 
 ### 边界
 

@@ -7,7 +7,7 @@ but consume it differently:
 
 | File | Created by | Used by | Current Status |
 |------|-----------|---------|----------------|
-| `.civ6proj` | ModBuddy IDE (MSBuild XML) | ModBuddy build / packaging | **Wheelers in use** |
+| `.civ6proj` | ModBuddy IDE (MSBuild XML) | ModBuddy build / packaging | **在用**（两者并存） |
 | `.modinfo` | Hand OR by Build → Export | Game runtime loader | **Distribution format** |
 
 ModBuddy builds a `.modinfo` from the `.civ6proj` automatically when packaging a mod (Build menu).
@@ -43,8 +43,8 @@ These pieces of vocabulary are identical between `.modinfo` and `.civ6proj` (onl
 
 | Property | Description |
 |----------|-------------|
-| `LoadOrder` | Database load order (negative = earlier) |
-| `Priority` | File execution order (higher = later) |
+| `LoadOrder` | **动作级**加载顺序（negative = earlier）—— 排在「动作之间」 |
+| `Priority` | **文件级**执行顺序，**数值越大越先**（反直觉）—— 排在「**同一个动作内部**的 `<File>` 之间」，是与 `LoadOrder` 分工不同的正当手段，二者可并用 |
 | `LuaContext` | For ReplaceUIScript: the ID of the context to replace |
 | `LuaReplace` | For ReplaceUIScript: the replacement Lua file path |
 | `Context` | For AddUserInterfaces: the parent context (e.g. "InGame") |
@@ -54,18 +54,17 @@ These pieces of vocabulary are identical between `.modinfo` and `.civ6proj` (onl
 
 ### Load Order Values
 
-**vanilla 官方阶梯**（官方 modinfo 实测）：
+**官方实际取值**（42 个官方 modinfo **全量**扫描，2026-09-22 复核）：
 
 ```
--100: Schema changes, Remove Data
--75:  Unofficial schema changes
--50:  Premature updates
-0:    Standard content updates (DEFAULT)
-50:   Post updates
-100:  Scenario updates
+-100: Schema / RemoveData 前置   ← 官方仅 2 处
+0:    常规内容（默认，不写 = 0）  ← 官方 679/696 个动作都不写
+100:  场景依赖外部 DLC（<Include>）← 官方仅 15 处
 ```
 
-> ⚠ **官方阶梯只覆盖 `-100 … 100`，真实工程用的远不止这一段。**
+> ⚠️ **官方全部 `<LoadOrder>` 只有 17 处、两个值**（`-100` × 2、`100` × 15）。
+> **网上与旧版本 skill 流传的 `-75` / `-50` / `50` 「官方阶梯」官方并不存在** —— 那是社区/第三方约定，不要标成「官方」。
+> 真实工程的用法远不止这一段：
 > 11 个真实工程实测出现了 `-2 / -1 / 10 / 200 / 1000 / 10000 / 20000 / 30000 / 600000 / 610003 / 777777 / 888888 / 999999 / 1000000 / 9999999`。
 > **`LoadOrder = -1` 出现在 8/11 个工程**，且 4 个独立总督工程都把它用于 `Governors` 数据 → 事实约定：*被其他内容引用的定义类数据要早加载*。
 > 完整观测阶梯表、`600000` 段社区约定、以及「跨 mod 同 LoadOrder 次序无保证」的警告见 **`gotchas.md` §44**。
@@ -96,19 +95,59 @@ These pieces of vocabulary are identical between `.modinfo` and `.civ6proj` (onl
 | 游戏模式 | `criteria="Heroes_Mode"` / `"Monopolies_Mode"` / `"DramaticAges_Mode"` | MODE 内容独立 criteria，支持 `_Expansion1`/`_Expansion2` 后缀组合 |
 | 情景 | `criteria="BlackDeathScenario"` / `"PiratesScenario"` | 情景内容 |
 
-**`File` 元素的 `Priority` 属性（官方实际值分布）：**
+### 加载顺序的两级手段：`LoadOrder`（动作级）与 `Priority`（文件级）
+
+> **先说结论**：两者**分工不同、互补而非替代**，按你要控制的粒度选用：
+>
+> | 想控制什么 | 用什么 | 说明 |
+> |---|---|---|
+> | **动作之间**的先后 | `<Properties><LoadOrder>N</LoadOrder></Properties>` | 作用于整个 `UpdateDatabase` 动作 |
+> | **同一个动作内部**各 `<File>` 的先后 | `<File Priority="N">` | 这是**唯一**能给同动作内文件定序的手段 |
+>
+> **不必为了定序而强行拆分动作**。把同一逻辑单元的文件放在一个动作里、用 `Priority` 排内部次序，是完全正当且常见的做法（官方 `Expansion2Core`、本项目 `Anomaly_Database` 都是「一个动作 + 动作内 `Priority`」形态）。
+> 反之，若内容本就该分属不同动作（如 schema / remove / 主数据），用 `LoadOrder` 表达更自然。两者也常**并用**。
+
+#### ★ 动作划分总则：默认合并，只有 4 类必须拆、2 类才考虑拆
+
+> 完整决策树与全部实证见 **`reference/action-splitting.md`**（权威）。此处只列判据。
+
+**默认：同类文件尽量合并进一个动作，且不写 `Priority`。**
+
+| 类别 | 情形 | 处置 |
+|---|---|---|
+| **必须拆** | 库归属不同（**Config 库 vs Gameplay 库**） | 分属 `<FrontEndActions>` / `<InGameActions>` —— 两个**独立数据库**，物理隔离 |
+| **必须拆** | 表**两侧都有**（`Colors`/`PlayerColors`/`IconTextureAtlases`/`LocalizedText`/`.dep`） | **两端各注册一个动作**；漏一端 = **静默失效**（不报错）。实测反例：`FHB_Shuai` 漏 InGame `UpdateColors` → 进游戏颜色不对 |
+| **必须拆** | `criteria` 不一致 | `criteria` 是**动作元素上的属性**，一个动作只能绑一个 → 结构上无法共处。官方 criteria 属性 501 处、去重 145 个值 |
+| **必须拆** | `<Include>` 依赖其他 mod 的动作 | 需先让对方的动作跑完（官方场景类用 `LoadOrder=100` 表达） |
+| 可选拆 | **Types 定义 vs 遍历/Modifier 逻辑** | 见下文「关键规则」第 4 条：**Types 早、遍历晚**（三条理由） |
+| 可选拆 | **文件极多**（建议 **≥50** 个） | 官方有 **192**（`Expansion2_Files`）与 **87**（`Expansion2CoreContent`）的先例，故阈值不设低 |
+
+**`Priority` 使用纪律：默认不写。** 只在两种情况写：① **明确需要先后加载**（已知依赖且不为它拆动作）；② **SQL 报错指向加载顺序问题**（`no such table` / 外键失败）。
+> 官方实证：**32 个合并动作完全不用 `Priority`**（含 87 文件的 `Expansion2CoreContent`）；而 **35 个含 `RemoveData` 的合并动作 100% 都给它加了 `Priority`**（0 例外）—— 即按「确知有依赖」才用。
+
+**两条必须记住的语义**（均为本机实测）：
+
+1. **`Priority` 数值越大越先执行**（与直觉相反）。
+   证据：官方 `Expansion2.modinfo` 自注 `<!-- Schema comes first -->` 给 Schema 用 `Priority="2"`、`<!-- Remove data second -->` 给 RemoveData 用 `Priority="1"`；`Modding.log` 实测 Schema 先跑。
+2. **同 `Priority`（含都省略）的 `<File>` 按路径字母序执行，不按声明序。**
+   证据：`Expansion2MajorContent` 声明 `...Units → UnitAbilities → UnitPromotions`，实测 `...UnitAbilities → UnitPromotions → Units`。
+   这条最容易踩：声明顺序看着完全正确，引擎却按文件名排 —— 依赖方若字母序在前就会 `no such table`。
+
+**官方实际值分布**（42 个官方 modinfo 全量统计；口径：按 (modinfo, 路径) 去重）：
 
 | 值 | 用途（官方实测） | 出现次数 |
 |----|----------------|---------|
-| `Priority="1"` | 移除/前置数据（RemoveData 类 XML）、Text 前置 | UpdateText x246, UpdateDatabase x21 |
-| `Priority="2"` | Schema 之后的主数据 | UpdateDatabase x31, UpdateText x19 |
-| `Priority="3"` | 追加数据 | x2 |
+| `Priority="1"` | 移除/前置数据（RemoveData 类 XML）、Text 前置 | UpdateText x234, UpdateDatabase x7 |
+| `Priority="2"` | Schema、Schema 之后的主数据 | UpdateDatabase x18, UpdateText x15 |
+| `Priority="3"` | 追加数据 | x3 |
 | `Priority="0"` | 基础数据（最前） | x2 |
-| 无 Priority | 常规数据（默认最后执行） | 大量 |
+| 无 Priority | 常规数据（默认，与其它同优先文件按字母序） | 大量 |
 
-官方惯例（Expansion2.modinfo）：`Schema.sql Priority=2` → `RemoveData.xml Priority=1` → 常规数据无 Priority。**移除数据用低 Priority 数字（先跑），主数据无 Priority（后跑）。**
+> 官方惯例（`Expansion2.modinfo`）：`Schema.sql Priority=2` → `RemoveData.xml Priority=1` → 常规数据不写 Priority。
+> 换算成「越大越先」的口径：**要让谁先跑，就给谁更大的数值**；主数据不写。
+> 同一意图也可用 `LoadOrder` 表达（把 RemoveData/Schema 放进独立动作并给 `LoadOrder="-100"`）—— 两种都有效，按粒度选。
 
-**`LoadOrder` 官方实际使用值：** `-100`（2 处，schema/remove）与 `100`（9 处，情景/追加）。官方大量 UpdateDatabase 不写 LoadOrder（默认 0）。
+**`LoadOrder` 官方实际使用值：** `-100`（**2 处**，schema/remove）与 `100`（**15 处**，场景依赖外部 DLC 的 `<Include>`）。官方 **679/696 个动作不写 LoadOrder**（默认 0）。
 
 **`ReplaceUIScript` 的 `LuaContext` 官方值（Top 12）：**
 
@@ -291,6 +330,25 @@ MSBuild-style XML. Mod metadata + actions + criteria + file/folder tree for the 
 </InGameActions>]]></InGameActionData>
 ```
 
+> ### ★ `(Mod Art Dependency File)` 是什么
+>
+> 它是 **ModBuddy 的构建期占位符**（字面量定义在 `Civ6.Tasks.dll`），**只允许出现在 `.civ6proj` 里**。
+> 构建时 ModBuddy 会把它替换成真实的 `<ModName>.dep`，并把该 `.dep` 一并写进 `.modinfo` 的顶层 `<Files>`。
+>
+> **因此规则是**：
+> | 位置 | 写什么 |
+> |---|---|
+> | `.civ6proj` 的 `<UpdateArt>` | `(Mod Art Dependency File)`（占位符，交给 ModBuddy）**或**真实 `<ModName>.dep` 均可 |
+> | 派生出的 `.modinfo` | **必须是真实 `<ModName>.dep`**，且**同时**出现在顶层 `<Files>` |
+>
+> ⚠ **占位符一旦原样进 `.modinfo`，UpdateArt 就静默失效**：游戏只写一行
+> `ERROR: Invalid file reference in action, did you forgot to add it in <Files>? - (Mod Art Dependency File)`，
+> 该 mod 的 `ModArtLoader` 无记录 → **全部美术与图标不加载，游戏内不报错**。
+> 用 `tools/modinfo_build.py` 派生 modinfo 时会自动替换（已内置）；手工改 modinfo 时务必自查。
+>
+> `.dep` 本体由 **`Civ6AssetCooker`** 生成（`--mode Dependency`，或任意 cook 模式的副产物），
+> 文件名 = 工程名、内容 `AssetObjects..GameDependencyData`。可用 `tools/cook_dep.py` 无 GUI 生成。
+
 > **Multiple `<Criteria>` children on one action = logical AND.**
 > Example: `<Criteria>Jinhsi_Disabled</Criteria><Criteria>Changli_Playable_Expansion2</Criteria>`
 > means "load only when Jinhsi is NOT in use AND Changli IS playable."
@@ -452,13 +510,20 @@ Hand-friendly XML with a single `<Mod id="GUID" version="V">` root.
 
 1. **Mod ID must be a valid GUID** — generate a new one per mod. In `.civ6proj`, the `<Guid>` becomes
    `<Mod id>` in the exported `.modinfo`.
-2. **`AddUserInterfaces` references only the `.xml`** — the matching `.lua` goes in `ImportFiles`.
+2. **UI `.lua` 按角色三分类判定登记位置**（不是「一律进 ImportFiles」）：
+
+   | 情形 | 登记方式 |
+   |---|---|
+   | UI `.xml` 的**同名 `.lua`**（上下文脚本） | **不需要任何加载动作** —— 引擎随 `.xml` 自动加载；只需进打包清单（`.civ6proj` `<Content>`）。实测：本工程 `UI/` 下 20 个 `.lua` 全部有同名 `.xml`，`AddUserInterfaces` 里**只列 20 个 `.xml`，零个 `.lua`** |
+   | 被 `include()` 的共享/扩展件（如 `Core_*.lua`） | 进 `ImportFiles` |
+   | 取代原版同名 UI 文件（官方 Replacement 惯例） | 进 `ImportFiles`（文件名与原版一致）**或** `ReplaceUIScript`（需填 `<LuaContext>` = 原版 Context 名 + `<LuaReplace>` = 你的路径；工坊实测 215 处先例，LoadOrder 普遍取高值如 6054/99999 以压过原版） |
 3. **File list 按文件类别区分，不是"所有文件都列"**：
    - `.modinfo`: `<Files><File>` block；`.civ6proj`: `<Content Include="X">` entries。
    - **XML / SQL / Lua**：**一定需要写进清单** —— 新增/删除/改名时同步条目。
    - **ImportFiles 引用的图片/视频、`Platforms/` 下的音频 bank 等媒体资产**：受**特殊规则约束** —— 走专门的导入流程或由用户手动导入，不按普通清单条目默认同步。
    - **其他文件**：ModBuddy 引擎默认自动打包，**无需放进 proj 的 Content 文件清单**，也不要写进 `.modinfo` 的 `<Files>`。
-4. **Higher `Priority` = loaded later** — removal XML usually gets `Priority="1"` to run first.
+4. **排顺序：动作之间用 `LoadOrder`，同一动作内部用 `Priority`**（文件级，见上文「加载顺序的两级手段」节）。
+   `Priority` 语义反直觉：**数值越大越先执行**；**同 `Priority`（含都省略）按路径字母序执行，不按声明序**（声明序无效，最容易踩）。
 5. **`LoadOrder` of `-100`** is for schema modifications and data removal.
 6. **`.civ6proj`: `<Guid>` and `<ProjectGuid>` are different.** `<Guid>` is the mod's public ID (referenced by
    other mods' `<ModInUse>`); `<ProjectGuid>` is purely a ModBuddy solution ID and isn't exported.
@@ -478,23 +543,48 @@ Hand-friendly XML with a single `<Mod id="GUID" version="V">` root.
 | **颜色** (Colors/PlayerColors) | **FrontEnd + InGame 两侧** | `UpdateColors` |
 | **图标** (IconTextureAtlases) | **FrontEnd + InGame 两侧** | `UpdateIcons` |
 | **配置文本** (仅 Config 用的 LOC) | **FrontEnd 仅** | `UpdateText` |
-| **类型定义** (Buildings, Units, Civs, Districts, Leaders, Projects, Resources, Improvements, GreatPeople, GreatWorks, Beliefs, Governors 等) | **InGame 仅** | `UpdateDatabase` |
-| **Modifiers 表** (Modifiers, ModifierArguments, TraitModifiers, BuildingModifiers 等) | **InGame 仅** | `UpdateDatabase` |
+| **类型定义** (Buildings, Units, Civs, Districts, Leaders, Projects, Resources, Improvements, GreatPeople, GreatWorks, Beliefs, Governors 等) | **InGame 仅** | `UpdateDatabase` — ⚠️ **单独的 Types 动作，早加载** |
+| **Modifiers / 遍历逻辑** (Modifiers, ModifierArguments, TraitModifiers, BuildingModifiers, DynamicModifiers 等) | **InGame 仅** | `UpdateDatabase` — ⚠️ **单独的 Modifiers 动作，晚加载** |
+| ⤷ 说明 | | **上两行虽然动作类型都是 `UpdateDatabase`，但必须分属两个不同动作**（理由见「关键规则」第 4 条）。本表"动作类型"列只表示用哪个标签，不表示可以合并。 |
 | **游戏文本** (LocalizedText) | **InGame 仅** | `UpdateText` |
 | **Lua 脚本** | **InGame 仅** | `AddGameplayScripts` |
 | **UI XML** | **InGame 仅** | `AddUserInterfaces` (Context=InGame) |
-| **UI Lua** | **InGame 仅** | `ImportFiles` |
-| **Core 共享 Lua** | **InGame 仅** | `ImportFiles` |
+| **UI Lua（与同名 XML 配套）** | **InGame 仅** | **无需加载动作**（引擎随 XML 自动加载）；仅被 `include` 的共享件或取代原版的才进 `ImportFiles` / `ReplaceUIScript` |
+| **Core 共享 Lua（被 include）** | **InGame 仅** | `ImportFiles` |
 
 ### 关键规则
 
 1. **Config = FrontEnd 专属** — `Players`、`PlayerItems` 表仅存在于 FrontEnd 数据库，写入它们的 SQL 必须在 `<FrontEndActions>` 的 `<UpdateDatabase>` 中注册。放入 InGame 会导致 `no such table: Players`。
 
 2. **Colors 和 Icons 双侧注册** — `Colors`、`PlayerColors`、`IconTextureAtlases` 表在 FrontEnd 和 InGame 数据库中都存在，因此颜色和图标文件必须在两侧分别注册（`UpdateColors` / `UpdateIcons`），漏掉一侧会导致对应上下文缺少颜色或图标。
+   **交付前必查的双侧注册清单**（漏一端 = 静默失效，不报错）：
+
+   | 内容 | FrontEnd | InGame | 漏了的症状 |
+   |---|---|---|---|
+   | `Colors` / `PlayerColors` | ✅ | ✅ | 选人界面有配色，进游戏变默认色 |
+   | `IconTextureAtlases` (Icons) | ✅ | ✅ | 选人界面有图标，游戏内空白 |
+   | `.dep` (Art) | ✅ | ✅ | 选人界面有立绘/图标，游戏内不显示。**且该 `.dep` 必须同时出现在顶层 `<Files>`**，否则报 `did you forgot to add it in <Files>?` |
+   | `Players` / `PlayerItems` (Config) | ✅ | ❌ 仅前端 | 放进 InGame 会 `no such table` |
+   | 游戏数据 (Civ/Units/Buildings…) | ❌ | ✅ 仅游戏内 | 前端不需要 |
+   | 游戏内文本 (`UpdateText`) | ✅(仅 Config 用的 LOC) | ✅ | 前端缺则 mod 列表显示原始 key |
+
+   > **口诀**：*凡是「选人界面看得见、游戏里也看得见」的东西，两端都要注册*
+   > —— 即 **Colors / Icons / Art**；Config 只需前端。
+   > 实测反例：`FHB_Shuai` 漏了 InGame `UpdateColors`，表现为进游戏后玩家颜色不对。
 
 3. **文本用 UpdateText，不是 UpdateDatabase** — 即使 LocalizedText 以 SQL (`INSERT INTO LocalizedText`) 书写，也改用 `<UpdateText>` 动作。SQL 和 XML 格式均可。`Text_Config_*.sql` 仅 FrontEnd 需要，其余游戏文本 InGame 即可。
 
-4. **类型定义和 Modifiers 分开注册** — 类型定义（建筑、单位、文明等）和 Modifiers 表分别放在独立的 `UpdateDatabase` 动作中，便于控制加载顺序。
+4. **类型定义和 Modifiers / 遍历逻辑 分开注册** — 类型定义（建筑、单位、文明等）放一个动作（**早**加载），Modifiers 及一切**遍历型**逻辑放另一个动作（**晚**加载）。
+   即 **Types 早、遍历晚**。三条理由缺一不可：
+   1. **Types 先加载才能被其他逻辑遍历到** —— 遍历要在 `Types`（及依赖它的表）里查目标；Types 后到则遍历得到空集。
+   2. **遍历延迟才能遍历到其他 mod 的部分** —— 遍历是**全库扫描**语义，越晚执行越能覆盖其他 mod（尤其加载较晚、写得不够规范的 mod）已写入的行。
+   3. **对环境影响小** —— 遍历会把全库已有行一并纳入处理；推后等于把自己隔离在「上游已定型」之后，不易被其他 mod 不规范的遍历波及（或反过来波及它们），是风险最小的位置。
+   > **来源说明**：这是**成熟第三方工程惯例**（本机 4 例一致：`示例工程` `RGN_Types` LO=200 → `RGN_Modifiers` LO=600005；`工程 I`、`工程 C`、`工程 A` 同构），**官方 42 个 .modinfo 0 例**这样做（反而 70 个动作把二者合并）。**本项目采用它**，但不要对外称「官方要求」。
+5. **`.dep` 文件名 = 工程名** — 由 `.Art.xml` 的 `<id><name text="…"/>` 决定（ModBuddy 构建时生成
+   `<name>.dep`）。实测 12 个工程里 11 个用 `<工程名>.dep`；**不要用 mod 标题的 LOC key**
+   （反例：某工程写成 `LOC_XXX_MOD_TITLE.dep`，与全家族惯例不符）。
+   改 `.dep` 名时需同步：`.Art.xml` 的 `<name>`、`.civ6proj`/`.modinfo` 里 `UpdateArt` 的 `<File>`、
+   `<Files>` 清单条目，以及磁盘文件本身。
 
 ### ModBuddy 的 `Mod Info → Custom Properties` 面板（≠ 模板变量）
 

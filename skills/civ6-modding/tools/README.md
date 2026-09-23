@@ -37,8 +37,9 @@
 | `_paths.py` | **本机路径单一真源**（P1–P6 + 外部工具）。其它工具统一 `import _paths` 取路径；也可直接跑来自检本机环境 | `python _paths.py` | 0 |
 | `new_project.py` | **从零建工程骨架**：生成 `.civ6proj`（5 个 CDATA 块 + ItemGroup）+ 目录 + `.gitignore`/`.gitattributes`，并自动派生 `.modinfo`。★ GUID 内置全网查重（禁止复制示例 GUID） | `python new_project.py <目录> --name <ModName> [--title-en … --title-zh …] [--deploy]` | 0 / 1 / 2 |
 | `civ_leader_data.py` | **新文明/新领袖数据与文本推导**：规格 JSON → `Data/CivLeader_*.sql`（Civilizations/Leaders/Traits/CivilizationLeaders/城市名…）+ `Data/Config_*.sql`（Players/PlayerItems）+ `Text/Text_*.sql`（8 语言）。★ 列名全部取自 `database/*.sqlite` 实测；含 LOC tag 闭包与语言齐缺自检 | `python civ_leader_data.py <spec.json> --project <工程根> [--write|--check]`（示例规格 `../reference/civ-leader-spec.example.json`） | 0 / 1 / 2 |
-| `modinfo_build.py` | 从 `.civ6proj` **派生 `.modinfo`**（等价 ModBuddy 构建）并可选部署到 Mods；顺带做 XML 良构 + 动作文件引用闭合自检 | `python modinfo_build.py <X.civ6proj> [--deploy] [--mods-root <目录>]` | 0 / 1 |
-| `verify_mod_package.py` | **交付包体检**：源工程 ↔ Mods 副本 ↔ 上传工作区 三处 SHA256 一致性；modinfo 悬空引用 / 漏登记文件 / 本地化语言清点。**剥离与 cook 产物双感知**（`.lua` 命中「副本 == strip(源)」、`BLPs/**`+`.dep` 源工程本就没有 → 均按预期放行，`--strict` 可强制逐字节） | `python verify_mod_package.py --src <工程> --mods <Mods副本> [--ws <content>] [--files a,b] [--strict]` | 0 / 1 |
+| `modinfo_build.py` | 从 `.civ6proj` **派生 `.modinfo`**（等价 ModBuddy 构建）并可选部署到 Mods。★ **自动把 `(Mod Art Dependency File)` 占位符替换为 `<ModName>.dep`**（ModBuddy 构建期行为，缺了它 UpdateArt 静默失效、美术全空），并把该 `.dep` 并入顶层 `<Files>`；顺带做 XML 良构 + 动作文件引用闭合自检 | `python modinfo_build.py <X.civ6proj> [--deploy] [--mods-root <目录>]` | 0 / 1 |
+| `cook_dep.py` | **从 `<ModName>.Art.xml` 生成 `<ModName>.dep`**（`AssetObjects..GameDependencyData`）—— 走 cooker 的 `--mode Dependency`，**无需 ModBuddy GUI**。★ `.dep` 是 `<UpdateArt>` 的实际载荷，缺它则全部美术/图标静默不加载；落点默认 `<工程>/workspace/tmp/dep`（cooker 默认落 CWD，易漂移，本工具显式固定） | `python cook_dep.py <工程根> [--out <目录>] [--platform Windows] [--check]` | 0 / 1 / 2 |
+| `verify_mod_package.py` | **交付包体检**：源工程 ↔ Mods 副本 ↔ 上传工作区 三处 SHA256 一致性；modinfo 悬空引用 / 漏登记文件 / 本地化语言清点。**剥离 · cook 产物 · 美术管线 三感知**（`.lua` 命中「副本 == strip(源)」、`BLPs/**`+`.dep` 源工程本就没有、美术管线文件见 `ART_PIPELINE_EXTS` 不进 Content 与 Files → 均按预期放行；★ `ImportFiles/` 之下不豁免；`--strict` 关掉全部放行）。★ **`<UpdateArt>`/`.dep` 独立硬检查**（占位符残留、`.dep` 缺失、`.dep` 未进 `<Files>` 一律判失败 —— 这类是静默失效，不能按 cook 产物软放行） | `python verify_mod_package.py --src <工程> --mods <Mods副本> [--ws <content>] [--files a,b] [--strict]` | 0 / 1 |
 | `strip_comments.py` | **发布前剥离注释（默认仅 `.lua`）**，字符串感知；`.lua` 剥离后自动 `luac -p` **差分**自检（仅「原文能过、剥离后不过」才算失败）。只动**发布副本**，源工程保留注释；`--src` 核对「发布副本 == strip(源)」；`--all-exts` 恢复旧的全类型剥离 | `python strip_comments.py <Mods副本> [--src <源工程>] [--dry-run] [--keep-lines] [--all-exts]` | 0 / 1 / 2 |
 | `workshop_meta.py` | **多语言 `workshop.json` 生成**（create / update 两种模式）+ 导出人类可读介绍存档 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <txt>]` | 0 / 1 |
 | `workshop_item_check.py` | **线上条目核对**：标题 / 描述 / 归属账号 / 可见性 / 标签 / 内容清单 / 预览图；支持 `--expect-*` 断言；直连失败自动回落本机代理 | `python workshop_item_check.py <id> [...] [--expect-title <子串>] [--expect-public]` | 0 / 1 / 3 |
@@ -83,7 +84,7 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
 | `sd_cpp` | 本地生图（stable-diffusion.cpp + FLUX 权重） | `%USERPROFILE%\sd-cpp` |
 | `imagemagick` | ImageMagick（图标阈值/裁边用） | `C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe` |
 | `luac` | Lua 语法检查（`luac -p`，Civ6 是 5.1 方言） | `E:\SoftWares\Lua\5.1\luac.exe` |
-| `ws_root` | 上传临时工作区根 | `%TEMP%\civ6-ws` |
+| `ws_root` | 上传临时工作区根（`content/` 用 junction 指向 Mods，见 `release/scripts/make_workspace.ps1`） | `%TEMP%\civ6-ws` |
 | `steam_logs` | Steam 日志（查 workshop item id） | `F:\Steam\logs` |
 
 生图渠道现状（哪个能用、哪个挂了、扩散模型出不了中文等实测坑）**已内化**在本 skill：
@@ -101,6 +102,8 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
   工具因此把 `Content` 当拷贝清单，并在生成后强制做引用存在性检查。
 - **`verify_mod_package.py`**：要同时看三处（源 / Mods / 上传工作区）。只比源与 Mods 会漏掉
   "上传工作区落后于 Mods"（曾经真发生过）；`--ws` 就是为这一步准备的。
+  另：工作区 `content/` 改用 junction 后（见 `release/scripts/make_workspace.ps1`），
+  Mods 与 ws 两列在物理上就是同一份文件，该列的"漂移"假红灯从根上消失。
 - **`workshop_meta.py`**：`update` 模式**故意不写 title / visibility / tags** —— 省略的字段
   上传器不触碰，这是"只改介绍、不碰身份"的安全写法（写全字段反而有被顺带改掉的风险）。
 - **`workshop_cover.py`**：中文标题**必须**由真实字体排版。扩散模型渲染中文得到形近伪字
@@ -131,9 +134,16 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
   （本项目 `ImportFiles/OfficialOverrides/SecretSocietyPopup.lua` 即此例），只有"剥离后才坏"才算失败。
   每次 `modinfo_build.py --deploy` 或 ModBuddy `Rebuild All` 都会把注释带回 Mods 副本
   → **发布前必须重跑剥离**。
-- **`verify_mod_package.py`**：对**发布副本**做体检时，有两类差异是预期的、不计入问题：
+- **`verify_mod_package.py`**：对**发布副本**做体检时，有三类差异是预期的、不计入问题：
   ① `.lua` 命中「副本 == strip(源)」（发布前剥离）；② `Platforms/*/BLPs/**` 与 `*.dep`
-  源工程本就没有（AssetEditor/cooker 产物，只在 Mods 副本）。加 `--strict` 恢复逐字节严格比对。
+  源工程本就没有（AssetEditor/cooker 产物，只在 Mods 副本）；③ **美术引用管线文件**
+  （见 `ART_PIPELINE_EXTS`）—— 按项目规范既不写进 `.civ6proj` 的 `<Content>`，
+  也不写进 `.modinfo` 的 `<Files>`，由 cook 链路承载。
+
+  ★ **`ImportFiles/` 之下不适用上述豁免**：那是显式导入通道，其下素材与其它 ImportFiles
+  文件同等对待，须三处齐全，漏登记照报。
+
+  加 `--strict` 可关掉以上全部放行、恢复逐字节 + 零未登记的严格口径。
 - **`workshop_item_check.py`**：Steam API **忽略 `language` 参数**、只回默认变体，非英语变体
   只能靠上传器日志的 `Language variant 'x' updated.` 交叉验证；`result=9` ≠ 条目不存在。
   直连 Steam API 可能被 reset，工具已内置代理回落（`127.0.0.1:7897`）。

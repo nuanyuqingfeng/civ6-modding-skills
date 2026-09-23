@@ -212,6 +212,21 @@ ctrl:ReprocessAnchoring()     -- 重新处理锚定
 | `EffectColor` | 效果颜色(阴影、发光等) |
 | `GradientColor` | 底部渐变颜色 |
 
+**`Align` 说明：**
+
+- 合法属性名是 `Align`，**不是** `Alignment`（原版 Base+DLC 全量实测：`Align=` 581 处、`Alignment=` 0 处）。写成 `Alignment` 会**静默失效**——不报错也不警告，只是不生效。
+- **`Align` 只在控件有显式 `Size` 时才有视觉意义。** Label 尺寸默认自适应（盒子宽 = 文本实际宽），盒内没有多余空间可对齐，`Align` 自然看不出差别。原版 541 个含 `Align` 的 Label 中，496 个没有 `Size`（无效），仅 45 个同时有 `Size`（生效）。
+- 文字看起来居中/靠右，通常是 `Anchor` 的功劳——`C,*` 把盒子摆到容器中间、`R,*` 摆到右侧，与 `Align` 无关。
+
+| 想达到的效果 | 正确做法 |
+|------|------|
+| 文字在本行**内**居中 / 靠右 | 给控件显式 `Size="宽,高"`（宽 > 文本宽），**再**设 `Align` |
+| 整块文本摆到容器**中间** | 用 `Anchor="C,*"`，无需 `Align` |
+
+> 排查“对齐不生效”时**先查有没有 `Size`**。示例工程 曾踩坑：17 处 `Alignment`→`Align` 后实机毫无变化，一度误判属性无效，实为这些 Label 全都没有 `Size`；补上 `Size` 后 `Align="Left"` 立即靠左，才证实属性有效。
+>
+> 其余支持 `Align` 的控件（原版用量）：`CheckBox` 12、`TextButton` 4、`EditBox` 3、`Stack` 2，同样遵循“需有 `Size` 才生效”的规律。
+
 **Lua 方法：**
 
 ```lua

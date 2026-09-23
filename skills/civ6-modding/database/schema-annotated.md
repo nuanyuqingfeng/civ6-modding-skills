@@ -24,7 +24,7 @@ sqlite3 $db "SELECT name, dflt_value FROM pragma_table_info('TableName') WHERE [
 | Units | 55 | 67 列 — 单位定义（战斗/移动/成本/晋升） |
 | Buildings | 109 | 46 列 — 建筑定义（科技/区域/成本/奇观） |
 | Districts | 155 | 40 列 — 区域定义（位置/成本/掠夺/域） |
-| Improvements | 189 | 49 列 — 改良定义（科技/生产力/住房） |
+| Improvements | 189 | 49 列 — 改良定义（科技/生产力/住房）；**另见「Improvement 的三张「可建造条件」表」** |
 | Resources | 212 | 15 列 — 资源定义（类别/频率/时代） |
 | Projects | 230 | 21 列 — 项目定义（成本/区域/太空竞赛） |
 | **P1 — 核心逻辑** | | |
@@ -216,6 +216,65 @@ sqlite3 $db "SELECT name, dflt_value FROM pragma_table_info('TableName') WHERE [
 | Workable | BOOLEAN | — | `1` | 市民可否工作 |
 | Removable | BOOLEAN | — | `1` | 可否移除 |
 | Capturable | BOOLEAN | — | `1` | 可否被占领 |
+
+---
+
+### Improvement 的三张「可建造条件」表 —— 资源条目优先于地形/地貌
+
+> ★ 2026-09 实测（`DebugGameplay.sqlite`）。**这是最容易误解的一组表**：三张表**语义完全不同**，
+> 不是同一条件的三种写法。
+
+| 表 | 回答的问题 | 键 |
+|---|---|---|
+| `Improvement_ValidResources` | 能改良**哪些资源** | (`ImprovementType`, `ResourceType`) |
+| `Improvement_ValidTerrains` | 能建在**哪些地形** | (`ImprovementType`, `TerrainType`) |
+| `Improvement_ValidFeatures` | 能建在**哪些地貌** | (`ImprovementType`, `FeatureType`) |
+
+#### 核心规则：资源条目**优先于**地形/地貌；只有资源条目能无视地块上的资源
+
+1. **地块上有资源时 —— 只看该资源的 `Improvement_ValidResources` 条目，地形/地貌条件被跳过。**
+   该资源没列这个改良 → **建不了**，哪怕地形、地貌两个条件都满足。
+   所以**填了资源条目就可以不填地形/地貌**：`IMPROVEMENT_QUARRY` / `PASTURE` / `CAMP` / `PLANTATION` /
+   `FISHING_BOATS` / `INDUSTRY` / `CORPORATION` 全部是 `ValidTerrains = 0 行`、`ValidFeatures = 0 行`，
+   只靠资源条目成立（7 个改良实测确认）。
+2. **地块上没有资源时 —— 才看地形 / 地貌条目。**
+   此时**只填地形/地貌、不填资源是够的**（`IMPROVEMENT_FISHERY`：terrains=COAST、features=0、resources=0）。
+3. **反过来不成立：只填地形/地貌，无法覆盖带资源的地块。**
+   `IMPROVEMENT_LUMBER_MILL` = `features=[FOREST, JUNGLE]`、`resources=0` → 森林带鹿/皮草时伐木场建不了
+   （`RESOURCE_DEER` / `RESOURCE_FURS` / `RESOURCE_TRUFFLES` 的 `ValidResources` 里只有 `CAMP`）。
+
+#### 例外的例外：`EnforceTerrain = 1`
+
+`EnforceTerrain = 1` 时即便地块有资源也**仍然要求**地形条目。全库仅 2 条：
+`IMPROVEMENT_OIL_WELL`、`IMPROVEMENT_OFFSHORE_OIL_RIG` —— 恰好也是**仅有的两个同时填了
+`ValidTerrains` 与 `ValidResources`** 的改良（其余同时填两者的 FARM / MINE 都是 `EnforceTerrain = 0`）。
+**写「地形 + 资源」双条件的新改良时，应显式设 `EnforceTerrain = 1`，否则地形条目形同虚设。**
+
+| 改良 | EnforceTerrain | ValidTerrains | ValidFeatures | ValidResources |
+|---|---|---|---|---|
+| `IMPROVEMENT_MINE` | 0 | 5 | 1 | 12 |
+| `IMPROVEMENT_FARM` | 0 | 4 | 4 | 3 |
+| `IMPROVEMENT_LUMBER_MILL` | 0 | 0 | 2 | 0 |
+| `IMPROVEMENT_FISHERY` | 0 | 1 | 0 | 0 |
+| `IMPROVEMENT_FISHING_BOATS` | 0 | 0 | 0 | 6 |
+| `IMPROVEMENT_QUARRY` / `PASTURE` / `CAMP` | 0 | 0 | 0 | 3 / 3 / 5 |
+| `IMPROVEMENT_OIL_WELL` | **1** | 10 | 0 | 1 |
+| `IMPROVEMENT_OFFSHORE_OIL_RIG` | **1** | 2 | 0 | 1 |
+
+#### 与 `Domain` / `Coast` 的关系（互补，不冲突）
+
+- `Domain`（`DOMAIN_SEA` = 水域单位才能建 / `DOMAIN_LAND` = 陆地单位）与 `Coast`（`1` = **沿海陆地**）
+  是**独立的**一层门槛，管的是「哪个域的单位来建、站在哪类格子上」；
+- 本节的「资源 vs 地形」管的是「这一格**允不允许**建」。两层都要过。
+- 常见组合：水域改良 = `Domain='DOMAIN_SEA'` + `Coast=0`（见 `gotchas.md` §51）。
+
+#### 实用推论
+
+- **想让改良能改良某资源 → 在 `Improvement_ValidResources` 补该资源即可，不必再补地形/地貌。**
+  （深海/远洋资源尤其：`FISHING_BOATS` 就是 0 地形 0 地貌、纯资源条目。）
+- **靠地形/地貌条目「顺带」覆盖资源是行不通的**，必须在资源表里逐条列出。
+- 多资源改良（`PLANTATION` 14 条 / `INDUSTRY` 28 条）应尽量用 `INSERT ... SELECT` 动态生成，
+  硬编码清单会随资源增删静默失配。
 
 ---
 

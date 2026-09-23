@@ -43,11 +43,20 @@ leader-only 时 `Leaders.InheritFrom` 常指向该文明的原版领袖（或 `L
 
 ## `Portrait` / `PortraitBackground`（★ 本类最容易误伤的两列）
 
-这两列是**自由字符串**，指向 XLP 条目名（贴图名）：
+这两列是**自由字符串**，指向 XLP 条目名（贴图名），**没有任何格式要求**；
+留空合法，但**会触发引擎回退**（见下）——留空 ≠ 安全。
 
-- 默认（原版界面）：由游戏按领袖 3D 场景显示，通常可留空或指向标准立绘。
-- **第三方 2D 选人界面适配**（如 Sukritact's Civ Selection Screen）：界面直接读这两列
-  交给 Image 控件显示。适配 mod 的做法就是 `UPDATE Players SET Portrait=…, PortraitBackground=…`。
+- **原版环境（必需）**：`PlayerSetupLogic.lua:807-829` 读这两列交给 `LeaderImage` / `LeaderBG`：
+  `Portrait` 空 → 回退 `<LeaderType>_NEUTRAL`；`PortraitBackground` 空 → 回退 `<LeaderType>_BACKGROUND`。
+  **mod 领袖通常没有这两个回退名 → 控件空白且前端不报错**（最常见的静默失败）。
+  自建写 `PORTRAIT_<KEY>_BACKGROUND`（竖版 328×935，控件尺寸），
+  或别名复用原版 `LEADER_<别的领袖>_BACKGROUND`（见下）。
+  ★ **完整规格（含 328×935 推导、加载界面、色调近似选型）见
+  `civ6-asset-forge/reference/frontend-portrait.md`。**
+- **第三方 2D 选人界面适配（可选分支）**（如 Sukritact's Civ Selection Screen）：
+  界面同样读这两列，但只在 Suk 启用时生效（`Criteria` 门控）。
+  **Suk 是可选分支；原版 FrontEnd 才是必需。** 适配做法是
+  `UPDATE Players SET Portrait=…, PortraitBackground=…`（挂在 FrontEndActions）。
 
 ★ **命名铁律**：第三方界面适配素材**不得借用官方模板前缀**
 （`FALLBACK_` = 官方 3D 回退 = `Leader_Fallback` 类）。走独立命名空间
@@ -55,7 +64,14 @@ leader-only 时 `Leaders.InheritFrom` 常指向该文明的原版领袖（或 `L
 理由、改名的实测前提与迁移工具见 `civ6-asset-forge/reference/ui-leader-portrait.md` §4.4。
 
 ★ 改这两列后**贴图必须在 `UITexture` 类 XLP 里登记**，否则不进 BLP → 界面空白
-（cook 不报错）。校验：`civ6-asset-forge/scripts/verify_suk_portrait.py --project <工程根>`。
+（cook 不报错）。校验：
+- 原版环境（A 选人 + B 加载界面）：`civ6-asset-forge/scripts/verify_frontend_portrait.py --project <工程根>`
+- Suk 分支：`civ6-asset-forge/scripts/verify_suk_portrait.py --project <工程根>`
+
+★ **环境归属**：`Players` 属 **Config 库** → 写进 `FrontEndActions → UpdateDatabase`；
+而加载界面的 `LoadingInfo`（`ForegroundImage` / `BackgroundImage`）属 **Gameplay 库** →
+写进 `InGameActions → UpdateDatabase`。写错段会 `no such table`。
+三套环境（选人 / 加载界面 / 外交）对照见 `civ6-asset-forge/reference/frontend-portrait.md` §〇。
 
 ## 文本：必须走 `UpdateText`
 

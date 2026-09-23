@@ -211,19 +211,19 @@
 
 | Event | 参数 | 时机 |
 |-------|------|------|
-| `UnitActivated` | `playerID, unitID` | 单位激活 |
+| `UnitActivate` | `owner, unitID, x, y, eReason, bVisibleToLocalPlayer` | 单位激活 |
 | `UnitMoveComplete` | `playerID, unitID` | 单位移动完成 |
 | `UnitAddedToMap` | `playerID, unitID` | 单位创建 |
-| `UnitPurchaseChanged` | `playerID, unitID` | 单位购买 |
+| `CityMadePurchase` | `owner, cityID, plotX, plotY, purchaseType, objectType` | 单位/建筑购买 |
 | `UnitCommandStarted` | `playerID, unitID, commandType, data1` | 单位命令 |
 | `CityProductionCompleted` | `playerID, cityID, type, ...` | 城市生产完成 |
 | `CityAddedToMap` | `playerID, cityID, x, y` | 城市创建 |
 | `DistrictAddedToMap` | `playerID, districtID, cityID, x, y, type, percent` | 区域完成 |
-| `ImprovementBuilt` | `playerID, cityID, x, y, improvementType` | 改良建成 |
+| `ImprovementAddedToMap` | `x, y, improvementIndex, playerID` | 改良建成 |
 | `PlayerTurnActivated` | `playerID, bIsFirstTime` | 回合开始 |
 | `LoadGameViewStateDone` | `()` | 初始化入口 |
 | `ReligionFounded` | `playerID, religionID` | 创立宗教 |
-| `PlayerEnteredNewEra` | `playerID, newEra` | 进入新时代 |
+| `PlayerEraChanged` | `playerID, eraIndex` | 进入新时代 |
 | `CapitalCityChanged` | `playerID, cityID` | 首都变更 |
 | `WorldTextMessage` | `messageType, playerID, args` | 世界消息 |
 

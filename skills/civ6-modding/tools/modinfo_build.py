@@ -10,10 +10,14 @@
     python modinfo_build.py <X.civ6proj> --deploy --mods-root <目录>
 
 产出与自检：
-    · modinfo 结构四段：Properties / InGameActions / LocalizedText / Files
-    · 生成后做 XML 良构解析 + `InGameActions` 内全部 <File> 引用存在性检查（悬空即 exit 1）
-    · `<Content Include>` 是拷贝清单（ModBuddy 只拷 Content 条目 —— 只写在 InGameActions 里
-      而漏进 Content 的文件不会被部署，是踩过的坑）
+    · modinfo 结构（对齐 ModBuddy 产物）：Properties / Dependencies / ActionCriteria /
+      FrontEndActions / InGameActions / (LocalizedText) / Files；UTF-8 BOM + CRLF
+    · 动作片段按 XML 解析重新序列化——兼容 ModBuddy 默认的单行 CDATA 与逐行 CDATA
+      （旧实现逐行过滤会把单行 CDATA 整段跳过，导致 InGameActions 全空）
+    · 生成后做 XML 良构解析 + FrontEnd/InGameActions 内全部 <File> 引用存在性检查（悬空即 exit 1）
+    · Content Include 是拷贝清单（ModBuddy 只拷 Content 条目 —— 只写在 InGameActions 里
+      而漏进 Content 的文件不会被部署，是踩过的坑）；去重在分隔符规范化之后，
+      反斜杠/斜杠两种写法不会产生重复 <File> 项
 
 退出码：0 成功 / 1 失败
 """
@@ -37,10 +41,78 @@ except Exception:
 
 NS = {"msb": "http://schemas.microsoft.com/developer/msbuild/2003"}
 
+# ModBuddy 在 .civ6proj 的 <UpdateArt> 里写的字面占位符（见 Civ6.Tasks.dll）。
+# 它只在 .civ6proj 里合法：ModBuddy 构建期会把它替换成真实 <ModName>.dep。
+# 本工具等价实现该替换 —— 否则游戏报 "Invalid file reference in action ... in <Files>?"，
+# 且该 mod 的 UpdateArt 不会被加载（ModArtLoader 无记录）→ 全部美术/图标静默空白。
+ART_DEP_PLACEHOLDER = "(Mod Art Dependency File)"
+
+# 动作段里 <File> 的匹配（必须容忍 Priority 属性，否则带 Priority 的文件被整条漏掉）
+FILE_IN_ACTION_RE = re.compile(r'<File(?:\s+Priority="\d+")?\s*>(.*?)</File>')
+
 
 def extract_cdata(raw: str, tag: str) -> str:
     m = re.search(r"<%s><!\[CDATA\[(.*?)\]\]></%s>" % (tag, tag), raw, re.S)
     return m.group(1) if m else ""
+
+
+def _esc(s: str) -> str:
+    return (s.replace("&", "&amp;").replace("<", "&lt;")
+             .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def _emit_element(el, indent: int) -> list[str]:
+    """把 XML 元素序列化为多行（属性保文档序；空元素自闭合）——对齐 ModBuddy 产出的观感。"""
+    pad = " " * indent
+    attrs = "".join(' %s="%s"' % (k, _esc(v or "")) for k, v in el.attrib.items())
+    children = list(el)
+    text = (el.text or "").strip()
+    if not children and not text:
+        return ["%s<%s%s />" % (pad, el.tag, attrs)]
+    if not children:
+        return ["%s<%s%s>%s</%s>" % (pad, el.tag, attrs, _esc(text), el.tag)]
+    lines = ["%s<%s%s>" % (pad, el.tag, attrs)]
+    for c in children:
+        lines.extend(_emit_element(c, indent + 2))
+    lines.append("%s</%s>" % (pad, el.tag))
+    return lines
+
+
+def split_actions(xml_text: str, wrapper: str) -> list[str]:
+    """把 <Wrapper>…</Wrapper> 动作片段拆成「一行一个子动作」的多行文本。
+
+    兼容两种 CDATA 书写风格：ModBuddy 默认的**单行**（整段在一行，旧实现会因
+    首行以 <Wrapper 开头被整体跳过 → 动作全丢）与逐行书写。实现上剥掉外层
+    Wrapper 后按 XML 片段解析，再逐个子元素重新序列化，与输入换行无关。
+    """
+    s = (xml_text or "").strip()
+    m = re.match(r"^<%s>(.*)</%s>$" % (wrapper, wrapper), s, re.S)
+    if m:
+        s = m.group(1).strip()
+    if not s:
+        return []
+    frag = ET.fromstring("<_Root>%s</_Root>" % s)
+    lines: list[str] = []
+    for child in frag:
+        lines.extend(_emit_element(child, 4))
+    return lines
+
+
+def extract_dependencies(raw: str) -> list[str]:
+    """从 AssociationData CDATA 提取 <Dependency>，转成 modinfo 的 <Mod id title/> 行。"""
+    assoc = extract_cdata(raw, "AssociationData").strip()
+    if not assoc:
+        return []
+    out = []
+    try:
+        root = ET.fromstring(assoc)
+    except ET.ParseError:
+        return []
+    for dep in root.iter("Dependency"):
+        dep_id, title = dep.get("id", ""), dep.get("title", "")
+        if dep_id:
+            out.append('    <Mod id="%s"%s />' % (_esc(dep_id), ' title="%s"' % _esc(title) if title else ""))
+    return out
 
 
 def indent_localized(localized: str) -> list[str]:
@@ -72,17 +144,41 @@ def build_modinfo(proj_path: str) -> tuple[str, str]:
         return (el.text or "").strip() if el is not None and el.text else ""
 
     guid, version = g("Guid"), g("ModVersion") or "1"
+    mod_name = os.path.splitext(os.path.basename(proj_path))[0]
     localized = extract_cdata(raw, "LocalizedTextData").strip()
     ingame = extract_cdata(raw, "InGameActionData").strip()
+    frontend = extract_cdata(raw, "FrontEndActionData").strip()
+    criteria = extract_cdata(raw, "ActionCriteriaData").strip()
+    # ★ ModBuddy 占位符替换 —— 等价于 ModBuddy 构建期行为。
+    #   `.civ6proj` 里 <UpdateArt> 写的是 `(Mod Art Dependency File)`（人类可读占位符），
+    #   派生到 .modinfo 时必须换成真实 <ModName>.dep —— 否则游戏报：
+    #     ERROR: Invalid file reference in action, did you forgot to add it in <Files>? - (Mod Art Dependency File)
+    #   且该 mod 的 UpdateArt 不会被加载（ModArtLoader 无记录）→ 全部美术/图标静默空白。
+    #   （实测对照：工程 A.civ6proj 写占位符，其 ModBuddy 产物是真名 .dep）
+    ingame = ingame.replace(ART_DEP_PLACEHOLDER, mod_name + ".dep")
+    frontend = frontend.replace(ART_DEP_PLACEHOLDER, mod_name + ".dep")
     if not guid:
         raise SystemExit("工程缺少 <Guid>（mod 身份唯一真源，禁止从其它 mod 复制）")
     if not ingame:
         raise SystemExit("工程缺少 <InGameActionData>")
 
-    content = sorted({i.get("Include") for i in tree.getroot().findall("msb:ItemGroup/msb:Content", NS)
+    # ★ 两个清单用途不同，必须分开（曾混用导致 .dep 触发「源文件不存在」误报）：
+    #   · content      = <Content Include> 拷贝清单（ModBuddy 只拷这些；.dep 不在其中）
+    #   · files_decl   = .modinfo 顶层 <Files> 声明清单（= content + cook 产物如 .dep）
+    content = sorted({i.get("Include").replace("\\", "/")
+                      for i in tree.getroot().findall("msb:ItemGroup/msb:Content", NS)
                       if i.get("Include")})
-    content = [c.replace("\\", "/") for c in content]
+    files_decl = list(content)
+    # <UpdateArt> 引用的 <ModName>.dep 必须同时出现在顶层 <Files>，否则游戏报
+    # "Invalid file reference in action, did you forgot to add it in <Files>?"。
+    # .dep 是 cook 产物（源工程本就没有），ModBuddy 会自动补进 <Files>；本工具等价处理。
+    # 注意：占位符已在上面替换为 <ModName>.dep，故这里检查替换后的名字。
+    dep_name = mod_name + ".dep"
+    if (dep_name in ingame or dep_name in frontend) and dep_name not in files_decl:
+        files_decl = sorted(files_decl + [dep_name])
 
+    # 段落顺序对齐 ModBuddy 产物：Properties → Dependencies → ActionCriteria
+    #   → FrontEndActions → InGameActions → (LocalizedText) → Files
     out = ['<?xml version="1.0" encoding="utf-8"?>',
            '<Mod id="%s" version="%s">' % (guid, version),
            "  <Properties>",
@@ -92,26 +188,46 @@ def build_modinfo(proj_path: str) -> tuple[str, str]:
            "    <Teaser>%s</Teaser>" % g("Teaser"),
            "    <Authors>%s</Authors>" % g("Authors"),
            "    <CompatibleVersions>%s</CompatibleVersions>" % (g("CompatibleVersions") or "1.2,2.0"),
-           "  </Properties>",
-           "  <InGameActions>"]
-    for line in ingame.splitlines():
-        s = line.strip()
-        if s.startswith("<InGameActions") or s.startswith("</InGameActions") or not s:
-            continue
-        out.append("    " + s)
+           "  </Properties>"]
+
+    deps = extract_dependencies(raw)
+    if deps:
+        out.append("  <Dependencies>")
+        out.extend(deps)
+        out.append("  </Dependencies>")
+
+    criteria_lines = split_actions(criteria, "ActionCriteria")
+    if criteria_lines:
+        out.append("  <ActionCriteria>")
+        out.extend(criteria_lines)
+        out.append("  </ActionCriteria>")
+
+    frontend_lines = split_actions(frontend, "FrontEndActions")
+    if frontend_lines:
+        out.append("  <FrontEndActions>")
+        out.extend(frontend_lines)
+        out.append("  </FrontEndActions>")
+
+    ingame_lines = split_actions(ingame, "InGameActions")
+    if not ingame_lines:
+        raise SystemExit("InGameActionData 解析不出任何动作（CDATA 格式？）：%s" % proj_path)
+    out.append("  <InGameActions>")
+    out.extend(ingame_lines)
     out.append("  </InGameActions>")
+
     out.extend(indent_localized(localized))
     out.append("  <Files>")
-    out.extend("    <File>%s</File>" % f for f in content)
+    out.extend("    <File>%s</File>" % f for f in files_decl)
     out.append("  </Files>")
     out.append("</Mod>")
     text = "\n".join(out) + "\n"
     ET.fromstring(text)  # 良构自检
-    return text, os.path.splitext(os.path.basename(proj_path))[0]
+    return text, mod_name, content
 
 
 def action_files(modinfo_text: str) -> list[str]:
-    return re.findall(r"<File>(.*?)</File>", modinfo_text)
+    # 注意必须容忍 <File Priority="N">：旧正则 <File>(.*?)</File> 会漏掉全部带 Priority 的文件
+    return FILE_IN_ACTION_RE.findall(modinfo_text)
 
 
 def main() -> int:
@@ -126,14 +242,14 @@ def main() -> int:
         raise SystemExit("找不到工程文件：%s" % proj)
     proj_dir = os.path.dirname(proj)
 
-    text, mod_name = build_modinfo(proj)
-    content = re.findall(r"<File>(.*?)</File>", text.split("<Files>")[1])
+    # content = <Content Include> 拷贝清单（只拷这些；不含 .dep 这类 cook 产物）
+    text, mod_name, content = build_modinfo(proj)
 
     if not args.deploy:
         dest_dir = os.path.join(proj_dir, "Build")
         os.makedirs(dest_dir, exist_ok=True)
         dest = os.path.join(dest_dir, mod_name + ".modinfo")
-        open(dest, "w", encoding="utf-8", newline="\r\n").write(text.replace("\r\n", "\n"))
+        open(dest, "w", encoding="utf-8", newline="\r\n").write("\ufeff" + text.replace("\r\n", "\n"))
         print("OK  ->  %s" % dest)
         print("    （未部署；加 --deploy 才会复制到 Mods 目录）")
         return 0
@@ -160,17 +276,44 @@ def main() -> int:
 
     dest = os.path.join(mod_dir, mod_name + ".modinfo")
     # .modinfo 属配置类文本 → CRLF（换行分层铁律，见 gotchas.md §68）。
-    # 原先写 LF，而 ModBuddy 构建/部署出的 modinfo 是 CRLF（实测线上 Ragunna_Pack.modinfo
+    # 原先写 LF，而 ModBuddy 构建/部署出的 modinfo 是 CRLF（实测线上 示例工程.modinfo
     # CRLF=1114 / LF=0）——两者混用会让「工具产物 vs ModBuddy 产物」出现伪不一致。
-    open(dest, "w", encoding="utf-8", newline="\r\n").write(text.replace("\r\n", "\n"))
+    open(dest, "w", encoding="utf-8", newline="\r\n").write("\ufeff" + text.replace("\r\n", "\n"))
     print("OK  ->  %s" % dest)
 
-    bad = [f for f in action_files(text.split("<Files>")[0])
+    action_part = text.split("<Files>")[0]
+    # ① 占位符残留 = 硬错误（替换在上面已做；若仍出现说明替换没生效）
+    if ART_DEP_PLACEHOLDER in action_part:
+        print("FAIL modinfo 残留占位符 %r（应替换为 %s.dep）" % (ART_DEP_PLACEHOLDER, mod_name))
+        return 1
+
+    # ② <UpdateArt> 必须指向真实 <ModName>.dep，且该文件存在于 Mods 副本。
+    #    .dep 由 cooker 生成（--mode Dependency 或任意 cook 模式的副产物）；
+    #    缺失时游戏只写一行 ERROR 然后美术全空，属静默失效，故在这里硬拦。
+    if re.search(r"<UpdateArt[^>]*>\s*<File>([^<]+)</File>", action_part):
+        dep_rel = mod_name + ".dep"
+        dep_abs = os.path.join(mod_dir, dep_rel)
+        if not os.path.isfile(dep_abs):
+            print("FAIL <UpdateArt> 需要 %s，但 Mods 副本里没有该文件。" % dep_rel)
+            print("     生成方式（无需 ModBuddy GUI）：")
+            print("       Civ6AssetCooker_FinalRelease.exe --absolute_paths --no_mt \\")
+            print("         --mode Dependency --platform Windows \\")
+            print("         --pantry <源工程> --dependency_root <源工程> \\")
+            print("         --config <SDK>\\AssetModTools\\Cooker\\Civ6.cfg \\")
+            print("         <源工程>\\<ModName>.Art.xml")
+            print("     然后把生成的 %s 复制到 %s" % (dep_rel, mod_dir))
+            return 1
+        # 判定要落在**顶层 <Files> 段**（content 只是 <Content Include> 拷贝清单，不含 .dep）
+        files_part = text.split("<Files>", 1)[1] if "<Files>" in text else ""
+        if ("<File>%s</File>" % dep_rel) not in files_part:
+            print("WARN %s 未登记进顶层 <Files>（游戏会报 'did you forgot to add it in <Files>?'）" % dep_rel)
+
+    bad = [f for f in action_files(action_part)
            if not os.path.isfile(os.path.join(mod_dir, f.replace("/", os.sep)))]
     if bad:
         print("FAIL 悬空引用（modinfo 声明但 Mods 副本里没有）：%s" % bad)
         return 1
-    print("OK  modinfo 引用的动作文件全部存在（%d 个）" % len(action_files(text.split("<Files>")[0])))
+    print("OK  modinfo 引用的动作文件全部存在（%d 个）" % len(action_files(action_part)))
     return 0
 
 

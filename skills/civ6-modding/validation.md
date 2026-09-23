@@ -70,9 +70,9 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 - [ ] **Script file in `Scripts/` directory** — not `UI/`
 - [ ] **Registered with `AddGameplayScripts`** — not `AddUserInterfaces`
 - [ ] **`Initialize()` called at bottom** — `Initialize();` as last line
-- [ ] **Uses `Events.*` / `GameEvents.*`** — NOT `LuaEvents.*`
+- [ ] **Uses `Events.*` / `GameEvents.*`** — 引擎事件按 `eventSystem` 选线；跨文件通信用 `LuaEvents.*`
 - [ ] **No UI access** — no `ContextPtr`, `Controls`, `UIManager`, etc.
-- [ ] **No `LuaEvents.*`** — LuaEvents 仅限 UI 上下文使用
+- [ ] **`LuaEvents.*` 仅用于同端跨文件** — UI 上下文互播 / GP 文件间跨文件；不跨端（GP→UI 用 ReportingEvents.SendLuaEvent）
 - [ ] **Nil checks on game objects** — `if pPlayer ~= nil and pPlayer:IsAlive() then`
 - [ ] **No `math.random()` in multiplayer** — use `Game.GetRandNum(n)`
 - [ ] **No `Game.GetLocalPlayer()` in Gameplay** — it's a UI concept
@@ -87,7 +87,10 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 - [ ] **灌库验证脚本须开启 FK** — `PRAGMA foreign_keys = ON`（SQLite 默认 OFF，不开则漏检外键错误）
 - [ ] **Referenced types exist** — `PrereqTech`, `TraitType`, etc. must be valid
 - [ ] **`LoadOrder` set correctly** — `-100` for schema/removal, `0` for standard, `100` for scenario
-- [ ] **`Priority` set for removal XML** — `Priority="1"` runs before default data
+- [ ] **依赖顺序已显式安排** — 动作之间用 `LoadOrder`（移除/前置 `-100`）；**同一动作内部**用 `Priority`（**数值越大越先**）。注意**同 `Priority`（含都省略）按路径字母序执行**，声明序无效 —— 曾被此坑导致 `no such table`
+      **什么算「明确需要先后加载」**（只有这两种才该写 `Priority`）：① 后者会**遍历/引用**前者写入的行（典型：Types → 遍历；建表 → `SELECT FROM` 该表）；② 运行时报错已**指向**加载顺序（`no such table: X` / 外键失败）。其余情况**不写** —— 动作划分总则见 `reference/action-splitting.md`
+- [ ] **双端注册齐备** — `Colors`/`PlayerColors`/`IconTextureAtlases`/`LocalizedText`/美术 `.dep` 必须在 **FrontEnd 与 InGame 各注册一个动作**（漏一端**静默失效、不报错**）
+- [ ] **动作划分复核** — 同类文件是否已**尽量合并**？只有 4 类「必须拆」与 2 类「可选拆」才该拆（详见 `reference/action-splitting.md` 决策树）
 - [ ] **Localization uses `<BaseGameText>`** — with `Tag` and `Text` columns
 - [ ] **Icon definitions use `<IconDefinitions>`** — with `Name`, `Atlas`, `Index`
 
@@ -101,8 +104,7 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 ## UI ↔ Gameplay Communication Validation
 
 - [ ] **No C++ objects passed across boundary** — only primitives
-- [ ] **ExposedMembers initialized（仅 GP 同端跨文件需要）** — `ExposedMembers.MyMod = ExposedMembers.MyMod or {}`；禁止跨端暴露给 UI
-- [ ] **GameEvents exposed correctly（仅 GP 同端跨文件）** — `ExposedMembers.GameEvents = GameEvents`；禁止 UI 跨端获取
+- [ ] **GP 同端跨文件通信用 LuaEvents** — 接收端 `LuaEvents.X.Add(fn)`（文件加载期注册），触发端 `LuaEvents.X(params)`；表格按引用传递，handler 回写、调用方无需 return；不用 ExposedMembers 跨文件传函数
 - [ ] **PlayerOperations only during player's turn** — UI side constraint
 - [ ] **Function arguments are simple types** — number, string (not tables)
 
@@ -128,7 +130,7 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
 | Script not loading | Wrong registration | Use `AddGameplayScripts`, not `AddUserInterfaces` |
-| Event not firing | Wrong event system | Use `GameEvents.*`, not `Events.*` |
+| Event not firing | Wrong event system | 按事件实际所在总线查 `reference/events_enhanced.json`（1081 条）的 `eventSystem` 字段：`Events` 与 `GameEvents` **按事件划分**，不可二选一；UI 侧 `GameEvents` 为 `nil` |
 | Crash on nil | Missing nil check | Add `if pPlayer ~= nil then` |
 | Data lost on save | Not using SetProperty | Use `Game:SetProperty()` for persistence |
 | Multiplayer desync | `math.random()` | Use `Game.GetRandNum(n)` |
@@ -141,6 +143,7 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 |---------|-------------|-----|
 | Data not loading | Missing `<Types>` row | Add `Type` + `Kind` registration |
 | Type not found | Wrong `Kind` value | Check schema for correct `KIND_*` |
-| Removal not working | Wrong Priority/LoadOrder | Use `Priority="1"` and `LoadOrder="-100"` |
+| Removal not working | Wrong Priority/LoadOrder | 用独立动作 + `LoadOrder="-100"`，或同动作内给移除文件**更大**的 `Priority`（注意数值越大越先，写 `1` 可能不够早） |
+| `no such table: X`（同 mod 内自建表） | 同动作内文件按**路径字母序**执行，依赖件被排到后面 | 给被依赖文件更大的 `Priority`（同动作内定序），或拆成不同动作 + `LoadOrder` 定序 |
 | Localization missing | Wrong tag format | Use `LOC_` prefix, match XML references |
 | Icon not showing | Wrong Atlas/Index | Check base game icon atlases |

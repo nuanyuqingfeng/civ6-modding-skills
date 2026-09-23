@@ -199,7 +199,7 @@ GameEvents.WC_Validate_PowerBuilding.Add(function(resType, playerId, options) ..
 |--------|-------------|
 | Needs matching `.xml` file | **No XML needed** |
 | Uses `ContextPtr` / `Controls` | No UI access |
-| Uses `Events.*` / `LuaEvents.*` | Uses `GameEvents.*` |
+| Uses `Events.*` / `LuaEvents.*`（UI 上下文互播） | Uses `GameEvents.*` / `Events.*`；跨文件通信用 `LuaEvents.*` |
 | Runs on UI thread | Runs on game core side |
 | Loaded per-screen / per-context | Loaded once per game |
 | Can read database via `GameInfo` | Can read AND modify game state |
@@ -255,7 +255,7 @@ end
 GameEvents.MyOperationName.Add(MyOperationName);
 ```
 
-#### 3. GP↔UI 被动读取: PROPERTY 直接读（跨端）/ ExposedMembers（仅 GP 同端跨文件）
+#### 3. GP↔UI 被动读取: PROPERTY 直接读（跨端）；GP 同端跨文件通知用 LuaEvents
 
 UI 刷新查询时被动读取 GP 数据。优先用 PROPERTY 直接读（零跨状态调用），共享读取函数定义在 Core 文件中，GP 和 UI 各自 `include()` 即可。
 
@@ -267,7 +267,7 @@ end
 ```
 
 UI 可直接读 PROPERTY：`Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")` 在 UI 侧同样可用。
-`ExposedMembers` 只能在 GP 同端跨文件共享函数时使用（例如多个 GP 文件互相调用），**禁止跨端暴露给 UI**。UI 需要读取 GP 数据时使用 PROPERTY 直接读或 Core 共享读取函数。
+`LuaEvents` 用于 GP 同端跨文件通信（多个 GP 文件互相通知）：接收端 `LuaEvents.X.Add(fn)`（文件加载期注册），触发端 `LuaEvents.X(params)`；表格按引用传递，handler 回写结果、调用方无需 return 即可读。**禁止跨端**：GP↔UI 不互通，GP→UI 用 `ReportingEvents.SendLuaEvent`，UI→GP 用 `EXECUTE_SCRIPT`。UI 需要读取 GP 数据时使用 PROPERTY 直接读或 Core 共享读取函数。
 
 ### AttachModifierByID — Dynamic Modifier
 
@@ -295,7 +295,7 @@ pPlot:SetProperty("MY_PLOT_FLAG", someValue);
 <Requirement>
     <Row RequirementId="REQ_MY_PLOT_PROP" RequirementType="REQUIREMENT_PLOT_PROPERTY_MATCHES">
         <PropertyName>MY_PLOT_FLAG</PropertyName>
-        <PropertyValue>1</PropertyValue>
+        <PropertyMinimum>1</PropertyMinimum>
     </Row>
 </Requirement>
 ```

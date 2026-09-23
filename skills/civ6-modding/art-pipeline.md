@@ -15,13 +15,13 @@
    问清 `IconsPerRow/IconsPerColumn` 或让 AI 按组员数推荐）／**各自独立出图**（走 `convert_art.ps1`）。
    用户说"序列图""拼图""图集""合成一张"时走 atlas 路线。
 
-4. **色相铁律（2026-09 实战教训）**：规范化只做**几何**（裁 alpha 外接框 / 等比缩放 / 居中），
-   **不得**叠加 levels / gamma / 亮度 / 对比度 / 饱和度 / 色相 / 重着色——那属于改美术。
+4. **只做几何变换**：规范化只允许**裁剪**（裁 alpha 外接框 / 等比缩放 / 居中）、
+   **通道透明度**与**描边**，**不得**叠加 levels / gamma / 亮度 / 对比度 / 饱和度 / 色相 / 重着色。
    彩色类别（建筑 / 区域 / 项目 / 资源 / 伟人 / 领袖…）必须 `color=None`；
    只有 `color=<n>` 是**显式**的「涂成灰度剪影」（`unit_icon` 的白色剪影就用它），
    它会把 R=G=B 整个覆盖掉，**用前必须确认该类别本来就是剪影**。
-   需要「提亮暗图」时先问用户，不要自作主张——本项目建筑图标曾因加了一步 levels+gamma
-   被判「色相变了」而全部返工。
+   需要"提亮暗图"之类超出上述范围的处理时，**停下询问用户**，不要自作主张
+   （本 skill 只做整理与导入，不是图片处理工作流）。
 
 **未确认前不得复制、改名、生成任何图片文件。**
 
@@ -163,9 +163,9 @@ Python 3 + **Pillow**（`make_atlas.py` 组版）、**numpy + scipy**（`normali
 
 | role | 典型尺寸（原版实测） | 对应贴图 / 注册目标 |
 |---|---|---|
-| `portrait` | 高 **1024**（宽随内容，原版实测 389~803） | UI 选人立绘 `LEADER_*_NEUTRAL` → `UILeaders.xlp`（`UITexture`）<br>3D 纸片人贴图 `LEADER_*_TEXTURE`/`_OPACITY` = **1024²** → `Leaders.artdef` |
+| `portrait` | 高 **1024**（宽随内容，原版实测 389~803） | UI 选人立绘 `LEADER_*_NEUTRAL` → `UILeaders.xlp`（`UITexture`）<br>3D 纸片人贴图 `LEADER_*_TEXTURE`/`_OPACITY` = **1024²** → `Leaders.artdef`<br>★ 该 `LEADER_*_NEUTRAL` **同时供** FrontEnd 选人 placard（`Players.Portrait`）与加载界面（`LoadingInfo.ForegroundImage`）——见 `civ6-asset-forge/reference/frontend-portrait.md` |
 | `fallback` | 高 **1024/1080**（宽随内容；原版 554~816） | `FALLBACK_NEUTRAL_*` → `LeaderFallbacks.xlp`（`LeaderFallback`） |
-| `background` | **1920×960** | `LEADER_*_BACKGROUND` → `Shell_Loading.xlp`（`UITexture`），领袖**加载界面**背景 |
+| `background` | 官方基线 **1920×960**；实作**以 960 为基准、允许更高**（本项目 1920×1080 实机良好）。**低于 960 有两侧裁剪风险** | `LEADER_*_BACKGROUND` → `Shell_Loading.xlp`（`UITexture`），领袖**加载界面**背景；<br>★ 也是 FrontEnd placard `PortraitBackground` 留空时的回退名——但 placard 控件是 **328×935 竖版**且 `StretchMode=None`，横版贴图只显示左上角<br>★ 尺寸规则与实机依据见 `civ6-asset-forge/reference/frontend-portrait.md` §2.4 |
 | `diplomacy_layer1..4` | 层 1–3 = **960×505**；层 4 = **1920×1010** | `<LEADER>_1..4` → `UI_LeaderScenes.xlp`（`UITexture`），外交**场景分层** |
 | `loyalty_3d` / `loyalty_sv` | 512 / 128 与 256 / 128 | 由 `civ6-asset-forge` 的 `reference/loyalty-icon.md` 固定；UILens XLP + artdef |
 | `custom` | 不限 | 兜底，注册目标由调用方负责 |
@@ -197,12 +197,25 @@ end
 
 | | 链 A `background`（**role 名**） | 链 B `diplomacy_layer1..4`（**role 名**） | 链 C `DiplomacyInfo`（**数据表，不是 role**） |
 |---|---|---|---|
-| 用途 | 领袖**加载/选人界面**背景 | 外交**分层场景**（视差） | 外交背景**整图替换** |
+| 用途 | 领袖**加载界面**背景（**同时是 FrontEnd 选人 placard 的回退**） | 外交**分层场景**（视差） | 外交背景**整图替换** |
 | 贴图名 | `LEADER_<X>_BACKGROUND` | `<X>_1` … `<X>_4`（**无** `LEADER_` 前缀） | 任意名（项目自定） |
 | 尺寸（原版实测） | **1920×960** | 层 1–3 **960×505**；层 4 **1920×1010** | 随源图（示例工程 用 1920×1080） |
 | XLP | `Shell_Loading.xlp` | `UI_LeaderScenes.xlp` | 任一 `UITexture` 包 |
-| 加载条件 | 无条件（按名自动找） | 仅当**没有** `DiplomacyInfo` 行时 | **有即优先**，压过链 B |
+| 加载条件 | 无条件（`LoadScreen.lua:213`）；选人 placard 里是 `PortraitBackground` 留空时的回退（`PlayerSetupLogic.lua:827`） | 仅当**没有** `DiplomacyInfo` 行时 | **有即优先**，压过链 B |
 | 层数由谁定 | —（单图） | `Leaders.SceneLayers`（原版只有 0 或 4） | —（单图） |
+
+> ⚠ **本节只讲「外交/加载」这一族。** 「领袖前景 / 背景」另有一套**互不相同**的通道，
+> 别与本节的链 A/B/C 混：
+>
+> | 环境 | 数据表（库） | 前景 | 背景 | 规格 |
+> |---|---|---|---|---|
+> | **FrontEnd 选人 placard** | `Players`（**Config**） | `Portrait` | `PortraitBackground` | 竖版 **328×935**（控件尺寸） |
+> | **加载界面** | `LoadingInfo`（**Gameplay**） | `ForegroundImage` | `BackgroundImage` | 背景**高 ≥960**（基准；= 本节链 A） |
+> | **外交场景** | `DiplomacyInfo` + `SceneLayers` | —（3D 模型） | `BackgroundImage` | = 本节链 B/C |
+>
+> 前景/背景的**列填写、回退链、别名复用、色调近似选型**见
+> `civ6-asset-forge/reference/frontend-portrait.md`（含 `328×935` 的完整推导与
+> `scripts/verify_frontend_portrait.py`、`scripts/pick_vanilla_background.py`）。
 
 **三条要点（都是实测/源码级结论）**：
 
@@ -384,7 +397,7 @@ python art/normalize_icon.py --role unit_icon --show        # 查看该类别规
 |---|---|---|
 | `canvas` | 256 | 最大档 |
 | `content` | 210（细高/细宽 ≤0.65 时 215） | 总占幅 86.7%（细高 88.7%），落在原版 p75~p90 |
-| `color` | **None（保留原色）** | 彩色 diorama 渲染，改色即返工 |
+| `color` | **None（保留原色）** | 彩色 diorama 渲染 |
 | `outline` | `{px: 6, rgb: [0,0,0]}` | 原版 alpha 边界内 d1~4 纯黑、d5 过渡 |
 
 - 原版主体最长边占画布 **61%~96%，中位 82.6%**，几何居中。
@@ -456,7 +469,7 @@ python art/normalize_icon.py --role unit_icon --show        # 查看该类别规
 |---|---|---|
 | `canvas` | 256 | 最大档 |
 | `content` | 224（87.5%） | 实测主体最长边占画布 85.5%~100%（中位 92.6%）；取区间内保守值，与 `unit_icon` 口径一致（源图本身偏满可显式传 `--content 235`） |
-| `color` | **None（保留原色）** | 原版是浅蓝灰插画（亮度 113~177 / 饱和度 5~25 / 近白像素仅 0~7%），改色即返工 |
+| `color` | **None（保留原色）** | 原版是浅蓝灰插画（亮度 113~177 / 饱和度 5~25 / 近白像素仅 0~7%） |
 | 描边 | 无 | 原版改良图标无附加描边 |
 | FOW | **不出** | 原版改良设施没有 `_FOW` 图集 |
 
@@ -781,7 +794,7 @@ python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png
 
 `iconify_text.py --audit` 把文本里出现的每个 `[ICON_x]` 拿去**两个来源**核对，解析不到就是悬空：
 
-1. **官方原版**：`reference/sources/civ6-icon-tags.sql` 的 4836 个 `[ICON_*]` 全表；
+1. **官方原版**：`reference/sources/civ6-icon-tags.sql` 的 5056 个 `[ICON_*]` 全表；
 2. **本工程自定义**：工程 `Data/*.xml`、`Mod_Adaptation/**/*.xml` 里 `IconDefinitions` /
    `IconTextureAtlases` 声明的名字（如 `RESOURCE_AUREO_RGN`）。
 

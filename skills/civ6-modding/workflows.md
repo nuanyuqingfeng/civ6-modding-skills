@@ -52,7 +52,7 @@ What needs to talk to what?
 │       → Both are UI-side, safe to pass simple types
 │
 ├─ UI → Gameplay (read game state)
-│   └─ Use: PROPERTY 直接读 / Core 共享读取函数（跨端）；ExposedMembers 仅限 GP 同端跨文件，禁止跨端暴露
+│   └─ Use: PROPERTY 直接读 / Core 共享读取函数（跨端）；GP 同端跨文件通知用 LuaEvents，禁止跨端 ExposedMembers
 │       → See ui-lua.md "UI <—> Gameplay Communication"
 │
 ├─ UI → Gameplay (modify game state)
@@ -188,6 +188,9 @@ Initialize();
     <File>UI/Additions/MyMod_LaunchButton.lua</File>
 </ImportFiles>
 ```
+
+> ⚠️ **这是「最小可读」写法，不是「一个文件一个动作」的惯例** —— 动作数由**动作类型 / criteria / 库归属**决定，不由文件数决定。
+> 同类文件应尽量合并进同一个动作（如多个 `UI/Additions/*.xml` 同挂一个 `AddUserInterfaces`）。完整判据见 `reference/action-splitting.md`。
 
 ### Step 4 — Verify
 
@@ -475,7 +478,7 @@ What gameplay task?
 │
 ├─ COMMUNICATE between UI and Gameplay
 │   ├─ UI needs to READ game state
-│   │   └─ Use: PROPERTY 直接读 / Core 共享读取函数（跨端）；ExposedMembers 仅限 GP 同端跨文件，禁止跨端暴露
+│   │   └─ Use: PROPERTY 直接读 / Core 共享读取函数（跨端）；GP 同端跨文件通知用 LuaEvents，禁止跨端 ExposedMembers
 │   ├─ UI needs to MODIFY game state
 │   │   └─ Use: PlayerOperations + UI.RequestPlayerOperation()
 │   └─ Gameplay needs to NOTIFY UI
@@ -503,7 +506,7 @@ Where is your code running?
 │
 └─ GamePlay Lua script (no UI access)
     ├─ React to game state changes → GameEvents.*
-    └─ Custom hooks for GP 同端跨文件 → GameEvents.* + ExposedMembers；GP→UI 推送用 ReportingEvents.SendLuaEvent
+    └─ Custom hooks for GP 同端跨文件 → LuaEvents.*（表格按引用传递）；GP→UI 推送用 ReportingEvents.SendLuaEvent
 ```
 
 ## Decision Tree 6: How to Persist Data?
@@ -658,7 +661,7 @@ local level = pCity:GetProperty("MyMod_CityLevel") or 1;
 
 **Goal:** UI reads/modifies game state managed by Gameplay scripts.
 
-### Method 1: PROPERTY / Core 共享读取函数（UI 跨端读取）；ExposedMembers 仅限 GP 同端跨文件
+### Method 1: PROPERTY / Core 共享读取函数（UI 跨端读取）；GP 同端跨文件通知用 LuaEvents
 
 **GP 侧写数据**（`Scripts/MyData.lua`）：
 ```lua
@@ -678,16 +681,17 @@ include("Core_MyMod");
 local data = GetMyModData();
 ```
 
-**GP 同端跨文件共享**（允许 ExposedMembers，但禁止跨端暴露给 UI）：
+**GP 同端跨文件通信**（LuaEvents；禁止跨端暴露给 UI）：
 ```lua
--- GP file A
-ExposedMembers.MyMod = ExposedMembers.MyMod or {};
-ExposedMembers.MyMod.GetValue = function(key)
-    return Game:GetProperty(key);
-end
+-- GP file A（接收端，文件加载期注册）
+LuaEvents.MyModGetValue.Add(function(params)
+    params.result = Game:GetProperty(params.key);
+end)
 
--- GP file B（同一 GP 状态）
-local value = ExposedMembers.MyMod.GetValue("MyMod_CustomData");
+-- GP file B（触发端，同一 GP 状态）
+local params = { key = "MyMod_CustomData" };
+LuaEvents.MyModGetValue(params);
+local value = params.result;   -- handler 已同步回写，无需 return
 ```
 
 ### Method 2: PlayerOperations (UI modifies Gameplay state)
@@ -931,7 +935,7 @@ Follow Workflow C for the panel, Workflow H for communication.
 | Store per-player data | SetProperty | `pPlayer:SetProperty(key, val)` |
 | Store per-game data | SetProperty | `Game:SetProperty(key, val)` |
 | UI reads Gameplay | PROPERTY / Core 共享读取函数 | `Players[id]:GetProperty()` / `include("Core_Mod")` |
-| GP 同端跨文件共享 | ExposedMembers | `ExposedMembers.Mod.Func()`（禁止跨端暴露给 UI） |
+| GP 同端跨文件通信 | LuaEvents | `LuaEvents.Mod_Func(params)`（表格按引用传递；禁止跨端） |
 | UI modifies Gameplay | PlayerOperations | `UI.RequestPlayerOperation()` |
 | Gameplay notifies UI | GameEvents | `GameEvents.X.Call(data)` |
 | Add new content | Database XML | `<Types>` + `<Row>` |

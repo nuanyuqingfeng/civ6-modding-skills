@@ -14,7 +14,7 @@
 | `civ6-art-reference` | 1.3 | **引用原版美术素材**：ArtDef/XLP 四层引用链 + **cook 层**（pantry 解析→产物归一化→警告即静默降级→源/产物差异分级） | 1.40 MiB |
 | `civ6-audio-pipeline` | 1.3 | **音频全流程**：素材整备→核验→按类别响度均衡→Wwise 工程直改→自动注册（语音 / BGM / 普通 sfx 三类路由） | 4.93 MiB |
 | `civ6-tuner` | — | **FireTuner 运行时验证**（TCP 4318）：在运行中的对局里执行 Lua，回答"这个 API 实际行为是什么" | 0.11 MiB |
-| **`civ6-asset-forge`** | 1.0 | **2D 美术素材总入口**：由原 `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` **四个 skill 合并而成**——忠诚度/宗教压力图标、总督素材、2D 领袖立绘注册（各成一册 `reference/*.md`）；2026-09-17 增第 ⑤ 类 **UI 领袖立绘 / 选人界面背景（Suk 适配）** 与第 ⑥ 类 **历史时刻插画（MomentIllustrations）**。⚠ **单位晋升图标（原第 ③ 类）生成管线已于 2026-09-18 作废**，只保留规格 `reference/promotion-icon-sizes.md` | 14.6 MiB |
+| **`civ6-asset-forge`** | 1.0 | **2D 美术素材总入口**：由原 `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` **四个 skill 合并而成**——忠诚度/宗教压力图标、总督素材、2D 领袖立绘注册（各成一册 `reference/*.md`）；2026-09-17 增第 ⑤ 类 **UI 领袖立绘 / 选人界面背景（Suk 适配）** 与第 ⑥ 类 **历史时刻插画（MomentIllustrations）**；2026-09-19 增第 ⑦ 类 **原版 FrontEnd 立绘/背景（选人 placard + 加载界面）**——此前该链被误判为"不关联"而无人承接。⚠ **单位晋升图标（原第 ③ 类）生成管线已于 2026-09-18 作废**，只保留规格 `reference/promotion-icon-sizes.md` | 14.6 MiB |
 
 > **体量口径**（2026-09-18 实测）：**不含 `.git/` 与 `__pycache__/`**，1 MiB = 1,048,576 字节
 > （`Get-ChildItem -Recurse -File | Measure-Object Length -Sum` 同口径）；asset-forge 的 14.6 MiB
@@ -49,12 +49,14 @@
 | **新增城邦 / 城邦不进选单 / 宗主国加成 / 使者层级** | `civ6-modding` → **`citystate-authoring.md`** |
 | **写平衡补丁 / 差分覆盖 mod** | `civ6-modding` → **`balance-patch.md`** |
 | 注册 `.civ6proj` / `.modinfo` / 文件清单 | `civ6-modding` → `project-setup.md` |
+| **加载动作怎么划分**（该不该拆 / 何时写 `Priority` / 双端注册） | `civ6-modding` → **`reference/action-splitting.md`**（权威：默认合并 + 4 类必须拆 + 2 类可选拆 + 决策树） |
 | 给新对象配**原版模型素材** | `civ6-art-reference` |
 | 排查 ArtDef 双端不同步 / cook 报错 / 单位渲染残缺 | `civ6-art-reference` → `reference/cook-layer.md` |
 | PNG → DDS/`.tex`、图标尺寸问答、图集拼版 | `civ6-modding` → `art-pipeline.md` |
 | 导入语音 / BGM / 音效、bank、响度均衡 | `civ6-audio-pipeline` |
 | **做 2D 领袖立绘（立绘纸片人注册链）** | `civ6-asset-forge` → `reference/leader-2d.md` |
-| **适配 Sukritact 选人界面（suk selection / 领袖选择界面 2D 立绘+背景）** | `civ6-asset-forge` → `reference/ui-leader-portrait.md` |
+| **做原版环境领袖前景/背景（选人界面立绘、加载界面背景、LoadingInfo、借用原版背景）** | `civ6-asset-forge` → `reference/frontend-portrait.md` |
+| **适配 Sukritact 选人界面（suk selection / 领袖选择界面 2D 立绘+背景）** | `civ6-asset-forge` → `reference/ui-leader-portrait.md`（**可选分支**；原版那套见上一行） |
 | **做历史时刻插画（MomentIllustrations / 时代得分图 / Moment_*）** | `civ6-asset-forge` → `reference/moment-illustration.md` |
 | **做忠诚度 / 宗教压力图标** | `civ6-asset-forge` → `reference/loyalty-icon.md` |
 | **问单位晋升图标（promotion icon）尺寸 / 格式 / 注册** | `civ6-asset-forge` → `reference/promotion-icon-sizes.md`（**仅规格**；生成管线已作废） |
@@ -63,7 +65,7 @@
 | **上传 / 更新 Steam 工坊** | `civ6-modding` → **`release.md`**（脚本 `release/scripts/`） |
 | 多语言翻译与本地化审计 | `civ6-modding` → `SKILL.md` §4.1（Civ6 侧规则；工具自备） |
 
-> `civ6-asset-forge` 的素材类分册在 skill 内以 `reference/*.md` 组织：`leader-2d.md` / `loyalty-icon.md` / `governor-art.md` / `ui-leader-portrait.md` / `moment-illustration.md` / `promotion-icon-sizes.md`（最后一册**只有尺寸规格**——类别③ 的生成管线已作废）；总入口与该 skill 自己的路由表见其 `SKILL.md`。
+> `civ6-asset-forge` 的素材类分册在 skill 内以 `reference/*.md` 组织：`leader-2d.md` / `loyalty-icon.md` / `governor-art.md` / `ui-leader-portrait.md`（Suk，**可选分支**） / `frontend-portrait.md`（原版 FrontEnd 选人+加载界面，**必需**） / `moment-illustration.md` / `promotion-icon-sizes.md`（最后一册**只有尺寸规格**——类别③ 的生成管线已作废）；总入口与该 skill 自己的路由表见其 `SKILL.md`。
 > 原 `civ6-leader-2d` / `civ6-loyalty-icon` / `civ6-promotion-icon` / `civ6-governor-art` 四个名字**已废止**，一律改走 `civ6-asset-forge`。
 
 **混合任务**：先按本表定位主 skill，再按需读其它 skill 的对应章节；`civ6-modding/SKILL.md` 的 Task Routing 是完整决策树。
@@ -185,6 +187,7 @@ UTF-8 读写；不改编码/换行；PowerShell 先 `chcp 65001`；**查看中�
 | **P1 新章节** | `governor-authoring.md` / `citystate-authoring.md` / `balance-patch.md` |
 | **P2 扩充** | `gotchas.md` §44–64（LoadOrder 阶梯 / Criteria 三态 / 引擎数据细节 / 双端 API 差异）；`project-setup.md`（LoadOrder 分层、两轴、工程骨架） |
 | **P3 工具** | `scripts/` 六个新校验器 + `scripts/README.md` |
+| **P5 新增（2026-09-22）** | **`reference/action-splitting.md`** —— 加载动作划分权威依据：默认合并 / 4 类必须拆 / 2 类可选拆 / `Priority` 纪律 / 官方 7 条划分轴；并更正官方 `LoadOrder` 实为**仅 17 处、两个值**（旧文档的 `-75/-50/50` 阶梯官方不存在） |
 | art 侧 | `civ6-art-reference`：pantry 注意事项 + `cook-layer.md §2.3` 的双端不一致分级判定（换行分层的执法口径已统一到 `gotchas.md` §68） |
 
 ---

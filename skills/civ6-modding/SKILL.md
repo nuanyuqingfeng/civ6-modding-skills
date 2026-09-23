@@ -92,6 +92,7 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 |------|-------|
 | **从零新建工程**（"建一个新 mod / 新工程骨架"、要一个可构建的 `.civ6proj`） | → `python tools/new_project.py <目录> --name <ModName>`（生成 `.civ6proj` + 目录 + `.gitignore`/`.gitattributes`，并自动派生 `.modinfo`）；格式细节见 `project-setup.md`，**GUID 必须新生成**（工具内置全网查重） |
 | **新文明 / 新领袖的数据与文本** | → `civilization-authoring.md` / `leader-authoring.md`（表清单、LOC 推导、注册位置）；美术→`civ6-asset-forge`、3D 引用→`civ6-art-reference`、BGM/语音→`civ6-audio-pipeline` |
+| **领袖前景（立绘）/ 背景**（选人界面立绘、加载界面背景、`Players.Portrait/PortraitBackground`、`LoadingInfo`、借用原版背景） | → `civ6-asset-forge` skill 的 **`reference/frontend-portrait.md`**（三环境对照：选人 placard / 加载界面 / 外交；含 328×935 推导与色调近似选型）；Suk 分支另见其 `reference/ui-leader-portrait.md` |
 | **UI panel** (XML + Lua) | → UI Routing ↓ |
 | **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节，图标规范化/占幅/边距规范查其第四节 |
 | **图标实机锯齿 / 边缘发硬 / 毛刺**（"游戏里图标不清晰"、"小尺寸档有锯齿"、接手他人图集想验中间档） | → `art-pipeline.md` **第 8.1 节「边缘质量门」**：`verify_icon_atlas.py --edge-qa` 体检 + `regen_atlas_tiers.py` 从母版重出。**注意结构校验查不出这类问题** |
@@ -186,7 +187,7 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 3. **默认多语言合并进原 SQL**，不新增分语言文件；UTF-8 / CRLF / 注释 / 尾逗号保持原样。
 4. **先查原版有没有现成 tag**：`SELECT Text FROM LocalizedText WHERE Tag='LOC_X' AND Language='zh_Hans_CN'`
    （`database/DebugLocalization.sqlite`）——能复用就复用，文案还与官方逐字一致。
-   > ⚠️ **该库是「基础游戏」快照**（15,237 tag × 12 语言），**不含任何 DLC/资料片文本**：
+   > ⚠️ **该库是「基础游戏」快照**（实测 **28,060 tag × 12 语言**），**不含任何 DLC/资料片文本**：
    > `LOC_LEADER_MANSA_MUSA_NAME`（曼萨穆萨）、`LOC_DISTRICT_PRESERVE_NAME`（保护区）、
    > `LOC_GOVERNOR_THE_DEFENDER_NAME`（维克多）**全部查不到**。别据此断定"官方没这个 tag"。
    >
@@ -216,7 +217,27 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
    > 权威分段判据在 `.modinfo`：新式看 `<ActionCriteria>` 里 `ConfigurationId=GAMEMODE_*`，
    > 旧式（仅 `VikingsScenario`）看 `<Properties><RuleSet>` 的 `RULESET_SCENARIO_*`；
    > 模式清单的权威表是 `DebugConfiguration.sqlite → GameModeItems`（8 行），**不在 Gameplay 库**。
-5. 写入后逐条复核：标签齐缺失（八语言）、空值、标记漂移；改动量大时按 `validation.md` 的清单过一遍。
+
+#### 语言分级制度（写文本前先定语种数）
+
+**默认基线 L0 = 三语**：`zh_Hans_CN` + `zh_Hant_HK` + `en_US`。
+
+**判定优先级：项目 `AGENTS.md` 的要求 ＞ skill 默认 L0。**
+项目里明确要求更多或更少语种时，**以项目内部要求为准**；没说就按 L0 三语。
+
+| 级别 | 语种 |
+|---|---|
+| **L0（默认）** | `zh_Hans_CN` / `zh_Hant_HK` / `en_US` |
+| **L1（可选扩展）** | `ja_JP` / `ko_KR` / `de_DE` / `es_ES` / `fr_FR` / `it_IT` / `pl_PL` / `pt_BR` / `ru_RU` |
+
+> **语言文本库（DebugLocalization.sqlite）保持全量 12 语言维护，不按分级裁剪** ——
+> 分级只约束「本项目交付多少语种」，不约束查询库。
+> 实测该库 12 语言：`en_US` / `fr_FR` / `de_DE` / `it_IT` / `es_ES` / `ja_JP` / `ru_RU` /
+> `pl_PL` / `ko_KR` / `zh_Hant_HK` / `zh_Hans_CN` / `pt_BR`（28,060 tag）。
+>
+> ⚠️ 旧的「八语言复核」口径会**漏检 `it_IT` / `pl_PL` / `pt_BR` / `ru_RU` 四种**，已废止。
+
+5. 写入后逐条复核：标签齐缺失（**按上方「语言分级制度」定的语种数**）、空值、标记漂移；改动量大时按 `validation.md` 的清单过一遍。
 
 > 文本与图标/颜色的对照数据在本 skill 内：`database/DebugLocalization.sqlite`（官方文本 + 手工标注侧表
 > `SkillAnnotation_Colors` / `SkillAnnotation_Icons`）与 `reference/sources/` 的两份社区常量表。
@@ -361,6 +382,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 |---------|----|-----------|
 | UI Lua context | `Events.*` | YES — `.Remove()` in `OnShutdown()` |
 | UI Lua context | `LuaEvents.*` | No — auto-cleanup |
+| GamePlay Lua script | `LuaEvents.*` | No — GP 文件间跨文件派发可达；表格按引用传递 |
 | GamePlay Lua script | `GameEvents.*` | No — loaded once per game |
 | GamePlay Lua script | `Events.*` | 引擎事件在 GP 侧同样可用；`.Remove()` 非必需（脚本每局加载一次） |
 
@@ -377,10 +399,10 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 | 方向 | 方式 | 场景 |
 |------|------|------|
-| UI ↔ UI | LuaEvents（仅基础类型） | 面板间广播 |
+| UI ↔ UI / GP ↔ GP | LuaEvents（表格按引用传递；禁传 C++ 对象） | 端内跨文件广播/通知 |
 | UI → Gameplay | EXECUTE_SCRIPT | 按钮触发 GP 动作 |
 | Gameplay → UI | ReportingEvents.SendLuaEvent | 数据变更推送 |
-| GP ↔ UI 被动读 | PROPERTY 直接读（跨端）；ExposedMembers 仅限 GP 同端跨文件 | 查询，非按钮回调；禁止跨端暴露 |
+| GP ↔ UI 被动读 | PROPERTY 直接读（跨端） | 查询，非按钮回调；GP 同端跨文件的主动通知走 LuaEvents，不用 ExposedMembers |
 
 ### PROPERTY 系统速查
 
@@ -437,7 +459,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 1. **不要混用 UI/GP API** — 查可用性
 2. **不要忘记热重载** — 始终处理 `OnInit(isReload)` 和 `OnShutdown()`
-3. **不要通过 LuaEvents 传 C++ 对象** — 仅传基础类型
+3. **不要通过 LuaEvents 传 C++ 对象** — 表格按引用传递（端内跨文件实时同步），C++ 对象（userdata）禁止
 
 ---
 
@@ -610,7 +632,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 |--------|------|------|
 | `database/DebugGameplay.sqlite` | **61,014,016 字节（58.2 MiB）** | 游戏数据（427 表）；`rgn_validate` 的基础库、SQL 查询主库 |
 | `database/api.sqlite` | 2.5 MB | Lua API（4857 行；含 2026-09-08 FireTuner 实测核验列，见下节；**原始记录随包**：`database/api-verification-2026-09-08/`） |
-| `database/DebugLocalization.sqlite` | **65,081,344 字节（62.1 MiB）** | 官方本地化文本（8 语言）+ `SkillAnnotation_*` 手工标注侧表 |
+| `database/DebugLocalization.sqlite` | **106,811,392 字节（101.9 MiB）** | 官方本地化文本（**12 语言**）+ `SkillAnnotation_*` 手工标注侧表 |
 | `database/DebugConfiguration.sqlite` | 1.1 MiB | FrontEnd 配置数据（`Maps` 等） |
 | `database/source_index.sqlite` | 29.1 MiB | 官方行级来源索引 + 人工 `dlc_dependency` 标注 |
 | `database/api-verification-2026-09-08/` | 6.2 MiB | API 核验原始记录 |

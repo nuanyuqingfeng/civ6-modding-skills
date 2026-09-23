@@ -157,7 +157,7 @@ function InitializeNewGame()
     for row in GameInfo.Units() do
         -- Setup ...
     end
-    for _, iPlayerID in ipairs(PlayerManager.GetAliveIDs()) do
+    for _, iPlayerID in pairs(PlayerManager.GetAliveIDs()) do   -- 引擎返回数组可能稀疏，用 pairs（见 gotchas §63）
         -- Per-player setup ...
     end
 end

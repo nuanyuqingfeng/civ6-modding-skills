@@ -296,12 +296,22 @@ def build(spec):
                       "Portrait": ld.get("portrait"), "PortraitBackground": ld.get("portrait_background"),
                       "PlayerColor": ld.get("player_color"), "HumanPlayable": 1,
                       "SortIndex": ld.get("sort_index", i + 1)}))
-        if ld.get("portrait"):
-            # 两张 XLP/资产条目名（自由字符串）——提醒别忘登记，否则界面空白
-            for kind in ("portrait", "portrait_background"):
-                if ld.get(kind):
-                    warns.append("%s 的 %s=%s 必须在 UITexture 类 XLP 里登记，否则不进 BLP（界面空白）"
-                                 % (lt, kind, ld[kind]))
+        # 两张 XLP/资产条目名（自由字符串）——提醒别忘登记，否则界面空白。
+        # ★ 原版 FrontEnd 下这两列是**必需**的，且**留空 ≠ 安全**：
+        #   引擎会回退到 <LeaderType>_NEUTRAL / _BACKGROUND（PlayerSetupLogic.lua:807-829）；
+        #   mod 领袖通常没有这两个回退名 → 控件空白且**前端不报错**。
+        #   规格与自建/别名两条路见 civ6-asset-forge/reference/frontend-portrait.md。
+        for kind, fallback in (("portrait", "_NEUTRAL"), ("portrait_background", "_BACKGROUND")):
+            if ld.get(kind):
+                warns.append("%s 的 %s=%s 必须在 UITexture 类 XLP 里登记，否则不进 BLP（界面空白）"
+                             % (lt, kind, ld[kind]))
+            else:
+                warns.append("%s 未提供 %s → Players.%s 为空，引擎将回退到 %s%s；"
+                             "该回退名在工程里通常不存在 → 原版选人界面控件**空白且不报错**。"
+                             "要么自建（竖版背景 328×935），要么用 civ6-asset-forge 的 "
+                             "pick_vanilla_background.py 产 XLP 别名复用官方贴图。"
+                             % (lt, kind, "Portrait" if kind == "portrait" else "PortraitBackground",
+                                lt, fallback))
         for it in (ld.get("player_items") or []):
             c.append(ins("PlayerItems",
                          ["Domain", "CivilizationType", "LeaderType", "Type", "Name",
