@@ -12,19 +12,23 @@
 | `scripts/apply_moment_template.py` | apply_moment_template.py — 历史时刻插画：把源图套上官方形状模板 | `python apply_moment_template.py (--input <源图> \| --input-dir <目录>) [--template N \| --auto] [--out <目录>] [--dds] [--list]` |
 | `scripts/build_icon_set.py` | build_icon_set.py - 由"一张头像"生成总督全套图标（色调高度一致） | `python build_icon_set.py --avatar 头像.png --outdir out --key CTTH_RGN<br>python build_icon_set.py --avatar 头像.png --outdir out --glyph 图形.png --checker` |
 | `scripts/edge_gradient.py` | edge_gradient.py - 立绘"边缘透明渐变"处理器 | `python edge_gradient.py --input 立绘.png --outdir out --key CTTH_RGN<br>python edge_gradient.py --input a.png --input b.png --outdir out --key CTTH_RGN` |
-| `scripts/gen_leader_2d.py` | gen_leader_2d.py — Civ6 2D 领袖（立绘纸片人）注册文件生成器 | `python gen_leader_2d.py --project <工程路径> [--pack 包名] [--abbr 缩写]       --leaders "Cartethyia:CTTH,Fleurdelys:FDL,Cantarella:CTRL,Ciaccona:CCN,Phoebe:PHB,Roccia:RCC"` |
+| `scripts/gen_leader_2d.py` | gen_leader_2d.py — Civ6 2D 领袖（立绘纸片人）注册文件生成器 | `python gen_leader_2d.py --project <工程路径> --leader-types "LEADER_A_QYQXP,LEADER_B"<br>python gen_leader_2d.py --project <工程路径> [--pack 包名] [--abbr 缩写]       --leaders "Cartethyia:CTTH,Fleurdelys:FDL"        # 旧写法（会自动补 --leader-types 缺省值）` |
 | `scripts/gen_loyalty_art.py` | 文明6 忠诚度图标注册链生成：XLP / ArtDef / mtl / ast + Art.xml、civ6proj 补注册。 | `python gen_loyalty_art.py --project "<工程路径>" --civ-types CIVILIZATION_RAGUNNA_QYQXP[,CIVILIZATION_X2...]` |
 | `scripts/gen_religion_art.py` | 文明6 新宗教（自定义宗教类型）压力/镜头图标注册链生成。 | `python gen_religion_art.py --project "<工程路径>" --religion-types RELIGION_CUSTOM_RGN[,RELIGION_X2...]` |
 | `scripts/gen_suk_portrait.py` | gen_suk_portrait.py — Sukritact's Civ Selection Screen 适配素材与接线生成器 | `python gen_suk_portrait.py --project <工程根> --check<br>python gen_suk_portrait.py --project <工程根> --write` |
+| `scripts/migrate_leader_matte.py` | migrate_leader_matte.py — 把 2D 领袖纸片材质从 PBR 人物类 Leader 迁到平面类 Leader_Matte | `python migrate_leader_matte.py <工程根>                 # 预演（默认，不写盘）<br>python migrate_leader_matte.py <工程根> --check         # 只体检：有待迁移项则 exit 2` |
 | `scripts/migrate_suk_namespace.py` | migrate_suk_namespace.py — 把「Suk 选人界面适配」素材从**官方前缀借用**迁到**独立命名空间** | `python migrate_suk_namespace.py <工程根>                  # 预演（默认，不写盘）<br>python migrate_suk_namespace.py <工程根> --check          # 只体检：有待迁移项则 exit 2` |
-| `scripts/process_leader_png.py` | process_leader_png.py — Civ6 2D 领袖立绘 PNG -> TEXTURE/OPACITY 1024x1024 素材生成器 | `python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA_QYQXP` |
+| `scripts/pick_vanilla_background.py` | pick_vanilla_background.py — 「借用原版领袖背景」的量化挑选 + 接线产出 | `python pick_vanilla_background.py --list<br>python pick_vanilla_background.py --reference <立绘.png> --top 5` |
+| `scripts/prepare_frontend_portrait.py` | prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与接线** | `python prepare_frontend_portrait.py --project <工程根> --leader LEADER_X_QYQXP \<br>python prepare_frontend_portrait.py --project <工程根> --leader LEADER_X_QYQXP \` |
+| `scripts/process_leader_png.py` | process_leader_png.py — Civ6 2D 领袖立绘 PNG -> TEXTURE/OPACITY 1024x1024 素材生成器 | `python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA` |
 | `scripts/process_loyalty_icon.py` | 文明6 忠诚度/宗教图标合成：图标 + 黑色光晕模板 → PNG 组。 | `python process_loyalty_icon.py --kind {loyalty\|religion} (--icon <png> \| --project <工程>) --suffix <后缀> [--out-dir <目录>] [--fit-mode {core,extent}]` |
 | `scripts/psd_inspect.py` | PSD 结构检视 + 图层导出（类别⑥ 历史时刻模板反推用）。 | `python psd_inspect.py <psd或目录> [--pick 1,4,18] [--all] [--export-layers] [--out <目录>]` |
 | `scripts/verify_badge.py` | verify_badge.py - 总督 24px 徽章几何/配色验证 | `python verify_badge.py 生成.png                  # 只做几何自洽校验<br>python verify_badge.py 生成.png 官方格.png        # 与官方对照，输出 IoU 与配色误差` |
+| `scripts/verify_frontend_portrait.py` | verify_frontend_portrait.py — **原版环境** 领袖前景/背景接线的只读校验器 | `python verify_frontend_portrait.py --project <工程根><br>python verify_frontend_portrait.py --project <工程根> --json` |
 | `scripts/verify_moment.py` | verify_moment.py — 历史时刻插画与接线的只读校验器 | `python verify_moment.py --project <工程根><br>python verify_moment.py --project <工程根> --coverage-min 75 --coverage-max 99` |
 | `scripts/verify_suk_portrait.py` | verify_suk_portrait.py — Suk 选人界面适配素材与接线的只读校验器 | `python verify_suk_portrait.py --project <工程根><br>python verify_suk_portrait.py --project <工程根> --namespace SUK_UI` |
 
-共 14 个脚本。
+共 18 个脚本。
 
 ## 第三方依赖（非标准库）
 
@@ -67,7 +71,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 | `sd_cpp` | 本地生图（stable-diffusion.cpp + FLUX 权重） |
 | `imagemagick` | ImageMagick（图标阈值 / 裁边） |
 | `luac` | Lua 5.1 语法检查 |
-| `ws_root` | 上传临时工作区根（`%TEMP%\civ6-ws`） |
+| `ws_root` | 上传临时工作区根；`content/` 用 junction 指向 Mods 副本（见 `release/scripts/make_workspace.ps1`） |
 | `steam_logs` | Steam 日志目录（反查工坊条目 ID） |
 
 > 完整路径表与各键本机取值见 `civ6-modding/tools/README.md` 第 2 节。

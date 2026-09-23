@@ -319,6 +319,15 @@ end
 Events.LoadGameViewStateDone.Add(Initialize);
 ```
 
+> ⚠ **本条适用于 GP 与 UI 双端**（2026-09-23 订正）。此前 `availability` 记为 `UI` 是**错的**：官方 UI 目录虽有 21 处用法，
+> 但 gameplay 侧同样在用——兄弟工程 `示例工程` 的 `Scripts/Lua_*.lua`（`AddGameplayScripts` 注册）**11 个文件**在此事件上挂初始化，
+> `工程 A` 的 `Scripts/Lua_SK_BS.lua`（同属 `AddGameplayScripts`，见其 .modinfo 的 `BS_Scripts`）亦同。
+> 运行期探针：GP 侧该事件对象存在且 `Add` 可用（`type(Events.LoadGameViewStateDone) == "table"`）。
+>
+> ⚠ **但它不能承载 EXECUTE_SCRIPT 接收器**：该事件在加载窗口期触发，而 UI 可能在 `LoadGameViewStateDone` → `LoadScreenClose`
+> 之间（玩家点「开始/继续游戏」之前）就派发请求。接收器注册放进这个初始化函数会**晚于派发而静默丢失**。
+> 正确做法：**接收器留在文件加载期**，其余进程事件订阅放初始化函数（详见 `gotchas.md`）。
+
 On hot reload, `OnContextInitialize(isReload:boolean)` receives `isReload=true` — call init work directly since the game is already loaded.
 
 #### Options / Config

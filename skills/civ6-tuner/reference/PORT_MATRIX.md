@@ -10,9 +10,9 @@
 |---|---|---|---|
 | `Events` | table | table | 引擎 GameCoreEvent 总线，两端都有 |
 | **`GameEvents`** | table | **nil** | **UI 侧整条总线不存在** → UI 可达代码里任何 `GameEvents.*` 必崩 |
-| `LuaEvents` | table | table | 跨 UI 上下文事件总线 |
+| `LuaEvents` | table | table | 同端事件总线：UI 跨上下文 / GP 跨文件（表格按引用传递） |
 | `ReportingEvents` | table | table | 元素 `SendLuaEvent` 两端都在（GP→UI 推送用） |
-| `ExposedMembers` | table | table | GP 同端跨文件；**不该跨端用** |
+| `ExposedMembers` | table | table | GP 同端跨文件（本项目已改用 LuaEvents）；**不该跨端用** |
 | `NotificationManager` | table | table | — |
 | `Locale` | **nil** | table | `Locale.Lookup` 只能在 UI 侧调用 |
 | `UI` / `Controls` / `ContextPtr` | **ERR** | table | UI 专有命名空间，GP 侧不存在 |

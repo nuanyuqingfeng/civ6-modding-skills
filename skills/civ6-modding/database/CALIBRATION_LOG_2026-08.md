@@ -56,6 +56,10 @@
 
 - **GameInfo 命名空间（重大发现）**：api_enhanced.json / api.sqlite 原完全缺失 Civ6 最核心的 GameInfo 数据表访问 API → 补 161 表条目（Q-GameInfoXXX, QUERY, Both, exampleCode: `for row in GameInfo.X() do end`）
 - **Events.* 缺口 21**：官方调用验证（reasoner 判定 18 REAL + 3 UNCERTAIN→收录标注 UI）：Begin2KLoginProcess、ExitToMainMenu、LoadScreenClose、ShowLeaderScreen、SystemUpdateUI 等
+  - ⚠ **订正（2026-09-23）**：其中 `LoadScreenClose` **不是 UI 专属**，应为 `Both`。本条的 `UI` 是 reasoner 依据「官方调用点多在 UI」推断的，与同目录运行时探测结果矛盾——
+    `api-verification-2026-09-08/api_scope_full.csv` 对 `Events.LoadScreenClose` 实测 `文档可用性=Both、GP状态=table、UI状态=table`。
+    `events_enhanced.json` 已同步改标 `Both`（连同 `LoadGameViewStateDone`，该条另见 metadata 的「三次更正」）。
+    **教训：reasoner 的「官方调用点分布」推断不能替代运行时探测；两者冲突时以探测为准。**
 - **Events/GameEvents 缺口 5**：LeaderPopup、MultiplayerConnectionFailed、MultiplayerNetRegistered、PlayerVersionMismatchEvent、AdvisorNegativeResourceRate（官方注册验证）
 - **单函数缺口 4**：Game.GetLocalTeam、Game.IsTechRecommended、Locale.ConvertTextKey、MapConfiguration.SetImportFilename
 - **LuaEvents 433 个**：官方自定义事件（非引擎 API），不收入 api 库，events.md 已说明

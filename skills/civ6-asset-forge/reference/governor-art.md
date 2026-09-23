@@ -1,38 +1,6 @@
 ← 返回 `SKILL.md` 路由
 
-> **来源**：原 `civ6-governor-art` skill 的 `SKILL.md`（238 行 / 11887 字节 / CRLF），已并入 `civ6-asset-forge`。
-> 本文件正文为原文件**逐字搬运**（未改写、未精简任何实测规格），仅做结构性处理：
-> 1. 去掉 YAML frontmatter —— 原文逐字保留于下方，触发词/边界已并入 `SKILL.md` 的 description；
-> 2. 文末「作者与致谢」块上移至 `SKILL.md`（四类共用一份）；
-> 3. 跨 skill 引用与移动后的 `reference/` 路径已同步（见 `CHANGELOG.md`「引用修正」）；
-> 4. 原 `reference/specs.md` / `reference/inventory.md` / `reference/palette.json` 移至 `reference/governor-art/`，引用已同步；
->    跨 skill 引用（2D 领袖 / 单位晋升）已改为本 skill 内 `reference/` 路径。
 > 本文件内 `scripts/…`、`templates/…`、`assets/…`、`reference/…` 的根目录 = `civ6-asset-forge/`。
-
-原 frontmatter（逐字保留）：
-
-```yaml
-name: civ6-governor-art
-description: "Civ6 总督（Governor）素材全套制作：由一张头像自动生成色调高度一致的 24px 就职/晋升徽章 + 32/64px 头像小图标 + 206x208/326x339 立绘；并给立绘自动做边缘透明渐变（软 alpha + 去杂边 + OPACITY 遮罩）。内置原版 1:1 实测规格（八边形徽章轮廓/镜面斜面配色/六类素材契约）与确定性合成器 + 验证器。触发词：总督素材、governor icon、就职图标、晋升徽章、总督立绘、边缘透明渐变、立绘抠边。"
-version: "1.0"
-author: 千与千寻瀑
-license: MIT
-category: game-modding
-tags:
-  - civ6
-  - governor
-  - 2d
-  - icon
-  - alpha
-  - artdef
-languages:
-  - zh
-  - en
-```
-
----
-
-<!-- ↓↓↓ 以下为原 SKILL.md 正文逐字内容（未改写） ↓↓↓ -->
 
 ## 目的
 

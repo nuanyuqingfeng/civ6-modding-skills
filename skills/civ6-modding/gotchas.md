@@ -472,6 +472,14 @@
     初始化窗口内的事件**永久丢失且不报错**（实测漏掉通知 1、3，只剩 8）。
     **判据**：该事件是否可能在 `LoadGameViewStateDone` 之前触发？是 → 顶层注册。
 
+    ⚠ **同理适用于 EXECUTE_SCRIPT 接收器**（2026-09-23）：UI 可能在 `LoadGameViewStateDone` → `LoadScreenClose` 之间
+    （玩家点「开始/继续游戏」之前）就派发请求，接收器注册放进初始化函数会**晚于派发而静默丢失**。
+    稳妥口径：**引擎事件的 `GameEvents.X.Add` 接收器一律留在文件加载期**，初始化函数只放依赖运行期数据的订阅。
+
+    ⚠ **`LoadGameViewStateDone` 与 `LoadScreenClose` 都是 GP/UI 双端可用**（`availability=Both`）。
+    曾误记为 `UI`，反例：`示例工程` 的 `Scripts/Lua_*.lua`（`AddGameplayScripts`）11 个文件在此事件上挂初始化，
+    `工程 A` 的 `Scripts/Lua_SK_BS.lua`（同属 `AddGameplayScripts`）亦然。**不要因为「初始化」二字就认定它是 UI 专属。**
+
 63. **引擎返回的"数组"可能是稀疏 table —— 用 `pairs` 不要用 `ipairs`**
     `City:GetOwnedPlots()` 等 `Get*` 返回的列表底层可能有空洞，`ipairs` 会在第一个 `nil` 处停止，**静默丢掉后半段**
     （表现为"随机选地块总选不到某些格"）。

@@ -27,7 +27,8 @@ description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局
 ### 1. `gamecore` / `ingame` 是**独立沙箱 Lua 态**，不是 mod 的 `_ENV`
 
 ```
-type(Players/Game/Map/GameInfo/Events/GameEvents) = table   ← 引擎命名空间都在
+type(Players/Game/Map/GameInfo/Events)           = table   ← 引擎命名空间都在
+type(GameEvents)                                 = table   ← 仅 gamecore 可见；UI(ingame) 侧为 nil，见铁律2
 type(RGNHasTrait) / type(BUFF_POOL) / type(CTTH_*)  = nil   ← mod 定义的全是 nil
 GameEvents.某个mod注册过的事件:Count()               = 0     ← 不同总线实例
 ```
@@ -37,6 +38,8 @@ GameEvents.某个mod注册过的事件:Count()               = 0     ← 不同�
 - ✅✅ **例外（2026-09-16 实测）：mod 自有的 UI 上下文里，mod 的全局函数是可调的。**
   `LSQ:` 列表里那些带 Context 名的条目（如 `AllUnitsFoundCity`）就是 mod 自己那份 UI Lua 的 VM；
   用 `exec --state <Context 名>` 直接投递，`type(ModGlobalFunction)` = **function**、`Controls` 是 mod 的控件表。
+  GP 文件同样是独立 context（`Lua_*_RGN` 等：各自 VM、全局互不可见，`include` 的 Core 函数可见）：
+  `--state <GP 文件>` 可读该文件全局、调用其注册的函数，并跨文件验证 `LuaEvents` 派发（表格按引用传递，双向活表）。
   ```powershell
   # 在 mod 的 UI 上下文里直接调用它自己的检定函数 + 读它的控件状态
   python $T exec --state AllUnitsFoundCity --code "print(tostring(AUFCIsButtonHidden(UI.GetHeadSelectedUnit())))"

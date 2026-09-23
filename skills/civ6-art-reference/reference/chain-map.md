@@ -200,6 +200,7 @@ Units 表 → Units.artdef :: UNIT_X
    ├─ 引用 Cultures::UnitCulture / Eras::Era（文明/时代变体）
    └─ Formation/Audio/VFX
 （领袖与文明另有专项 skill：civ6-asset-forge → reference/leader-2d.md / reference/loyalty-icon.md）
+```
 
 #### 5.1 单位美术的装配链（克隆前必须走通）
 
@@ -281,7 +282,6 @@ GreatPersonClasses.UnitType          → 类级基名（DB 只有这个，如 UN
 `UNIT_GREAT_<CLASS>`（类级）、`UNIT_GREAT_<CLASS>_FEMALE|_MALE`（性别级）、
 `UNIT_GREAT_<CLASS>_FEMALE|_MALE_<ERA>`（时代级）。**这些名字在 DB 里都查不到**，
 不要拿 `Units` 表去校验它们的存在性。
-```
 
 ### 6. 特征（Features.artdef）与 2D 图标
 
@@ -371,6 +371,50 @@ GreatPersonClasses.UnitType          → 类级基名（DB 只有这个，如 UN
 2. **`IconTextureAtlases` 救不了它**：图集是「icon 名 → Atlas+Index」，
    裸纹理名查不到图集。反过来，图集自身 `Filename="X.dds"` 也需要 XLP 条目 ——
    只写 SQL/XML 不写 XLP 是常见漏项。
+
+   > ⚠️ **重要更正（2026-09-19）**：**`.dds` 没有「裸名不进 XLP」这回事** —— 本项目实测
+   > `Icons_RGN.xml` 的 107 个 `Filename`（69 个带 `.dds` + 38 个裸名）**全部**都在 `Icons.xlp` 里
+   > （带后缀的以去后缀 stem 登记）。**图集贴图一律需要 XLP 条目。
+   >
+   > ✅ **真正的简化点在别处 —— 直接导入的图片（DDS）走 ImportFiles，写法与 bink 视频完全一致**：
+   >
+   > | 步骤 | 写法 |
+   > |---|---|
+   > | ① 磁盘位置 | `ImportFiles/<子目录>/<Name>.dds`（如 `ImportFiles/movies/` 放 bink 那样） |
+   > | ② `.civ6proj` | `<Content Include="ImportFiles\<子目录>\<Name>.dds"><SubType>Content</SubType></Content>` |
+   > | ③ 加载动作 | `<ImportFiles id="..."><Properties><LoadOrder>600000</LoadOrder></Properties><File>ImportFiles/<子目录>/<Name>.dds</File>...</ImportFiles>` |
+   > | ④ 引用 | 在 `Icons` XML 或对应 SQL 表（如 `GreatWorks`、`MomentIllustrations`）直接填 `Filename` |
+   >
+   > 参照本项目 bink 视频的既有写法（`ImportFiles/movies/RGN_Bard_Movies_1.bik`，
+   > `.civ6proj` `<Content>` + `ImportFiles` 动作 + modinfo `<Files>` 三处齐全）—— **图片照抄同款格式**。
+   > **对照实例（直接照抄这两组，把 `.bik` 换成 `.dds`）**：
+   >
+   > ```xml
+   > <!-- ① 视频（既有写法） -->
+   > <Content Include="ImportFiles\movies\RGN_Bard_Movies_1.bik">
+   >   <SubType>Content</SubType>
+   > </Content>
+   > <!-- ② 图片（照抄同款） -->
+   > <Content Include="ImportFiles\icons\ICON_MY_THING_22.dds">
+   >   <SubType>Content</SubType>
+   > </Content>
+   > ```
+   >
+   > ```xml
+   > <ImportFiles id="MyMod_ImportFiles">
+   >   <Properties><LoadOrder>600000</LoadOrder></Properties>
+   >   <File>ImportFiles/movies/RGN_Bard_Movies_1.bik</File>
+   >   <File>ImportFiles/icons/ICON_MY_THING_22.dds</File>
+   > </ImportFiles>
+   > ```
+   >
+   > ⚠️ **别把图片丢进 `Textures/`**：`Textures/` 是 pantry（AssetEditor 会递归扫描，
+   > `.tex` 只许存在此处、且 `m_Name`/`m_RelativePath` 必须全工程唯一）。
+   > 走 ImportFiles 的图片放 `ImportFiles/<子目录>/`，**不需要 `.tex`**、不进 pantry。
+   >
+   > **打包成品 mod 时的执行口径**：只要不涉及领袖外交相关图片导入，
+   > **允许不询问用户**，直接按上表 ImportFiles 导入图片 + 填 `Filename` 引用。
+   > **领袖外交相关图片**（立绘 / 外交背景 / 纸片人 TEXTURE·OPACITY）仍必须走 XLP + artdef 链。
 3. **写死的映射表**：`SecretSocietyPopup.lua` 的 `kDiscoveredImages` 把 4 个原版结社
    硬编码映射到 `GovernorSelectedSTK_<Society>`；mod 结社取到 nil。需要**全量替换**该 Lua
    （先例：项目内 `RockBandMoviePopup.lua`，文件名与原版**完全一致**才能顶替，

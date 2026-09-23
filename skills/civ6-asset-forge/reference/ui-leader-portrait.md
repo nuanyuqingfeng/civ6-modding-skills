@@ -28,7 +28,13 @@ FROM Players WHERE Domain = ? AND LeaderType = ?
 **关键**：画面比例由 `DummyImage:GetSizeX()/GetSizeY()` **运行时实测**，
 所以**贴图尺寸可自由，不会被拉伸变形**——这跟原版 3D 立绘路径完全不同。
 
+★ **重要前置**：Suk 是**可选分支**。**原版环境下 FrontEnd 的前景/背景才是必需的**——
+Suk 只在启用时改写 `Players` 两列（`Criteria` 门控），没装 Suk 时走的是
+`LEADER_<X>_NEUTRAL` 回退那一套（→ **类别⑦** `reference/frontend-portrait.md`）。
+**只做本类会导致原版选人界面立绘/背景空白**，且前端不报错。
+
 **本类不做**：
+- 不做**原版** FrontEnd 的前景/背景（→ 类别⑦ `reference/frontend-portrait.md`）
 - 不做 3D 领袖模型/纸片人注册链（→ 本 skill `reference/leader-2d.md`）
 - 不做总督立绘（→ `reference/governor-art.md`）
 - 不负责 Suk mod 本身的分发（那是第三方 mod，用户自行订阅）
@@ -40,10 +46,10 @@ FROM Players WHERE Domain = ? AND LeaderType = ?
 | 关键词 | 关联性 |
 |---|---|
 | `suk selection` / `Sukritact` / `Civ Selection Screen` / `选人界面` / `领袖选择界面` | **强关联** → 走本流程 |
-| `PortraitBackground` / `Players` 表的 `Portrait` 列 | **强关联** → 走本流程 |
+| `PortraitBackground` / `Players` 表的 `Portrait` 列 | **先分支**：这两列属**原版环境**（类别⑦）也属本类——<br>问清「有没有装 Suk / 要不要两套都支持」；<br>**只做本类的 Suk 适配 = 原版界面空白**，通常应同时做类别⑦ |
 | `UILeaders.xlp` / `SUK_UI_*`（旧名 `FALLBACK_NEUTRAL_*_Suk`） | **强关联**（这就是本流程的产物命名） |
-| `领袖立绘` / `领袖选择背景`（未指明 Suk） | **弱关联** → 先问清是**原版界面**还是 **Suk 界面**：<br>原版 3D 走 `leader-2d.md`；Suk 2D 走本流程 |
-| `加载界面`（`IMG_LOADING_*`） | **不关联**（那是 `LoadingInfo` 表，另一条链） |
+| `领袖立绘` / `领袖选择背景`（未指明 Suk） | **弱关联** → 先问清**哪个界面**：<br>原版 2D placard 走**类别⑦** `frontend-portrait.md`；<br>3D 纸片人贴图走 `leader-2d.md`；<br>Suk 2D 走本流程 |
+| `加载界面`（`IMG_LOADING_*` / `LoadingInfo` / `ForegroundImage`） | **不属本类**（那是 `LoadingInfo` 表）→ 走 **类别⑦** `reference/frontend-portrait.md` §二 |
 
 判定为关联后，**必须先问素材来源**（第三节），再动手。
 
@@ -57,7 +63,9 @@ FROM Players WHERE Domain = ? AND LeaderType = ?
 > **来源请二选一：**
 >
 > - **A. 复用工程已有素材（推荐，零额外美术）**：脚本自动取
->   - 立绘 ← `Textures/FALLBACK_NEUTRAL_{KEY}.dds`（工程已有的 1316² 立绘）
+>   - 立绘 ← `Textures/FALLBACK_NEUTRAL_{KEY}.dds`（工程已有的 1316² 立绘；
+>     ⚠ 该名属**类别④ 的 3D 回退**（`Leader_Fallback` 类），**不是**原版 FrontEnd 的
+>     `LEADER_<X>_NEUTRAL`——名字像但不是同一批贴图，别混）
 >   - 背景 ← `Textures/IMG_LEADER_{KEY}_DIPLOMACY_BACKGROUND.dds`（外交界面背景 1920×1080）
 >
 > - **B. 使用你提供的新素材**：请给出**立绘**与**背景**的 PNG 目录/路径
@@ -133,20 +141,14 @@ Suk 适配素材进**独立命名空间**：
 规则：**`FALLBACK_` / `LEADER_` / `ICON_` 等前缀是官方语义**，第三方界面适配一律走
 `<适配对象短名>_UI_<KIND>_<KEY>`（Suk 适配＝`SUK_UI_*`）。
 
-> **为什么曾经踩坑**：早期素材名为 `FALLBACK_NEUTRAL_{KEY}_Suk`——借用了官方 3D 回退前缀，
-> 于是"同前缀、不同类别"。`gen_tex.py` 的 `is_fallback()` 原为**纯前缀判断**，
-> 会把这类 2D 立绘误判成 `Leader_Fallback` → 「类别与所绑定 XLP 参数不匹配」，
+> **为什么必须独立命名空间**：`FALLBACK_` 前缀在官方语义里 = 3D 回退 = `Leader_Fallback` 类。
+> 借用该前缀的 2D 立绘会被判成 `Leader_Fallback` → 与所绑 XLP 参数类别不匹配 →
 > cooker 报 `has class 'X', but is bound to parameter 'Y' which does not accept this class`，
-> **且 XLP cook 仍显示 success**，条目被静默替换成 error asset（界面立绘空白）。
+> 且 **XLP cook 仍显示 success**，条目被静默替换成 error asset（界面立绘空白）。
 >
-> 2026-09-17 先用「后缀例外表」压住（`_UI_PORTRAIT_SUFFIXES`），
-> 2026-09-18 起改为**迁入独立命名空间**，歧义从根上消失；
-> 例外表退化为 legacy 兼容，待旧工程迁完即可删。
-> 旧命名工程一次性迁移：`scripts/migrate_suk_namespace.py <工程根> --write`。
-
-> ⚠ 改名的**前提**已实测确认：`Players.Portrait` / `PortraitBackground` 是**自由字符串列**，
-> 界面代码读值后交给 Image 控件显示——贴图名本身没有任何格式要求。
-> "必须沿用 `_Suk` 后缀"只是跨工程沿用的**惯例**，不是技术约束。
+> `Players.Portrait` / `PortraitBackground` 是**自由字符串列**，贴图名无格式要求，
+> 因此迁入独立命名空间无技术约束。旧命名工程迁移：
+> `scripts/migrate_suk_namespace.py <工程根> --write`。
 
 **交付前务必自查**：`python scripts/verify_suk_portrait.py --project <工程根>`
 （含 legacy 命名告警、类别、尺寸、XLP 登记、悬空引用、行尾；不依赖文件名约定的

@@ -10,7 +10,7 @@
     },
     "phase": 1,
     "description": "初始数据：从 markdown 提取，未经过 AI 分析验证",
-    "notes": "2026-08 校准: LuaEvents 补充 DLC 来源标注(445 条) + 新增(1 条) | 2026-09 运行时实测(示例工程 报错溯源): 48 个未向 Lua 暴露的 GameCoreEvent 单独标注 —— 其中 15 条原误标 Events/Both|UI 已改为 GameEvents/GamePlay, 30 条补录; 均加 verify_* 字段与实测来源。 | 2026-09 二次更正: 经 FireTuner 对照实验证明 GameEvents 不承载 GameCoreEvent, 48 个未暴露事件 availability 由 GamePlay 改标 None(不可订阅)。",
+    "notes": "2026-08 校准: LuaEvents 补充 DLC 来源标注(445 条) + 新增(1 条) | 2026-09 运行时实测(示例工程 报错溯源): 48 个未向 Lua 暴露的 GameCoreEvent 单独标注 —— 其中 15 条原误标 Events/Both|UI 已改为 GameEvents/GamePlay, 30 条补录; 均加 verify_* 字段与实测来源。 | 2026-09 二次更正: 经 FireTuner 对照实验证明 GameEvents 不承载 GameCoreEvent, 48 个未暴露事件 availability 由 GamePlay 改标 None(不可订阅)。 | 2026-09-23 三次更正: LoadGameViewStateDone / LoadScreenClose 由 UI 改标 Both —— 依据为 GP 侧实例: 示例工程 的 Scripts/Lua_*.lua (AddGameplayScripts 注册) 11 个文件在此类事件上挂初始化, 工程 A 的 Scripts/Lua_SK_BS.lua (同属 AddGameplayScripts) 亦然; FireTuner 实测 GP VM 内该事件对象存在且 Add 可用。注: 双端可用不等于可以晚注册 —— 该事件在加载窗口期触发, EXECUTE_SCRIPT 接收器与 CityAddedToMap 等仍须留在文件加载期注册。",
     "availabilityValues": [
       "UI",
       "Both",
@@ -9181,7 +9181,7 @@
       "eventSystem": "Events",
       "eventName": "LoadGameViewStateDone",
       "eventType": "SequenceEvent",
-      "availability": "UI",
+      "availability": "Both",
       "category": "",
       "callbackParams": [],
       "callbackSignature": "OnLoadGameViewStateDone()",
@@ -9189,7 +9189,7 @@
       "notes": [
         "[作用] 当游戏视图状态（3D 世界视图）加载完成时触发，是 UI 脚本执行后置初始化的主要信号",
         "在此事件触发前，game cache 尚未就绪，依赖 Game API 的调用不应在模块加载时直接执行",
-        "此事件等效于 UI 环境的\"初始化完成\"信号，被大量 UI 面板用作初始化入口点"
+        "双端（GP/UI）均可订阅；UI 侧是后置初始化主信号，GP 侧常用作事件订阅的初始化入口"
       ],
       "enriched": true,
       "enrichComplete": true,
@@ -9216,14 +9216,14 @@
       "eventSystem": "Events",
       "eventName": "LoadScreenClose",
       "eventType": "SequenceEvent",
-      "availability": "UI",
+      "availability": "Both",
       "category": "Load / Save / Game Init",
       "callbackParams": [],
       "callbackSignature": "OnLoadScreenClose()",
       "exampleCode": "function OnLoadScreenClose()\n    -- 加载画面关闭，游戏数据已就绪\n    UILens.UnFocusHex(g_AttackRange, 0);\nend\nEvents.LoadScreenClose.Add(OnLoadScreenClose)",
       "notes": [
         "[作用] 加载画面关闭时触发，标志游戏完全加载完成（新游戏或读档），所有游戏数据已就绪",
-        "UI 层初始化依赖游戏数据的逻辑通常在此事件中执行",
+        "双端（GP/UI）均可订阅；UI 侧常用于依赖完整游戏数据的初始化，也可作为晚注册的补救点",
         "无参数传递，仅作为通知信号",
         "适合用于清除存档残留的 UI 状态（如攻击范围箭头）或触发界面初始化"
       ],

@@ -1,11 +1,9 @@
 ← 返回 `SKILL.md` 路由
 
-# 单位晋升图标 · 尺寸与规格（原类别③）
+# 单位晋升图标 · 尺寸与规格（类别③）
 
-> ⚠ **本类别只保留尺寸 / 格式规格；生成管线已废弃（失败尝试的遗留）。**
-> 原管线（盾形模板 + 白剪影合成器、四色重着色、图集切格、IoU 校验、生图模板再造与提示词手册）
-> 已按用户裁决**整条作废并删除**——删除清单见 `CHANGELOG.md`。
-> **不要再照旧文档做图**；本文件只是"原版尺寸/格式到底是多少"的事实记录。
+> 本类别**只有尺寸 / 格式规格**：本 skill 不提供晋升图标脚本、模板与提示词。
+> 需要做图 → 走 `civ6-modding` 的 `art-pipeline.md` 通用图标管线。
 >
 > 数据来源：`Promotions32.dds`（SDK Assets pantry 散装 DDS → texconv 转 PNG）**1:1 像素测量**，
 > 外加 `Icons_Promotions.xml` / `UnitPromotionPopup.lua` 的注册事实。
@@ -74,6 +72,11 @@
 - **mod 侧注册**：自建 `IconTextureAtlases`（**`IconSize="32"`**）+ `UpdateIcons` 加
   `ICON_<UnitPromotionType>` 行。走 2D `IconTextureAtlases` 路径（引擎按 `Filename` **直接找 `.dds`**），
   **不走** `.dds`/`.tex` 的 BLP 链。
+> ⚠️ **本类别（单位晋升图标）生成管线已作废**，本节仅保留尺寸/格式事实。
+> **注册口径以 `civ6-art-reference/reference/chain-map.md` §七 为准**：
+> - **图集贴图一律需要 XLP 条目**（`Filename` 带不带 `.dds` 都要以 stem 登记进对应 XLP）；
+> - 简化点是**图片本身走 `ImportFiles`（写法与 bink 视频同款）而非丢进 `Textures/`**；
+> - 仅**领袖外交相关图片**（立绘 / 外交背景 / 纸片人 TEXTURE·OPACITY）才必须走 XLP + artdef 链。
 - 面板底框引用原版 `Promotion_Button` 即可，**无需复刻**。
 - **本类别不产出 `.tex`**，因此没有类别专属的 `m_ClassName` / `m_Tags` / mips 取值可写。
   若工程 pantry 规范要求补 `.tex`，按 `SKILL.md` §6.2 第 5 条**通用**规则核对：

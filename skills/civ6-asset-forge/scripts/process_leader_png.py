@@ -5,18 +5,18 @@ process_leader_png.py — Civ6 2D 领袖立绘 PNG -> TEXTURE/OPACITY 1024x1024 
 
 用法:
   # 只生成 PNG，默认输出到 D:\\desktop
-  python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA_QYQXP
+  python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA
 
   # 指定输出目录
-  python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA_QYQXP \\
+  python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA \\
       --output-dir D:\\some\\dir
 
   # 指定自定义正方形裁剪框（原图坐标 left,top,side）
-  python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA_QYQXP \\
+  python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA \\
       --crop 100,50,800
 
   # 一步到位：输出到项目 Textures，同步 .tex，并尝试生成 DDS
-  python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA_QYQXP \\
+  python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA \\
       --project <Civ6工程根目录> --tex-dds
 
 说明:
@@ -44,8 +44,8 @@ except ImportError:
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 TEMPLATE_DIR = SCRIPT_DIR.parent / "templates"
-TEX_TEMPLATE_TEXTURE = TEMPLATE_DIR / "LEADER_NAME_QYQXP_TEXTURE.tex"
-TEX_TEMPLATE_OPACITY = TEMPLATE_DIR / "LEADER_NAME_QYQXP_OPACITY.tex"
+TEX_TEMPLATE_TEXTURE = TEMPLATE_DIR / "LEADER_NAME_TEXTURE.tex"
+TEX_TEMPLATE_OPACITY = TEMPLATE_DIR / "LEADER_NAME_OPACITY.tex"
 
 
 def _ansi_codec_name():
@@ -215,7 +215,7 @@ def main():
     ap = argparse.ArgumentParser(description="Civ6 2D 领袖立绘 PNG -> TEXTURE/OPACITY 生成器")
     ap.add_argument("--input", required=True, help="源 PNG 路径（近似 1:1，透明背景）")
     ap.add_argument("--leader-type", default=None,
-                    help="项目内精确 LeaderType，例如 LEADER_CANTARELLA_QYQXP；也可用 --project+--leader-name 自动查找")
+                    help="项目内精确 LeaderType，例如 LEADER_CANTARELLA；也可用 --project+--leader-name 自动查找")
     ap.add_argument("--leader-name", default=None,
                     help="领袖名（英文），配合 --project 自动查找 LeaderType，例如 Cantarella")
     ap.add_argument("--output-dir", default=None,

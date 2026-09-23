@@ -9,8 +9,11 @@
 它在选人时读 `Players` 表的 `Portrait` / `PortraitBackground` 两列，交给
 `LeaderImage` / `LeaderBG` 两个控件显示（比例运行时由 `DummyImage` 实测，故尺寸可自由）。
 
-原版 mod 的 `Portrait` 通常是空串、`PortraitBackground` 是 328×935 竖版，
-在 Suk 的宽屏 2D 界面下尺寸/构图都不合用，因此需要一套**专供 Suk 的 2D 素材**，
+原版环境（FrontEnd 选人）的 `Portrait` 通常留空（引擎回退到 `LEADER_<X>_NEUTRAL`）、
+`PortraitBackground` 指向**原版领袖的** `LEADER_<X>_BACKGROUND`（1920×960 横版）；
+而 mod 自建的竖版背景（如本工程 `PORTRAIT_<KEY>_BACKGROUND`，328×935）是**工程侧选择**，
+**不是官方口径**（`328×935` 是 `LeaderBG` 控件尺寸，非官方贴图尺寸）。
+无论哪种，在 Suk 的宽屏 2D 界面下尺寸/构图都不合用，因此需要一套**专供 Suk 的 2D 素材**，
 并在 `Criteria = Suk_Portrait` 下改写 `Players`（未启用 Suk 时行为完全不变）。
 
 本脚本按兄弟工程（工程 A / 工程 D / 工程 B/C）已实证的约定产出：

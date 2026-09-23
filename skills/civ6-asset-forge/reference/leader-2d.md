@@ -1,46 +1,23 @@
 ← 返回 `SKILL.md` 路由
 
-> **来源**：原 `civ6-leader-2d` skill 的 `SKILL.md`（234 行 / 13146 字节 / LF），已并入 `civ6-asset-forge`。
-> 本文件正文为原文件**逐字搬运**（未改写、未精简任何实测规格），仅做结构性处理：
-> 1. 去掉 YAML frontmatter —— 原文逐字保留于下方，触发词/边界已并入 `SKILL.md` 的 description；
-> 2. 文末「作者与致谢」块上移至 `SKILL.md`（四类共用一份）；
-> 3. 跨 skill 引用与移动后的 `reference/` 路径已同步（见 `CHANGELOG.md`「引用修正」）；
-> 4. 原第四节「备份：不静默备份…」一条上移至 `SKILL.md`（四类共用，原文逐字保留于该节）；
->    脚本绝对路径 `…\skills\civ6-leader-2d\scripts\` 已更新为 `…\skills\civ6-asset-forge\scripts\`，
->    跨 skill 引用（忠诚度图标）已改为本 skill 内 `reference/loyalty-icon.md`。
 > 本文件内 `scripts/…`、`templates/…`、`assets/…`、`reference/…` 的根目录 = `civ6-asset-forge/`。
 
-原 frontmatter（逐字保留）：
+## 〇、前置判定门：有没有「领袖外交语音」（先过这关，再读 §一）
 
-```yaml
-name: civ6-leader-2d
-description: "Civ6 2D 领袖（立绘纸片人）建模注册：为 mod 领袖生成完整美术注册链（XLP 包 / Leaders.artdef / 平面几何 / 材质 / 灯光 / 环境光 / 贴图 / 行为资产 ast），支持任意数量的领袖与多语言占位；也支持用户提供近似 1:1 透明背景 PNG，自动生成 1024×1024 TEXTURE/OPACITY 素材。素材处理前必须先询问用户是否提供素材，默认不处理素材、仅生成注册文件。"
-version: "1.0"
-author: 千与千寻瀑
-license: MIT
-category: game-modding
-tags:
-  - civ6
-  - leader
-  - 2d
-  - artdef
-  - xlp
-  - modding
-models:
-  recommended:
-    - claude-sonnet-4
-  compatible:
-    - gpt-4o
-    - deepseek-v3
-languages:
-  - zh
-  - en
-```
+**本文件的整套 3D 纸片人注册链，唯一触发条件 = 该领袖有外交语音。** 未通过下列判定时，
+**本文件全部流程不执行**（不生成 Geometries / Materials / LightRigs / EnvironmentLights /
+`Assets/*.ast` / `Leaders.artdef` / leader XLP），只出 2D 立绘（`IMG_LOADING_FOREGROUND_*`）。
+
+1. 工程 `Platforms/` 下**没有音频** → 直接跳过。
+2. 素材里**没有明确的外交语音** → 不触发。
+3. 查 **Speech bank** 事件名，命中 `FIRST_MEET` / `DECLARE_WAR_FROM_HUMAN` /
+   `DECLARE_WAR_FROM_AI` / `KUDO_EXIT` / `WARNING_EXIT` / `DEFEAT_FROM_AI` 任一 → 才算有。
+
+> ⚠ **`QUOTE` 不算。** `QuoteAudio` / `LeaderQuotes` 有值也不触发（quote 只进加载界面/百科）。
+> ⚠ **看 `Speech.bnk`，不是 `Voice.bnk`** —— 实测 `Voice.bnk` 常只装游戏内 SFX。
+> 详见 `SKILL.md` 铁律四。
 
 ---
-
-<!-- ↓↓↓ 以下为原 SKILL.md 正文逐字内容（未改写） ↓↓↓ -->
-
 ## 一、铁律：素材处理前必须询问
 
 **开始任何 2D 领袖任务前，必须先询问用户是否提供了素材**（png/dds/fgx/wig 等）。询问模板：
@@ -87,16 +64,20 @@ languages:
 
 ### 1. 收集信息
 
-从项目 SQL/XML 获取领袖列表（`LeaderType`），例如：
+从项目 SQL/XML 获取领袖列表（`LeaderType`）—— **下级文件名的唯一来源**：
 
-| 领袖 | LeaderType | FX 缩写 |
-|------|-----------|---------|
-| 卡提希娅 | `LEADER_CARTETHYIA_QYQXP` | `CTTH` |
-| 芙露德莉斯 | `LEADER_FLEURDELYS_QYQXP` | `FDL` |
+| 领袖 | LeaderType（原样） | LeaderSuffix（去掉 `LEADER_`） | FX 缩写 |
+|------|------------------|------------------------------|---------|
+| 卡提希娅 | `LEADER_CARTETHYIA_QYQXP` | `CARTETHYIA_QYQXP` | `CTTH` |
+| 某领袖 | `LEADER_FHB_A_SHUAI` | `FHB_A_SHUAI` | `FHB` |
 
 - **FX 缩写**：领袖名字缩写（用于 ast 音频前缀 `{ABBR}_{FX}_*_A`），无现成表时询问用户
-- **文明缩写 ABBR**：如 示例工程 → `RGN`
-- **包名 PACK**：默认取工程目录名小写（如 `myciv_qyqxp`），XLP 包路径为 `/leaders/leader_{PACK}`
+- **文明缩写 ABBR**：仅用于 `{OBJ}` 前缀与 ast 音频前缀，如 `RGN`
+- **包名 PACK**：默认取工程目录名小写，XLP 包路径为 `/leaders/leader_{PACK}`
+
+> 🔴 **模板与脚本里不得出现任何作者专用后缀。**
+> 生成器一律从 `LeaderType` 派生 `LeaderSuffix` 并**原样保留**它自带的后缀 ——
+> 那个后缀是 **SQL 的结果**，不是**模板的规则**。
 
 ### 2. 运行生成脚本
 
@@ -105,7 +86,12 @@ python "<skills>/civ6-asset-forge/scripts/gen_leader_2d.py" \
   --project "<工程路径>" \
   --pack <包名> \
   --abbr <文明缩写> \
-  --leaders "LeaderName:FX缩写,LeaderName2:FX2,..."
+  --leader-types "LEADER_CARTETHYIA_QYQXP,LEADER_FLEURDELYS_QYQXP"   # ★ 推荐：命名由此完全派生
+
+# 需要给 ast 填 FX 缩写时，叠加 --leaders（按 Name:FX 匹配）
+python "<skills>/civ6-asset-forge/scripts/gen_leader_2d.py" \
+  --project "<工程路径>" --abbr RGN \
+  --leader-types "LEADER_CARTETHYIA_QYQXP" --leaders "Cartethyia:CTTH"
 ```
 
 生成文件清单（Leader 与几何名按命名规范自动推导）：
@@ -115,12 +101,12 @@ python "<skills>/civ6-asset-forge/scripts/gen_leader_2d.py" \
 | `XLPs/` | `leader_{PACK}.xlp`（聚合） | Leader 条目包 |
 | `XLPs/` | `Leader_LightRigs.xlp`（聚合） | LightRig 条目包 |
 | `ArtDefs/` | `Leaders.artdef`（聚合） | 领袖集合定义（Leader/LightRig/ColorKey/Background 槽位） |
-| `Geometries/` | `LEAD_{ABBR}_{Name}_QYQXP.geo` + `_Camera.geo` | 平面几何 + 摄像机 |
-| `Materials/` | `LEAD_{ABBR}_{Name}_QYQXP_Material.mtl` | 材质（引用 TEXTURE/OPACITY） |
-| `LightRigs/` | `{Name}_QYQXP_LightRig.lrg` | 灯光（引用 env） |
-| `EnvironmentLights/` | `{Name}_QYQXP_Environment.env` | 环境光（引用 dds） |
-| `Textures/` | `LEADER_{NAME}_QYQXP_TEXTURE.tex` + `_OPACITY.tex` | 贴图定义 |
-| `Assets/` | `LEAD_{ABBR}_{Name}_QYQXP.ast` | 行为资产（6 外交槽位 + NEUTRAL） |
+| `Geometries/` | `LEAD_{ABBR}_{Name}_{LeaderSuffix}.geo` + `_Camera.geo` | 平面几何 + 摄像机 |
+| `Materials/` | `LEAD_{ABBR}_{Name}_{LeaderSuffix}_Material.mtl` | 材质（引用 TEXTURE/OPACITY）；**类必须 `Leader_Matte`**，见 §3.5 |
+| `LightRigs/` | `{Name}_{LeaderSuffix}_LightRig.lrg` | 灯光（引用 env） |
+| `EnvironmentLights/` | `{Name}_{LeaderSuffix}_Environment.env` | 环境光（引用 dds） |
+| `Textures/` | `{LeaderType}_TEXTURE.tex` + `{LeaderType}_OPACITY.tex` | 贴图定义 |
+| `Assets/` | `LEAD_{ABBR}_{Name}_{LeaderSuffix}.ast` | 行为资产（6 外交槽位 + NEUTRAL） |
 
 ### 2.5 立绘素材处理（可选）
 
@@ -177,9 +163,59 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
 | 素材 | 来源 | 说明 |
 |------|------|------|
 | `.fgx` / `.wig`（主体 + Camera） | 从已建成工程复制 | **通用平面模型，跨工程逐字节一致**（MD5：主体 fgx `D13E5D864C121D9DA51500A07DFE0DD4` / wig `B9C116E082A7DD783A89E1684ED9C0B5`；Camera fgx `7F8319922265FD53841D7C15469E4E19` / wig `C1F6B44B222FA827B683A26F411CD53E`），复制后重命名即可 |
-| `{Name}_QYQXP_Environment.dds` | 从已建成工程复制 | **通用环境光**（Hojo，MD5 `100A9AF5C487BDF8D1BD84AFF854F1A6`），每领袖各留一份 |
+| `{Name}_{LeaderSuffix}_Environment.dds` | 从已建成工程复制 | **通用环境光**（Hojo，MD5 `100A9AF5C487BDF8D1BD84AFF854F1A6`），每领袖各留一份 |
 | 立绘 png（TEXTURE / OPACITY） | 用户提供 | 用 `process_leader_png.py` 生成 `{LeaderType}_TEXTURE.png` / `{LeaderType}_OPACITY.png`（1024×1024）；默认输出桌面，`--tex-dds` 时输出项目 `Textures/` 并同步 `.tex`/DDS |
 
+
+### 3.5 材质类铁律：平面纸片用 `Leader_Matte`，不用 `Leader`
+
+> 🔴 **2D 领袖纸片是「一张平面四边形」，材质类必须是 `Leader_Matte`。**
+> 历史模板错用了 `Leader`（原版 **3D 人物服装/皮肤**的 PBR 着色器类），
+> 并附带了 `TranslucencyColor=RGB(150,20,7)` 与 `ForceTransparency=true`。
+
+**实测症状（黑海岸守岸人 vs 同 mod 的椿，SIFT 单应配准到逐像素 `r=0.989` 后分解）：**
+
+```
+人物区域   3D = 0.898 x 2D + 20.5   (sRGB)   ← 暗部 +18~19、亮部 -2~3（抬黑位 + 压对比）
+背景区域   3D = 1.0002 x 2D + 0.16           ← 逐像素不变（63.9~66% 像素 |Δ|<2）
+```
+
+即：**像蒙了一层灰纱**（等效「不透明度 0.90、雾色 ~202」的叠层），另叠加等效高斯
+`σ≈0.8px` 的低通模糊（频谱**低频比 1.02 / 高频比 0.42** —— 是低通卷积，**不是** mip 掉级）。
+关键判据：**差异只发生在领袖本体，背景逐像素不变** → 不是全屏后处理（`.ast`），是材质本身。
+
+**原版统计（`pantry/Materials/*.mtl`，363 个领袖类材质）：**
+
+| 检查 | 原版事实 |
+|---|---|
+| `ForceTransparency=true` | **仅 2/363**，且两者**都绑定了 `Translucency` 贴图** |
+| 平面四边形用什么类 | `Leader_Matte`（19 个）—— **全部是平面背景板** |
+| 结构参照 | `Hojo_flatBackground_Placeholder.geo` 同为 **4 顶点 / 2 图元**平面，geo 类 `Leader`，**材质类 `Leader_Matte`** |
+| `Leader_Matte` 参数集 | **只填 `BaseColor` (+`Opacity`)** |
+| 对齐样本 | `pantry/Materials/LEAD_JAPA_Hojo_Background_Material.mtl` |
+
+**机理**：拿 PBR 人物服装着色器去画一张平面贴图，其 `albedo × L + ambient` 响应
+天然产生「增益<1 + 加性抬黑」，同时因缺少法线/粗糙度信息而低通软化 —— 与实测完全吻合。
+
+**因此模板 `templates/LEAD_ABBR_Name_Material.mtl` 写死：**
+
+```xml
+	<m_ClassName text="Leader_Matte"/>
+	<m_Version><major>3</major><minor>0</minor><build>176</build><revision>703</revision></m_Version>
+	<!-- 参数槽只有 Opacity + BaseColor -->
+	<m_Tags><Element text="Leader_Matte"/><Element text="Leader"/><Element text="Matte"/></m_Tags>
+```
+
+**存量工程体检 / 迁移**（幂等，默认只预演）：
+
+```bash
+python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根>            # 预演
+python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根> --check    # 有待迁移项则 exit 2
+python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根> --write
+python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <Civ6工程父目录> --all-siblings --write
+```
+
+★ 改完**必须在 AssetEditor 重新 cook** 才生效（材质类属 cook 期数据）。
 ### 4. 更新工程文件
 
 - `*.civ6proj`：新增 `ArtDefs` 文件夹 + 3 个 Content Include：
@@ -198,7 +234,8 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
 - [ ] 所有生成 XML 可解析（无残留 `{占位符}`）
 - [ ] `leader_{PACK}.xlp` 条目数 = 领袖数；`Leaders.artdef` 块数 = 领袖数
 - [ ] geo 的 fgx/wig 引用名与磁盘文件名一致（主体 + `_Camera`）
-- [ ] mtl 引用 `{NAME}_QYQXP_TEXTURE` / `_OPACITY`；lrg 引用 env；env 引用 dds
+- [ ] mtl 引用 `{LeaderType}_TEXTURE` / `_OPACITY`；lrg 引用 env；env 引用 dds
+- [ ] **mtl 的 `m_ClassName` 为 `Leader_Matte`**，参数槽只有 `Opacity`+`BaseColor`，无 `TranslucencyColor`/`ForceTransparency`（见 §3.5）
 - [ ] ast 的 GeometrySet 引用 Camera geo + 主体 geo + Material，FXName 为 `{ABBR}_{FX}_{动作}_A`
 - [ ] 素材文件（若提供）复制后哈希与源一致
 - [ ] 若已处理立绘：TEXTURE / OPACITY PNG 均为 `1024×1024`
@@ -208,17 +245,26 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
 
 ## 四、命名规范（生成脚本自动推导，手动修改时遵循）
 
-| 对象 | 格式 | 示例 |
+| 对象 | 格式 | 示例（以 `LEADER_CARTETHYIA_QYQXP` 为例） |
 |------|------|------|
-| XLP EntryID | `LEADER_{NAME}_QYQXP` | `LEADER_CARTETHYIA_QYQXP` |
-| XLP ObjectName / geo | `LEAD_{ABBR}_{Name}_QYQXP` | `LEAD_RGN_Cartethyia_QYQXP` |
-| Camera geo | `LEAD_{ABBR}_{Name}_QYQXP_Camera` | `LEAD_RGN_Cartethyia_QYQXP_Camera` |
-| Material | `LEAD_{ABBR}_{Name}_QYQXP_Material` | `LEAD_RGN_Cartethyia_QYQXP_Material` |
-| LightRig | `{Name}_QYQXP_LightRig` | `Cartethyia_QYQXP_LightRig` |
-| Environment | `{Name}_QYQXP_Environment` | `Cartethyia_QYQXP_Environment` |
+| XLP EntryID | **= SQL 里的 `{LeaderType}` 原样** | `LEADER_CARTETHYIA_QYQXP` |
+| XLP ObjectName / geo | `LEAD_{ABBR}_{Name}_{LeaderSuffix}` | `LEAD_RGN_Cartethyia_QYQXP` |
+| Camera geo | `LEAD_{ABBR}_{Name}_{LeaderSuffix}_Camera` | `LEAD_RGN_Cartethyia_QYQXP_Camera` |
+| Material | `LEAD_{ABBR}_{Name}_{LeaderSuffix}_Material` | `LEAD_RGN_Cartethyia_QYQXP_Material` |
+| LightRig | `{Name}_{LeaderSuffix}_LightRig` | `Cartethyia_QYQXP_LightRig` |
+| Environment | `{Name}_{LeaderSuffix}_Environment` | `Cartethyia_QYQXP_Environment` |
 | Texture | `{LeaderType}_TEXTURE` / `{LeaderType}_OPACITY` | `LEADER_CARTETHYIA_QYQXP_TEXTURE` |
-| AST | `LEAD_{ABBR}_{Name}_QYQXP` | `LEAD_RGN_Cartethyia_QYQXP` |
+| AST | `LEAD_{ABBR}_{Name}_{LeaderSuffix}` | `LEAD_RGN_Cartethyia_QYQXP` |
 | XLP 包名 | `/leaders/leader_{PACK}` | `/leaders/leader_myciv_qyqxp` |
+
+> 🔴 **命名铁律：一切从 SQL 里该领袖的 `LeaderType` 变量派生，禁止使用任何固定/惯例缩写常量。**
+>
+> - `{LeaderSuffix}` = `{LeaderType}` 去掉 `LEADER_` 前缀后的**完整剩余部分**（含它自带的任何后缀）。
+>   例如 `LEADER_CARTETHYIA_QYQXP` → `CARTETHYIA_QYQXP`；**不要**再凭空追加 `QYQXP`。
+> - **`QYQXP` 不是通用作者缩写，也不得写进模板。** 它在示例工程里出现，**只是因为那些工程的
+>   SQL `LeaderType` 本身就叫 `LEADER_<NAME>_QYQXP`** —— 它是**结果**，不是**规则**。
+>   SQL 里没有 `QYQXP` 的领袖（如 `LEADER_FHB_A_SHUAI`）生成的命名一律**不带** `QYQXP`。
+> - 推导顺序：**先读 SQL 的 `LeaderType` → 再套前后缀**。禁止反过来（先定缩写再拼名字）。
 
 **AST 音频 FXName**：`{ABBR}_{FX}_{动作}_A`，动作枚举：`FIRST_MEET` / `DECLARE_WAR_FROM_HUMAN` / `DECLARE_WAR_FROM_AI` / `KUDO_EXIT` / `WARNING_EXIT` / `DEFEAT_FROM_AI`。
 

@@ -1,42 +1,6 @@
 ← 返回 `SKILL.md` 路由
 
-> **来源**：原 `civ6-loyalty-icon` skill 的 `SKILL.md`（303 行 / 22030 字节 / LF），已并入 `civ6-asset-forge`。
-> 本文件正文为原文件**逐字搬运**（未改写、未精简任何实测规格），仅做结构性处理：
-> 1. 去掉 YAML frontmatter —— 原文逐字保留于下方，触发词/边界已并入 `SKILL.md` 的 description；
-> 2. 文末「作者与致谢」块上移至 `SKILL.md`（四类共用一份）；
-> 3. 跨 skill 引用与移动后的 `reference/` 路径已同步（见 `CHANGELOG.md`「引用修正」）；
 > 本文件内 `scripts/…`、`templates/…`、`assets/…`、`reference/…` 的根目录 = `civ6-asset-forge/`。
-
-原 frontmatter（逐字保留）：
-
-```yaml
-name: civ6-loyalty-icon
-description: "Civ6 文明忠诚度/宗教压力图标全套制作：文明图标 + 光晕模板合成 PNG（3D 覆盖/压力 + 战略视图覆盖/压力，官方 PSD 实测摆放参数），并生成完整注册链（UILensModels.xlp / StrategicView_UILenses.xlp / Overlay.artdef / StrategicView.artdef / mtl / ast + Art.xml 与 civ6proj 幂等补注册）。忠诚度分支（每文明 4 张 PNG）与宗教分支（新增自定义宗教，每宗教 3 张 PNG，--kind religion / gen_religion_art.py）共用同一引擎机制。素材处理前必须先询问用户；未提供时自动从工程 Textures 找最大的 ICON_CIVILIZATION_* / ICON_RELIGION_*。2D UI 宗教图标（IconTextureAtlases 270px/图集）不在本 skill 范围。"
-version: "1.0"
-author: 千与千寻瀑
-license: MIT
-category: game-modding
-tags:
-  - civ6
-  - loyalty
-  - artdef
-  - xlp
-  - strategicview
-  - modding
-models:
-  recommended:
-    - claude-sonnet-4
-  compatible:
-    - gpt-4o
-    - deepseek-v3
-languages:
-  - zh
-  - en
-```
-
----
-
-<!-- ↓↓↓ 以下为原 SKILL.md 正文逐字内容（未改写） ↓↓↓ -->
 
 ## 一、铁律：素材处理前必须询问
 
@@ -161,19 +125,19 @@ python <skill>\scripts\gen_loyalty_art.py --project "<工程路径>" --civ-types
 | UILensEntries 条目 | `LoyaltyOverlayIcon_{S}` / `LoyaltyPressureIcon_{S}` | `LoyaltyOverlayIcon_RAGUNNA_QYQXP` |
 | artdef 元素名 | `LoyaltyWarning_{CIV}`、`{CIV}`（引擎按完整文明类型查找） | `LoyaltyWarning_CIVILIZATION_RAGUNNA_QYQXP` |
 
-## 六、关键架构事实（实测/踩坑记录）
+## 六、关键架构事实
 
 1. **尺寸判定基准（core 模式，默认）**：以图标 alpha 质量（不透明像素）的**集中区**定标——
    横/竖两个方向的 alpha 边际分布各裁掉 `(1-keep)/2` 尾部质量（`--keep` 默认 0.90），
    核心区适配官方盒；全图同比例缩放、核心中心对齐画布中心。RGN 徽记类外围带射线/飘带的
-   图标主体可放大 ~1.5 倍，装饰稀疏时 core≈extent（实测）。
-   **官方 PSD 实测摆放盒**：Overlay 512 中核心区 fit 进 **227×269 居中 (256,256)**，叠在
+   图标主体可放大 ~1.5 倍，装饰稀疏时 core≈extent。
+   **官方 PSD 摆放盒**：Overlay 512 中核心区 fit 进 **227×269 居中 (256,256)**，叠在
    光晕上层保持原色不透明；Pressure 128 中白色剪影 fit 进 **40×48 居中 (64,64)**。
    SV 覆盖版 = 512 版 LANCZOS 缩到 256；SV 压力版与 3D 压力版同图。
 2. **光晕模板**：黑色径向光晕（中心平台 alpha≈168，向边缘衰减），只含 alpha 形状信息；官方样例的最终 alpha = 光晕 alpha（图标画在光晕之上）。
 3. **Box ast 复用官方几何**：Overlay 用 `HexModelGeo`（mesh `Official_Hex 034`，AnimType `FADE_LOOP`，AutoPlay true）；Pressure 用 `PipModelGeo`/`PipModel`（AnimType `NONE`，AutoPlay false）。**不自建几何**，唯一变量是材质引用。
-4. **材质最小单元是贴图但入口在材质**：AssetEditor 无法直接导入 3D 镜头贴图，必须经 mtl 的 `UILensOverlayTexture` 参数挂贴图（脚本直接写 mtl，绕过此坑）。
-5. **XLP / ArtDef 的构建接入点：`.civ6proj` 的 `<Content>`**不是**必需项**——实测可运行工程（`示例工程`）的 `.civ6proj` 里 `.artdef` / `.xlp` 的 Content 条目为 **0**，而构建出的 `.modinfo` 仍自动收进全部 13 个 `.artdef`；`.xlp` 是 cook 输入，既不进 Content 也不进产物。**真正的必需项是 `.Art.xml`**（经 `<UpdateArt>` 的 `(Mod Art Dependency File)` 挂载）中的 consumer / `requiredGameArtIDs` 声明。`gen_loyalty_art.py` / `gen_religion_art.py` 仍会**幂等补写** Content 条目（历史做法，写了不报错、属可选冗余）；Materials/Assets/Textures 目录构建时自动扫描，无需注册。
+4. **材质最小单元是贴图但入口在材质**：AssetEditor 无法直接导入 3D 镜头贴图，必须经 mtl 的 `UILensOverlayTexture` 参数挂贴图（脚本直接写 mtl）。
+5. **XLP / ArtDef 的构建接入点：`.civ6proj` 的 `<Content>` 不是必需项**——`.xlp` 是 cook 输入，既不进 Content 也不进产物；`.artdef` 由构建产物 `.modinfo` 自动收进。**真正的必需项是 `.Art.xml`**（经 `<UpdateArt>` 的 `(Mod Art Dependency File)` 挂载）中的 consumer / `requiredGameArtIDs` 声明。`gen_loyalty_art.py` / `gen_religion_art.py` 会**幂等补写** Content 条目（可选冗余，写了不报错）；Materials/Assets/Textures 目录构建时自动扫描，无需注册。
 6. **包合并**：`strategicview/strategicview_uilenses`、`UILensAssets` 包与基础库同名合并，故 artdef 引用基础/自有条目均可。
 7. **引擎查找约定**：Overlay.artdef 的 `LoyaltyLensArrows` 下子集合名 = 完整 `CIVILIZATION_X` 类型名；StrategicView.artdef 的 UILenses 元素名 = `LoyaltyWarning_{CIV}` 与 `{CIV}`——名字打错游戏不报错但图标不显示。
 8. **压力箭头**：SV 压力条目里的 `ReligionPressureArrow_ReligionPressureArrow` 是官方共享箭头条目，直接引用不要改名。
@@ -187,12 +151,10 @@ python <skill>\scripts\gen_loyalty_art.py --project "<工程路径>" --civ-types
    但条目已被替换成 error asset，不能当成功处理。模板见 `templates/loyalty_chain/Textures/`。
 11. **ArtDefReferenceValue 引用名必须与 UILensEntries 定义名逐字符一致**：`UILensEntries` 条目名用
    短后缀 `{S}`（`LoyaltyOverlayIcon_{S}` / `LoyaltyPressureIcon_{S}`），`UILenses` 集合里的引用
-   也必须用短后缀——不要用完整 `CIVILIZATION_X`。悬空引用游戏/cooker 都不报错，但战略视图图标
-   静默不显示（示例工程 实测踩坑）。
-12. **Pressure ast 的 `m_GroupName` 固定为 `"09 - Default"`**（PipModelGeo 官方网格组名，
-   工程 A 游戏实测），不能想当然写成 `"PipModel"`——组名对不上压力小图标不渲染。
+   也必须用短后缀——不要用完整 `CIVILIZATION_X`。悬空引用游戏/cooker 都不报错，但战略视图图标静默不显示。
+12. **Pressure ast 的 `m_GroupName` 固定为 `"09 - Default"`**（PipModelGeo 官方网格组名），不能写成 `"PipModel"`——组名对不上压力小图标不渲染。
 13. **宗教分支（第八节）**：引擎查找键是 artdef 元素名 `RELIGION_{R}`
-   （= DB `Religions.Type`，错字静默不显示，同第 7/11 条坑）；SV sprite 与 UILensEntries 条目
+   （= DB `Religions.Type`，错字静默不显示，同第 7/11 条）；SV sprite 与 UILensEntries 条目
    **同名** `ReligionPressureIcon_{R}`（忠诚度是条目名≠sprite名）；`ReligionLensIcons`/
    `ReligionLensArrows` 走同名元素合并追加（见第八节第 3 条）。
    官方宗教压力贴图 128×128、均为白色单色模板。
