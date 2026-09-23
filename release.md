@@ -109,12 +109,49 @@
    - **禁止**把 workspace 建在 git 仓库内（如 ModBuddy 工程目录 `D:\documents\Firaxis ModBuddy\Civilization VI\...`）——数百 MB 的 mod 内容会污染 `git status`（untracked 大量 sql/xml/lua/artdef）
    - 旧位置 `D:\documents\Civ6WorkshopUploader` 需完整文件权限才能写入；DSH 沙箱为 "never" 审批策略时不可用，仅当策略为 "ask" 且已授权时才使用
    - TEMP 位置在 DSH 沙箱内无需提权即可读写。
+   - ★ **`content/` 用 junction 指向 Mods 副本，不要物理复制**（见 Hard Rules ⑩）：
+     一次 `Copy-Item` 在本项目要 751 MB / 约 7 秒，且复制完成后 Mods 若再改动，工作区就悄悄
+     变成旧版（`verify_mod_package.py` 三处比对的经典假红灯来源）。junction 下工作区与 Mods
+     恒等：零复制、零漂移、零清理成本。
+   - ★ DSH 会话在 `workspace-write` 策略下 `$env:TEMP` 是**每会话独立目录**（形如
+     `...\Temp\dsh-<id>`），上一会话的工作区在下一会话既看不到、也过不了 `cleanup.ps1`
+     的根路径守卫。所以「复用旧 workspace」在 DSH 里通常不成立 —— junction 方案下重建成本
+     只有 1 MB 的壳加一条链，**默认每次都重建**即可。
 
 9. **上传成功并验证通过后，自动删除临时 workspace**：
    - 仅当 Steam API 确认 `hcontent_file` 已变化（真成功，非 `No content change detected` 假成功）后，删除 `%TEMP%\civ6-ws\<ModName>`
    - 用 `release\scripts\cleanup.ps1 -Workspace $ws` 执行（内置路径安全校验，只允许删 `$env:TEMP\civ6-ws\` 之下）
    - **绝不动** Mods 源目录（`D:\documents\My Games\Sid Meier's Civilization VI\Mods\<ModName>`，本体所在）和旧位置 `D:\documents\Civ6WorkshopUploader`
    - 上传失败或无变化（假成功）时**保留** workspace，便于排查
+
+10. **`content/` 必须是「指向 Mods 副本的 junction」，不是物理复制**：
+
+    ```powershell
+    New-Item -ItemType Junction -Path "$ws\content" -Target "<Mods 路径>\<ModName>"
+    ```
+
+    - **为什么可以**：上传器对 `content/` 的要求是「一个装着 mod 的目录」，源码里没有任何
+      一步会解析 reparse point 或拒绝链接（`UploadCommand.cs` 只做 `DirectoryInfo.Exists`
+      → `SteamUGC.SetItemContent(路径)`；`ValidateCommand.cs` 用
+      `GetFiles("*.modinfo", SearchOption.AllDirectories)`）。**已实测**：走 junction 建的工作区
+      `validate` exit 0 且逐条检查通过，与真目录完全等价。
+    - **为什么该做**：本项目 Mods 副本 420 文件 / 751 MB，其中 **98% 是 cooker 产物**
+      （`.blp` 306 MB + `.bik` 221 MB + `.wem` 209 MB），源工程里根本没有这 51 个文件。
+      junction 把每次发布的复制量从 751 MB 降到 0。
+    - **★ 语义变化**：`strip_comments.py` 是**就地写盘**的不可逆操作（无 dry-run）。content 是
+      junction 时，剥离**直接改的就是 Mods 副本本体**，不再是「改副本→（忘）回拷」。
+      最终状态相同（发布口径本就是「Mods 副本 == strip(源工程)」），但「就地」这个性质别忘，
+      尤其**别在剥离后、上传前又对 Mods 做修改**。
+    - **清理安全**：实测 `Remove-Item -Recurse` 作用在**含 junction 的父目录**上时，PS 5.1 与
+      PS 7.6 都只删链接本身、**绝不递归进目标**（目标目录原封不动）。`cleanup.ps1` 在此之上
+      另加三重守卫（见该脚本头注释）。
+    - **重建工作区**：`release/scripts/make_workspace.ps1` 已把这套流程（建链 → workshop.json →
+      mod_id.txt → 剥离 → validate）固化成一个幂等脚本，**它是本节的执行端**：
+
+      ```powershell
+      powershell -File release/scripts/make_workspace.ps1 `
+          -ModDir "D:\...\Mods\<ModName>" -ItemId <工坊ID> -Src "<ModBuddy 源工程>"
+      ```
 
 ## Standard Workflow
 
@@ -128,6 +165,11 @@ D:\documents\My Games\Sid Meier's Civilization VI\Mods\<ModName>
 
 ### 2. 剥离注释（发布前必跑）
 
+> **用 `make_workspace.ps1` 时本步已内置**（§3 ③ 会连剥离一起做）——那就**跳过本节**，
+> 直接看 §3。本节是「脚本不可用」或「想单独剥离并核对」时的手工流程。
+> 无论走哪条路，**顺序恒定：`modinfo_build.py --deploy`（或 Rebuild All）→ 剥离 → 上传**，
+> 因为每次部署都会把注释带回来。
+
 对外产物不该带内部说明。**2026-09-16 起默认只剥 `.lua`**（SQL/XML 注释保留）：
 
 ```powershell
@@ -140,31 +182,47 @@ python "$env:USERPROFILE\.agents\skills\civ6-modding\tools\strip_comments.py" `
 - `.lua` 剥离后自动跑 `luac -p` **差分**自检（仅「原文能过 → 剥离后不过」才算失败）；
   Civ6 的类型标注语法（`local x:table = {}`）源文件本就过不了，会被跳过并计数
 - ★ 每次 `modinfo_build.py --deploy` 或 ModBuddy `Rebuild All` 都会把注释带回来，**故本步必跑**
+- ★ 本步是**就地写盘**的不可逆操作（`--dry-run` 只统计、不写），作用对象是 **Mods 副本本体**。
+  工作区 `content/` 是 junction 时（Hard Rules ⑩），「工作区里的那份」与「Mods 副本」是
+  **同一个目录**，所以本步与「剥离工作区」是同一件事，不存在「剥了工作区却没剥 Mods」的中间态
 
 ### 3. 创建 workspace
 
-**首建**用 `new` 铺骨架。★ **cwd 必须切到 exe 所在目录**——`new` 用相对路径找
-`template\`，从别处调用会报 `Template not found at <cwd>\template` 并 exit 1：
+**首选：一条命令搞定**（`release/scripts/make_workspace.ps1`）——它依次做
+「建 junction → workshop.json → mod_id.txt → 剥离注释 → validate」，且**幂等可重跑**：
+
+```powershell
+powershell -File "$env:USERPROFILE\.agents\skills\civ6-modding\release\scripts\make_workspace.ps1" `
+    -ModDir "D:\documents\My Games\Sid Meier's Civilization VI\Mods\<ModName>" `
+    -ItemId <工坊条目ID> `
+    -Src    "D:\documents\Firaxis ModBuddy\Civilization VI\<工程>\<工程>"
+```
+
+- `-ItemId` 省略时**不会自作主张**：若工作区已有 `mod_id.txt` 就沿用，否则打 WARN 提醒你
+  「这样 upload 会新建条目」——这是最贵的失误（见 §3.1），脚本刻意不猜。
+- `-NoStrip` 跳过剥离、`-SkipValidate` 跳过 validate、`-Force` 才允许覆盖已存在的**普通
+  目录**形式的 `content`（普通目录默认**拒绝**，防止把 mod 本体当旧副本删掉）。
+- 剥离是**就地**改 Mods 副本（Hard Rules ⑩），脚本会显式打印这一点。
+
+**手工等价流程**（脚本不可用时照此做）：
 
 ```powershell
 $ws      = "$env:TEMP\civ6-ws\<ModName>"    # 固定用 TEMP 工作区根 civ6-ws（勿建在 git 仓库内）
-$toolDir = 'D:\documents\Civ6WorkshopUploader\tool'   # 本机默认值；换机器见 tools/_paths.py 的 uploader 键
+$modDir  = "<Mods 路径>\<ModName>"
 
-Push-Location $toolDir
-& ".\Civ6WorkshopUploader.exe" new -w $ws   # 只铺骨架：workshop.json / README.md / content/
-Pop-Location
-```
-
-> **更新已有条目时跳过本步**：直接复用台账/`mod_id.txt` 指向的旧 workspace，
-> 只同步 `content/` 与 `workshop.json` 即可（`upload` 见到 `mod_id.txt` 自动走更新路径）。
-
-然后**覆盖骨架**成真实内容：
-
-```powershell
-Remove-Item "$ws\content" -Recurse -Force                  # 清掉模板自带的 content\README.md
-Copy-Item "<Mods 路径>\<ModName>" "$ws\content" -Recurse    # 用剥离后的版本
+New-Item -ItemType Directory -Force -Path $ws | Out-Null
+New-Item -ItemType Junction -Path "$ws\content" -Target $modDir    # ★ 不复制，只建链
 # workshop.json 见下；mod_id.txt 见 §3.1
 ```
+
+> **旧式（物理复制）工作区怎么升级**：**直接整个删掉重建**，别手工「删 content 再建链」——
+> 手工删一旦敲错路径就是 751 MB 的 Mods 本体。用 `make_workspace.ps1` 时它会**明确拒绝**
+> 覆盖普通目录形式的 `content`（除非加 `-Force`），正是为了逼你先确认 
+
+> **不要再用 `new -w` 铺骨架**：它只为「从零建一个新 mod」服务，会铺出 `content/README.md`
+> 等你随后必须删掉的东西；它唯一的非模板产物是 `template/workshop.json`（模板占位，§3 下方
+> 本来就要覆盖）。更新已有条目更是用不上。`new` 仍需 `Push-Location <tool 目录>` 才能跑
+> （相对路径找 `template\`）——这条坑只在真的要新建条目时才相关。
 
 #### 3.1 `mod_id.txt`
 
@@ -236,6 +294,9 @@ python "$env:USERPROFILE\.agents\skills\civ6-modding\art\make_workshop_preview.p
 > 一律打印 `Upload may still proceed (validation is advisory).`。所以
 > **`validate` 通过 ≠ 包是好的**——本项目交付前仍必须跑
 > `tools/verify_mod_package.py`（引用闭合 + 三处一致性），它才是硬门。
+> 该工具对三类**预期差异**自动放行、不产生假红灯：`.lua` 已剥离、`BLPs/**`+`.dep` 是
+> cooker 产物、美术引用管线文件（按规范不进 proj 的 `<Content>`、也不进 `.modinfo` 的
+> `<Files>`）。想按逐字节严格口径复核时加 `--strict`。
 
 ### 4.5 预览图（要换封面时）
 
@@ -286,6 +347,11 @@ python "$env:USERPROFILE\.agents\skills\civ6-modding\tools\workshop_cover.py" `
 ```powershell
 & "$env:USERPROFILE\.agents\skills\civ6-modding\release\scripts\cleanup.ps1" -Workspace $ws
 ```
+
+三条守卫（脚本头注释有全文）：① 路径必须严格在 `$env:TEMP\civ6-ws\` 之下；② 工作区**自身**
+不能是 reparse point；③ **先逐个摘掉内部链接**（`Remove-Item <link>` 不带 `-Recurse` = 只删链），
+再整体递归删除。`content/` 是 junction 时日志会打印
+`已摘除链接: … -> <Mods 路径>`，看到这行属**正常**，Mods 副本不受影响。
 
 ### 9. 下架（`remove`，不可逆）
 
@@ -348,6 +414,9 @@ Pop-Location
 | Steam API result 9 | 条目可能私有/不可匿名查询 | 以作者身份用上传器确认，不要直接判定不存在 |
 | `Upload finished ... : OK` 但 API 没变 | 假成功 | 检查日志是否有 `No content change detected` |
 | validate/upload 报"未识别命令或参数"（workspace 路径含空格如 `Civilization VI`） | Start-Process -ArgumentList 会把路径按空格拆开 | 直接用 `& $tool validate -w $ws` / `& $tool upload -w $ws`（pwsh 原生引号处理） |
+| `There is no 'content' directory inside the workspace!` | 直接把 Mods 目录当工作区传给了 `-w`（上传器只认 `<ws>\content`，不会自己去 Mods 里找） | 用 `make_workspace.ps1` 建工作区；`content` 应为指向 Mods 副本的 junction |
+| 上传后线上仍是旧内容，但工作区看着是新的 | `content/` 是**物理复制**且复制后 Mods 又改过（版本漂移） | 改用 junction（Hard Rules ⑩）；已漂移的工作区直接删掉重建 |
+| `cleanup.ps1` 报 `拒绝删除：… 不在临时工作区根 …` | 工作区建在了 `$env:TEMP\civ6-ws\` 之外（DSH 会话的 `$env:TEMP` 每会话独立，跨会话路径必然不匹配） | 别删它，重新用 `make_workspace.ps1` 在本会话 TEMP 下建一个 |
 
 ## Machine-Specific Defaults
 
@@ -365,10 +434,11 @@ Pop-Location
 | 路径 | 用途 |
 |---|---|
 | `release/scripts/build.ps1` | 构建非 Trimmed `Civ6WorkshopUploader.exe`（`dotnet publish -c Release -r win-x64`） |
+| `release/scripts/make_workspace.ps1` | **建上传工作区（首选入口）**：content 用 junction 指向 Mods 副本 → workshop.json → mod_id.txt → 剥离注释 → validate，幂等可重跑 |
 | `release/scripts/validate.ps1` | 上传前 validate（`-Workspace <ws>`） |
 | `release/scripts/upload.ps1` | 上传/更新（`-Workspace <ws> [-TimeoutSeconds 1800]`，日志默认写 `<tool目录>\logs`） |
 | `release/scripts/verify.ps1` | 上传后 Steam API 验证（`-ItemId <id>`，比对 `time_updated` / `hcontent_file`） |
-| `release/scripts/cleanup.ps1` | 真成功后删临时 workspace（`-Workspace <ws>`，仅允许删 `$env:TEMP\civ6-ws\` 之下） |
+| `release/scripts/cleanup.ps1` | 真成功后删临时 workspace（`-Workspace <ws>`；三重守卫：仅在 `$env:TEMP\civ6-ws\` 之下 + 工作区自身非链接 + 先摘内部链接再递归删） |
 | `release/scripts/find_item_id.ps1` | 从 Steam 日志反查工坊条目 ID（`-ModName <名>`） |
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） |
 | `release/scripts/clash_proxy.py` | 测各节点延迟并自动选择最佳节点（`--url <工坊链接>`） |

@@ -16,6 +16,14 @@
   在源工程里**本就不存在** —— 它们只活在 Mods 副本、且每次 `Rebuild All` 重新生成。
   这类文件也不计入问题（`--strict` 下仍会报），避免长期假红灯淹没真问题。
 
+★ **美术管线感知**：美术引用链路上的文件（见 `ART_PIPELINE_EXTS`）按项目规范
+  **不写进 `.civ6proj` 的 `<Content>`**，也**不写进 `.modinfo` 的 `<Files>`** ——
+  它们由 cook 链路承载（pantry → cooker → `BLPs` / `.dep`）。故「Mods 里有而 modinfo 未声明」
+  属预期，一律放行。
+
+★ **`ImportFiles/` 不适用上面的豁免**：那是显式导入通道，其下素材与其它 ImportFiles 文件
+  同等对待，须三处齐全，漏登记照报。
+
 用法：
     python verify_mod_package.py --src <源工程目录> --mods <Mods/<ModName>>
                                  [--ws <上传工作区 content 目录>] [--files a/b.lua,c.lua]
@@ -67,6 +75,23 @@ _STRIP_TOOLS = os.path.dirname(os.path.abspath(__file__))
 COOK_ARTIFACT_PREFIXES = ("platforms/windows/blps/", "platforms/macos/blps/")
 COOK_ARTIFACT_SUFFIXES = (".dep",)
 
+# 美术引用管线：由 cook 链路承载（pantry → cooker → Platforms/*/BLPs/ 与 .dep），
+#   按项目规范不写进 .civ6proj 的 <Content>、也不写进 .modinfo 的 <Files>。
+# 与 COOK_ARTIFACT_* 的分工：那边管「源工程本就没有的 cooker 产物」，
+#   这边管「源工程有、但按规范不进清单」的美术管线文件。
+ART_PIPELINE_EXTS = (
+    ".artdef",                                # artdef 定义
+    ".xlp",                                   # cook 输入，既不进 Content 也不进产物
+    ".tex", ".dds",                           # pantry 源 / 图集素材
+    ".mtl", ".geo", ".ast", ".lrg", ".env",   # 材质 / 几何 / 资产 / 光照
+    ".fgx", ".wig", ".anm", ".s3d", ".blb",   # 其它美术中间格式
+)
+
+# 显式导入通道，不属于上面的豁免：经 ImportFiles 导入的素材（含直导的 .dds）
+#   与其它 ImportFiles 文件同等对待，须 .civ6proj <Content> + <ImportFiles> 动作
+#   + .modinfo 顶层 <Files> 三处齐全，故其下一切不豁免。
+EXPLICIT_IMPORT_PREFIX = "importfiles/"
+
 # ModBuddy 占位符：只允许出现在 .civ6proj 里；派生出的 .modinfo 必须已替换为 <ModName>.dep
 ART_DEP_PLACEHOLDER = "(Mod Art Dependency File)"
 
@@ -74,6 +99,17 @@ ART_DEP_PLACEHOLDER = "(Mod Art Dependency File)"
 def is_cook_artifact(rel: str) -> bool:
     r = rel.replace("\\", "/").lower()
     return r.startswith(COOK_ARTIFACT_PREFIXES) or r.endswith(COOK_ARTIFACT_SUFFIXES)
+
+
+def is_art_pipeline(rel: str) -> bool:
+    """美术引用管线文件：按规范不进 proj 的 <Content>、也不进 modinfo 的 <Files>。
+
+    ImportFiles/ 之下不豁免 —— 那是显式导入通道，须三处齐全。
+    """
+    r = rel.replace("\\", "/").lower()
+    if r.startswith(EXPLICIT_IMPORT_PREFIX):
+        return False
+    return os.path.splitext(r)[1] in ART_PIPELINE_EXTS
 
 
 def _strip_lua_text(text: str) -> str:
@@ -103,7 +139,7 @@ def main() -> int:
     ap.add_argument("--ws", default=None, help="可选：上传工作区 content 目录")
     ap.add_argument("--files", default=None, help="可选：逗号分隔的待比对文件（默认取 modinfo 的 <Files>）")
     ap.add_argument("--strict", action="store_true",
-                    help="不做剥离感知：要求三处逐字节一致（发布副本已剥注释时会报不一致，属预期）")
+                    help="关掉全部感知放行（剥离 / cook 产物 / 美术管线），要求逐字节一致且零未登记")
     args = ap.parse_args()
 
     mods_dir = os.path.abspath(args.mods)
@@ -126,6 +162,7 @@ def main() -> int:
     problems = 0
     stripped_ok = 0
     cook_skipped = 0
+    art_skipped = 0
     print("%-44s %s" % ("文件", "src / mods / ws"))
     for rel in files:
         rows, ok = [], True
@@ -194,13 +231,26 @@ def main() -> int:
             if not rel.lower().endswith(".modinfo") and rel not in declared:
                 unregistered.append(rel)
     if unregistered:
-        hard = [r for r in unregistered if not (not args.strict and is_cook_artifact(r))]
-        soft = len(unregistered) - len(hard)
+        # 分级：art  = 美术引用管线（见 ART_PIPELINE_EXTS，ImportFiles/ 除外）
+        #       cook = cooker 产物（BLPs/.dep）
+        #       hard = 真正需要人看一眼的漏登记
+        art, cook, hard = [], [], []
+        for r in unregistered:
+            if not args.strict and is_art_pipeline(r):
+                art.append(r)
+            elif not args.strict and is_cook_artifact(r):
+                cook.append(r)
+            else:
+                hard.append(r)
+        art_skipped = len(art)
         if hard:
             problems += 1
             print("漏登记（在 Mods 副本里但 modinfo 未声明）：%s" % hard)
-        if soft:
-            print("（另有 %d 个 cook 产物未登记，属预期、不计入问题）" % soft)
+        if art:
+            print("（另有 %d 个美术管线文件未登记进 modinfo，属规范行为、不计入问题：%s）"
+                  % (len(art), ", ".join(sorted({os.path.dirname(r) or "." for r in art}))))
+        if cook:
+            print("（另有 %d 个 cook 产物未登记，属预期、不计入问题）" % len(cook))
 
     langs = sorted({e.tag for e in root.findall("LocalizedText/Text/*")})
     print("\n本地化语言   : %s（%d 条 Text）" % (", ".join(langs) if langs else "无", len(root.findall("LocalizedText/Text"))))
@@ -208,8 +258,11 @@ def main() -> int:
         print("剥离感知     : %d 个 .lua 命中「副本 == strip(源)」，按预期差异放行" % stripped_ok)
     if cook_skipped:
         print("cook 产物    : %d 个 BLPs/.dep 只存在于 Mods 副本（源工程本就没有），按预期放行" % cook_skipped)
-    if stripped_ok or cook_skipped:
-        print("               （以上两类加 --strict 可强制逐字节核对）")
+    if art_skipped:
+        print("美术管线     : %d 个 artdef/dds 等未写进 modinfo <Files>（规范如此，走 cook 链路），按预期放行"
+              % art_skipped)
+    if stripped_ok or cook_skipped or art_skipped:
+        print("               （以上三类加 --strict 可强制逐字节核对）")
     print("\n结论: %s" % ("全部一致且引用闭合" if problems == 0 else "发现 %d 类问题，见上" % problems))
     return 0 if problems == 0 else 1
 

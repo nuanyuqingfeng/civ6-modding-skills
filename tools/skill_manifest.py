@@ -74,7 +74,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 | `sd_cpp` | 本地生图（stable-diffusion.cpp + FLUX 权重） |
 | `imagemagick` | ImageMagick（图标阈值 / 裁边） |
 | `luac` | Lua 5.1 语法检查 |
-| `ws_root` | 上传临时工作区根（`%TEMP%\\civ6-ws`） |
+| `ws_root` | 上传临时工作区根；`content/` 用 junction 指向 Mods 副本（见 `release/scripts/make_workspace.ps1`） |
 | `steam_logs` | Steam 日志目录（反查工坊条目 ID） |
 
 > 完整路径表与各键本机取值见 `civ6-modding/tools/README.md` 第 2 节。

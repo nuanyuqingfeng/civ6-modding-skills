@@ -10,15 +10,18 @@
   - [ ] `python strip_comments.py <Mods副本> --src <源工程>` → exit 0
   - [ ] 确认 `OK 目标目录 == strip(源工程)`
   - [ ] 注：每次 `modinfo_build.py --deploy` 或 ModBuddy `Rebuild All` 都会**把注释带回来**，故本步**必跑**
+  - [ ] 注：剥离是**就地**改 Mods 副本（content 是 junction 时改的就是同一个目录）；剥离后、上传前**别再改 Mods**
   - [ ] （`luac -p` 是差分判定：`Civ6 类型标注` 类既存误报会被跳过并计数，不算失败）
-- [ ] 已创建 workspace：
-  - [ ] **首建**用 `new -w` 铺骨架（★ `Push-Location <tool 目录>` 后再调，否则 `Template not found`）
-  - [ ] `content/` 已复制最新 mod（**剥离之后**的版本），且已清掉模板自带的 `content/README.md`
+- [ ] 已创建 workspace（**首选** `make_workspace.ps1`，一条命令走完建链/元数据/剥离/validate）：
+  - [ ] `content/` 是**指向 Mods 副本的 junction**，不是物理复制
+        （`(Get-Item "$ws\content" -Force).LinkType` 应为 `Junction`；重建成本 1 MB，别复制 751 MB）
+  - [ ] 工作区在 `$env:TEMP\civ6-ws\<ModName>`（★ DSH 会话的 TEMP 每会话独立，**跨会话别想复用**，直接重建）
   - [ ] `workshop.json` 已写：
     - 仅更新内容 → 只写 `changeNote`
     - **完全不想留更新说明 → 写空对象 `{}`**（不写任何字段则一切 metadata 不被触碰）
   - [ ] **更新已有条目**：`mod_id.txt` 已存在且 ID 正确
-        （★ 缺失会被当成新条目**另建一个**，上传前先 `Test-Path "$ws\mod_id.txt"`）
+        （★ 缺失会被当成新条目**另建一个**，上传前先 `Test-Path "$ws\mod_id.txt"`；
+        用 `make_workspace.ps1 -ItemId <ID>` 可显式写入，省略它会打 WARN 提醒）
   - [ ] `image.png`（可选）：要换预览图才放，规格 **PNG / 512×512 / ≤ 1 MB**，
         由 `art/make_workshop_preview.py` 产出（**执行端在 art/**；`tools/workshop_cover.py`
         已委托同一管线）。**不放 = 保留线上原图，不算错**
@@ -48,6 +51,7 @@
 
 - [ ] 台账 + `mod_id.txt` **双向核对**条目 ID
 - [ ] `remove -w <ws> -i <id>`（**只删线上条目**，本地 workspace / Mods 副本不受影响）
+      —— `-w` 只是让工具能读到 `mod_id.txt` 之类的上下文；也可直接 `-i <id>`
 - [ ] 回写台账「操作历史」表（下架日期 + 原因）
 
 ## 网络差时
