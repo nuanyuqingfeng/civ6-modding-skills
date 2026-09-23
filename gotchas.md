@@ -361,6 +361,12 @@
     -- DOMAIN_LAND/0 = 57 ; DOMAIN_LAND/1 = 1 ; DOMAIN_SEA/0 = 8
     ```
     **禁止 `Domain='DOMAIN_SEA'` + `Coast=1`。**
+    > **易混点**：`Domain` / `Coast` 只决定「**哪个域的单位来建、站在哪类格子**」；
+    > 「**这一格允不允许建**」是**另一层**，由 `Improvement_ValidResources` / `_ValidTerrains` / `_ValidFeatures` 决定，
+    > 且 **资源条目优先于地形/地貌** —— 地块上有资源时**只看资源条目**，地形/地貌条件被跳过。
+    > 即：`Domain='DOMAIN_SEA'` + `Coast=0` 只是拿到了入场券，**能不能落在这一格还得过 Valid* 那一关**。
+    > 完整规则、实测对照表与 `EnforceTerrain` 例外见 `database/schema-annotated.md`
+    > 「Improvement 的三张「可建造条件」表」一节。
 
 52. **SQL `LIKE ('%A%' OR '%B%')` 是陷阱：括号表达式先求值为整数 `0`**
     症状：多关键词搜索**一条都搜不到**，且**不报错**。
