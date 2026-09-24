@@ -20,7 +20,7 @@ r"""make_workshop_preview.py — 工坊预览图（Steam cover）生成器
 3. **剥掉无用 alpha**（母版若 alpha 恒 255 全不透明，alpha 通道纯属浪费编码）；
 4. PNG 最高压缩 + strip 元数据。
 
-## 为什么用 Pillow 而不是 ImageMagick
+## 为什么选用 Pillow
 
 ImageMagick 的**默认滤镜是 Mitchell（偏软）**，而 PIL 必须显式给 `Image.LANCZOS` ——
 用 PIL 可以从根上消灭「忘了写 `-filter` 就发糊」这类事故，且不再依赖本机 magick 路径。

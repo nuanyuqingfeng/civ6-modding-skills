@@ -6,7 +6,7 @@ r"""survey_icon_atlas.py — 按 `art-pipeline.md` §4.7 流程，「量出」�
 
 `normalize_icon.py` 的 `ICON_SPECS` 里只预填了 4 个类别（unit/building/project/improvement）；
 其余类别**故意留空**，需要时按 §4.7 的六步流程**实测**出 `canvas` / `content` / `outline`，
-而不是拍脑袋填数。§4.7 描述得很清楚，但此前**没有一个脚本能一键完成第 2~5 步**
+不要凭空填数。§4.7 描述得很清楚，但此前**没有一个脚本能一键完成第 2~5 步**
 （切格 → 量占幅 → 量描边 → 校准），只能手写一次性脚本 —— 本工具补上这一环。
 
 ## 定位

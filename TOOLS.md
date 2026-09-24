@@ -24,7 +24,7 @@
 | `art/normalize_icon.py` | normalize_icon.py — Civ6 图标规范化预处理（art-pipeline「图标规范化」专属章节的引擎） | `python normalize_icon.py <in.png> [out.png] [--canvas 256] [--content 224] [--color 255]<br>python normalize_icon.py <in.png> --role unit_icon        # 用 registry 内置规范` |
 | `art/regen_atlas_tiers.py` | regen_atlas_tiers.py — 图集中间档「母版重出」工具（修复被压对比/锐化的档位） | `python regen_atlas_tiers.py <projectRoot> --report<br>python regen_atlas_tiers.py <projectRoot> --atlas ATLAS_X --master 256 --sizes 32,50,80` |
 | `art/survey_icon_atlas.py` | survey_icon_atlas.py — 按 `art-pipeline.md` §4.7 流程，「量出」某图标类别的规范 | `python survey_icon_atlas.py --atlas "<pantry>/Buildings256.dds" --role building_icon<br>python survey_icon_atlas.py --atlas Dist256.dds --grid 4x4 --min-px 20` |
-| `art/verify_icon_atlas.py` | verify_icon_atlas.py — 图标图集落地自查（art-pipeline 第八节「完成标准」的可执行版） | `python verify_icon_atlas.py <projectRoot> [--icons a.xml b.xml] [--xlp a.xlp b.xlp]` |
+| `art/verify_icon_atlas.py` | verify_icon_atlas.py — 图标图集写入情况自查（art-pipeline 第八节「完成标准」的可执行版） | `python verify_icon_atlas.py <projectRoot> [--icons a.xml b.xml] [--xlp a.xlp b.xlp]` |
 | `art/verify_tex_class.py` | verify_tex_class.py — 校验「.tex 的 m_ClassName」与其「XLP 注册类」是否匹配 | `python verify_tex_class.py --project <工程根>              # 只查类别匹配<br>python verify_tex_class.py --project <工程根> --full        # 全量贴图体检（见下）` |
 | `database/scripts/audit_schema_drift.py` | audit_schema_drift.py - guard the civ6-modding reference DB against | `python database/scripts/audit_schema_drift.py<br>python database/scripts/audit_schema_drift.py --game "F:/Steam/.../Sid Meier's Civilization VI"` |
 | `database/scripts/build_localization.py` | build_localization.py — 从**本机游戏安装**按分层规则合成本地化文本库 | `python build_localization.py --report<br>python build_localization.py --build-main <主库.sqlite> --build-mode <模式库.sqlite>` |
@@ -179,7 +179,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 #### ★ 例外：`ImportFiles/` 之下不豁免（显式导入通道）
 
 美术素材若走「不经 XLP 直接导入」，落点是 `ImportFiles/<子目录>/`。这类文件属**显式导入
-通道**而非 cook 链路，与其它 ImportFiles 文件同等对待，须 `.civ6proj` 的 `<Content>` +
+通道**，与 cook 链路不同，与其它 ImportFiles 文件同等对待，须 `.civ6proj` 的 `<Content>` +
 `<ImportFiles>` 加载动作 + `.modinfo` 顶层 `<Files>` 三处齐全。故 `verify_mod_package.py`
 对 `ImportFiles/` 前缀一律不豁免，其下素材漏登记照报。
 

@@ -37,7 +37,7 @@
 > （`e7dc27a..17b3206` 之间仅两处 README 改动、**零代码差异**），但产物是 **Trimmed 构建**
 > （exe 16 MB vs 本地非 Trimmed 68 MB；内嵌程序集 57 vs 200，缺 `System.Linq.Expressions` /
 > `System.ComponentModel.TypeConverter` 等）——正是下文硬规则 ① 禁止的形态，有卡
-> `PreparingContent` 的风险，且当年堆栈缺 `.cs` 行号（无 PDB）。**换过去零收益、纯担风险。**
+> `PreparingContent` 的风险，且当年调用踪迹缺 `.cs` 行号（无 PDB）。**换过去零收益、纯担风险。**
 > 判据：`Civ6WorkshopUploader.exe --version` 打印的 commit 只说明**源码**同版，**不能**证明构建方式；
 > 要比就比 in-tree 体积与 `tool\` 里有没有 `.pdb`。
 

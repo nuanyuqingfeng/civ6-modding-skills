@@ -113,7 +113,7 @@ SELECT Name, Value FROM RequirementArguments WHERE RequirementId='...';
 ## 七、领袖 AI 偏好（28 个 System）
 
 `AiLists(LeaderType=<领袖特性>, System=<系统名>)` + `AiFavoredItems(ListType, Item, Favored, Value)`。
-**锚点是「领袖特性」而非 LeaderType** —— 引擎按领袖拥有的 Trait 解析。
+**锚点是「领袖特性」** —— 引擎按领袖拥有的 Trait 解析，`LeaderType` 不参与匹配。
 
 常用 10 个 System 与 Item 前缀：
 

@@ -168,7 +168,7 @@ Python 3 + **Pillow**（`make_atlas.py` 组版）、**numpy + scipy**（`normali
 | `background` | 官方基线 **1920×960**；实作**以 960 为基准、允许更高**（本项目 1920×1080 实机良好）。**低于 960 有两侧裁剪风险** | `LEADER_*_BACKGROUND` → `Shell_Loading.xlp`（`UITexture`），领袖**加载界面**背景；<br>★ 也是 FrontEnd placard `PortraitBackground` 留空时的回退名——但 placard 控件是 **328×935 竖版**且 `StretchMode=None`，横版贴图只显示左上角<br>★ 尺寸规则与实机依据见 `civ6-asset-forge/reference/frontend-portrait.md` §2.4 |
 | `diplomacy_layer1..4` | 层 1–3 = **960×505**；层 4 = **1920×1010** | `<LEADER>_1..4` → `UI_LeaderScenes.xlp`（`UITexture`），外交**场景分层** |
 | `loyalty_3d` / `loyalty_sv` | 512 / 128 与 256 / 128 | 由 `civ6-asset-forge` 的 `reference/loyalty-icon.md` 固定；UILens XLP + artdef |
-| `custom` | 不限 | 兜底，注册目标由调用方负责 |
+| `custom` | 不限 | 备用类别，注册目标由调用方负责 |
 | `fow` | 同其普通版 | FOW 迷雾变体，源图由 `apply_fow.py` 生成 |
 
 > ⚠ **尺寸不是脚本强制的**：`convert_art.ps1` 的 `Get-Sizes()` 对上述 role 返回空表
@@ -188,7 +188,7 @@ if diplomacyInfo and diplomacyInfo.BackgroundImage then
 else
     local numLayers = GameInfo.Leaders[leaderName].SceneLayers;
     leaderName = string.gsub(leaderName, "LEADER_", "");   -- ← 去掉 LEADER_ 前缀
-    if (numLayers == 0) then leaderName = "CLEOPATRA"; numLayers = 4; end   -- 兜底
+    if (numLayers == 0) then leaderName = "CLEOPATRA"; numLayers = 4; end   -- 取不到数据时的默认值
     for i = 1, numLayers, 1 do
         CreateBackgroundLayer(leaderName .. "_" .. i, ...);  -- ← 拼 <NAME>_<i>
     end
@@ -329,7 +329,7 @@ end
 | `canvas` | 统一主画布边长（该类别的最大档/基准档，px） |
 | `content` | 内容最长边目标（px），占画布比例 = content/canvas |
 | `color` | 剪影填充灰度（R=G=B）；彩色图标为 `None` 保留原色 |
-| `status` | `verified`（已调研验证） / `inferred`（由其他类别推断，兜底） / 未定 |
+| `status` | `verified`（已调研验证） / `inferred`（由其他类别推断，备用） / 未定 |
 | `source` | 规范依据/来源 |
 
 引擎：`art/normalize_icon.py`（内置上述 registry `ICON_SPECS`，可 CLI / 模块 / manifest 调用）。
@@ -363,7 +363,7 @@ python art/normalize_icon.py --role unit_icon --show        # 查看该类别规
    社区笔记 + 项目实测），验证后把参数固化进 `ICON_SPECS`（`status=verified`）。
 2. **原图直接入库**：用户自行处理好的/特殊的图（如 Leader 可能由用户仔细处理后才导入），
    **跳过规范化**（manifest `normalize:false` 或不写），以用户构图为准原样缩放。
-3. **据其他规范推断**（兜底）：从相近类别推断参数，但**必须标记 `status=inferred`** 并
+3. **根据其他规范推断**（备用途径）：从相近类别推断参数，但**必须标记 `status=inferred`** 并
    在交付说明里注明"推断值，未经该类别专项验证"，下次仍回到三选一确认。
 
 > 铁律衔接：本流程不豁免第一节「素材询问铁律」——处理素材前仍需先问来源/命名/多图意图；
@@ -440,7 +440,7 @@ python art/normalize_icon.py --role unit_icon --show        # 查看该类别规
 
 - 用户删掉暂存目录（如 `D:\desktop\XXX_RGN`）是**持久意图**，不要去找回或重建。
 - 已入库的素材应能在**工程内自洽重建**：成品源图放 `workspace/src/<类别>/`（含 `raw/`），
-  manifest 指向工程内路径而不是桌面路径 —— 否则桌面一清空，`make_atlas.py` 下次必炸。
+  manifest 指向工程内路径，不要指向桌面路径 —— 否则桌面一清空，`make_atlas.py` 下次必炸。
 - 源图只剩桌面路径时：先把 manifest 改成工程内副本再转换。
 
 > ⚠ **中间档源图陷阱（2026-09 真实踩坑，会造成"修好了又变回锯齿"）**
@@ -623,7 +623,7 @@ XML 字符引用转义，文件仍是合法 XML。**不要手工把 `.tex` 另�
 > （不同滤波器族或不同工具的舍入），但**边界中间调占比差 ≤0.68pp**、不透明区 RGB 差 ≤0.6
 > ⇒ **质量等价**。
 > 对照：**受损**档修复前后差 **20+pp**、alpha 差达 **227/255**。两者差 3~4 个数量级。
-> 所以自证判据用「**中间调差异 ≤2pp**」而不是「逐字节相同」；
+> 所以自证判据用「**中间调差异 ≤2pp**」，不用「逐字节相同」；
 > 逐字节只在"同一工具同一参数"时才有意义，跨工具/跨滤波器族不成立。
 
 ```bash
@@ -660,7 +660,7 @@ python art/verify_icon_atlas.py <projectRoot> --edge-qa
 严禁改成官方 pantry 的 `//civ6/main/ArtDev/...` depot 路径（AGENTS.md 硬性约定：
 depot 路径在 pantry 里会让 AssetEditor 崩溃/找不到源）。本工具不碰该字段。
 
-**`bCompleteMipChain` 为什么按类别而不是一刀切**：官方统计显示它**不是全局常量** ——
+**`bCompleteMipChain` 为什么按类别分别处理**：官方统计显示它**不是全局常量** ——
 `Generic_*`/`StrategicView_*`/`Leader_*` 等 3D 与 sprite 类几乎 100% 为 `true`，
 而 `TerrainElementHeightmap`/`ColorKey` 等 100% 为 `false`；
 `UserInterface` 则是 `true` 69% / `false` 31%（**未达阈值，故意不动**）。
@@ -693,7 +693,7 @@ python art/align_tex_format.py <projectRoot> --write --only encoding,groups,comp
 `F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK Assets\Civ6\pantry\Textures\`
 配对图集（Resources256 vs Resources256_FOW，逐桶 RGB 实测）拟合的两段式变换复刻：
 
-1. **金调 LUT**：亮度→颜色映射，B 通道全程压低（金棕而非灰白——首版管线 B 通道
+1. **金调 LUT**：亮度→颜色映射，B 通道全程压低（呈金棕，首版管线 B 通道
    抬太高导致灰白感，已修正）；暗部 L<40 保持深线稿色 (76,60,14)，平坦中段陡升为
    羊皮纸金，亮部为亮卡其 (218,192,100)；
 2. **暗部加权排线**：45° 排线不透明度随原亮度衰减 ((1-L/255)^gamma)，阴影处排线浓、
@@ -763,7 +763,7 @@ python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png
 | `make_atlas.py` | 多图拼网格序列图集 → 逐尺寸 PNG → texconv DDS → `.tex` → **注册片段** | 多图合并成一张序列图时 |
 | `convert_art.ps1` | 单图 → 多尺寸 DDS + `.tex` | 单图独立出图时 |
 | `merge_icon_registration.py` | **幂等**把注册片段并入项目 Icons XML + 补 XLP 条目；保 BOM/CRLF | `make_atlas.py` 出完片段之后（别手工合并） |
-| `verify_icon_atlas.py` | 落地自查：引用闭合 / 画布与网格一致 / mips=1 / **格子非空** / `.tex` 对齐 / XLP 无悬空 / 与官方重名；**`--edge-qa` 另查中间档边缘抗锯齿质量**（第 8.1 节） | **交付前必跑**（第八节的可执行版）；改了图集贴图再加 `--edge-qa` |
+| `verify_icon_atlas.py` | 写入情况自查：引用闭合 / 画布与网格一致 / mips=1 / **格子非空** / `.tex` 对齐 / XLP 无悬空 / 与官方重名；**`--edge-qa` 另查中间档边缘抗锯齿质量**（第 8.1 节） | **交付前必跑**（第八节的可执行版）；改了图集贴图再加 `--edge-qa` |
 | `regen_atlas_tiers.py` | **图集中间档母版重出**：从最大档逐格 LANCZOS 重出各小档，修「被锐化/压对比 → 实机锯齿」；`--report` 体检、`--report --write-damaged` 一键全修；`--file` 可重出单档贴图（如字体图集） | `--edge-qa` 报 DAMAGED 时；或接手他人图集想确认中间档是否干净 |
 | `align_tex_format.py` | **`.tex` 格式对齐官方**：统一 UTF-8 / 补 `m_Groups` / 按类别修正 `bCompleteMipChain`；**只动格式不动值**，且不碰 `m_SourceFilePath` | 接手他人工程的 `.tex`、或发布前统一格式；见第 8.2 节 |
 | `apply_fow.py` | 生成迷雾「羊皮纸」FOW 变体 | 该类别原版有 `_FOW` 时（建筑/区域/资源有，项目没有） |
@@ -784,13 +784,13 @@ python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png
 
 ## 十·补、文本图标化与「图标不显示」排查（`iconify_text.py`）
 
-前面各节的校验器管的都是**美术侧**（图集落地、格子非空、XLP 登记、`.tex` 对齐）。但图标
+前面各节的校验器管的都是**美术侧**（图集写入、格子非空、XLP 登记、`.tex` 对齐）。但图标
 不显示还有**另一半原因在文本侧**：`[ICON_x]` 里的 `x` 解析不到。两个方向必须都查：
 
 | 症状 | 病因层 | 用哪个工具 |
 |---|---|---|
 | 图标空白，但图集/贴图都正常 | **文本侧**：`[ICON_x]` 的 `x` 解析不到 | `iconify_text.py --audit` |
-| 图标空白，文本写法也对 | **美术侧**：图集没落地 / 格子空 / 没进 XLP | `verify_icon_atlas.py` |
+| 图标空白，文本写法也对 | **美术侧**：图集没有写入 / 格子空 / 没进 XLP | `verify_icon_atlas.py` |
 
 `iconify_text.py --audit` 把文本里出现的每个 `[ICON_x]` 拿去**两个来源**核对，解析不到就是悬空：
 

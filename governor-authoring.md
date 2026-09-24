@@ -110,7 +110,7 @@ INSERT OR REPLACE INTO GovernorPromotionPrereqs (GovernorPromotionType, PrereqGo
 ('GOV_PROMO_MYMOD_4', 'GOV_PROMO_MYMOD_3');   -- 两条前置 = 同时满足（合流）
 ```
 
-> **顶层晋升如果要"串行"而非"分叉"**，检查 `Column` 是否真的对齐了 —— 列位与前置不匹配会导致晋升树在 UI 上连线错乱（工程里修过一次：`fix(Governor): 修正晋升树列位与顶层前置`）。
+> **顶层晋升如果要"串行"、不要"分叉"**，检查 `Column` 是否真的对齐了 —— 列位与前置不匹配会导致晋升树在 UI 上连线错乱（工程里修过一次：`fix(Governor): 修正晋升树列位与顶层前置`）。
 
 ### ⑥ `GovernorPromotionModifiers` —— 挂效果
 
@@ -170,7 +170,7 @@ LOC_PEDIA_GOVERNORS_PAGE_<GovernorType|PromotionType>_CHAPTER_HISTORY_PARA_<n>
 
 > ★ 实测 62 个总督相关 `.tex` **全为 `PF_R8G8B8A8_UNORM` + `bUseMips=false`**、`m_ClassName`/`m_Tags = UserInterface`。
 > ⚠ 立绘**不是固定画布**：三工程实测 `PortraitImage` 有 200×208 / 208×208 / 206×208，`Selected` 有 325×339 / 339×331 / 325×339。
-> `civ6-asset-forge` 的 `reference/governor-art.md` 里的 206×208 / 326×339 应视为**推荐值而非硬规格**。
+> `civ6-asset-forge` 的 `reference/governor-art.md` 里的 206×208 / 326×339 应视为**推荐值，不属于硬规格**。
 
 ### ⑪ `.civ6proj` 注册
 

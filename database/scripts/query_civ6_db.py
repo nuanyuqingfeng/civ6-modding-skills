@@ -28,7 +28,7 @@ def _db_missing_msg(db_path):
 
 
 def _require_db():
-    """库缺失时明确报错并非 0 退出（exit 2：与 --check-id 命中冲突的 exit 1 区分）。"""
+    """库缺失时明确报错，并以非 0 退出（exit 2：与 --check-id 命中冲突的 exit 1 区分）。"""
     if os.path.isfile(DB_PATH):
         return
     sys.stderr.write(_db_missing_msg(DB_PATH))

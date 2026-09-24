@@ -35,8 +35,8 @@ SKIP_FILE_SUFFIX = (".art.xml", ".civ6proj", ".modinfo")
 
 
 def main():
-    # 用 argparse 而非裸 sys.argv[1]：此前 `--help` 会被当成路径，抛出
-    # FileNotFoundError 指向 "<cwd>\--help"，看起来像路径错误而不是用法提示。
+    # 采用 argparse：此前裸用 sys.argv[1] 时 `--help` 会被当成路径，抛出
+    # FileNotFoundError 指向 "<cwd>\--help"，看起来像路径错误，看不出是用法的提示。
     ap = argparse.ArgumentParser(
         description="核对 .civ6proj 的 <Content Include> 清单与实际磁盘内容是否闭合")
     ap.add_argument("root_pos", nargs="?", help="工程根目录（位置参数写法）")

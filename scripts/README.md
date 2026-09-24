@@ -37,7 +37,7 @@ check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR �
 > **★ 为什么需要 `check_sql_antipatterns.py`**：`LIKE ('%A%' OR '%B%')` 这类写法**语法完全合法**，
 > `executescript` 通过、`rgn_validate` 也不报 —— 它只在运行时表现为「条件永远不成立」。
 > **实测命中真实缺陷**：某工程 13 处该写法，导致注释声明"要包含 RGN 特色区域"的泛用 ReqSet 家族
-> 只生成了 **20** 条而非 **26** 条 —— 6 个特色区域被静默漏掉，且无任何报错。
+> 只生成了 **20** 条，缺少的 **6** 条特色区域被静默漏掉，且无任何报错。
 > **只有模式扫描能抓到它。**（该反模式的实机证据与修法见 `gotchas.md` §52。）
 
 ## 2. 运维脚本
@@ -55,10 +55,10 @@ check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR �
    ★ 它是**权威产物** —— 所有 INSERT…SELECT / 动态拼接的最终结果都在里面。
      只看源文件只能证明"我写了什么"，看它才能证明"引擎真的生成了什么"。
      实测教训：一个恒假的 `TraitType LIKE ('%RGN%' OR '%RAGUNNA%')`
-     让泛用 ReqSet 家族只生成了 20 条而非 26 条，源文件语法完全正确、任何静态校验都不报；
+     让泛用 ReqSet 家族只生成了 20 条、缺少 6 条，源文件语法完全正确、任何静态校验都不报；
      一查运行时库，缺口一目了然（见 gotchas §52）。
 
-① python check_sql_exec.py --root <工程>          # SQL 跑得起来吗
+① python check_sql_exec.py --root <工程>          # SQL 能否执行
 ② node   rgn_validate_runner.mjs <工程>/Data      # 引用闭合吗
 ③ python check_types_kinds.py --root <工程>       # Kind 合法吗
 ④ python check_sql_antipatterns.py <工程>         # 语法合法但恒假吗

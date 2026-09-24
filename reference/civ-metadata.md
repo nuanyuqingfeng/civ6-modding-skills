@@ -72,11 +72,11 @@
 - **各领袖的首都名也要放进来**（`CivilizationLeaders.CapitalName` 用的 tag
   最好也在 `CityNames` 里出现一次）。
 - 借用的名字（如共用 `LOC_CITY_NAME_PAWTIMORE`）在地图上**只出现一次**。
-- 用 `INSERT OR IGNORE` 而非 `Row`，可避免重名冲突直接报错（教程推荐）。
+- 用 `INSERT OR IGNORE` 代替 `Row`，可避免重名冲突直接报错（教程推荐）。
 
 > **数量建议**：实测 50 个主要文明（`CityNames` >5 条者）的**中位条数是 31.5**，
 > 最多 41（越南/加拿大）。**建议 ≥30 条**。
-> （注意：城邦与 Free Cities 等只有 1 条，不属于主要文明，别拿来当参考。）
+> （注意：城邦与 Free Cities 等只有 1 条，不属于主要文明，不要以此为参考。）
 
 ---
 

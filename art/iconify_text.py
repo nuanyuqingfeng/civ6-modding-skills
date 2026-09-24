@@ -132,7 +132,7 @@ def load_vanilla_icons() -> set[str]:
 def load_project_icons(root: str) -> tuple[set[str], set[str]]:
     """扫工程 Icons XML → (IconDefinitions 名, IconTextureAtlases 名)，均 casefold。
 
-    用**按块解析**而非全文件正则：IconDefinitions 的 `<Row Name=...>` 与
+    采用**按块解析**：IconDefinitions 的 `<Row Name=...>` 与
     IconTextureAtlases 的同形，只有落在各自容器块内才归属正确
     （全文件正则会把图集名混进定义名）。
     """

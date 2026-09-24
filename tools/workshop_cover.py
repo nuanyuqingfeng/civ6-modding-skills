@@ -14,7 +14,7 @@
 预览图走 `art/make_workshop_preview.py` 的**同一套采定管线**（Lanczos 逐级减半 + unsharp，
 默认 512×512）—— 不要在这里另写一份"随手 resize"：本项目 2026-09 的封面发糊事故，
 根因就是单步缩放 + 默认滤镜（Mitchell）偏软，实测锐度仅约为采定管线的 1/5。
-若 `art/` 不可用，会**明确告警**并回落到旧的单步 LANCZOS，而不是静默降级。
+若 `art/` 不可用，会**明确告警**并回落到旧的单步 LANCZOS，不会静默降级。
 
 用法（先出底图，再合成）：
     python local_flux.py --prompt-file bg.txt --out bg_7.png --seeds 42,7,123

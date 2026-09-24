@@ -48,7 +48,7 @@
 1. XML 属性与 DB 列名大小写不敏感（ModifierID vs ModifierId）→ norm_pk 大小写不敏感匹配
 2. XML 缺列取 DB 列默认值（AiFavoredItems.Favored 默认 1）→ 默认值填充
 3. BOOLEAN/INTEGER 类型规范化（True→1）→ norm_val
-4. Types.Hash UNIQUE 约束 → FNV-1a 兜底填充
+4. Types.Hash UNIQUE 约束 → 用 FNV-1a 填充
 5. 子元素形式行（`<Row><ModifierId>..</ModifierId></Row>`）→ 子元素提取
 6. Update/Delete 的 Where/Set 子元素不产生行 → 排除
 
@@ -90,7 +90,7 @@
 ## 六、剩余风险与未决项
 
 1. **DebugGameplay.sqlite 与游戏实际加载顺序的差异**：补全基于"官方 XML 全量"，未模拟引擎加载顺序（Mod 冲突/覆盖语义）。情景/模式专属内容已清理，库内容与常规对局（Base+Expansion+领袖 DLC）一致；系统表（Modifiers/Requirements）保留情景机制定义（词典用途）。行级出处以 source_index.row_source 为准。
-2. **Types.Hash 值**：补入行的 Hash 用 FNV-1a 兜底，与引擎计算值不同（仅参考库唯一约束用途，不影响查询）。
+2. **Types.Hash 值**：补入行的 Hash 用 FNV-1a 填充，与引擎计算值不同（仅参考库唯一约束用途，不影响查询）。
 3. **Events 21 中 3 个 UNCERTAIN**（EnableColorKey/DisableColorKey/WorldBuilderSignal）：reasoner 判定不确定，已按 UI 收录并标注，待用户核对。
 4. **引擎自动主键表**（BehaviorTreeNodes 等 16 表）行级来源无法标注，仅表级统计。
 5. **LuaEvents 收录边界**：已按用户指示收录 Base/资料片/领袖 DLC 事件（481 个，446 条带 DLC 标注），排除情景/模式/Platforms 事件。

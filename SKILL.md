@@ -192,7 +192,7 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
    > `LOC_GOVERNOR_THE_DEFENDER_NAME`（维克多）**全部查不到**。别据此断定"官方没这个 tag"。
    >
    > **需要 DLC 覆盖时按分层规则合成**（`build_localization.py`）。两个库都在
-   > `database/` 下**本机落地、不入 git**（可从游戏文件数十秒重建）：
+   > `database/` 下**只在本机保存、不入 git**（可从游戏文件数十秒重建）：
    >
    > | 库 | 内容 | 规则 | 期望规模 |
    > |---|---|---|---|
@@ -205,7 +205,7 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
    > python database/scripts/build_localization.py --rebuild           # 实际重建
    > ```
    >
-   > 主库语义是「**游戏文件权威、既有库兜底**」：游戏文件定义了的键取分层值（EXP2 优先），
+   > 主库语义是「**游戏文件权威、既有库补缺**」：游戏文件定义了的键取分层值（EXP2 优先），
    > 没有的键（如项目自造 tag）用既有库补——**既有行一行不丢**，`SkillAnnotation_*` 侧表原样保留。
    > 两库**互不覆盖**：有 239 个交集键、其中 238 个是模式对主库的改写；
    > **运行时若同时启用模式，按「模式库胜出」合并使用**。
@@ -273,7 +273,7 @@ python database/scripts/search_impl.py --list-objects             # 看支持哪
 **GRANT_ABILITY**（取 `AbilityType` → 展开该能力下属全部 Modifier）。递归自带**防环 + 限深**
 （官方数据里 ATTACH 链存在成环写法）。
 
-需要手写 SQL 时，等价链路：
+需要手写 SQL 时，等价写法：
 
 ```sql
 -- 1) 找效果：反查「哪些 Modifier 用了这个 Effect」
@@ -302,7 +302,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 > Modifier/Effect 类悬空引用时也会追加同样的下一步指引。
 >
 > ⚠️ 反向教训：ModTools 的注册表把总督晋升写成 `GovernorPromotions.GovernorType`，而本库
-> schema 里**没有这一列**（真实链路是中间表 `GovernorPromotionSets`）——照抄外部工具的
+> schema 里**没有这一列**（真实结构是中间表 `GovernorPromotionSets`）——照抄外部工具的
 > 表/列假设前，先 `PRAGMA table_info` 核对。
 
 ---
@@ -504,7 +504,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 
 - 基础库默认 `<本skill目录>/database/DebugGameplay.sqlite`（相对脚本定位），`--base` 可覆盖；临时副本用后即删，原库只读不动
 - `--static` 回退纯文本解析模式（仅认 VALUES 字面量行，SELECT 拼接会误报悬空）
-- 执行错误多为基础库缺引擎专属/前端表（如 Players、PlayerItems）或校验器限制（Config 文件按 gameplay schema 校验，如 DuplicateLeaders.Domain；Types.Hash UNIQUE 未模拟引擎哈希；temp 表两遍执行顺序），属环境性容错项而非项目错误
+- 执行错误多为基础库缺引擎专属/前端表（如 Players、PlayerItems）或校验器限制（Config 文件按 gameplay schema 校验，如 DuplicateLeaders.Domain；Types.Hash UNIQUE 未模拟引擎哈希；temp 表两遍执行顺序），属于环境性容错项，与项目错误无关
 - **基础库防污染**：参考库必须与官方 schema 1:1。改过 DB 后跑 `python database/scripts/audit_schema_drift.py`（有漂移 exit 1）；校验器也会对 DynamicModifiers/Modifiers/ModifierArguments/Types 做列断言并告警
 - `--lang` 按所选语言匹配文本列（默认 `zh`，可选 `en` / `ja`）
 
@@ -607,7 +607,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `reference/MODIFIER_ARGUMENTS.md` | Modifier 参数分类 |
 | `database/scripts/query_effect_args.py` | **Effect/Modifier 参数取值域查询**（参数签名 + `DatabaseKind`→`Types` 权威全集 + 官方实际用值；支持 `--effect` / `--modifier` / `--arg` / `--search` / `--dump-json`） |
 | `database/scripts/search_impl.py` | **「某对象/效果原版怎么实现」反查**（14 类对象 × 6 种绑定路径；递归展开 ATTACH / GRANT_ABILITY / 嵌套 REQSET，自带防环限深；支持 `--object` / `--modifier` / `--effect` / `--json`） |
-| `database/scripts/build_localization.py` | **分层合成两个本地化文本库**（主库 / 模式库）：从游戏安装按 `.modinfo` 权威分段（main/mode/scenario），主库 `EXP2>EXP1>base` + 既有库兜底，Mode 独立成库只加不覆盖；`--rebuild` 一键重建两库 / `--report` 只读 / `--build-main` / `--build-mode` / `--augment-main`；不删行、不动 schema、不应用 `<Delete>`。两库均**不入 git**（可重建），见 `database/README.md` §零 |
+| `database/scripts/build_localization.py` | **分层合成两个本地化文本库**（主库 / 模式库）：从游戏安装按 `.modinfo` 权威分段（main/mode/scenario），主库 `EXP2>EXP1>base` + 既有库补缺，Mode 独立成库只加不覆盖；`--rebuild` 一键重建两库 / `--report` 只读 / `--build-main` / `--build-mode` / `--augment-main`；不删行、不动 schema、不应用 `<Delete>`。两库均**不入 git**（可重建），见 `database/README.md` §零 |
 | `reference/WORKSHOP_PATTERNS.md` | 高级 SQL 模式 |
 | `reference/TYPE_NAME_MAPPING.md` | Type→名称 + Trait→Modifier 关联链 |
 | `database/modifiers-guide.md` | Modifier 系统指南 |

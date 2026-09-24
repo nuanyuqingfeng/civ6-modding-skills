@@ -737,7 +737,7 @@ ctrl:SetTextureAndMask(t, m)      -- 同时设置纹理和遮罩
 - `<ButtonData>` - 定义打开下拉框的按钮
 - `<GridData>` - 定义下拉框背景网格
 - `<ScrollPanelData>` - 包含子按钮的滚动面板
-- `<StackData>` - 包含子按钮的堆栈
+- `<StackData>` - 包含子按钮的堆叠容器
 - `<InstanceData>` - 子按钮模板
 
 **Lua 方法：**
@@ -750,7 +750,7 @@ ctrl:ForceClose()                    -- 强制关闭
 ctrl:GetButton() -> Button           -- 获取按钮
 ctrl:GetGrid() -> Grid               -- 获取网格
 ctrl:GetScrollPanel() -> ScrollPanel -- 获取滚动面板
-ctrl:GetStack() -> Stack             -- 获取堆栈
+ctrl:GetStack() -> Stack             -- 获取堆叠容器
 ctrl:IsOpen() -> bool                -- 是否打开
 ctrl:RegisterSelectionCallback(func) -- 注册选择回调
 ctrl:SetDisabled(bool)               -- 设置禁用

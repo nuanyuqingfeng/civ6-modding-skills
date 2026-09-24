@@ -128,12 +128,12 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
   收益低而回归面大。需要旧的全类型行为时显式加 `--all-exts`。
   剥离后 **Mods 副本与源工程会故意不一致**——用
   `strip_comments.py <Mods副本> --src <源工程>` 核对「发布副本 == strip(源)」，或直接用
-  `verify_mod_package.py`（已内置剥离感知，会把 48 个 `.lua` 记为放行而非不一致）。
+  `verify_mod_package.py`（已内置剥离感知，会把 48 个 `.lua` 记为放行，不计入不一致）。
   `luac -p` 是**差分判定**：Civ6 的 Lua 带类型标注
   （如 `local x:table = {}`）本就不是 Lua 5.1 语法，源文件同样过不了，属既存误报
   （本项目 `ImportFiles/OfficialOverrides/SecretSocietyPopup.lua` 即此例），只有"剥离后才坏"才算失败。
   每次 `modinfo_build.py --deploy` 或 ModBuddy `Rebuild All` 都会把注释带回 Mods 副本
-  → **发布前必须重跑剥离**。
+  → **发布前必须重新执行剥离**。
 - **`verify_mod_package.py`**：对**发布副本**做体检时，有三类差异是预期的、不计入问题：
   ① `.lua` 命中「副本 == strip(源)」（发布前剥离）；② `Platforms/*/BLPs/**` 与 `*.dep`
   源工程本就没有（AssetEditor/cooker 产物，只在 Mods 副本）；③ **美术引用管线文件**

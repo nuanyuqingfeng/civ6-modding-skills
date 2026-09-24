@@ -82,7 +82,7 @@
 > 准确说法：`GameEvents.*` 上**存在一批非自定义事件，且它们在 `Events.*` 上没有对应条目**，例如 `OnDistrictConstructed` / `CityConquered` / `PolicyChanged` / `PlayerTurnStarted` / `OnUnitMoved` / `OnCombatOccurred` / `UnitCreated` / `PlotPropertyChanged`（130 条中 82 条 `availability=GamePlay`，`events_enhanced.json` 自带的 `exampleCode` 就写 `GameEvents.X.Add(...)`）。
 > 实测反证：一个已发布 mod 全工程 127 个事件注册点与 `eventSystem` 比对 **63/63 命中、0 处不一致**，其中 `GameEvents.PolicyChanged` / `GameEvents.CityConquered` / `GameEvents.OnDistrictConstructed` 都在正常工作；另一个工程 18 个事件同样零例外。
 > 同理 `UnitMoveComplete` 只在 `Events.*` 上有回调 —— **两边各自拥有一批对方没有的事件，谁也不能替代谁**。
-> 心智模型：三条总线是**按事件划分**的三张表，不是按「引擎 vs Lua」划分的 —— 所以永远查 `eventSystem`，不要按来源猜。
+> 心智模型：三条总线是**按事件划分**的三张表 —— 所以永远查 `eventSystem`，不要按来源猜。
 >
 > **⚠ `GameEvents.X` 不是存在性探针**——它对**任意**名字都返回 table（自动建表）。只能用 `type(Events.X) == "table"` 判断事件是否存在；对不存在的事件写 `Events.X.Add()`，**UI 侧会直接抛 `attempt to index a nil value` 并中断该函数后续所有初始化**。引擎未暴露到 `Events.*` 的 48 个事件在 `events_enhanced.json` 中标 `availability: "None"`（这 48 条的 `eventSystem` 同为 `GameEvents`，即「按名字该走 GameEvents，但实际哪一层都订阅不到」）。
 
@@ -90,7 +90,7 @@
 
 ## Database Pitfalls
 
-9. **Load order matters.** 顺序分**两级**，按粒度选用，二者是互补而非替代：
+9. **Load order matters.** 顺序分**两级**，按粒度选用，二者互补：
    | 层级 | 手段 | 作用范围 | 适用 |
    |---|---|---|---|
    | **动作级** | `<Properties><LoadOrder>N</LoadOrder></Properties>` | 整个 `UpdateDatabase` 动作之间 | 跨动作定序；官方阶梯 `-100`（schema/remove）/ `0`（常规）/ `100`（情景） |
@@ -435,7 +435,7 @@
 > 需要独立佐证时查 `database/api.sqlite` 的 `verify_status` / `runtime_gp` / `runtime_ui` 三列
 > （2026-09-08 FireTuner 全量实测，见 SKILL.md「API 核验字段」）。
 
-> **通用写法：探测方法存在性，而不是靠上下文标志分支。** 同一份 Core 文件要被 GP 和 UI 同时 `include()`，
+> **通用写法：按方法是否存在决定分支，不要按上下文标志决定分支。** 同一份 Core 文件要被 GP 和 UI 同时 `include()`，
 > 就写成「探测方法存在 → 用；不存在 → 换等价方法；都没有 → 走保守默认值」：
 > ```lua
 > local f = pUnit.GetUnitType or pUnit.GetType;
@@ -465,7 +465,7 @@
 
 61. **Modifier 授予/移除 PROPERTY 不会触发 `UnitPropertyChanged`**
     SQL modifier 直接写 PROPERTY 时，依赖 `Events.UnitPropertyChanged` 刷新 UI 的按钮/面板**静默不刷新**。
-    兜底：`ContextPtr:SetUpdate` 累加计时 + 节流脏检查（实测 0.2s 一档可用）。
+    备用方案：`ContextPtr:SetUpdate` 累加计时 + 节流脏检查（实测 0.2s 一档可用）。
 
 62. **需要"本局第一次通知"的 handler 必须写在文件加载期，不能放进初始化函数**
     `Events.NotificationAdded` 这类"开局前几回合就会来"的事件，若在 `LoadScreenClose` / `LoadGameViewStateDone` 里才 `.Add()`，
@@ -474,7 +474,7 @@
 
     ⚠ **同理适用于 EXECUTE_SCRIPT 接收器**（2026-09-23）：UI 可能在 `LoadGameViewStateDone` → `LoadScreenClose` 之间
     （玩家点「开始/继续游戏」之前）就派发请求，接收器注册放进初始化函数会**晚于派发而静默丢失**。
-    稳妥口径：**引擎事件的 `GameEvents.X.Add` 接收器一律留在文件加载期**，初始化函数只放依赖运行期数据的订阅。
+    统一口径：**引擎事件的 `GameEvents.X.Add` 接收器一律留在文件加载期**，初始化函数只放依赖运行期数据的订阅。
 
     ⚠ **`LoadGameViewStateDone` 与 `LoadScreenClose` 都是 GP/UI 双端可用**（`availability=Both`）。
     曾误记为 `UI`，反例：`Ragunna_Pack` 的 `Scripts/Lua_*.lua`（`AddGameplayScripts`）11 个文件在此事件上挂初始化，
@@ -543,7 +543,7 @@
     ```
     `Plot:IsCity()` 是**地块数据**（双端实测可用），与城市归属无关 —— 自己的 / 其他文明 / 城邦 / 自由城市的城心
     一律算数，不受 `Players` / `PlayerManager` 枚举是否完整影响；
-    `Map.GetPlotDistance()` 逐城比对（`Player:GetCities():Members()`，各自判空）留作兜底，
+    `Map.GetPlotDistance()` 逐城比对（`Player:GetCities():Members()`，各自判空）留作备用，
     覆盖"地块标记与城市列表不同步"的边角。**两层同口径叠加，比单靠任一层都稳。**
 
 67. **建城地块的权威判据是引擎自己的 `IsValidFoundLocation`；`CITY_MIN_RANGE` 是"含端点的禁止半径"**
@@ -560,11 +560,11 @@
     结论：`GameInfo.GlobalParameters["CITY_MIN_RANGE"]`（原版 **3**）是**禁止半径且含端点**，
     即"距任意城市中心 **<= 3** 格不可建城"，**合法间距是 `距离 > CITY_MIN_RANGE`**（第 4 环才是第一个合法位）。
     → 手写间距检定必须写 `<=`，写成 `<` 会**恰好放宽一格**（距城 3 格多显示按钮，点下去才被 GP 驳回、按钮静默消失）。
-    → 更稳的写法：把引擎裁定当主口径，手写规则只做它缺席时的兜底：
+    → 更稳的写法：把引擎裁定当主口径，手写规则只做它缺席时的备用判断：
     ```lua
     local ok, bValid = pcall(function() return pPlot:IsValidFoundLocation() end);
     if ok and bValid == false then return false end   -- 引擎说不行就不行
-    -- 引擎接口缺席 → 用本地自算（`<= CITY_MIN_RANGE`）兜底
+    -- 引擎接口缺席 → 用本地自算（`<= CITY_MIN_RANGE`）补位
     ```
     同类参数别按字面猜方向（"MIN_RANGE = 最小间距" 是错的读法）；**数值语义一律实机扫一遍边界再写死。**
 
@@ -581,7 +581,7 @@
 
     **成因**：AssetEditor / cooker 输出的资产类文本**恒为 LF**；而 Lua/SQL/XML 这类代码与配置原版**恒为 CRLF**。
 
-    **为什么必须钉死**（本机 `core.autocrlf=true`）：不在 `.gitattributes` 里钉死，
+    **为什么必须固定**（本机 `core.autocrlf=true`）：不在 `.gitattributes` 里固定，
     checkout 会把 LF 资产写成 CRLF，于是「源 ↔ Mods 副本 ↔ cook 产物」出现**永久伪差异**，
     diff 噪声淹没真实改动（`.artdef` 早年正是因此被迫 `text eol=lf`，见 `civ6-art-reference/reference/cook-layer.md §2.3`）。
 
@@ -741,7 +741,7 @@
     本条是**另一个触发源**——同一主体**反复重新满足条件**（单位进出）同样累积，
     且**永不自动回收**。两者机制不同，需分别防范。
 
-    处方：**内层 modifier 换成「按条件重算」的原版常规类型**，而不是给它加防重复。
+    处方：**内层 modifier 换成「按条件重算」的原版常规类型**，加防重复解决不了问题。
     本项目罗蕾莱修法即为此例：0 环 attach 外层保持不动，只把内层由自定义的
     `MODIFIER_SINGLE_CITY_ADJUST_HAPPINESS_YIELD_RGN`（快乐度分层产出）换为原版
     `MODIFIER_SINGLE_CITY_ADJUST_CITY_YIELD_MODIFIER`（+10% 全产出）+

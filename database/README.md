@@ -6,7 +6,7 @@
 
 ## 零、两个本地化文本库 —— 本机重建，不入库 ⚠️
 
-本目录下有**两个**本地化文本库，都**不进 git**、都在本机落地使用（直接可用，无需联网）：
+本目录下有**两个**本地化文本库，都**不进 git**、都只在本机使用（直接可用，无需联网）：
 
 | 库 | 内容 | 期望规模 | 体积 |
 |---|---|---|---|
@@ -61,7 +61,7 @@ python skills/civ6-modding/database/scripts/build_localization.py --build-mode s
 |---|---|---|---|
 | `annotations/localization_side_tables.json` | `SkillAnnotation_Icons` / `SkillAnnotation_Colors` | 241 / 51 | 图标名·颜色名 → 中文备注（人工标注） |
 | ↑ 同上（`extraRows` 段） | 库中「游戏安装里没有」的行 | 64 | 本项目自造 tag（`_QYQXP_` 百科文本），不重建就丢 |
-| `annotations/localization_aux_tables.json` | 7 张语言注册表 + 3 个视图的 DDL 与数据 | 95 | 换机器重建后仍是 **10 表 + 3 视图**，而不是只剩 `LocalizedText` |
+| `annotations/localization_aux_tables.json` | 7 张语言注册表 + 3 个视图的 DDL 与数据 | 95 | 换机器重建后仍是 **10 表 + 3 视图**，不会只剩 `LocalizedText` |
 
 手动导出（侧表有改动时跑）：
 

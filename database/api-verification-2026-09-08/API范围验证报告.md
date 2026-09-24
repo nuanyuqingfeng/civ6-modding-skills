@@ -154,7 +154,7 @@ local ok, v = pcall(f)
 
 **双端不可见（176）**：其中 138 个是 GameInfo 库表名（`Buildings`、`Units`、`Modifiers`…，本来就不是全局，须经 `GameInfo.<表>` 访问，已单独验证见 §5）；其余是纯实例类（`Control`、`Notification`、`DiplomacyDeal(Item)`、`InputStruct`、`FreeCities`、`MapPinConfiguration`、`WorldBuilderResourceGenerator`）、文档转储（`CodeBuddyFuncs(Raw)`）与前端/工具模块（`json`、`Tools`、`Relationship`、`Tests.*`）。
 
-**受保护元表（C 侧 `__index`，`pairs` 不可枚举，只能按名索引）**：GP 8 个、UI 22 个。典型：`UI`、`GameInfo`、`Locale`、`Network`、`Modding`、`Input`、`UILens`、`Options`、`Steam`、`Search`、`DB`、`Path`。这也是本次必须逐名探测（而非纯枚举）的原因。
+**受保护元表（C 侧 `__index`，`pairs` 不可枚举，只能按名索引）**：GP 8 个、UI 22 个。典型：`UI`、`GameInfo`、`Locale`、`Network`、`Modding`、`Input`、`UILens`、`Options`、`Steam`、`Search`、`DB`、`Path`。这也是本次必须逐名探测、不能只做枚举的原因。
 
 ---
 
@@ -210,7 +210,7 @@ local ok, v = pcall(f)
 1. **文档偏宽：GP 未见（126 条）**——文档标 `Both`，实际只在 UI 存在。绝大多数是 UI 脚本模块被误标：`TunerUtilities.(命名空间)`、`TunerUtilities.Stringify`、`TunerUtilities.FromCSV`、`TunerUtilities.GetContextTree`、`TunerUtilities.GetControlChildren`。**结论：这些模块在 GP 脚本里根本不存在，`include` 也无效；而在 UI 侧也需先 `include` 才可见（见 §3 注）。**
 2. **文档偏宽：双端均未见（81 条）**——两端都没有该名字，多为文档名与运行时不一致或版本差异：`Player.ChangeDiplomaticFavor`、`Player.GetAi_Diplomacy → GenerateToolTips`、`Player.GetAi_Diplomacy → GetNumToolTips`、`Player.GetAi_Diplomacy → GetToolTip`、`Player.GetDiplomacy → GetAllianceLevelWithPlayer`（运行时近似名：GetAllianceLevel…）、`Player.GetGovernors → GetIdentityPressure`。例如 `Player:SetScoringScenario` 运行时实为 `SetScoringScenario1/2/3`；`Player:GetDiplomacy():GetAllianceLevelWithPlayer` 运行时为 `GetAllianceLevel`。
 3. **文档偏宽：UI 未见（28 条）**——GP 专属被标 `Both`：`GameSummary.GetDataPoints`、`GameSummary.GetOrCreateDataSet`、`GameSummary.FindDataSet`、`GameSummary.GetCityObject`、`GameSummary.GetDataSets`（`GameSummary`/`RouteBuilder`/`PlayerVisibility` 属世界生成与 GP 侧统计面）。
-4. **文档存疑：UI 未见（38 条）**——文档标 `UI` 却在 InGame 上下文找不到：`Player.GetGovernors → GetGovernorGetComponentID`（运行时近似名：GetGovernor…）、`Player.GetGovernors → GetGovernorHasPromotion`（运行时近似名：GetGovernor…）、`Player.GetGovernors → GetGovernorGetOwner`（运行时近似名：GetGovernor…）、`Player.GetGovernors → GetGovernorCanAssignToMajorCiv`（运行时近似名：GetGovernor…）、`Player.GetGovernors → GetGovernorGetNeutralizedTurns`（运行时近似名：GetGovernor…）。细分为：Governor 三层对象本局取不到实例（12 条）、`IconManager` 需实例而非模块面（5 条）、FrontEnd 事件在 InGame 不可见（`Events.BeginFullGamePurchase`/`MultiplayerConnectionFailed` 等 5 条）、`InputStruct` 的方法被挂到了 `Input` 名下（3 条）。
+4. **文档存疑：UI 未见（38 条）**——文档标 `UI` 却在 InGame 上下文找不到：`Player.GetGovernors → GetGovernorGetComponentID`（运行时近似名：GetGovernor…）、`Player.GetGovernors → GetGovernorHasPromotion`（运行时近似名：GetGovernor…）、`Player.GetGovernors → GetGovernorGetOwner`（运行时近似名：GetGovernor…）、`Player.GetGovernors → GetGovernorCanAssignToMajorCiv`（运行时近似名：GetGovernor…）、`Player.GetGovernors → GetGovernorGetNeutralizedTurns`（运行时近似名：GetGovernor…）。细分为：Governor 三层对象本局取不到实例（12 条）、`IconManager` 需要实例才能访问，模块面取不到（5 条）、FrontEnd 事件在 InGame 不可见（`Events.BeginFullGamePurchase`/`MultiplayerConnectionFailed` 等 5 条）、`InputStruct` 的方法被挂到了 `Input` 名下（3 条）。
 5. **文档存疑：GP 未见（10 条）**——标 `GamePlay` 但 GP 侧没有：`UnitManager.SetLifespan`、`UnitManager.GetUnitType`、`UnitManager.ChangeLifespan`、`UnitManager.ResetLifespan`、`UnitManager.SetMaxHitPoints`（`UnitManager` 的 Lifespan/MaxHitPoints 系与 `TerrainBuilder.SetResourceType` 疑为旧版或 WorldBuilder 专属）。
 6. **文档偏窄：GP 亦可见（33 条）**——标 `UI` 但 GP 也有，属**可利用的好消息**：`Events.Begin2KLoginProcess`、`Events.DisableColorKey`、`Events.EnableColorKey`、`Events.HideLeaderScreen`、`Events.RestartWonderMovie`（`Achievements`、`GameSummary`、`PlayerVisibilityManager`、部分 `Events` 在 GP 同样可调用）。
 

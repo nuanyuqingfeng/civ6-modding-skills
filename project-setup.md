@@ -73,7 +73,7 @@ These pieces of vocabulary are identical between `.modinfo` and `.civ6proj` (onl
 **分层实践**（推荐骨架，来自真实工程）：
 
 ```
--1        内容/类型定义（被他人引用的先落地）
+-1        内容/类型定义（被他人引用的先写入）
 200       常规内容（Types / Icons / 主数据）
 600000    ImportFiles（共享 Core 文件）
 600005+   Modifiers（晚于 Types，因为要引用它们）
@@ -97,7 +97,7 @@ These pieces of vocabulary are identical between `.modinfo` and `.civ6proj` (onl
 
 ### 加载顺序的两级手段：`LoadOrder`（动作级）与 `Priority`（文件级）
 
-> **先说结论**：两者**分工不同、互补而非替代**，按你要控制的粒度选用：
+> 两者**分工不同、互补**，按你要控制的粒度选用：
 >
 > | 想控制什么 | 用什么 | 说明 |
 > |---|---|---|
@@ -620,7 +620,7 @@ ModBuddy 工程属性页有一个 **`Custom Properties`** 面板（`Civ6.Project
 | ModBuddy 二进制（`Civ6.Tasks.dll`、`Civ6.Project.dll` 等） | **0 命中** `CustomParameter` |
 
 **结论**：那些 xlsx 片段更可能是**作者自用的纯文本模板**
-（填好 `Value` 列后手工复制进工程），而非 ModBuddy 特性。
+（填好 `Value` 列后手工复制进工程），ModBuddy 不提供该特性。
 **要"一份模板套多个领袖"，用生成器脚本，别赌这套机制**：
 
 1. **生成器脚本（推荐）**：读一份变量表，直接渲染出完整
