@@ -50,7 +50,9 @@ Civ6 有**两个独立数据库**：Config（FrontEnd 用）与 Gameplay（InGam
 
 ### 2.2 `criteria` 不一致
 
-`criteria` 是**动作元素上的属性**（`.modinfo`）或**子元素**（`.civ6proj`），**一个动作只能绑一个 criteria** → 加载条件不同的内容**结构上无法共处一个动作**，必须拆。
+`.civ6proj` 里 `criteria` 是**动作的子元素**，**一个动作可写多个 `<Criteria>`**（全部成立才加载 = 逻辑与），不支持 `;`/`,` 分隔。
+`.modinfo` 里 `criteria` 是**动作元素上的属性**、只接受**单个**值 —— 由 `.civ6proj` 派生时会自动转成多个子元素（`tools/modinfo_build.py` 逐字符透传 CDATA）。
+因此**只有 criteria 组合不同**的内容才必须拆成不同动作；同一组合的内容可共处一个动作。
 
 官方实证：`criteria` 属性在 42 个 modinfo 中出现 **501 处**、去重 **145 个**不同值；`Australia.modinfo` 的 `AustraliaGameplay`(criteria=`Australia`) / `_XP1`(`Australia_Expansion1`) / `_XP2`(`Australia_Expansion2`) 必须三分。
 
@@ -144,7 +146,7 @@ Civ6 有**两个独立数据库**：Config（FrontEnd 用）与 Gameplay（InGam
 ├─ 该表两侧都有（Colors/Icons/Text/Art）？
 │        └─ 是 → ★ 两端各注册一个动作（漏一端 = 静默失效）
 │
-├─ 已有动作的 criteria 与本文件不同？ ─ 是 → ★ 必须新建动作（一个动作只能一个 criteria）
+├─ 已有动作的 criteria 组合与本文件不同？ ─ 是 → ★ 必须新建动作（同一组合可共处，组合不同才拆）
 │
 ├─ 是「Types 定义」还是「遍历/Modifier 逻辑」？
 │        ├─ Types ────→ 放进 Types 动作（LoadOrder 早，如 -1/200）

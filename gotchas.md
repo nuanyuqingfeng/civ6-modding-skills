@@ -100,7 +100,7 @@
    **不必为了定序而强行拆分动作** —— 同一逻辑单元的文件放一个动作、用 `Priority` 排内部次序，是更常见的做法（本项目 `Anomaly_Database` 即此形态）。
 
    **动作划分判据**（完整决策树见 `reference/action-splitting.md`）：
-   - **必须拆（4 类）**：① Config 库 vs Gameplay 库；② 表**两侧都有**（Colors/PlayerColors/Icons/Text/Art）→ **两端各一个动作**，漏一端**静默失效**；③ `criteria` 不一致（一个动作只能绑一个 criteria）；④ 依赖其他 mod 的动作（`<Include>`）
+   - **必须拆（4 类）**：① Config 库 vs Gameplay 库；② 表**两侧都有**（Colors/PlayerColors/Icons/Text/Art）→ **两端各一个动作**，漏一端**静默失效**；③ 依赖其他 mod 的动作（`<Include>`）；④ 同一文件必须在**不同 criteria 组合**下分别加载（一个动作可绑**多个** `<Criteria>` 子元素，全部成立才加载 = 逻辑与；组合不同才需拆）
    - **可选拆（2 类）**：① Types 定义 vs 遍历/Modifier 逻辑（**Types 早、遍历晚**，理由见 §11c）；② 文件极多（建议 **≥50**；官方有 **192** 与 **87** 的先例，阈值别定低）
    - **默认：同类文件合并、且不写 `Priority`**
 
@@ -616,8 +616,7 @@
     判定真实内容变更（实测：`status` 报 48 个 `M`，而 `--cached` 与逐文件 `git diff` 均为 0）。
 
 
-
-69. **`luac -p` 对 Civ6 的 Lua 是「部分可信」：类型标注语法必报假错，必须差分判定**（2026-09-16 实测）
+69. **`luac -p` 对 Civ6 的 Lua 是「部分可信」：类型标注语法必报假错，只能差分判定**（2026-09-16 实测）
 
     Civ6 的 Lua 含 **Lua 5.1 不认识的类型标注**，例如：
 
@@ -627,16 +626,15 @@
 
     `luac -p` 会报 `unexpected symbol near ':'`。**这不是文件坏，是方言比 5.1 新。**
 
-    ★ **要害：源文件与 Mods 副本同样报错**。所以任何"剥离/改写后跑 `luac -p` 自检"的流程，
-    若只看**结果**不过就判失败，会对这类文件**每次都误报**——
-    本项目实测：`strip_comments.py` 因 `ImportFiles/OfficialOverrides/SecretSocietyPopup.lua`
-    恒定 `exit 1`，**真失败会被淹没在噪声里**（发布流程长期带着一个假红灯）。
+    ★ **要害**：任何"改动后跑 `luac -p` 当质量门"的流程，若只看**结果**不过就判失败，
+    会对这类文件**每次都误报**——本项目实测 `ImportFiles/OfficialOverrides/SecretSocietyPopup.lua`
+    恒定 `exit 1`，**真失败会被淹没在噪声里**。
 
-    **正确做法 —— 差分判定**：先验原文、再验结果，只在「原文能过 → 结果不过」时报错：
+    **正确做法 —— 差分判定**：先验改动前、再验改动后，只在「改动前能过 → 改动后不过」时报错：
 
     ```python
-    ok_before = luac_check_text(raw)
-    ok_after  = luac_check_text(stripped)
+    ok_before = luac_check_text(before)
+    ok_after  = luac_check_text(after)
     if ok_before and not ok_after:      # 只有这个组合才是「我改坏了」
         fail()
     elif not ok_before:                 # 既存方言问题，跳过并计数提示
@@ -644,7 +642,7 @@
     ```
 
     实测该项目：47 个 `.lua` 通过、1 个既存误报（`SecretSocietyPopup.lua`）、真失败 0
-    —— 与源工程同口径（源也是 47 通过 / 1 误报），据此确认剥离无副作用。
+    —— 源工程与改动后同口径（都是 47 通过 / 1 误报）。
 
     **同类判断**：本机唯一可用版本是 `E:\SoftWares\Lua\5.1\luac.exe`（`_paths.py` 的 `luac` 键）。
     任何"用 luac 当质量门"的脚本都要先确认它对目标文件**在改动前**是过的，
@@ -755,6 +753,44 @@
     判定法：写任何 `EFFECT_ATTACH_MODIFIER` 之前先自问——
     **「条件失效时，谁来摘掉这个 modifier？」** 答不出来就是本条 bug。
     实机验证只要一步：让单位进入触发区域再**离开**，看增益是否随之消失。
+
+73. **含中文的 .ps1 不带 BOM，在 Windows PowerShell 5.1 下会整片报错**（2026-09 实测）
+
+    症状：同一个脚本用 `pwsh`（PowerShell 7）跑正常，用 `powershell`（5.1）跑报一连串
+    语法错误——`Unexpected token '}'`、`Missing closing '}'`、`The '<' operator is reserved`，
+    而且报错行号指向**完全正常的代码**。中文字符串在输出里显示成乱码（如 `锛堟彁绀虹骇锛`）。
+
+    根因：Windows PowerShell 5.1 **没有 BOM 就按系统 ANSI 代码页（本机 GBK）解码**，
+    而不是 UTF-8。中文注释与字符串被拆成非法字节序列，语法结构随之崩掉。
+    PowerShell 7 默认按 UTF-8 解码，所以同一文件在 7 下无恙——**用 pwsh 验证会掩盖这个缺陷**。
+
+    ★ 判定与修法：文件前 3 字节是否为 `EF BB BF`。**只要含中文就必须有 BOM**：
+
+    ```powershell
+    # 加 BOM（只在前缀插 3 字节，正文一字不动）
+    $b = [System.IO.File]::ReadAllBytes($p)
+    if (-not ($b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF)) {
+        [System.IO.File]::WriteAllBytes($p, [byte[]](0xEF,0xBB,0xBF) + $b)
+    }
+    ```
+
+    ★ **别用 PowerShell 的 `Set-Content` / `Out-File` 补 BOM**：5.1 的 `-Encoding UTF8` 会写 BOM，
+    7 的 `UTF8` 却**不写**（要 `utf8BOM`），跨版本行为相反，越修越乱。用上面的字节写法。
+
+    ★ **编辑工具会吃掉 BOM**：多数文本编辑/补丁工具按 UTF-8 读写，写回时**不会**保留原有 BOM。
+    改完含中文的 .ps1 之后必须**重新检查前 3 字节**，否则会把已修好的文件打回原形。
+
+    ★ **验证要用 5.1，不能用 pwsh**：
+    ```powershell
+    powershell -NoProfile -Command "$t=[System.IO.File]::ReadAllText('x.ps1',[System.Text.Encoding]::UTF8);
+      $e=$null; [System.Management.Automation.Language.Parser]::ParseInput($t,[ref]$null,[ref]$e); $e.Count"
+    ```
+    注意：**读文件时要显式用 UTF-8**（`ReadAllText` 带编码参数）；
+    直接 `ParseFile` 会走 5.1 的默认解码，**把缺 BOM 的文件误判为语法错误**——
+    连本来正常的文件都会报错，那就不是在测这个缺陷了。
+
+    ⚠ 同一目录里 BOM 有无混杂是常态（本项目 `release/scripts/` 9 个 .ps1 里曾有 3 个缺 BOM），
+    所以**逐个文件查**，别按目录抽样。
 
 
 
