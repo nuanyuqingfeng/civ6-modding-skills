@@ -10,7 +10,7 @@
     },
     "phase": 1,
     "description": "初始数据：从 markdown 提取，未经过 AI 分析验证",
-    "notes": "2026-08 校准: LuaEvents 补充 DLC 来源标注(445 条) + 新增(1 条) | 2026-09 运行时实测(示例工程 报错溯源): 48 个未向 Lua 暴露的 GameCoreEvent 单独标注 —— 其中 15 条原误标 Events/Both|UI 已改为 GameEvents/GamePlay, 30 条补录; 均加 verify_* 字段与实测来源。 | 2026-09 二次更正: 经 FireTuner 对照实验证明 GameEvents 不承载 GameCoreEvent, 48 个未暴露事件 availability 由 GamePlay 改标 None(不可订阅)。 | 2026-09-23 三次更正: LoadGameViewStateDone / LoadScreenClose 由 UI 改标 Both —— 依据为 GP 侧实例: 示例工程 的 Scripts/Lua_*.lua (AddGameplayScripts 注册) 11 个文件在此类事件上挂初始化, 工程 A 的 Scripts/Lua_SK_BS.lua (同属 AddGameplayScripts) 亦然; FireTuner 实测 GP VM 内该事件对象存在且 Add 可用。注: 双端可用不等于可以晚注册 —— 该事件在加载窗口期触发, EXECUTE_SCRIPT 接收器与 CityAddedToMap 等仍须留在文件加载期注册。",
+    "notes": "2026-08 校准: LuaEvents 补充 DLC 来源标注(445 条) + 新增(1 条) | 2026-09 运行时实测(示例工程 报错溯源): 48 个未向 Lua 暴露的 GameCoreEvent 单独标注 —— 其中 15 条原误标 Events/Both|UI 已改为 GameEvents/GamePlay, 30 条补录; 均加 verify_* 字段与实测来源。 | 2026-09 二次更正: 经 FireTuner 对照实验证明 GameEvents 不承载 GameCoreEvent, 48 个未暴露事件 availability 由 GamePlay 改标 None(不可订阅)。 | 2026-09-23 三次更正: LoadGameViewStateDone / LoadScreenClose 由 UI 改标 Both —— 依据为 GP 侧实例: Ragunna_Pack 的 Scripts/Lua_*.lua (AddGameplayScripts 注册) 11 个文件在此类事件上挂初始化, Black_Shores_Pack 的 Scripts/Lua_SK_BS.lua (同属 AddGameplayScripts) 亦然; FireTuner 实测 GP VM 内该事件对象存在且 Add 可用。注: 双端可用不等于可以晚注册 —— 该事件在加载窗口期触发, EXECUTE_SCRIPT 接收器与 CityAddedToMap 等仍须留在文件加载期注册。",
     "availabilityValues": [
       "UI",
       "Both",

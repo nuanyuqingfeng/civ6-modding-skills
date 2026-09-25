@@ -66,7 +66,7 @@ languages:
 |------|------------------|---------|-------------|
 | 总督素材<br>`reference/governor-art.md` | 总督头像/徽章/立绘（含立绘边缘透明渐变、抠边） | 24px 就职/晋升徽章、32/64px 头像图标、206×208 常态立绘、326×339 选中立绘、软边 1024² TEXTURE/OPACITY | 不做 3D 总督模型；不做城市横幅滴的 UI 布局改动（只出贴图）；不改 `GovernorPanel.lua` 图标查找逻辑 |
 | 忠诚度 / 宗教压力图标<br>`reference/loyalty-icon.md` | 文明忠诚度图标、宗教压力图标、新增自定义宗教 | 每文明 4 张 PNG（3D 覆盖/压力 + 战略视图覆盖/压力）、每宗教 3 张 PNG + 完整 UILens 注册链 | 不处理 2D UI 宗教图标（`IconTextureAtlases` 270px 图集，数据路径）→ **真实落点在 `civ6-modding/art-pipeline.md` 的图标规范化一节**（注意"同名重复注册会静默劫持图标"）；不处理立绘 |
-| 2D 领袖<br>`reference/leader-2d.md` | 2D 领袖立绘纸片人（全套注册链）、1024×1024 TEXTURE/OPACITY | XLP 包 / `Leaders.artdef` / 几何 / 材质 / 灯光 / 环境光 / `.tex` / 行为资产 ast | 不生成素材（用户未提供时只出注册文件）；不做 config（领袖互斥/同名，见项目 `DuplicateLeaders`）。**材质类必须是 `Leader_Matte`（平面类），误用 `Leader`（PBR 人物类）会导致纸片发灰+发糊，见 §3.5 与 `migrate_leader_matte.py`** |
+| 2D 领袖<br>`reference/leader-2d.md` | 2D 领袖立绘纸片人（全套注册链）、1024×1024 TEXTURE/OPACITY | XLP 包 / `Leaders.artdef` / 几何 / 材质 / `.tex` / 行为资产 ast（**无灯光/环境光**） | 不生成素材（用户未提供时只出注册文件）；不做 config（领袖互斥/同名，见项目 `DuplicateLeaders`）。**材质类必须是 `Leader_Matte`（平面类），误用 `Leader`（PBR 人物类）会导致纸片发灰+发糊，见 §3.5 与 `migrate_leader_matte.py`**；**不生成 `LightRigs`/`EnvironmentLights`/`Leader_LightRigs.xlp`，artdef 用原版 `ART_DEFAULT_LIGHT`，见 §3.6**；**两个 `.tex` 必须最高品质（色度降采样会致发糊+色差），见 §3.6** |
 | **UI 领袖立绘 / 选人界面背景**<br>`reference/ui-leader-portrait.md` | **Sukritact's Civ Selection Screen** 选人界面的 2D 立绘（`Players.Portrait`）与背景（`Players.PortraitBackground`） | 每领袖 2 张 `_Suk` 贴图（立绘 = 内容定宽 ×1024 高；背景 = 外交背景中心裁 1440×1080）+ `UPDATE Players` + XLP + `Criteria` 接线 | 不做 3D 纸片人注册链（→ 类别④）；不负责 Suk mod 本体分发；不处理加载界面（`IMG_LOADING_*` / `LoadingInfo`，另一条链） |
 | **历史时刻插画**<br>`reference/moment-illustration.md` | **`MomentIllustrations`** 的插画卡片（特色单位/区域/建筑/改良/总督的时刻图） | 每张 **456×332** 贴图（套 **18 张官方形状模板**之一）+ `UI_PrideMoments.xlp` 登记 + `MomentIllustrations` 行 | 不新增 `MomentIllustrationType`（属玩法侧表级改动）；不做 `Moments` 表（时刻本体）；不处理非历史时刻的其它 UI 图 |
 | **原版 FrontEnd 立绘 / 背景**<br>`reference/frontend-portrait.md` | **原版环境**下领袖的**前景（立绘）与背景**：FrontEnd 选人 placard（`Players`）+ 加载界面（`LoadingInfo`） | 前景（高 1024，`LEADER_<X>_NEUTRAL` 约定）+ 背景（竖版 **328×935** 自建，或别名复用原版 `LEADER_<X>_BACKGROUND`）+ XLP 登记 + `Players`/`LoadingInfo` 行 | 不做外交场景（→ `civ6-modding/art-pipeline.md` §三.1）；不做 3D 纸片人（→ 类别④）；Suk 分支另见类别⑤ |
@@ -101,7 +101,7 @@ languages:
 | 「总督素材」「governor icon」「就职图标」「晋升徽章」「总督立绘」「立绘抠边/边缘透明渐变」 | ① 总督 | `reference/governor-art.md`；脚本 `scripts/build_icon_set.py`、`scripts/edge_gradient.py`、`scripts/verify_badge.py` |
 | 「忠诚度图标」「忠诚度覆盖/压力」「战略视图忠诚度」「新增自定义宗教」「宗教压力图标」「宗教镜头覆盖」 | ② 忠诚度/宗教 | `reference/loyalty-icon.md`；脚本 `scripts/process_loyalty_icon.py`（`--kind loyalty` / `--kind religion`）、`scripts/gen_loyalty_art.py`、`scripts/gen_religion_art.py` |
 | 「晋升图标」「promotion icon」「单位晋升」「白色图标合成」「盾形徽章」「五边形徽章」 | ③ 单位晋升<br>**（管线已废）** | 只查尺寸：`reference/promotion-icon-sizes.md`（**仅尺寸/格式规格，生成管线已废弃**）。**不要再照旧文档做图**；确需重做 → 走 `civ6-modding` 的 `art-pipeline.md` 通用图标管线 |
-| 「2D 领袖」「立绘纸片人」「领袖注册链」「领袖 XLP/artdef/几何/材质/灯光」「1024 TEXTURE/OPACITY」「领袖发灰/发糊/像蒙了滤镜」「领袖材质类」 | ④ 2D 领袖 | `reference/leader-2d.md`（**材质类铁律 §3.5**）；脚本 `scripts/gen_leader_2d.py`、`scripts/process_leader_png.py`、`scripts/migrate_leader_matte.py`（存量工程 `Leader`→`Leader_Matte` 体检/迁移） |
+| 「2D 领袖」「立绘纸片人」「领袖注册链」「领袖 XLP/artdef/几何/材质/灯光」「1024 TEXTURE/OPACITY」「领袖发灰/发糊/像蒙了滤镜」「纸片模糊/不够清晰」「领袖材质类」「纸片色差/边缘洇色」「LightRig/环境光要不要做」 | ④ 2D 领袖 | `reference/leader-2d.md`（**材质类铁律 §3.5 / 灯光与贴图品质铁律 §3.6**）；脚本 `scripts/gen_leader_2d.py`、`scripts/process_leader_png.py`、`scripts/migrate_leader_matte.py`（存量工程 `Leader`→`Leader_Matte` 体检/迁移） |
 | 「suk selection」「Sukritact」「Civ Selection Screen」「选人界面」「领袖选择界面」「PortraitBackground」「UILeaders.xlp」「UI 领袖立绘」「领袖选择背景」 | ⑤ UI 立绘/Suk | `reference/ui-leader-portrait.md`；脚本 `scripts/gen_suk_portrait.py`、`scripts/verify_suk_portrait.py` |
 | 「历史时刻」「历史时刻插画」「时代得分图」「historic moment」「MomentIllustrations」「Moment_」「PrideMoments」 | ⑥ 历史时刻 | `reference/moment-illustration.md`；脚本 `scripts/apply_moment_template.py`、`scripts/verify_moment.py` |
 | 「原版选人界面」「FrontEnd 立绘/背景」「加载界面背景」「LoadingInfo」「ForegroundImage」「Shell_Loading.xlp」「领袖前景」「借用原版背景」「给我一张图自动做领袖立绘/背景」 | ⑦ 原版 FrontEnd | `reference/frontend-portrait.md`；脚本 `scripts/prepare_frontend_portrait.py`（自动分类+处理）、`scripts/verify_frontend_portrait.py`（校验）、`scripts/pick_vanilla_background.py`（挑官方背景） |
@@ -156,7 +156,7 @@ languages:
 
 **开始任何一类素材任务前，必须先询问用户是否提供素材**，得到答复后再动手。**默认只生成注册文件/注册链，不主动生成、不擅自处理素材**。
 
-- 询问必须包含：**格式要求、尺寸要求、自动兜底方案、输出目录**四项，并给出「已有素材 / 暂无素材」两个选项。
+- 询问必须包含：**格式要求、尺寸要求、缺素材时的默认处理方案、输出目录**四项，并给出「已有素材 / 暂无素材」两个选项。
 - 每类的询问模板与素材要求（逐字原文）在对应 reference 文件里，**照用不要自己改写尺寸**：
 
 | 类别 | 询问模板与素材要求位置 | 素材要求摘要 | 未提供时的默认行为 |
@@ -168,7 +168,7 @@ languages:
 | ⑥ 历史时刻 | `reference/moment-illustration.md` 第三节（官方形状模板）与第四节（制作流程 4.1/4.2） | 源图：每张插画的 PNG（任意尺寸）；**模板**：官方形状 PSD（`1..18.psd`） | 模板与源图都需用户提供；脚本负责套版、缩放、报告覆盖率 |
 
 - 用户坚持用自己提供的模板/素材时，一律按其提供的路径走参数（如 `--glow`、`--icon`、`--avatar`、`--input`），不要替换成内置模板。
-- 交付物中必须写明**实际用了哪个素材文件**（含自动兜底时选中的源文件路径）。
+- 交付物中必须写明**实际用了哪个素材文件**（含自动回退时选中的源文件路径）。
 
 ## 四、铁律二：不静默备份
 
@@ -203,9 +203,15 @@ languages:
 > ⚠ **`QUOTE` 不算外交语音。** `QuoteAudio` / `LeaderQuotes` 有值也**不**触发纸片人——
 > quote 只用于加载界面与百科，不进外交场景。
 
-**命中 → 才生成** `Leaders.artdef` + Geometries / Materials / LightRigs / EnvironmentLights /
-`Assets/*.ast` / leader XLP 全套；**未命中 → 全部不生成**，只出 2D 立绘
+**命中 → 才生成** `Leaders.artdef` + Geometries / Materials / `Assets/*.ast` /
+leader XLP 全套；**未命中 → 全部不生成**，只出 2D 立绘
 （`IMG_LOADING_FOREGROUND_*` 等）。
+
+> ⚠ **不生成任何灯光资产**（`LightRigs/`、`EnvironmentLights/`、`Leader_LightRigs.xlp`）：
+> `Leader_Matte` 的参数槽只有 `BaseColor`+`Opacity`，`.env` 的强度/方向**没有消费者**，
+> 整条灯光链对成品零贡献。artdef 的 Lightrig 槽写**原版共享的 `ART_DEFAULT_LIGHT`**
+>（`bAllowNull=false`，不能留空；原版 `LEADER_DEFAULT` 也这么做）。
+> 机理、三条佐证与迁移步骤见 `reference/leader-2d.md` §3.6。
 
 **`.ast` 与 `Leaders.artdef` 必须同进同退**：ast 只有 6 个外交槽位
 （`01_FIRST_MEET` … `06_DEFEAT` + `NEUTRAL_POSITIVE_A`），没有外交语音时 ast 的 `m_FXName`
@@ -245,7 +251,7 @@ languages:
 |------|-----|--------|----------|------|
 | ① 总督 | `XLPs/Icons.xlp`（贴图加进去）+ `IconTextureAtlases` 图集 + `IconDefinitions` | — | — | `Governors` 表列（`Image` / `PortraitImage` / `PortraitImageSelected`） |
 | ② 忠诚度/宗教 | `XLPs/UILensModels.xlp`、`XLPs/StrategicView_UILenses.xlp` | `ArtDefs/Overlay.artdef`、`ArtDefs/StrategicView.artdef` | `Materials/*_material.mtl`、`Assets/*_Box.ast` | 复用官方几何（Overlay `HexModelGeo` / Pressure `PipModelGeo`），不自建几何 |
-| ④ 2D 领袖 | `XLPs/leader_{PACK}.xlp`、`XLPs/Leader_LightRigs.xlp` | `ArtDefs/Leaders.artdef` | `Geometries/*.geo`、`Materials/*.mtl`、`LightRigs/*.lrg`、`EnvironmentLights/*.env`、`Textures/*.tex`、`Assets/*.ast` | 每个领袖一套 6 类；聚合模板按领袖数复制块 |
+| ④ 2D 领袖 | `XLPs/leader_{PACK}.xlp`（**不再有 `Leader_LightRigs.xlp`**） | `ArtDefs/Leaders.artdef`（Lightrig 槽 = 原版 `ART_DEFAULT_LIGHT`） | `Geometries/*.geo`、`Materials/*.mtl`、`Textures/*.tex`、`Assets/*.ast`（**无 LightRigs / EnvironmentLights**） | 每个领袖 4 类；聚合模板按领袖数复制块 |
 | ⑤ UI 立绘/Suk | `XLPs/*.xlp`（**`m_ClassName=UITexture`** 的那一个，如 `UILeaders.xlp`） | — | `Textures/SUK_UI_*.{dds,tex}`（`UserInterface`） | `Players` 表 `Portrait`/`PortraitBackground` 列 + **`FrontEndAction` 挂 `Criteria`**（未启用 Suk 时不加载） |
 | ⑥ 历史时刻 | `UI_PrideMoments.xlp`（`m_ClassName=UITexture`，`PackageName=UI/PrideMoments`） | — | `Textures/Moment_*.{dds,tex}`（`UserInterface`，456×332） | `MomentIllustrations` 表（四列，`Texture` **带 `.dds` 后缀**） |
 | ⑦ 原版 FrontEnd | `UILeaders.xlp`（前景 + 竖版背景）、`Shell_Loading.xlp`（加载界面背景）——**两者均 `UITexture`** | — | `Textures/*.{dds,tex}`（`UserInterface`） | `Players.Portrait/PortraitBackground`（**Config 库 → FrontEndActions**）+ `LoadingInfo.ForegroundImage/BackgroundImage`（**Gameplay 库 → InGameActions**）；可走 XLP **别名**复用官方贴图 |
@@ -257,7 +263,7 @@ languages:
 
 ### 6.2 工程接线的五条共用规则
 
-1. **`Materials/`、`Assets/`、`Textures/`、`Geometries/`、`LightRigs/`、`EnvironmentLights/` 构建时自动扫描**编译进 `Platforms\Windows\BLPs\*.blp`，**不需要**写进 `*.civ6proj` 清单。
+1. **`Materials/`、`Assets/`、`Textures/`、`Geometries/`（类别④ 另有 `LightRigs/`、`EnvironmentLights/`，但 2D 领袖**不再使用**，见 §五bis）构建时自动扫描**编译进 `Platforms\Windows\BLPs\*.blp`，**不需要**写进 `*.civ6proj` 清单。
 2. **XLP / ArtDef 的构建接入点**：`.civ6proj` 的 `<Content>` 条目**不是**必需
    （`.xlp` 属 cook 输入，`.artdef` 由构建产物 `.modinfo` 自动收进）；**真正必须的是第 3 条的 `.Art.xml`**。
    脚本会幂等补写 Content 条目，属可选冗余；civ6proj 可能有多个 `ItemGroup`，统一插到最后一个 `</Content>` 之后。
@@ -293,7 +299,7 @@ languages:
 |------|---------|------|
 | ① 总督 | `python scripts/verify_badge.py <24px徽章.png> [官方对应格.png]`（官方对照格直接点名：`assets/TEMPLATE_badge24_canonical.png`，另有放大对照 `assets/TEMPLATE_badge24_canonical_x16.png` 与 8×1 总督晋升图集 `assets/REF_official_promotions24_x6.png`） | 有对照：轮廓 IoU ≥0.95（本管线实测 0.985）、逐行跨度一致性、逐行均色误差、P90 高光/P10 暗部对比，**跨度表零差异**；无对照：几何自洽（18 行、y=3..20、最宽 18px、左右居中） |
 | ② 忠诚度/宗教 | 合成参数自检（`--fit-mode` / `--keep` / `--whiten-overlay`）+ 审核 PNG | 主体贴合官方光晕轮廓（定标细则见 `reference/loyalty-icon.md` 第六节第 1 条） |
-| ④ 2D 领袖 | 生成文件清单自检（XML 可解析 / 无残留 `{占位符}` / 条目数 = 对象数 / 引用名与磁盘文件逐字符一致） | 完整 checklist 见 `reference/leader-2d.md` 第五节 |
+| ④ 2D 领袖 | 生成文件清单自检（XML 可解析 / 无残留 `{占位符}` / 条目数 = 对象数 / 引用名与磁盘文件逐字符一致 / **贴图 1024² 且 mip 链完整** / 工程内**无** `LightRigs`·`EnvironmentLights`·`Leader_LightRigs.xlp` / artdef Lightrig 槽 = `ART_DEFAULT_LIGHT` / 两个 `.tex` cook 参数为最高品质） | 完整 checklist 见 `reference/leader-2d.md` 第五节 |
 | ⑤ UI 立绘/Suk | `python scripts/verify_suk_portrait.py --project <工程根>` | 类别必须是 `UserInterface`（**类别陷阱**）、`.tex` 宽高 == DDS 实际、贴图已被 `UITexture` XLP 登记、SQL 引用无悬空、行尾合规 |
 | ⑦ 原版 FrontEnd | `python scripts/verify_frontend_portrait.py --project <工程根>` | 回退可用性（两列留空且 `<LeaderType>_NEUTRAL/_BACKGROUND` 不可解析 = 空白，**前端不报错**）、悬空引用、`Players`/`LoadingInfo` 的 Action 段归属（写错段 `no such table`）、竖版背景尺寸、类别、行尾 |
 | ⑥ 历史时刻 | `python scripts/verify_moment.py --project <工程根>` | **alpha 覆盖率 ≥75%**（原版 240 张最低 83%；漏套模板实测量到 14~15%）、456×332、类别 `UserInterface`、XLP 登记、`MomentIllustrations` 配对与 Texture 存在性 |
@@ -328,7 +334,8 @@ civ6-asset-forge/
 │   └─ governor-art/     ← 原 governor 的 specs.md / inventory.md / palette.json（实测规格、素材清单、配色）
 ├─ scripts/              ← 各类脚本合并（原 18 个，③ 的 5 个已随管线删除）
 ├─ templates/            ← 模板合集：loyalty_chain/、religion_chain/、**moment_illustration/（18 张官方形状 PSD + README）**、
-│                            领袖模板 + 光晕模板（⑤ 无需模板）
+│                            领袖模板（geo/geo_Camera/mtl/tex×2/ast/xlp/artdef）+ 光晕模板（⑤ 无需模板）
+│                            ★ 2026-09-24 起不再有 Name_LightRig.lrg / Name_Environment.env / Leader_LightRigs.xlp（§五bis）
 └─ assets/               ← 素材合并（**仅总督官方对照图**：`TEMPLATE_badge24_canonical.png` / `_x16.png`、
                             `REF_official_promotions24_x6.png`；晋升模板/剪影样例已随管线删除；⑤⑥ 无需素材）
 ```
@@ -341,7 +348,7 @@ civ6-asset-forge/
 | `scripts/process_loyalty_icon.py` | ② | 忠诚度 4 张 / 宗教 3 张 PNG 合成（`--kind`） |
 | `scripts/gen_loyalty_art.py` | ② | 忠诚度注册链（XLP/ArtDef/mtl/ast + Art.xml + civ6proj 幂等补注册） |
 | `scripts/gen_religion_art.py` | ② | 宗教注册链（同上机制，宗教命名映射） |
-| `scripts/gen_leader_2d.py` | ④ | 全套领袖美术注册文件生成（读 `templates/` 模板） |
+| `scripts/gen_leader_2d.py` | ④ | 全套领袖美术注册文件生成（读 `templates/` 模板；**不含灯光链**，见 §五bis） |
 | `scripts/process_leader_png.py` | ④ | 立绘 PNG → 1024² TEXTURE/OPACITY（读 `templates/` 的两个 `.tex` 模板） |
 | `scripts/gen_suk_portrait.py` | ⑤ | Suk 适配素材 + `UPDATE Players` + XLP + civ6proj 接线（幂等，`--check`/`--write`） |
 | `scripts/verify_suk_portrait.py` | ⑤ | Suk 适配只读校验（类别陷阱 / 尺寸对齐 / XLP 登记 / 悬空引用 / 行尾） |
@@ -359,7 +366,7 @@ civ6-asset-forge/
 
 - 交付说明必须包含：**生成文件清单（含尺寸/输出目录）**、**注册链文件清单**、`Art.xml` / `*.civ6proj` 改动说明、**"待用户审核 / 待 tex+dds / 待用户提供素材"清单**。
 - 素材相关一律标注"待用户处理"，**除非用户明确要求代处理**。
-- 素材未提供时，明确标注实际使用了哪个文件作为源（含自动兜底选中的源文件路径）。
+- 素材未提供时，明确标注实际使用了哪个文件作为源（含自动回退选中的源文件路径）。
 - 处理过立绘/头像时，列出生成的 PNG 尺寸、`.tex` 更新结果、DDS 生成结果（或明确提示未生成）。
 - **不静默备份**（第四节）：交付物里不应出现任何 `*.bak_*` / 时间戳副本 / `copy_*`。
 - **领袖前景/背景交付时**必须同时声明**三套环境各自的状态**（A 选人 / B 加载界面 / C 外交）

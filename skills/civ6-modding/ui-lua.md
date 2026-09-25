@@ -522,7 +522,7 @@ end
 | ESC 关闭 | `QueuePopup` 自动将 ESC 路由到最上层 popup |
 | 背景输入阻断 | `InputAtCurrentParent` 防止点击穿透到下层 UI |
 | z-order 正确 | popup 始终渲染在其他内容之上 |
-| 热重载清理 | `DequeuePopup` 恢复弹窗栈 |
+| 热重载清理 | `DequeuePopup` 恢复弹窗堆叠 |
 | 打开/关闭音效 | `UI.PlaySound("UI_Screen_Open/Close")` |
 
 **XML 配合：** 最外层容器 `<Container Hidden="1" ConsumeMouseButton="1">` + 半透明背景 `<Image Color="0,0,0,140" ConsumeMouseButton="1"/>` 确保点击遮罩区域也能关闭（注册 `Mouse.eLClick → Close`）。

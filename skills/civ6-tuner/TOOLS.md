@@ -72,7 +72,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 ### 边界
 
 - SKILL.md 的**七条铁律**全部是实测结论，动手前必读（尤其"两端总线可见性不同"
-  与"`GetProperty` 未设置返回 0 个值而非 nil"）。
+  与"`GetProperty` 未设置返回 0 个值，nil 不返回"）。
 - 判端口合法性**必须在调用方所在的那一端**实测，另一端的结果不算数。
 - 片段库在 `<skill>/snippets/`，新写的一次性 Lua 也往里放，别散落。
 

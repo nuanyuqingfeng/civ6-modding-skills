@@ -24,9 +24,9 @@
 							<m_ParamName text="Leader_BLP_Entry"/>
 						</Element>
 						<Element class="AssetObjects..BLPEntryValue">
-							<m_EntryName text="{LEADER}_LightRig"/>
+							<m_EntryName text="ART_DEFAULT_LIGHT"/>
 							<m_XLPClass text="LeaderLighting"/>
-							<m_XLPPath text="leader_lightrigs.xlp"/>
+							<m_XLPPath text="Leader_LightRigs.xlp"/>
 							<m_BLPPackage text="leaders/light_rigs"/>
 							<m_LibraryName text="LeaderLighting"/>
 							<m_ParamName text="Leader_Lightrig_BLP_Entry"/>

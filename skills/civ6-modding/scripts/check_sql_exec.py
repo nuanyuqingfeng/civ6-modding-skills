@@ -32,7 +32,7 @@ sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 HERE = os.path.dirname(os.path.abspath(__file__))
 SKILL_DB = os.path.normpath(os.path.join(HERE, '..', 'database', 'DebugGameplay.sqlite'))
 
-# 用 argparse 而非手写 sys.argv 扫描：此前 `--help` 不被识别，会**直接开始全量扫描**
+# 采用 argparse：此前手写 sys.argv 扫描时 `--help` 不被识别，会**直接开始全量扫描**
 # （实测 2 分钟无输出，看起来像卡死）；`--root` 末尾缺值也会 IndexError。
 _ap = argparse.ArgumentParser(
     description="全工程 SQL 执行排查 —— 抓「整条语句报废」类错误（非法转义 / 字符错位）")

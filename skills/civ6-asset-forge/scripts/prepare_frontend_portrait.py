@@ -16,7 +16,7 @@ r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与
 
 ## 一、像素构成分类
 
-分析 alpha 通道，把素材分成三类（判据在 `示例工程` 6 位领袖 × 3 类素材上实测可复现）：
+分析 alpha 通道，把素材分成三类（判据在 `Ragunna_Pack` 6 位领袖 × 3 类素材上实测可复现）：
 
 | 类别 | 判据 | 处理 |
 |---|---|---|
@@ -24,7 +24,7 @@ r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与
 | **② 满幅图** | 透明 ≤ `--bleed-max-transp`（默认 5%） | **空白前景（显式空串）+ 铺满背景** → `LEADER_<KEY>_BACKGROUND` |
 | **③ 中间地带** | 其余 | **停下问用户**（exit 3），用 `--force-subject` / `--force-bleed` 表明裁决 |
 
-实测参考（`示例工程`）：人物抠图透明率 60~74%、满幅图 ~0%。
+实测参考（`Ragunna_Pack`）：人物抠图透明率 60~74%、满幅图 ~0%。
 
 ## 二、分支②「空白前景」的正确写法（极易写错）
 

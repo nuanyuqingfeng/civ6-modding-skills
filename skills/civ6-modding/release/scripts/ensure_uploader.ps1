@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$To = "$env:USERPROFILE\Civ6WorkshopUploader",
     [string]$Repo = "https://github.com/Jianbao233/Civ6WorkshopUploader",
     [switch]$Confirmed,

@@ -22,9 +22,8 @@ process_leader_png.py — Civ6 2D 领袖立绘 PNG -> TEXTURE/OPACITY 1024x1024 
 说明:
   - 源图建议为近似 1:1、透明背景的 PNG。
   - TEXTURE：居中裁剪为正方形后缩放到 1024x1024，保留颜色与透明背景。
-  - OPACITY：以 Photoshop Ctrl+左键点击图层缩略图的选区语义为准，
-    非全透明像素（alpha > 0）填充纯白 RGB(255,255,255)，
-    全透明像素填充纯黑 RGB(0,0,0)，输出不透明黑白 PNG。
+  - OPACITY：取源图 alpha 通道并缩放到同一尺寸，保留边缘抗锯齿；
+    alpha <= --alpha-floor （默认 0）的像素归零，保证背景是纯 0，不留残余本底。
   - 不指定 --tex-dds 时只生成 PNG，不生成/修改 .tex。
 """
 import argparse
@@ -106,7 +105,8 @@ def render_tex(template_path, stem, source_png):
     with open(template_path, encoding="utf-8") as f:
         text = f.read()
     text = text.replace("{TEX}", stem).replace("{OPAC}", stem)
-    src = source_png.replace("\\", "/")
+    # m_SourceFilePath 统一用反斜杠（AGENTS.md 约定 D:\\desktop\\<stem>.png）
+    src = source_png.replace("/", "\\")
     text = re.sub(
         r'(<m_SourceFilePath text=")[^"]*(")',
         lambda m: m.group(1) + src + m.group(2),
@@ -165,11 +165,13 @@ def find_leader_type(project, leader_name):
 
 
 def run_texconv(texconv, src, out_dir, fmt):
-    # -m 1 单 mip；texconv 缺省/0 = 完整 mip 链，与 .tex bUseMips=false 约定冲突
-    cmd = [texconv, "-y", "-f", fmt, "-m", "1", "-o", out_dir, src]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    # -m 0 = 完整 mip 链，与 .tex 的 bUseMips=true / bCompleteMipChain=true 对应。
+    # 写单 mip 会让远处采样失真。
+    cmd = [texconv, "-y", "-f", fmt, "-m", "0", "-o", out_dir, src]
+    proc = subprocess.run(cmd, capture_output=True)
     if proc.returncode != 0:
-        print("  警告: texconv 转换失败: %s" % (proc.stderr.strip() or proc.stdout.strip()))
+        err = proc.stderr.decode("utf-8", errors="replace").strip()
+        print("  警告: texconv 转换失败: %s" % (err or proc.stdout.decode("utf-8", errors="replace").strip()))
         return False
     dds = os.path.join(out_dir, os.path.splitext(os.path.basename(src))[0] + ".dds")
     if os.path.isfile(dds):
@@ -196,8 +198,13 @@ def crop_square(img, crop=None):
     return img.crop((left, top, left + side, top + side))
 
 
-def build_texture_opacity(img, size, alpha_threshold, crop=None):
-    """输入 RGBA 图，返回 (texture_img, opacity_img)，均为 size×size。"""
+def build_texture_opacity(img, size, alpha_threshold, alpha_floor=8, crop=None):
+    """输入 RGBA 图，返回 (texture_img, opacity_img)，均为 size×size。
+
+    OPACITY 直接取源图 alpha 缩放后的连续值，保留边缘抗锯齿。
+    Leader_Matte 的 Opacity 槽会逐字读这张图，背景若留本底（实测 4~15）
+    会让整张四边形蒙上一层极淡覆盖，故将 <= alpha_floor 的像素归零。
+    """
     img = crop_square(img, crop)
     try:
         resample = Image.Resampling.LANCZOS
@@ -206,8 +213,9 @@ def build_texture_opacity(img, size, alpha_threshold, crop=None):
     texture = img.resize((size, size), resample)
 
     alpha = texture.getchannel("A")
-    mask = alpha.point(lambda a: 255 if a > alpha_threshold else 0)
-    opacity = mask.convert("RGB")
+    if alpha_floor > 0:
+        alpha = alpha.point(lambda a: 0 if a <= alpha_floor else a)
+    opacity = alpha.convert("RGB")
     return texture, opacity
 
 
@@ -230,6 +238,8 @@ def main():
                     help="自定义正方形裁剪: left,top,side（原图坐标）；缺省按短边居中")
     ap.add_argument("--alpha-threshold", type=int, default=0,
                     help="OPACITY 主体判定阈值：alpha 大于该值算主体，默认 0（PS Ctrl+点击语义）")
+    ap.add_argument("--alpha-floor", type=int, default=8,
+                    help="OPACITY 背景归零阈值：alpha 小于等于该值的像素写 0，默认 8")
     args = ap.parse_args()
 
     if Image is None:
@@ -289,7 +299,7 @@ def main():
     print("输出目录: %s" % output_dir)
 
     img = Image.open(args.input).convert("RGBA")
-    texture, opacity = build_texture_opacity(img, args.size, args.alpha_threshold, crop_box)
+    texture, opacity = build_texture_opacity(img, args.size, args.alpha_threshold, args.alpha_floor, crop_box)
 
     texture.save(texture_png, "PNG")
     opacity.save(opacity_png, "PNG")

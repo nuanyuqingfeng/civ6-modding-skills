@@ -272,7 +272,7 @@ def main():
     A("")
     A(f"**受保护元表（C 侧 `__index`，`pairs` 不可枚举，只能按名索引）**：GP {prot_gp} 个、UI {prot_ui} 个。"
       "典型：`UI`、`GameInfo`、`Locale`、`Network`、`Modding`、`Input`、`UILens`、`Options`、`Steam`、`Search`、`DB`、`Path`。"
-      "这也是本次必须逐名探测（而非纯枚举）的原因。")
+      "这也是本次必须逐名探测、不能只做枚举的原因。")
     A("")
     A("---")
     A("")
@@ -345,7 +345,7 @@ def main():
       f"{samples('文档偏宽：UI 未见', 5, byns('文档偏宽：UI 未见'))}（`GameSummary`/`RouteBuilder`/`PlayerVisibility` 属世界生成与 GP 侧统计面）。")
     A(f"4. **文档存疑：UI 未见（{verdict['文档存疑：UI 未见']} 条）**——文档标 `UI` 却在 InGame 上下文找不到："
       f"{samples('文档存疑：UI 未见', 5, byns('文档存疑：UI 未见'))}。"
-      "细分为：Governor 三层对象本局取不到实例（12 条）、`IconManager` 需实例而非模块面（5 条）、"
+      "细分为：Governor 三层对象本局取不到实例（12 条）、`IconManager` 需要实例才能访问，模块面取不到（5 条）、"
       "FrontEnd 事件在 InGame 不可见（`Events.BeginFullGamePurchase`/`MultiplayerConnectionFailed` 等 5 条）、"
       "`InputStruct` 的方法被挂到了 `Input` 名下（3 条）。")
     A(f"5. **文档存疑：GP 未见（{verdict['文档存疑：GP 未见']} 条）**——标 `GamePlay` 但 GP 侧没有："

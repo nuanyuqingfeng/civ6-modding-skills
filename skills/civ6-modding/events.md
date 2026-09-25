@@ -320,8 +320,8 @@ Events.LoadGameViewStateDone.Add(Initialize);
 ```
 
 > ⚠ **本条适用于 GP 与 UI 双端**（2026-09-23 订正）。此前 `availability` 记为 `UI` 是**错的**：官方 UI 目录虽有 21 处用法，
-> 但 gameplay 侧同样在用——兄弟工程 `示例工程` 的 `Scripts/Lua_*.lua`（`AddGameplayScripts` 注册）**11 个文件**在此事件上挂初始化，
-> `工程 A` 的 `Scripts/Lua_SK_BS.lua`（同属 `AddGameplayScripts`，见其 .modinfo 的 `BS_Scripts`）亦同。
+> 但 gameplay 侧同样在用——兄弟工程 `Ragunna_Pack` 的 `Scripts/Lua_*.lua`（`AddGameplayScripts` 注册）**11 个文件**在此事件上挂初始化，
+> `Black_Shores_Pack` 的 `Scripts/Lua_SK_BS.lua`（同属 `AddGameplayScripts`，见其 .modinfo 的 `BS_Scripts`）亦同。
 > 运行期探针：GP 侧该事件对象存在且 `Add` 可用（`type(Events.LoadGameViewStateDone) == "table"`）。
 >
 > ⚠ **但它不能承载 EXECUTE_SCRIPT 接收器**：该事件在加载窗口期触发，而 UI 可能在 `LoadGameViewStateDone` → `LoadScreenClose`
@@ -617,7 +617,7 @@ local data = params.result;   -- handler 已同步回写
 
 7. **Context load order matters** — When a context loads, it subscribes to events. Already-fired events won't be replayed. Use `LoadScreenClose` or manual re-initialization for late-loading contexts.
 
-8. **不要凭印象选总线 —— 查 `eventSystem` 列**（2026-09 修订；旧结论有误）。
+8. **不要凭印象选总线 —— 查 `eventSystem` 列**。
    同一个逻辑事件**通常只在 `Events.*` / `GameEvents.*` 其中一张上有效**，用错即**静默无效**（不报错、不回调）。
    权威判据是 `reference/events_enhanced.json` 的 **`eventSystem`** 字段（1081 条全覆盖）：`LuaEvents` 481 / `Events` 470 / `GameEvents` 130；
    等价命令：`python database/scripts/query_events.py --show <事件名>` 看 `System` 列。
@@ -625,10 +625,8 @@ local data = params.result;   -- handler 已同步回写
    - 走 `Events.*` 的事件例：`UnitMoveComplete` / `CitySelectionChanged` / `UnitAddedToMap` / `PlayerTurnActivated`
    - **只在** `GameEvents.*` 上存在、`Events.*` 无对应条目的非自定义事件例：`OnDistrictConstructed` / `CityConquered` / `PolicyChanged` / `PlayerTurnStarted` / `OnUnitMoved` / `OnCombatOccurred`
 
-   > ⚠ **旧版本本条写「`GameEvents.*` 只承载 Lua 级事件，不承载任何引擎 GameCoreEvent」——该结论是错的**。
-   > 本条自身引用的实测数据（`PlayerTurnStarted`：GameEvents 端 17 次、Events 端 0 次）恰好证明它本就走 `GameEvents.*`。
    > 实测反证：一个已发布 mod 全工程 127 个事件注册点与 `eventSystem` 比对 **63/63 命中、0 处不一致**，其中 `GameEvents.PolicyChanged` / `GameEvents.CityConquered` / `GameEvents.OnDistrictConstructed` 都在正常工作；另一工程 18 个事件同样零例外。
-   > 正确表述是「**三条总线是按事件划分的三张表**」，而不是「引擎事件一律走 `Events.*`」。
+   > 正确表述是「**三条总线是按事件划分的三张表**」，「引擎事件一律走 `Events.*`」的说法不成立。
 
    `availability=None` 的 48 条**哪一层都订阅不到**，UI 侧 `.Add()` 还会直接抛 nil 崩溃（这 48 条的 `eventSystem` 同为 `GameEvents`，即「按名字该走 GameEvents，但实际不可用」）。
    ⚠ `GameEvents.X` 对**任意**名字都自动建 table，不能用作存在性探针——只有 `type(Events.X) == "table"` 是权威探针。

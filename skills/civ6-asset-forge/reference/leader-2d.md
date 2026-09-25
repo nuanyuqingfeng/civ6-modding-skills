@@ -5,8 +5,8 @@
 ## 〇、前置判定门：有没有「领袖外交语音」（先过这关，再读 §一）
 
 **本文件的整套 3D 纸片人注册链，唯一触发条件 = 该领袖有外交语音。** 未通过下列判定时，
-**本文件全部流程不执行**（不生成 Geometries / Materials / LightRigs / EnvironmentLights /
-`Assets/*.ast` / `Leaders.artdef` / leader XLP），只出 2D 立绘（`IMG_LOADING_FOREGROUND_*`）。
+**本文件全部流程不执行**（不生成 Geometries / Materials / `Assets/*.ast` /
+`Leaders.artdef` / leader XLP），只出 2D 立绘（`IMG_LOADING_FOREGROUND_*`）。
 
 1. 工程 `Platforms/` 下**没有音频** → 直接跳过。
 2. 素材里**没有明确的外交语音** → 不触发。
@@ -39,9 +39,10 @@
 > - 需要一步到位 `tex+dds`（输出到项目 `Textures/`，细节见「输出规则」）。
 
 **未提供素材时的默认行为**（用户未明确要求时不得主动生成素材）：
-1. 生成全部注册文件（XLPs / artdef / geo / mtl / lrg / env / tex / ast）
+1. 生成全部注册文件（XLPs / artdef / geo / mtl / tex / ast）
 2. `.tex` 的 `SourceFilePath` 指向占位路径，需用户在 ModBuddy 导入素材后更新
-3. 通用素材（fgx/wig 平面模型、环境光 dds）需另行复制，脚本不做
+3. 通用素材（fgx/wig 平面模型）需另行复制，脚本不做
+4. **不生成任何灯光资产**（`.lrg` / `.env` / 环境光 dds / `Leader_LightRigs.xlp`）—— 见 §3.6
 
 **已提供立绘素材时的处理入口：**
 - 从项目 SQL/XML 中找到该领袖的精确 `LeaderType`（如 `LEADER_CANTARELLA_QYQXP`）
@@ -99,14 +100,14 @@ python "<skills>/civ6-asset-forge/scripts/gen_leader_2d.py" \
 | 目录 | 文件（每领袖） | 说明 |
 |------|--------------|------|
 | `XLPs/` | `leader_{PACK}.xlp`（聚合） | Leader 条目包 |
-| `XLPs/` | `Leader_LightRigs.xlp`（聚合） | LightRig 条目包 |
 | `ArtDefs/` | `Leaders.artdef`（聚合） | 领袖集合定义（Leader/LightRig/ColorKey/Background 槽位） |
 | `Geometries/` | `LEAD_{ABBR}_{Name}_{LeaderSuffix}.geo` + `_Camera.geo` | 平面几何 + 摄像机 |
 | `Materials/` | `LEAD_{ABBR}_{Name}_{LeaderSuffix}_Material.mtl` | 材质（引用 TEXTURE/OPACITY）；**类必须 `Leader_Matte`**，见 §3.5 |
-| `LightRigs/` | `{Name}_{LeaderSuffix}_LightRig.lrg` | 灯光（引用 env） |
-| `EnvironmentLights/` | `{Name}_{LeaderSuffix}_Environment.env` | 环境光（引用 dds） |
-| `Textures/` | `{LeaderType}_TEXTURE.tex` + `{LeaderType}_OPACITY.tex` | 贴图定义 |
+| `Textures/` | `{LeaderType}_TEXTURE.tex` + `{LeaderType}_OPACITY.tex` | 贴图定义（**cook 参数须为最高品质**，见 §3.6） |
 | `Assets/` | `LEAD_{ABBR}_{Name}_{LeaderSuffix}.ast` | 行为资产（6 外交槽位 + NEUTRAL） |
+
+> **灯光资产一律不生成**（`.lrg` / `.env` / 环境光 dds / `Leader_LightRigs.xlp`）：
+> `Leaders.artdef` 的 Lightrig 槽写**原版共享的 `ART_DEFAULT_LIGHT`** —— 机理与实测见 §3.6。
 
 ### 2.5 立绘素材处理（可选）
 
@@ -162,8 +163,8 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
 
 | 素材 | 来源 | 说明 |
 |------|------|------|
-| `.fgx` / `.wig`（主体 + Camera） | 从已建成工程复制 | **通用平面模型，跨工程逐字节一致**（MD5：主体 fgx `D13E5D864C121D9DA51500A07DFE0DD4` / wig `B9C116E082A7DD783A89E1684ED9C0B5`；Camera fgx `7F8319922265FD53841D7C15469E4E19` / wig `C1F6B44B222FA827B683A26F411CD53E`），复制后重命名即可 |
-| `{Name}_{LeaderSuffix}_Environment.dds` | 从已建成工程复制 | **通用环境光**（Hojo，MD5 `100A9AF5C487BDF8D1BD84AFF854F1A6`），每领袖各留一份 |
+| `.fgx` / `.wig`（主体 + Camera） | 从已建成工程复制 | **通用平面模型，跨工程逐字节一致**（MD5：主体 fgx `D13E5D864C121D9DA51500A7DFE0DD4` / wig `B9C116E082A7DD783A89E1684ED9C0B5`；Camera fgx `7F8319922265FD53841D7C15469E4E19` / wig `C1F6B44B222FA827B683A26F411CD53E`），复制后重命名即可 |
+| ~~环境光 dds~~ | **已废弃，不再复制** | 原 Hojo 通用环境光（MD5 `100A9AF5…54F1A6`）对 `Leader_Matte` 零贡献，见 §3.6 |
 | 立绘 png（TEXTURE / OPACITY） | 用户提供 | 用 `process_leader_png.py` 生成 `{LeaderType}_TEXTURE.png` / `{LeaderType}_OPACITY.png`（1024×1024）；默认输出桌面，`--tex-dds` 时输出项目 `Textures/` 并同步 `.tex`/DDS |
 
 
@@ -216,13 +217,106 @@ python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <Civ6工程�
 ```
 
 ★ 改完**必须在 AssetEditor 重新 cook** 才生效（材质类属 cook 期数据）。
+
+### 3.6 铁律：纸片人不需要灯光链；贴图必须最高品质（2026-09-24 实测）
+
+#### (1) 灯光链对 `Leader_Matte` 零贡献 —— 一律不生成
+
+**机理（唯一真源 = `pantry/Civ6.cfg` 的 `MaterialClass` 定义）：**
+
+| 材质类 | 参数槽 |
+|---|---|
+| `Leader_Matte` | **只有 `BaseColor`（`Leader_BaseColor`）+ `Opacity`（`Leader_OPAC`）** |
+| `Leader_Skin` | 8 个 PBR 槽：`Normal` / `Metalness` / `AO` / `Gloss` / `Fuzz` / `Translucency` / `BlurWidth` / `BaseColor` |
+
+`.env` 的 `m_Intensity`、三盏灯的方向、环境光 cubemap **只喂 PBR/IBL 通道** ——
+matte 类**没有任何消费者**，数学上没有贡献路径。三条独立佐证：
+
+1. **工程自证**：env 改于 09-23 22:54，材质修复于 09-24 01:28。判定"亮度合格"的那次观察里
+   **env 强度一字未动** —— 变的是材质类。
+2. **半档的来源**：6 个 `.env` 是原版 Hojo 的**精确 0.5 倍**
+   （`3.1/3.0/0.892943` → `1.55/1.5/0.446472`）。这半档是历史上为压 `Leader` 类的过曝做的
+   **临时补救**；迁到 matte 后病根已除，补救成了纯遗留。
+3. **原版先例**：`Leaders.artdef` 里 `LEADER_DEFAULT` / `LEADER_BARBARIAN` 的 Lightrig 槽
+   都写 `ART_DEFAULT_LIGHT`（`bAllowNull=false`，**不能留空**），它在官方
+   `Leader_LightRigs.xlp` 里映射到 `Gorgo_LightRig` —— **共享灯光是官方用法**。
+
+**因此：**
+
+- artdef 的 Lightrig 槽写 `<m_EntryName text="ART_DEFAULT_LIGHT"/>` +
+  `<m_XLPPath text="Leader_LightRigs.xlp"/>` + `<m_BLPPackage text="leaders/light_rigs"/>`
+- **不生成** `LightRigs/*.lrg`、`EnvironmentLights/*.env`、`EnvironmentLights/*.dds`、
+  `XLPs/Leader_LightRigs.xlp`
+- `.Art.xml` 的 `libraryPackagePaths` 里**不要**留 `LeaderLighting → leaders/light_rigs`
+  （否则声明了一个永远不存在的本地包）
+
+> **收益**：每领袖省 ~385 KB 源资产（`.dds` 512 KB 级 + `.env` + `.lrg`），
+> cook 产物 `Platforms\Windows\BLPs\leaders\light_rigs.blp` 整包消失
+> （本工程实测 6 领袖 = **7.12 MB**）。
+>
+> 存量工程迁移：把 6 处 Lightrig 槽改成 `ART_DEFAULT_LIGHT`，删掉上述 4 类文件，
+> 再跑一次 `gen_modartxml.py --check` 确认 Art.xml 无漂移。**改完必须重新 cook。**
+
+#### (2) 平面 geo 不带头发参数
+
+`LEAD_ABBR_Name.geo` / `_Camera.geo` 的 `m_CookParams` 必须是 **`<m_Values/>`（空）** ——
+历史模板抄了 3D 人物几何的 7 个头发参数（`HairThickness` / `HairColor` ×4 /
+`HairAccentMix` / `HairGlossPower`）。纸片人**没有头发**；对照原版平面
+`Hojo_flatBackground_Placeholder.geo`（4 顶点 / 2 图元，与纸片同构），cook 参数**就是空的**。
+
+#### (3) 后处理参数：要么统一为已验证值，要么保持全 0
+
+`.ast` 的 `m_CookParams` 由纸片人**自己**的资产实例（`AssetInstance`）声明，
+**不随 matte 材质类的参数槽缩减而失效**。历史上工程内出现过两派并存
+（部分领袖 `AOPower=3 / ExtraExposureRange=1.0`，部分全 `0`）——这不是"配置差异"，
+是**互相矛盾**，必须统一。
+
+**统一口径 = 除旋转外全部为 `0`**（≡「后处理关闭」）。这正是用户验收过的黑海岸状态
+（`LEAD_BLAC_Camellya.ast` / `LEAD_BLAC_ShoreKeeper.ast` 逐值相同）：
+
+```
+EnvironmentRotationX  0.000000
+EnvironmentRotationY -7.199999
+EnvironmentRotationZ 10.000000
+AOPower               0.000000
+AOScale               0.000000
+AORadius              0.000000
+BloomStrength         0.000000
+BloomThreshold        0.000000
+ExtraExposureRange    0.000000
+GrainStrength         0.000000
+VelocityScale         0.000000
+```
+
+> ⚠ **不要把 AO / Bloom / `ExtraExposureRange` 调成非 0。** 历史会话里正是照抄原版
+> `LEAD_EGYP_Cleopatra.ast` 的那套值（`AOPower=3 / AOScale=0.85 / AORadius=5 /
+> BloomStrength=0.05 / ExtraExposureRange=1.6`）让纸片**"太亮了反而失真"**，
+> 随后被全量回退到 0 —— 那套值是**3D 人物**的配置，不是纸片的。
+>
+> `GrainTexture` 是 `ObjectValue`（TEXTURE）槽，纸片人不需要，模板与工程均已移除。
+> **改后处理参数必须重新 cook 并实机确认**（属渲染表现改动）。
+
+#### (4) TEXTURE / OPACITY 的 cook 参数必须是最高品质
+
+**色度降采样是"纸片发糊 + 高饱和区色差"的元凶**（蓝色区色差实测 8.75 @N=3）。
+两个 `.tex` 的 `m_CookParams` 必须写成：
+
+| 文件 | 参数 |
+|---|---|
+| `{LeaderType}_TEXTURE.tex` | `Skip Compression=true` + `Quality Loss - Luma/Chroma=0` + `Resolution Loss - Luma/Chroma=0` |
+| `{LeaderType}_OPACITY.tex` | `Quality Loss=0` + `Skip Compression=true` |
+
+历史默认值 `QL-Chroma=4 / RL-Chroma=3` 属 **YCbCr 4:2:0 式压缩**：亮度全分辨率、**色度降到 1/8**，
+表现为彩色轮廓发虚、蓝色装饰"洇边"。两个 `.tex` 模板已写死最高品质。
+
+> 代价：DDS 体积上升（未压缩 RGBA 1024²）。纸片人只有 2 张图/领袖，可接受。
+
 ### 4. 更新工程文件
 
-- `*.civ6proj`：新增 `ArtDefs` 文件夹 + 3 个 Content Include：
+- `*.civ6proj`：新增 `ArtDefs` 文件夹 + 2 个 Content Include：
   - `XLPs\leader_{PACK}.xlp`
-  - `XLPs\Leader_LightRigs.xlp`
   - `ArtDefs\Leaders.artdef`
-- **Geometries/Materials/LightRigs/EnvironmentLights/Textures/Assets 不需注册**——构建时自动扫描编译进 `Platforms\Windows\BLPs\*.blp`
+- **Geometries/Materials/Textures/Assets 不需注册**——构建时自动扫描编译进 `Platforms\Windows\BLPs\*.blp`
 - `*.Art.xml`：新增/修改 `XLPs\`、`ArtDefs\` 后**必须重新生成**——运行
   `python <civ6-modding skill>\art\gen_modartxml.py <projectRoot> --check`
   （差异人工确认后加 `--write` 写回；脚本按项目实存文件重算
@@ -234,7 +328,9 @@ python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <Civ6工程�
 - [ ] 所有生成 XML 可解析（无残留 `{占位符}`）
 - [ ] `leader_{PACK}.xlp` 条目数 = 领袖数；`Leaders.artdef` 块数 = 领袖数
 - [ ] geo 的 fgx/wig 引用名与磁盘文件名一致（主体 + `_Camera`）
-- [ ] mtl 引用 `{LeaderType}_TEXTURE` / `_OPACITY`；lrg 引用 env；env 引用 dds
+- [ ] mtl 引用 `{LeaderType}_TEXTURE` / `_OPACITY`；**artdef 的 Lightrig 槽为 `ART_DEFAULT_LIGHT`**（不再有 lrg/env）
+- [ ] 工程内**不存在** `LightRigs/`、`EnvironmentLights/`、`XLPs/Leader_LightRigs.xlp`（见 §3.6）
+- [ ] 两个 `.tex` 的 cook 块为最高品质（`Skip Compression=true`，四个 Loss 全 0；OPACITY 的 `Quality Loss=0`）
 - [ ] **mtl 的 `m_ClassName` 为 `Leader_Matte`**，参数槽只有 `Opacity`+`BaseColor`，无 `TranslucencyColor`/`ForceTransparency`（见 §3.5）
 - [ ] ast 的 GeometrySet 引用 Camera geo + 主体 geo + Material，FXName 为 `{ABBR}_{FX}_{动作}_A`
 - [ ] 素材文件（若提供）复制后哈希与源一致
@@ -251,11 +347,10 @@ python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <Civ6工程�
 | XLP ObjectName / geo | `LEAD_{ABBR}_{Name}_{LeaderSuffix}` | `LEAD_RGN_Cartethyia_QYQXP` |
 | Camera geo | `LEAD_{ABBR}_{Name}_{LeaderSuffix}_Camera` | `LEAD_RGN_Cartethyia_QYQXP_Camera` |
 | Material | `LEAD_{ABBR}_{Name}_{LeaderSuffix}_Material` | `LEAD_RGN_Cartethyia_QYQXP_Material` |
-| LightRig | `{Name}_{LeaderSuffix}_LightRig` | `Cartethyia_QYQXP_LightRig` |
-| Environment | `{Name}_{LeaderSuffix}_Environment` | `Cartethyia_QYQXP_Environment` |
+| ~~LightRig~~ / ~~Environment~~ | **不再生成**（artdef 用原版 `ART_DEFAULT_LIGHT`） | — |
 | Texture | `{LeaderType}_TEXTURE` / `{LeaderType}_OPACITY` | `LEADER_CARTETHYIA_QYQXP_TEXTURE` |
 | AST | `LEAD_{ABBR}_{Name}_{LeaderSuffix}` | `LEAD_RGN_Cartethyia_QYQXP` |
-| XLP 包名 | `/leaders/leader_{PACK}` | `/leaders/leader_myciv_qyqxp` |
+| XLP 包名 | `/leaders/leader_{PACK}` | `/leaders/leader_ragunna_qyqxp` |
 
 > 🔴 **命名铁律：一切从 SQL 里该领袖的 `LeaderType` 变量派生，禁止使用任何固定/惯例缩写常量。**
 >
@@ -270,8 +365,9 @@ python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <Civ6工程�
 
 ## 五、关键架构事实
 
-1. **平面模型与环境光均为通用资产**：.fgx/.wig 与环境光 dds 直接复制改名即可，无需建模（哈希见第三节素材表）。
-2. **聚合模板结构**：`leader_{PACK}.xlp` 用 `<!-- LEADER_BLOCK_START/END -->` 标记领袖块，脚本按领袖数复制；artdef 同理（容器内每个领袖块含 Leader/LightRig/ColorKey/Background 4 个 BLPEntry + 2 个 StringValue）。
+1. **平面模型是通用资产**：.fgx/.wig 直接复制改名即可，无需建模（哈希见第三节素材表）。
+   环境光 dds 曾经也是通用资产，但**对 `Leader_Matte` 零贡献，已废弃**（§3.6）。
+2. **聚合模板结构**：`leader_{PACK}.xlp` 用 `<!-- LEADER_BLOCK_START/END -->` 标记领袖块，脚本按领袖数复制；artdef 同理（容器内每个领袖块含 Leader/LightRig/ColorKey/Background 4 个 BLPEntry + 2 个 StringValue；其中 LightRig 槽恒为 `ART_DEFAULT_LIGHT`）。
 3. **`{PACK}` 占位**：`leader_{PACK}` 与 `/leaders/leader_{PACK}` 保持 `leader_` 前缀不变；仅 `{PACK}` 部分替换。
 4. **Camera geo 的骨骼名/模型名**是引用官方 `LEAD_ARAB_Saladin_Camera` / `LEAD_JAPA_Hojo_Camera`（.ma 源路径来自 Hojo），**不要改动**——这是官方共享摄像机资产。
 
@@ -301,7 +397,7 @@ python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <Civ6工程�
 | 本 skill 的论断 | 教程工程的证据 | 结果 |
 |---|---|---|
 | `.fgx` / `.wig` 平面模型**跨工程逐字节一致**（通用资产） | `Assets/领袖纸片模板/Geometries/LEAD_FELI_JasperKitty.fgx` MD5 `D13E5D86…E0DD4`、`.wig` `B9C116E0…9C0B5`、Camera `.fgx` `7F831992…4E4E19`、Camera `.wig` `C1F6B44B…CD53E` | **4/4 与本文档记录相同** |
-| `{Name}_Environment.dds` 是**通用环境光**（Hojo，MD5 `100A9AF5…54F1A6`） | `Assets/领袖纸片模板/EnvironmentLights/JasperKitty_Environment.dds` 同 MD5 | **1/1 相同** |
+| ~~`{Name}_Environment.dds` 是通用环境光~~（Hojo，MD5 `100A9AF5…54F1A6`） | `Assets/领袖纸片模板/EnvironmentLights/JasperKitty_Environment.dds` 同 MD5 | **1/1 相同** —— 哈希结论仍成立，但该资产自 2026-09-24 起**已废弃**（§3.6） |
 | `background` role = **1920×960** | `LEADER_JASPER_KITTY_BACKGROUND.tex` = 1920×960 | 一致 |
 | `diplomacy_layer1..3` = **960×505** | `JASPER_KITTY_1..3.tex` = 960×505 | 一致 |
 | 层 4 用**别名条目**指向官方资产 | `UI_LeaderScenes.xlp`：`<m_EntryID text="JASPER_KITTY_4"/>` + `<m_ObjectName text="BARBAROSSA_4"/>` | 一致 |

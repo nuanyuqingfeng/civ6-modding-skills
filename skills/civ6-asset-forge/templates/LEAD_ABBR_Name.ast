@@ -423,11 +423,6 @@
 				<m_fValue>0.000000</m_fValue>
 				<m_ParamName text="ExtraExposureRange"/>
 			</Element>
-			<Element class="AssetObjects..ObjectValue">
-				<m_ObjectName text=""/>
-				<m_eObjectType>TEXTURE</m_eObjectType>
-				<m_ParamName text="GrainTexture"/>
-			</Element>
 			<Element class="AssetObjects..FloatValue">
 				<m_fValue>0.000000</m_fValue>
 				<m_ParamName text="GrainStrength"/>

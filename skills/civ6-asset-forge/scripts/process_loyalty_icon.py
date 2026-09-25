@@ -12,8 +12,8 @@
   Religion_Pressure_{SUFFIX}.png   128×128  3D 压力贴图（白色小剪影）
   ReligionPressureIcon_{SUFFIX}.png 128×128 战略视图压力 sprite（与 128 版相同）
 
-尺寸判定（默认 core 模式）：以图标 alpha 质量（不透明像素的集中区域）而非最外圈
-像素做基准——徽记外围的射线/飘带等稀疏装饰不参与定标，主体大小贴合官方光晕轮廓；
+尺寸判定（默认 core 模式）：以图标 alpha 质量（不透明像素的集中区域）做基准，
+不使用最外圈像素——徽记外围的射线/飘带等稀疏装饰不参与定标，主体大小贴合官方光晕轮廓；
 全图随核心框一起缩放，核心中心对齐画布中心。
 
 摆放参数来自官方 Loyalty_Overlay_Template.psd / Loyalty_Pressure_Template.psd 图层实测：

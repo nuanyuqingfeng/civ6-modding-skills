@@ -28,8 +28,23 @@
 
 注意:
   1. 本脚本只生成"注册文件"（XML），不处理素材（png/dds/fgx）。
-  2. fgx/wig 通用平面模型、环境光 dds 等素材文件需另行复制，本脚本不做。
+  2. fgx/wig 通用平面模型需另行复制，本脚本不做。
   3. 素材未提供时 .tex 的 SourceFilePath 指向占位路径，需导入素材后更新。
+
+## 为什么不生成 LightRigs / EnvironmentLights（2026-09-24 实测）
+
+材质类 `Leader_Matte` 的 cook 参数槽**只有 `BaseColor` + `Opacity`**（Civ6.cfg 的
+MaterialClass 定义），对比 `Leader_Skin` 的 8 个 PBR 槽。**.env 的 `m_Intensity`/光源方向只喂
+PBR/IBL 通道，matte 类没有任何消费者** —— 整条灯光链（env/lrg/环境光 dds）对成品零贡献：
+
+- 6 个 .env 是原版 Hojo 的精确 0.5 倍（3.1/3.0/0.892943 → 1.55/1.5/0.446472），
+  这半档是历史上为压 `Leader` 类的过曝做的补救；材质类迁到 matte 后已无用。
+- 工程自证：env 改于 09-23 22:54，材质修复于 09-24 01:28 —— 判定"亮度合格"那次 env 一字未动。
+- 原版**也用共享灯光**：`Leaders.artdef` 的 `Leader_DEFAULT` / `LEADER_BARBARIAN`
+  都指向 `ART_DEFAULT_LIGHT`（在官方 `Leader_LightRigs.xlp` 里映射到 `Gorgo_LightRig`）。
+
+因此 artdef 的 Lightrig 槽一律写 `ART_DEFAULT_LIGHT` + 官方 `Leader_LightRigs.xlp`，
+**不再自带任何 .lrg / .env / 环境光 dds / Leader_LightRigs.xlp**（每领袖省 ~385 KB）。
 """
 import argparse
 import os
@@ -43,8 +58,6 @@ SINGLE_FILE_TEMPLATES = [
     ('LEAD_ABBR_Name.geo', 'Geometries', 'LEAD_{abbr}_{name}.geo'),
     ('LEAD_ABBR_Name_Camera.geo', 'Geometries', 'LEAD_{abbr}_{name}_Camera.geo'),
     ('LEAD_ABBR_Name_Material.mtl', 'Materials', 'LEAD_{abbr}_{name}_Material.mtl'),
-    ('Name_LightRig.lrg', 'LightRigs', '{name}_LightRig.lrg'),
-    ('Name_Environment.env', 'EnvironmentLights', '{name}_Environment.env'),
     ('LEADER_NAME_TEXTURE.tex', 'Textures', 'LEADER_{suffix_upper}_TEXTURE.tex'),
     ('LEADER_NAME_OPACITY.tex', 'Textures', 'LEADER_{suffix_upper}_OPACITY.tex'),
     ('LEAD_ABBR_Name.ast', 'Assets', 'LEAD_{abbr}_{name}.ast'),
@@ -53,7 +66,6 @@ SINGLE_FILE_TEMPLATES = [
 # 聚合模板 -> 目标子目录
 AGGREGATE_TEMPLATES = [
     ('leader_myciv.xlp', 'XLPs', 'leader_{pack}.xlp'),
-    ('Leader_LightRigs.xlp', 'XLPs', 'Leader_LightRigs.xlp'),
     ('Leaders.artdef', 'ArtDefs', 'Leaders.artdef'),
 ]
 
@@ -120,8 +132,6 @@ def build_repl(suffix, fx, abbr, pack, display_name=''):
         '{OBJ}': 'LEAD_%s_%s' % (abbr, name),
         '{TEX}': 'LEADER_%s_TEXTURE' % suffix.upper(),
         '{OPAC}': 'LEADER_%s_OPACITY' % suffix.upper(),
-        '{LR}': '%s_LightRig' % name,
-        '{ENV}': '%s_Environment' % name,
         '{SUFFIX}': suffix,
         '{NAME}': name,
         '{FX}': fx,
@@ -247,7 +257,8 @@ def main():
             f.write(out_text)
         print('  生成 %s\\%s' % (subdir, out_name))
 
-    print('\n完成。注意: fgx/wig/env dds 等素材需另行复制；立绘 png 可用 process_leader_png.py 生成 TEXTURE/OPACITY。')
+    print('\n完成。注意: fgx/wig 通用平面模型需另行复制（环境光链已废弃，见文件头说明）；'
+          '立绘 png 可用 process_leader_png.py 生成 TEXTURE/OPACITY。')
 
 
 if __name__ == '__main__':

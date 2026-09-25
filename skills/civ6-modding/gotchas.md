@@ -82,7 +82,7 @@
 > 准确说法：`GameEvents.*` 上**存在一批非自定义事件，且它们在 `Events.*` 上没有对应条目**，例如 `OnDistrictConstructed` / `CityConquered` / `PolicyChanged` / `PlayerTurnStarted` / `OnUnitMoved` / `OnCombatOccurred` / `UnitCreated` / `PlotPropertyChanged`（130 条中 82 条 `availability=GamePlay`，`events_enhanced.json` 自带的 `exampleCode` 就写 `GameEvents.X.Add(...)`）。
 > 实测反证：一个已发布 mod 全工程 127 个事件注册点与 `eventSystem` 比对 **63/63 命中、0 处不一致**，其中 `GameEvents.PolicyChanged` / `GameEvents.CityConquered` / `GameEvents.OnDistrictConstructed` 都在正常工作；另一个工程 18 个事件同样零例外。
 > 同理 `UnitMoveComplete` 只在 `Events.*` 上有回调 —— **两边各自拥有一批对方没有的事件，谁也不能替代谁**。
-> 心智模型：三条总线是**按事件划分**的三张表，不是按「引擎 vs Lua」划分的 —— 所以永远查 `eventSystem`，不要按来源猜。
+> 心智模型：三条总线是**按事件划分**的三张表 —— 所以永远查 `eventSystem`，不要按来源猜。
 >
 > **⚠ `GameEvents.X` 不是存在性探针**——它对**任意**名字都返回 table（自动建表）。只能用 `type(Events.X) == "table"` 判断事件是否存在；对不存在的事件写 `Events.X.Add()`，**UI 侧会直接抛 `attempt to index a nil value` 并中断该函数后续所有初始化**。引擎未暴露到 `Events.*` 的 48 个事件在 `events_enhanced.json` 中标 `availability: "None"`（这 48 条的 `eventSystem` 同为 `GameEvents`，即「按名字该走 GameEvents，但实际哪一层都订阅不到」）。
 
@@ -90,7 +90,7 @@
 
 ## Database Pitfalls
 
-9. **Load order matters.** 顺序分**两级**，按粒度选用，二者是互补而非替代：
+9. **Load order matters.** 顺序分**两级**，按粒度选用，二者互补：
    | 层级 | 手段 | 作用范围 | 适用 |
    |---|---|---|---|
    | **动作级** | `<Properties><LoadOrder>N</LoadOrder></Properties>` | 整个 `UpdateDatabase` 动作之间 | 跨动作定序；官方阶梯 `-100`（schema/remove）/ `0`（常规）/ `100`（情景） |
@@ -100,7 +100,7 @@
    **不必为了定序而强行拆分动作** —— 同一逻辑单元的文件放一个动作、用 `Priority` 排内部次序，是更常见的做法（本项目 `Anomaly_Database` 即此形态）。
 
    **动作划分判据**（完整决策树见 `reference/action-splitting.md`）：
-   - **必须拆（4 类）**：① Config 库 vs Gameplay 库；② 表**两侧都有**（Colors/PlayerColors/Icons/Text/Art）→ **两端各一个动作**，漏一端**静默失效**；③ `criteria` 不一致（一个动作只能绑一个 criteria）；④ 依赖其他 mod 的动作（`<Include>`）
+   - **必须拆（4 类）**：① Config 库 vs Gameplay 库；② 表**两侧都有**（Colors/PlayerColors/Icons/Text/Art）→ **两端各一个动作**，漏一端**静默失效**；③ 依赖其他 mod 的动作（`<Include>`）；④ 同一文件必须在**不同 criteria 组合**下分别加载（一个动作可绑**多个** `<Criteria>` 子元素，全部成立才加载 = 逻辑与；组合不同才需拆）
    - **可选拆（2 类）**：① Types 定义 vs 遍历/Modifier 逻辑（**Types 早、遍历晚**，理由见 §11c）；② 文件极多（建议 **≥50**；官方有 **192** 与 **87** 的先例，阈值别定低）
    - **默认：同类文件合并、且不写 `Priority`**
 
@@ -118,7 +118,7 @@
    1. **Types 先加载才能被其他逻辑遍历到** —— 遍历要在 `Types`（及依赖它的表）里查目标；Types 后到则遍历得到**空集**。
    2. **遍历延迟才能遍历到其他 mod 的部分** —— 遍历是**全库扫描**语义，越晚执行越能覆盖其他 mod（尤其加载较晚、写得不够规范的 mod）已写入的行。
    3. **对环境影响小** —— 遍历会把全库已有行一并纳入处理；推后等于把自己隔离在「上游已定型」之后，不易被其他 mod 不规范的遍历波及（或反过来波及它们），是风险最小的位置。
-   **来源**：成熟第三方工程惯例（`示例工程` `RGN_Types` LO=200 → `RGN_Modifiers` LO=600005；`工程 I`/`工程 C`/`工程 A` 同构）。**官方 0 例**（反而 70 个动作合并二者）→ 别对外称「官方要求」。
+   **来源**：成熟第三方工程惯例（`Ragunna_Pack` `RGN_Types` LO=200 → `RGN_Modifiers` LO=600005；`UnitRover`/`Jinzhou_Jinhsi`/`Black_Shores_Pack` 同构）。**官方 0 例**（反而 70 个动作合并二者）→ 别对外称「官方要求」。
 
 11b. **To remove data, use `<Delete>` tags** in XML. 移除动作应**早于**主数据，两种写法都对：
    - 独立动作 + `LoadOrder="-100"`（官方 `Expansion2Core` 风格）
@@ -172,7 +172,7 @@
 39. **镜头名必须是引擎已注册镜头** — `UILens.CreateLensLayerHash("自定义名")` 静默不渲染，且无任何报错（症状："点击后无任何动作也没有报错"）。可用 vanilla 镜头：`"Hex_Coloring_Movement"`（绿色范围）、`"Hex_Coloring_Attack"`（红色目标指示）、`"Attack_Range"`（范围层）。目标指示器用三元组 `{"AttackRange_Target", sourcePlot, plotId}`（vanilla WMD 打击同款格式），sourcePlot 为发起地块对象。
 
 40. **Civ 6 是偏移坐标系统（奇偶行错位），手工 `{dx,dy}` 方向偏移只有东西方向正确** — 斜向格按行奇偶错位，症状：1 环高亮"总有一个在 2 环"、同方向直线遍历整体歪斜。邻格遍历一律用引擎函数：`Map.GetAdjacentPlot(x, y, DirectionTypes)`（单格、有序）或 `Map.GetAdjacentPlots(x, y)`（返回 6 邻格，BFS 分层扩展用）。直线延伸：`Map.GetAdjacentPlot(curX, curY, direction)` 逐格迭代。
-   - **`Map.GetAdjacentPlots` 返回的是「带空洞」的表，禁直接 `ipairs`** — 它按方向下标 1..6 填充，**越界方向直接缺席**（键留空洞、不填 nil）：南北边缘与四角实测北缘只剩 `{2,3,4,5}`、南缘只剩 `{1,2,5,6}`；`ipairs` 撞到第一个空洞就停 → **整表漏遍历**。症状（示例工程 2026-09-18 实机）：BFS 选格一层都扩展不出去，边缘合法落点为 0 → 按钮「按了没反应」、高亮不画、点击退化成普通移动、GP 复算同样拒收；各类「一环扫描」（邻火山/邻海岸/邻陆地/声骸落点）在北缘静默返回否。官方 API 文档对该接口的示例本身就是 `for i = 1, 6 do if adjPlots[i] ~= nil then`（按下标 + 判空，从不用 ipairs）——这就是权威判据。东西边缘不受影响：`Map.IsWrapX()` 为真时环绕格会补齐 6 个键。**修法**：按数字键升序重建密集数组再 `ipairs`（既补全空洞又保持引擎方向序，内部格逐元素不变、行为向后兼容）；参考实现 `RGNDenseTable`（示例工程 `ImportFiles/Core_RGN.lua`）。**同类审查口径**：其它引擎返回表看官方示例——用 `ipairs` 的（`Map.GetNeighborPlots` / `Units.GetUnitsInPlot` / `Units.GetUnitsInPlotLayerID` / `GetActivationHighlightPlots` / `GetTimeline` 等）是密集数组可直穿；只有 `GetAdjacentPlots` 是按下标填充的，改遍历方式前先确认「这段循环是否必须走完全部邻居」。
+   - **`Map.GetAdjacentPlots` 返回的是「带空洞」的表，禁直接 `ipairs`** — 它按方向下标 1..6 填充，**越界方向直接缺席**（键留空洞、不填 nil）：南北边缘与四角实测北缘只剩 `{2,3,4,5}`、南缘只剩 `{1,2,5,6}`；`ipairs` 撞到第一个空洞就停 → **整表漏遍历**。症状（Ragunna_Pack 2026-09-18 实机）：BFS 选格一层都扩展不出去，边缘合法落点为 0 → 按钮「按了没反应」、高亮不画、点击退化成普通移动、GP 复算同样拒收；各类「一环扫描」（邻火山/邻海岸/邻陆地/声骸落点）在北缘静默返回否。官方 API 文档对该接口的示例本身就是 `for i = 1, 6 do if adjPlots[i] ~= nil then`（按下标 + 判空，从不用 ipairs）——这就是权威判据。东西边缘不受影响：`Map.IsWrapX()` 为真时环绕格会补齐 6 个键。**修法**：按数字键升序重建密集数组再 `ipairs`（既补全空洞又保持引擎方向序，内部格逐元素不变、行为向后兼容）；参考实现 `RGNDenseTable`（Ragunna_Pack `ImportFiles/Core_RGN.lua`）。**同类审查口径**：其它引擎返回表看官方示例——用 `ipairs` 的（`Map.GetNeighborPlots` / `Units.GetUnitsInPlot` / `Units.GetUnitsInPlotLayerID` / `GetActivationHighlightPlots` / `GetTimeline` 等）是密集数组可直穿；只有 `GetAdjacentPlots` 是按下标填充的，改遍历方式前先确认「这段循环是否必须走完全部邻居」。
 
 41. **`LuaEvents.WorldInput_WBSelectPlot` 回调签名固定为 `(plotId, plotEdge, boolDown, rButton)`** — 第 3 参是"按下/释放"（boolDown），不是左键标志；第 4 参才是右键。参数错位会静默失败：左键点击被误判为"释放+右键"直接 return、右键取消失效。悬停地块用 `LuaEvents.WorldInput_WBMouseOverPlot(plotID)`，配合 `Map.GetPlotByIndex`。
 
@@ -435,7 +435,7 @@
 > 需要独立佐证时查 `database/api.sqlite` 的 `verify_status` / `runtime_gp` / `runtime_ui` 三列
 > （2026-09-08 FireTuner 全量实测，见 SKILL.md「API 核验字段」）。
 
-> **通用写法：探测方法存在性，而不是靠上下文标志分支。** 同一份 Core 文件要被 GP 和 UI 同时 `include()`，
+> **通用写法：按方法是否存在决定分支，不要按上下文标志决定分支。** 同一份 Core 文件要被 GP 和 UI 同时 `include()`，
 > 就写成「探测方法存在 → 用；不存在 → 换等价方法；都没有 → 走保守默认值」：
 > ```lua
 > local f = pUnit.GetUnitType or pUnit.GetType;
@@ -465,7 +465,7 @@
 
 61. **Modifier 授予/移除 PROPERTY 不会触发 `UnitPropertyChanged`**
     SQL modifier 直接写 PROPERTY 时，依赖 `Events.UnitPropertyChanged` 刷新 UI 的按钮/面板**静默不刷新**。
-    兜底：`ContextPtr:SetUpdate` 累加计时 + 节流脏检查（实测 0.2s 一档可用）。
+    备用方案：`ContextPtr:SetUpdate` 累加计时 + 节流脏检查（实测 0.2s 一档可用）。
 
 62. **需要"本局第一次通知"的 handler 必须写在文件加载期，不能放进初始化函数**
     `Events.NotificationAdded` 这类"开局前几回合就会来"的事件，若在 `LoadScreenClose` / `LoadGameViewStateDone` 里才 `.Add()`，
@@ -474,11 +474,11 @@
 
     ⚠ **同理适用于 EXECUTE_SCRIPT 接收器**（2026-09-23）：UI 可能在 `LoadGameViewStateDone` → `LoadScreenClose` 之间
     （玩家点「开始/继续游戏」之前）就派发请求，接收器注册放进初始化函数会**晚于派发而静默丢失**。
-    稳妥口径：**引擎事件的 `GameEvents.X.Add` 接收器一律留在文件加载期**，初始化函数只放依赖运行期数据的订阅。
+    统一口径：**引擎事件的 `GameEvents.X.Add` 接收器一律留在文件加载期**，初始化函数只放依赖运行期数据的订阅。
 
     ⚠ **`LoadGameViewStateDone` 与 `LoadScreenClose` 都是 GP/UI 双端可用**（`availability=Both`）。
-    曾误记为 `UI`，反例：`示例工程` 的 `Scripts/Lua_*.lua`（`AddGameplayScripts`）11 个文件在此事件上挂初始化，
-    `工程 A` 的 `Scripts/Lua_SK_BS.lua`（同属 `AddGameplayScripts`）亦然。**不要因为「初始化」二字就认定它是 UI 专属。**
+    曾误记为 `UI`，反例：`Ragunna_Pack` 的 `Scripts/Lua_*.lua`（`AddGameplayScripts`）11 个文件在此事件上挂初始化，
+    `Black_Shores_Pack` 的 `Scripts/Lua_SK_BS.lua`（同属 `AddGameplayScripts`）亦然。**不要因为「初始化」二字就认定它是 UI 专属。**
 
 63. **引擎返回的"数组"可能是稀疏 table —— 用 `pairs` 不要用 `ipairs`**
     `City:GetOwnedPlots()` 等 `Get*` 返回的列表底层可能有空洞，`ipairs` 会在第一个 `nil` 处停止，**静默丢掉后半段**
@@ -543,7 +543,7 @@
     ```
     `Plot:IsCity()` 是**地块数据**（双端实测可用），与城市归属无关 —— 自己的 / 其他文明 / 城邦 / 自由城市的城心
     一律算数，不受 `Players` / `PlayerManager` 枚举是否完整影响；
-    `Map.GetPlotDistance()` 逐城比对（`Player:GetCities():Members()`，各自判空）留作兜底，
+    `Map.GetPlotDistance()` 逐城比对（`Player:GetCities():Members()`，各自判空）留作备用，
     覆盖"地块标记与城市列表不同步"的边角。**两层同口径叠加，比单靠任一层都稳。**
 
 67. **建城地块的权威判据是引擎自己的 `IsValidFoundLocation`；`CITY_MIN_RANGE` 是"含端点的禁止半径"**
@@ -560,11 +560,11 @@
     结论：`GameInfo.GlobalParameters["CITY_MIN_RANGE"]`（原版 **3**）是**禁止半径且含端点**，
     即"距任意城市中心 **<= 3** 格不可建城"，**合法间距是 `距离 > CITY_MIN_RANGE`**（第 4 环才是第一个合法位）。
     → 手写间距检定必须写 `<=`，写成 `<` 会**恰好放宽一格**（距城 3 格多显示按钮，点下去才被 GP 驳回、按钮静默消失）。
-    → 更稳的写法：把引擎裁定当主口径，手写规则只做它缺席时的兜底：
+    → 更稳的写法：把引擎裁定当主口径，手写规则只做它缺席时的备用判断：
     ```lua
     local ok, bValid = pcall(function() return pPlot:IsValidFoundLocation() end);
     if ok and bValid == false then return false end   -- 引擎说不行就不行
-    -- 引擎接口缺席 → 用本地自算（`<= CITY_MIN_RANGE`）兜底
+    -- 引擎接口缺席 → 用本地自算（`<= CITY_MIN_RANGE`）补位
     ```
     同类参数别按字面猜方向（"MIN_RANGE = 最小间距" 是错的读法）；**数值语义一律实机扫一遍边界再写死。**
 
@@ -581,7 +581,7 @@
 
     **成因**：AssetEditor / cooker 输出的资产类文本**恒为 LF**；而 Lua/SQL/XML 这类代码与配置原版**恒为 CRLF**。
 
-    **为什么必须钉死**（本机 `core.autocrlf=true`）：不在 `.gitattributes` 里钉死，
+    **为什么必须固定**（本机 `core.autocrlf=true`）：不在 `.gitattributes` 里固定，
     checkout 会把 LF 资产写成 CRLF，于是「源 ↔ Mods 副本 ↔ cook 产物」出现**永久伪差异**，
     diff 噪声淹没真实改动（`.artdef` 早年正是因此被迫 `text eol=lf`，见 `civ6-art-reference/reference/cook-layer.md §2.3`）。
 
@@ -616,8 +616,7 @@
     判定真实内容变更（实测：`status` 报 48 个 `M`，而 `--cached` 与逐文件 `git diff` 均为 0）。
 
 
-
-69. **`luac -p` 对 Civ6 的 Lua 是「部分可信」：类型标注语法必报假错，必须差分判定**（2026-09-16 实测）
+69. **`luac -p` 对 Civ6 的 Lua 是「部分可信」：类型标注语法必报假错，只能差分判定**（2026-09-16 实测）
 
     Civ6 的 Lua 含 **Lua 5.1 不认识的类型标注**，例如：
 
@@ -627,16 +626,15 @@
 
     `luac -p` 会报 `unexpected symbol near ':'`。**这不是文件坏，是方言比 5.1 新。**
 
-    ★ **要害：源文件与 Mods 副本同样报错**。所以任何"剥离/改写后跑 `luac -p` 自检"的流程，
-    若只看**结果**不过就判失败，会对这类文件**每次都误报**——
-    本项目实测：`strip_comments.py` 因 `ImportFiles/OfficialOverrides/SecretSocietyPopup.lua`
-    恒定 `exit 1`，**真失败会被淹没在噪声里**（发布流程长期带着一个假红灯）。
+    ★ **要害**：任何"改动后跑 `luac -p` 当质量门"的流程，若只看**结果**不过就判失败，
+    会对这类文件**每次都误报**——本项目实测 `ImportFiles/OfficialOverrides/SecretSocietyPopup.lua`
+    恒定 `exit 1`，**真失败会被淹没在噪声里**。
 
-    **正确做法 —— 差分判定**：先验原文、再验结果，只在「原文能过 → 结果不过」时报错：
+    **正确做法 —— 差分判定**：先验改动前、再验改动后，只在「改动前能过 → 改动后不过」时报错：
 
     ```python
-    ok_before = luac_check_text(raw)
-    ok_after  = luac_check_text(stripped)
+    ok_before = luac_check_text(before)
+    ok_after  = luac_check_text(after)
     if ok_before and not ok_after:      # 只有这个组合才是「我改坏了」
         fail()
     elif not ok_before:                 # 既存方言问题，跳过并计数提示
@@ -644,7 +642,7 @@
     ```
 
     实测该项目：47 个 `.lua` 通过、1 个既存误报（`SecretSocietyPopup.lua`）、真失败 0
-    —— 与源工程同口径（源也是 47 通过 / 1 误报），据此确认剥离无副作用。
+    —— 源工程与改动后同口径（都是 47 通过 / 1 误报）。
 
     **同类判断**：本机唯一可用版本是 `E:\SoftWares\Lua\5.1\luac.exe`（`_paths.py` 的 `luac` 键）。
     任何"用 luac 当质量门"的脚本都要先确认它对目标文件**在改动前**是过的，
@@ -741,7 +739,7 @@
     本条是**另一个触发源**——同一主体**反复重新满足条件**（单位进出）同样累积，
     且**永不自动回收**。两者机制不同，需分别防范。
 
-    处方：**内层 modifier 换成「按条件重算」的原版常规类型**，而不是给它加防重复。
+    处方：**内层 modifier 换成「按条件重算」的原版常规类型**，加防重复解决不了问题。
     本项目罗蕾莱修法即为此例：0 环 attach 外层保持不动，只把内层由自定义的
     `MODIFIER_SINGLE_CITY_ADJUST_HAPPINESS_YIELD_RGN`（快乐度分层产出）换为原版
     `MODIFIER_SINGLE_CITY_ADJUST_CITY_YIELD_MODIFIER`（+10% 全产出）+
@@ -755,6 +753,44 @@
     判定法：写任何 `EFFECT_ATTACH_MODIFIER` 之前先自问——
     **「条件失效时，谁来摘掉这个 modifier？」** 答不出来就是本条 bug。
     实机验证只要一步：让单位进入触发区域再**离开**，看增益是否随之消失。
+
+73. **含中文的 .ps1 不带 BOM，在 Windows PowerShell 5.1 下会整片报错**（2026-09 实测）
+
+    症状：同一个脚本用 `pwsh`（PowerShell 7）跑正常，用 `powershell`（5.1）跑报一连串
+    语法错误——`Unexpected token '}'`、`Missing closing '}'`、`The '<' operator is reserved`，
+    而且报错行号指向**完全正常的代码**。中文字符串在输出里显示成乱码（如 `锛堟彁绀虹骇锛`）。
+
+    根因：Windows PowerShell 5.1 **没有 BOM 就按系统 ANSI 代码页（本机 GBK）解码**，
+    而不是 UTF-8。中文注释与字符串被拆成非法字节序列，语法结构随之崩掉。
+    PowerShell 7 默认按 UTF-8 解码，所以同一文件在 7 下无恙——**用 pwsh 验证会掩盖这个缺陷**。
+
+    ★ 判定与修法：文件前 3 字节是否为 `EF BB BF`。**只要含中文就必须有 BOM**：
+
+    ```powershell
+    # 加 BOM（只在前缀插 3 字节，正文一字不动）
+    $b = [System.IO.File]::ReadAllBytes($p)
+    if (-not ($b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF)) {
+        [System.IO.File]::WriteAllBytes($p, [byte[]](0xEF,0xBB,0xBF) + $b)
+    }
+    ```
+
+    ★ **别用 PowerShell 的 `Set-Content` / `Out-File` 补 BOM**：5.1 的 `-Encoding UTF8` 会写 BOM，
+    7 的 `UTF8` 却**不写**（要 `utf8BOM`），跨版本行为相反，越修越乱。用上面的字节写法。
+
+    ★ **编辑工具会吃掉 BOM**：多数文本编辑/补丁工具按 UTF-8 读写，写回时**不会**保留原有 BOM。
+    改完含中文的 .ps1 之后必须**重新检查前 3 字节**，否则会把已修好的文件打回原形。
+
+    ★ **验证要用 5.1，不能用 pwsh**：
+    ```powershell
+    powershell -NoProfile -Command "$t=[System.IO.File]::ReadAllText('x.ps1',[System.Text.Encoding]::UTF8);
+      $e=$null; [System.Management.Automation.Language.Parser]::ParseInput($t,[ref]$null,[ref]$e); $e.Count"
+    ```
+    注意：**读文件时要显式用 UTF-8**（`ReadAllText` 带编码参数）；
+    直接 `ParseFile` 会走 5.1 的默认解码，**把缺 BOM 的文件误判为语法错误**——
+    连本来正常的文件都会报错，那就不是在测这个缺陷了。
+
+    ⚠ 同一目录里 BOM 有无混杂是常态（本项目 `release/scripts/` 9 个 .ps1 里曾有 3 个缺 BOM），
+    所以**逐个文件查**，别按目录抽样。
 
 
 

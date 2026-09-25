@@ -37,10 +37,10 @@
 | `_paths.py` | **本机路径单一真源**（P1–P6 + 外部工具）。其它工具统一 `import _paths` 取路径；也可直接跑来自检本机环境 | `python _paths.py` | 0 |
 | `new_project.py` | **从零建工程骨架**：生成 `.civ6proj`（5 个 CDATA 块 + ItemGroup）+ 目录 + `.gitignore`/`.gitattributes`，并自动派生 `.modinfo`。★ GUID 内置全网查重（禁止复制示例 GUID） | `python new_project.py <目录> --name <ModName> [--title-en … --title-zh …] [--deploy]` | 0 / 1 / 2 |
 | `civ_leader_data.py` | **新文明/新领袖数据与文本推导**：规格 JSON → `Data/CivLeader_*.sql`（Civilizations/Leaders/Traits/CivilizationLeaders/城市名…）+ `Data/Config_*.sql`（Players/PlayerItems）+ `Text/Text_*.sql`（8 语言）。★ 列名全部取自 `database/*.sqlite` 实测；含 LOC tag 闭包与语言齐缺自检 | `python civ_leader_data.py <spec.json> --project <工程根> [--write|--check]`（示例规格 `../reference/civ-leader-spec.example.json`） | 0 / 1 / 2 |
-| `modinfo_build.py` | 从 `.civ6proj` **派生 `.modinfo`**（等价 ModBuddy 构建）并可选部署到 Mods。★ **自动把 `(Mod Art Dependency File)` 占位符替换为 `<ModName>.dep`**（ModBuddy 构建期行为，缺了它 UpdateArt 静默失效、美术全空），并把该 `.dep` 并入顶层 `<Files>`；顺带做 XML 良构 + 动作文件引用闭合自检 | `python modinfo_build.py <X.civ6proj> [--deploy] [--mods-root <目录>]` | 0 / 1 |
+| `modinfo_build.py` | 从 `.civ6proj` **派生 `.modinfo`**（等价 ModBuddy 构建）并可选部署到 Mods。★ **`--deploy` 先调 `cook_assets.py`**（cook 失败即中止，不做部分部署；无 `.Art.xml` 的工程用 `--no-cook` 跳过）。★ **自动把 `(Mod Art Dependency File)` 占位符替换为 `<ModName>.dep`**（ModBuddy 构建期行为，缺了它 UpdateArt 静默失效、美术全空），并把该 `.dep` 并入顶层 `<Files>`；顺带做 XML 良构 + 动作文件引用闭合自检 | `python modinfo_build.py <X.civ6proj> [--deploy] [--mods-root <目录>] [--no-cook]` | 0 / 1 |
+| `cook_assets.py` | **无 GUI 重放 ModBuddy 的 ArtDef / XLP cook**（`Civ6.targets` 的三组分区逐文件 spawn，本工程 69 次调用约 35 秒）→ 直接写 Mods 副本的 `ArtDefs/`、`Platforms/<平台>/BLPs/` 与 `<ModName>.dep`。pantry 由 `.Art.xml` 的 `<requiredGameArtIDs>` 递归展开（`Shared` 是 `Expansion2` 的传递依赖，不是手写项）。★ 收尾把源工程 `ArtDefs/*.artdef` 覆盖进副本：cook 会把 pantry 解析不到的引用清成空值，副本侧要保留源里完好的引用链。★ 降级警告（`references … does not exist` / `HAS MISSING ENTRIES` / `will not be cooked`）**只报告不判失败**，判失败的是「产物缺失」与「退出码非零且日志无可解释模式」 | `python cook_assets.py <工程根> [--check] [--only ArtDef\|XLP] [--mods-root <目录>] [--out <目录>] [--quiet]` | 0 / 1 / 2 |
 | `cook_dep.py` | **从 `<ModName>.Art.xml` 生成 `<ModName>.dep`**（`AssetObjects..GameDependencyData`）—— 走 cooker 的 `--mode Dependency`，**无需 ModBuddy GUI**。★ `.dep` 是 `<UpdateArt>` 的实际载荷，缺它则全部美术/图标静默不加载；落点默认 `<工程>/workspace/tmp/dep`（cooker 默认落 CWD，易漂移，本工具显式固定） | `python cook_dep.py <工程根> [--out <目录>] [--platform Windows] [--check]` | 0 / 1 / 2 |
-| `verify_mod_package.py` | **交付包体检**：源工程 ↔ Mods 副本 ↔ 上传工作区 三处 SHA256 一致性；modinfo 悬空引用 / 漏登记文件 / 本地化语言清点。**剥离 · cook 产物 · 美术管线 三感知**（`.lua` 命中「副本 == strip(源)」、`BLPs/**`+`.dep` 源工程本就没有、美术管线文件见 `ART_PIPELINE_EXTS` 不进 Content 与 Files → 均按预期放行；★ `ImportFiles/` 之下不豁免；`--strict` 关掉全部放行）。★ **`<UpdateArt>`/`.dep` 独立硬检查**（占位符残留、`.dep` 缺失、`.dep` 未进 `<Files>` 一律判失败 —— 这类是静默失效，不能按 cook 产物软放行） | `python verify_mod_package.py --src <工程> --mods <Mods副本> [--ws <content>] [--files a,b] [--strict]` | 0 / 1 |
-| `strip_comments.py` | **发布前剥离注释（默认仅 `.lua`）**，字符串感知；`.lua` 剥离后自动 `luac -p` **差分**自检（仅「原文能过、剥离后不过」才算失败）。只动**发布副本**，源工程保留注释；`--src` 核对「发布副本 == strip(源)」；`--all-exts` 恢复旧的全类型剥离 | `python strip_comments.py <Mods副本> [--src <源工程>] [--dry-run] [--keep-lines] [--all-exts]` | 0 / 1 / 2 |
+| `verify_mod_package.py` | **交付包体检**：源工程 ↔ Mods 副本 ↔ 上传工作区 三处 SHA256 一致性；modinfo 悬空引用 / 漏登记文件 / 本地化语言清点。**cook 产物 · 美术管线 两感知**（`BLPs/**`+`.dep` 源工程本就没有、美术管线文件见 `ART_PIPELINE_EXTS` 不进 Content 与 Files → 均按预期放行；★ `ImportFiles/` 之下不豁免；`--strict` 关掉全部放行）。★ **`<UpdateArt>`/`.dep` 独立硬检查**（占位符残留、`.dep` 缺失、`.dep` 未进 `<Files>` 一律判失败 —— 这类是静默失效，不能按 cook 产物软放行） | `python verify_mod_package.py --src <工程> --mods <Mods副本> [--ws <content>] [--files a,b] [--strict]` | 0 / 1 |
 | `workshop_meta.py` | **多语言 `workshop.json` 生成**（create / update 两种模式）+ 导出人类可读介绍存档 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <txt>]` | 0 / 1 |
 | `workshop_item_check.py` | **线上条目核对**：标题 / 描述 / 归属账号 / 可见性 / 标签 / 内容清单 / 预览图；支持 `--expect-*` 断言；直连失败自动回落本机代理 | `python workshop_item_check.py <id> [...] [--expect-title <子串>] [--expect-public]` | 0 / 1 / 3 |
 | `workshop_cover.py` | **工坊封面合成**：生图底图 + 徽记 + **确定性 CJK 排版**（含孤儿行/超边距自检）。**不提供署名参数** —— 项目约定封面永不署名 | `python workshop_cover.py --bg <png> [--emblem <png>] --line1 "…" [--line2 "…"] [--subtitle "…"] --master <png> [--preview <png>]` | 0 / 1 |
@@ -51,7 +51,7 @@
 ```
 new_project.py --name <ModName>      # ⓪ 从零建工程骨架（.civ6proj + 目录 + .gitignore/.gitattributes
                                      #    + 自动派生 .modinfo）。已有工程跳过本步
-modinfo_build.py --deploy            # ① 生成 modinfo + 部署 Mods
+modinfo_build.py --deploy            # ① cook 美术产物（内部调 cook_assets.py）→ 生成 modinfo → 部署 Mods
 verify_mod_package.py                # ② 三处一致性 / 引用闭合体检
 （改过 .lua 时）python ../scripts/check_lua_registration.py <工程>
 （改过 SQL 时）../scripts/README.md「标准验证顺序」①–⑥
@@ -123,21 +123,9 @@ workshop_item_check.py <id>          # ⑤ 线上复核（标题/描述/账号/�
   `art/convert_art.ps1` 出 DDS/.tex；要**由文字直接生成**剪影则用**随包内置**的
   `art/make-icon.ps1`（`-Subject/-Out/-Seed`；模型目录用 `-SdDir`，默认取 `_paths.py` 的 `sd_cpp` 键，
   本机没有 sd-cpp 时需自备），用法与踩坑见 `reference/imagegen-channels.md`）。
-- **`strip_comments.py`**：**默认只剥 `.lua`**（2026-09-16 起）—— Lua 注释是踩坑记录的主要载体、
-  且剥离后能用 `luac -p` 自证；SQL/XML 注释多为分节标题与列对照，体量小、剥离无可比自检，
-  收益低而回归面大。需要旧的全类型行为时显式加 `--all-exts`。
-  剥离后 **Mods 副本与源工程会故意不一致**——用
-  `strip_comments.py <Mods副本> --src <源工程>` 核对「发布副本 == strip(源)」，或直接用
-  `verify_mod_package.py`（已内置剥离感知，会把 48 个 `.lua` 记为放行而非不一致）。
-  `luac -p` 是**差分判定**：Civ6 的 Lua 带类型标注
-  （如 `local x:table = {}`）本就不是 Lua 5.1 语法，源文件同样过不了，属既存误报
-  （本项目 `ImportFiles/OfficialOverrides/SecretSocietyPopup.lua` 即此例），只有"剥离后才坏"才算失败。
-  每次 `modinfo_build.py --deploy` 或 ModBuddy `Rebuild All` 都会把注释带回 Mods 副本
-  → **发布前必须重跑剥离**。
-- **`verify_mod_package.py`**：对**发布副本**做体检时，有三类差异是预期的、不计入问题：
-  ① `.lua` 命中「副本 == strip(源)」（发布前剥离）；② `Platforms/*/BLPs/**` 与 `*.dep`
-  源工程本就没有（AssetEditor/cooker 产物，只在 Mods 副本）；③ **美术引用管线文件**
-  （见 `ART_PIPELINE_EXTS`）—— 按项目规范既不写进 `.civ6proj` 的 `<Content>`，
+- **`verify_mod_package.py`**：对**发布副本**做体检时，有两类差异是预期的、不计入问题：
+  ① `Platforms/*/BLPs/**` 与 `*.dep` 源工程本就没有（AssetEditor/cooker 产物，只在 Mods 副本）；
+  ② **美术引用管线文件**（见 `ART_PIPELINE_EXTS`）—— 按项目规范既不写进 `.civ6proj` 的 `<Content>`，
   也不写进 `.modinfo` 的 `<Files>`，由 cook 链路承载。
 
   ★ **`ImportFiles/` 之下不适用上述豁免**：那是显式导入通道，其下素材与其它 ImportFiles

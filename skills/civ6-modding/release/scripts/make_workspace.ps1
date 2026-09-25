@@ -1,4 +1,4 @@
-# 构建 Civ6 工坊上传工作区：content = 指向 Mods 副本的 junction（不物理复制 mod）
+﻿# 构建 Civ6 工坊上传工作区：content = 指向 Mods 副本的 junction（不物理复制 mod）
 #
 # 为什么要 junction：
 #   1. 上传器要求 <ws>/content 是 mod 目录本身（UploadCommand.cs 硬编码），但它不关心
@@ -6,26 +6,21 @@
 #   2. 一次 751 MB 的 Copy-Item 既慢又制造版本漂移窗口（复制完 Mods 又改了，工作区就是旧
 #      版）；junction 下工作区与 Mods 恒等，零复制、零漂移。
 #
-# ★ 语义变化（必须知道）：strip_comments.py 是**就地写盘**的不可逆操作（没有 dry-run）。
-#   因此 content 是 junction 时，剥离**直接改的就是 Mods 副本本体**，不是「改副本再回拷」。
-#   二者最终状态相同（发布口径本就是「Mods 副本 == strip(源工程)」），但「就地」这个性质别忘。
-#
 # 用法：
 #   powershell -File make_workspace.ps1 -ModDir <Mods/<ModName>> [-ItemId <工坊ID>]
-#            [-WsRoot <工作区根>] [-Src <源工程>] [-NoStrip] [-Force] [-SkipValidate]
-#   例：powershell -File make_workspace.ps1 -ModDir "D:/.../Mods/示例工程" -ItemId 1051125146 -Src "D:/.../示例工程/示例工程"
+#            [-WsRoot <工作区根>] [-Force] [-SkipValidate]
+#   例：powershell -File make_workspace.ps1 -ModDir "D:/.../Mods/Ragunna_Pack" -ItemId 1051125146 -Src "D:/.../Ragunna_Pack/Ragunna_Pack"
 param(
     [Parameter(Mandatory=$true)][string]$ModDir,
     [string]$WsRoot  = "",
     [string]$ItemId  = "",
-    [string]$Src     = "",
-    [switch]$NoStrip,
     [switch]$Force,
     [switch]$SkipValidate
 )
 
 $ErrorActionPreference = "Stop"
-$utf8 = New-Object System.Text.UTF8Encoding($false)   # 无 BOM，与 skill 仓库既有文件一致
+# 写 workshop.json / mod_id.txt 用的编码：它们由上传器解析，保持无 BOM
+$utf8 = New-Object System.Text.UTF8Encoding($false)
 
 function Fail([string]$msg) { Write-Host "[FAIL] $msg" -ForegroundColor Red; exit 1 }
 function Info([string]$msg) { Write-Host "[INFO] $msg" }
@@ -132,29 +127,12 @@ else {
     Warn "  更新已有条目：从 workshop-ledger.md 取 ID 后重跑本脚本并加 -ItemId <ID>"
 }
 
-# ---------- 5. 剥离注释（就地作用于 Mods 副本，见文件头说明） ----------
-if ($NoStrip) {
-    Warn "已指定 -NoStrip：跳过剥离。发布前必须补跑，否则工坊包会带内部注释。"
-}
-else {
-    $strip = Join-Path $PSScriptRoot "../../tools/strip_comments.py"
-    $strip = [System.IO.Path]::GetFullPath($strip)
-    if (-not (Test-Path $strip)) { Fail "找不到 strip_comments.py：$strip" }
-    Info "剥离注释（就地写盘，改的是 Mods 副本本体）..."
-    if ($Src) { & python $strip $modDirFull --src $Src }
-    else {
-        Warn "未给 -Src：只剥离，不做「Mods == strip(源工程)」核对（建议补 -Src <源工程>）"
-        & python $strip $modDirFull
-    }
-    if ($LASTEXITCODE -ne 0) { Fail "剥离失败（exit $LASTEXITCODE）" }
-}
-
-# ---------- 6. 预览图提示 ----------
+# ---------- 5. 预览图提示 ----------
 if (-not (Test-Path (Join-Path $ws "image.png"))) {
     Info "无 image.png -> 不改线上预览图（要放图见 release.md 3.2 节）"
 }
 
-# ---------- 7. validate（建议性；硬门仍是 verify_mod_package.py） ----------
+# ---------- 6. validate（建议性；硬门仍是 verify_mod_package.py） ----------
 if ($SkipValidate) { Warn "已指定 -SkipValidate，跳过 validate" }
 else {
     $exe = Get-SkillPath "uploader"

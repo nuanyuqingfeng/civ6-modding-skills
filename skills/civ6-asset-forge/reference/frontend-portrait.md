@@ -26,7 +26,7 @@
 | 是否必需 | ★ **必需** | 可选（不填即回退） | ★ 必需 |
 
 > **A 与 B 共用同一批贴图名**：`LEADER_<X>_NEUTRAL` / `LEADER_<X>_BACKGROUND`。
-> 区别只在**读它的表**不同（Config vs Gameplay），以及**没填时的兜底行为**不同。
+> 区别只在**读它的表**不同（Config vs Gameplay），以及**没填时的回退行为**不同。
 > 所以做一套素材可以同时喂 A 和 B；但**两边的数据行必须分别写**（不同库、不同 Action 段）。
 
 **与环境 C 的关系**：环境 C 是**外交场景**（三条链见 `civ6-modding/art-pipeline.md` §三.1）。
@@ -183,7 +183,7 @@ else backgroundTexture = leaderType .. "_BACKGROUND" end
 Controls.BackgroundImage:SetTexture( backgroundTexture );
 if (not Controls.BackgroundImage:HasTexture()) then
     UI.DataError("Failed to load background image texture: "..backgroundTexture);
-    Controls.BackgroundImage:SetTexture("LEADER_T_ROOSEVELT_BACKGROUND");  -- 强制兜底
+    Controls.BackgroundImage:SetTexture("LEADER_T_ROOSEVELT_BACKGROUND");  -- 强制指定回退贴图
 end
 
 -- 前景（:239-249）
@@ -197,7 +197,7 @@ end
 
 **要点**：
 
-1. 与 A 的差别只在"**背景多一层强制兜底**"（罗斯福特那张）——但那是 `DataError`，**不该依赖**。
+1. 与 A 的差别只在"**背景多一层强制回退**"（罗斯福特那张）——但那是 `DataError`，**不该依赖**。
 2. **加载界面的前景同样读 `_NEUTRAL`**：这就是"**不自定义加载界面时，前景与 FrontEnd 共享同一张图**"的机制。
    → 你只要做了 `LEADER_<X>_NEUTRAL` 并让它在 `UITexture` 包里可解析，**A 和 B 同时满足**。
 3. 加载界面的**背景**与 A 的竖版背景**不是同一张**：B 用 `_BACKGROUND`（1920×960 横版，
@@ -284,7 +284,7 @@ XLP 条目的 `m_EntryID` 与 `m_ObjectName` **可以不同** —— 后者才�
 
 > ⚠ **未实测项**：别名指向的贴图必须**已经在该 XLP 所属的 BLP 包里**（官方别名都指本包内条目）。
 > 跨包引用（例如在 `UI_Leaders.xlp` 里指向只存在于 `Shell_Loading` 的贴图）**没有先例**，
-> 是否解析成功**不确定** —— 要跨包复用，稳妥做法是**用同一组 `<m_EntryID>/<m_ObjectName>` 在你自己的 XLP 里登记**，
+> 是否解析成功**不确定** —— 要跨包复用，可靠做法是**用同一组 `<m_EntryID>/<m_ObjectName>` 在你自己的 XLP 里登记**，
 > 或直接复制 DDS。不确定时按"复制 DDS"办。
 
 ### 3.2 选取规则：**量化口径（新增，基于官方实测调色板）**
@@ -303,7 +303,7 @@ XLP 条目的 `m_EntryID` 与 `m_ObjectName` **可以不同** —— 后者才�
 
 **挑选口径（两步，先硬后软）**：
 
-1. **硬条件**：候选所属 `pack` 必须是目标工程**已依赖**的（`示例工程` 依赖 Expansion2
+1. **硬条件**：候选所属 `pack` 必须是目标工程**已依赖**的（`Ragunna_Pack` 依赖 Expansion2
    → 只能用 Base + Expansion1 + Expansion2，**不要**用 CivRoyaleScenario）。
 2. **软条件（相似度）**：以主角色的 `hue` 为主键、`mean` 亮度为辅键打分：
 
@@ -369,7 +369,7 @@ python <skill>/scripts/pick_vanilla_background.py --project <工程根>     --le
 | **② 满幅图** | 透明 **≤5%** 且不透明（alpha≥250）**≥90%** | **空白前景（显式空串）+ 铺满背景** |
 | **③ 中间地带** | 其余 | **停下问用户**（exit 3），用 `--force-subject` / `--force-bleed` 裁决 |
 
-**实测参考**（`示例工程` 6 位领袖 × 3 类素材）：
+**实测参考**（`Ragunna_Pack` 6 位领袖 × 3 类素材）：
 
 | 素材 | 透明% | 不透明% | 判定 |
 |---|---|---|---|
@@ -531,7 +531,7 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> --imag
 |---|---|
 | `Players` 在 Config 库、`LoadingInfo` 在 Gameplay 库 | node:sqlite 实测表清单：Config 78 表含 Players 无 LoadingInfo；Gameplay 427 表反之 |
 | A 的回退链 | `PlayerSetupLogic.lua:807-829` 源码 |
-| B 的回退链 + 强制兜底 | `LoadScreen.lua:207-220, 239-249` 源码 |
+| B 的回退链 + 强制回退 | `LoadScreen.lua:207-220, 239-249` 源码 |
 | `328×935` = 控件尺寸 | `AdvancedSetup.xml:148,600` + `AdvancedSetup.lua:19,1671-1675` 推导 |
 | 官方背景 `LEADER_*_BACKGROUND` 全 1920×960 | SDK pantry 41 张 DDS 逐个读宽高：41/41 |
 | 官方 `LEADER_*_NEUTRAL` 高 1024/1080、宽 389~803 | pantry 22 张逐个读宽高 |

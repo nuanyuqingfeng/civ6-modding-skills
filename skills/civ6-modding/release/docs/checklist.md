@@ -6,13 +6,7 @@
 - [ ] 账号拥有 Civ6
 - [ ] 已使用非 Trimmed 构建工具
 - [ ] 本地 mod 目录包含 `.modinfo`
-- [ ] **发布前剥离注释**（默认只剥 `.lua`）：
-  - [ ] `python strip_comments.py <Mods副本> --src <源工程>` → exit 0
-  - [ ] 确认 `OK 目标目录 == strip(源工程)`
-  - [ ] 注：每次 `modinfo_build.py --deploy` 或 ModBuddy `Rebuild All` 都会**把注释带回来**，故本步**必跑**
-  - [ ] 注：剥离是**就地**改 Mods 副本（content 是 junction 时改的就是同一个目录）；剥离后、上传前**别再改 Mods**
-  - [ ] （`luac -p` 是差分判定：`Civ6 类型标注` 类既存误报会被跳过并计数，不算失败）
-- [ ] 已创建 workspace（**首选** `make_workspace.ps1`，一条命令走完建链/元数据/剥离/validate）：
+- [ ] 已创建 workspace（**首选** `make_workspace.ps1`，一条命令走完建链/元数据/validate）：
   - [ ] `content/` 是**指向 Mods 副本的 junction**，不是物理复制
         （`(Get-Item "$ws\content" -Force).LinkType` 应为 `Junction`；重建成本 1 MB，别复制 751 MB）
   - [ ] 工作区在 `$env:TEMP\civ6-ws\<ModName>`（★ DSH 会话的 TEMP 每会话独立，**跨会话别想复用**，直接重建）

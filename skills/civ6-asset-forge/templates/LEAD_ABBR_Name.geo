@@ -1,44 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <AssetObjects..GeometryInstance>
 	<m_CookParams>
-		<m_Values>
-			<Element class="AssetObjects..FloatValue">
-				<m_fValue>0.005000</m_fValue>
-				<m_ParamName text="HairThickness"/>
-			</Element>
-			<Element class="AssetObjects..RGBValue">
-				<m_r>104.000000</m_r>
-				<m_g>74.000000</m_g>
-				<m_b>56.000000</m_b>
-				<m_ParamName text="HairColor"/>
-			</Element>
-			<Element class="AssetObjects..RGBValue">
-				<m_r>104.000000</m_r>
-				<m_g>74.000000</m_g>
-				<m_b>56.000000</m_b>
-				<m_ParamName text="HairColor_Secondary"/>
-			</Element>
-			<Element class="AssetObjects..RGBValue">
-				<m_r>255.000000</m_r>
-				<m_g>255.000000</m_g>
-				<m_b>255.000000</m_b>
-				<m_ParamName text="HairColor_Accent"/>
-			</Element>
-			<Element class="AssetObjects..RGBValue">
-				<m_r>255.000000</m_r>
-				<m_g>255.000000</m_g>
-				<m_b>255.000000</m_b>
-				<m_ParamName text="HairColor_AccentSecondary"/>
-			</Element>
-			<Element class="AssetObjects..FloatValue">
-				<m_fValue>0.000000</m_fValue>
-				<m_ParamName text="HairAccentMix"/>
-			</Element>
-			<Element class="AssetObjects..FloatValue">
-				<m_fValue>1.000000</m_fValue>
-				<m_ParamName text="HairGlossPower"/>
-			</Element>
-		</m_Values>
+		<m_Values/>
 	</m_CookParams>
 	<m_Version>
 		<major>1</major>

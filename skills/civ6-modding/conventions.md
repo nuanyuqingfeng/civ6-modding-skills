@@ -194,7 +194,7 @@ include("WorldTrackerItem_", true);  -- true = glob mode
 
 ## LOC Tag 推导表（事前预防层）
 
-写任何文本行前按本表推导 tag——**推导有表、出错有检**（事后兜底 = `rgn_validate` + `database/DebugLocalization.sqlite` 查原版 tag）。
+写任何文本行前按本表推导 tag——**推导有表、出错有检**（事后检查 = `rgn_validate` + `database/DebugLocalization.sqlite` 查询原版 tag）。
 规则：`{ID}` 一律原样大写；游戏按「当前语言 → en_US → 显示裸 tag」回退，缺词条即裸 tag。
 
 | 你定义的主体 Type | 脚本/AI 必须推导出的 tag |

@@ -40,7 +40,7 @@
 | `release/scripts/cleanup.ps1` | 删除临时上传工作区（真上传成功并验证后才跑）。三重守卫：仅在 $env:TEMP\civ6-ws\ 之下 / 工作区自身非 reparse point / 先摘内部链接再递归删——content 是 junction 时 Mods 副本不受影响 | `powershell -File cleanup.ps1 -Workspace $env:TEMP\civ6-ws\<ModName>` |
 | `release/scripts/ensure_uploader.ps1` | ensure_uploader.ps1 —— 工坊上传器的"自适应保障"（与音频模板 ensure_template.py 同口径） | `powershell -File ensure_uploader.ps1                 # 只检查，缺就提示（exit 2）<br>powershell -File ensure_uploader.ps1 -Confirmed      # 允许联网 clone + 构建` |
 | `release/scripts/find_item_id.ps1` | 从本机 Steam 日志反查工坊条目 ID | `powershell -File find_item_id.ps1 -ModName <ModName>` |
-| `release/scripts/make_workspace.ps1` | 建工坊上传工作区（首选入口）：content 用 junction 指向 Mods 副本（不物理复制 751 MB）→ workshop.json → mod_id.txt → 剥离注释 → validate，幂等可重跑 | `powershell -File make_workspace.ps1 -ModDir <Mods/<ModName>> [-ItemId <工坊ID>] [-Src <源工程>] [-WsRoot <根>] [-NoStrip] [-Force] [-SkipValidate]` |
+| `release/scripts/make_workspace.ps1` | 建工坊上传工作区（首选入口）：content 用 junction 指向 Mods 副本（不物理复制 751 MB）→ workshop.json → mod_id.txt → validate，幂等可重跑 | `powershell -File make_workspace.ps1 -ModDir <Mods/<ModName>> [-ItemId <工坊ID>] [-WsRoot <根>] [-Force] [-SkipValidate]` |
 | `release/scripts/upload.ps1` | 上传 / 更新工坊条目（日志默认写 <tool目录>\logs） | `powershell -File upload.ps1 -Workspace <工作区> [-TimeoutSeconds 1800]` |
 | `release/scripts/validate.ps1` | 上传前 validate 工作区（exit 0 才允许 upload） | `powershell -File validate.ps1 -Workspace <工作区>` |
 | `release/scripts/verify.ps1` | 上传后经 Steam API 验证（比对 time_updated / hcontent_file，识别假成功） | `powershell -File verify.ps1 -ItemId <工坊条目ID>` |
@@ -58,13 +58,13 @@
 python _paths.py --tool uploader            # 只打印某个外部工具的解析路径（供 shell 包装脚本调用）
 python _paths.py --path mods                # 同上，取 P1-P6 路径键；未找到 exit 1、键名非法 exit 2` |
 | `tools/civ_leader_data.py` | civ_leader_data.py — 新文明 / 新领袖的**数据与文本机械推导**（规格 JSON → SQL） | `python civ_leader_data.py <spec.json> --project <工程根>          # 预演（不写盘）<br>python civ_leader_data.py <spec.json> --project <工程根> --write` |
+| `tools/cook_assets.py` | cook_assets.py — 无 GUI 重放 ModBuddy 的 ArtDef / XLP cook（Civ6.targets 的三组分区）。 | `python cook_assets.py <工程根>                    # 全量 cook 到 Mods 副本<br>python cook_assets.py <工程根> --check            # 只列 pantry 展开、调用清单与对账结果` |
 | `tools/cook_dep.py` | cook_dep.py — 从 <ModName>.Art.xml 生成 <ModName>.dep（AssetObjects..GameDependencyData）。 | `python cook_dep.py <工程根><br>python cook_dep.py <工程根> --out "<Mods>/<ModName>"` |
 | `tools/local_flux.py` | 本地 FLUX.2-klein-4B 文生图封装（免费、离线、约 8–30s/张）。 | `python local_flux.py --prompt "..." --out x.png [--seed 42] [--size 1024]<br>python local_flux.py --prompt-file p.txt --out x.png --seeds 42,7,123   # 多 seed 取样挑图` |
-| `tools/modinfo_build.py` | 从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。 | `python modinfo_build.py <X.civ6proj>                 # 只生成到 <proj目录>/Build/X.modinfo<br>python modinfo_build.py <X.civ6proj> --deploy        # 复制 Content 文件 + 写 modinfo 到 Mods/<X>/` |
+| `tools/modinfo_build.py` | 从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。 | `python modinfo_build.py <X.civ6proj>                 # 只生成到 <proj目录>/Build/X.modinfo<br>python modinfo_build.py <X.civ6proj> --deploy        # cook 美术产物 + 复制 Content + 写 modinfo` |
 | `tools/new_project.py` | new_project.py — 从零生成 Civ6 ModBuddy 工程骨架（`.civ6proj` + 目录 + 版本控制骨架） | `python new_project.py "D:\documents\Firaxis ModBuddy\Civilization VI\MyMod" --name MyMod<br>python new_project.py <目录> --name MyMod --title-en "My Mod" --title-zh "我的模组"` |
 | `tools/skill_manifest.py` | 名录生成器：扫描一个 skill 的脚本，从各自 docstring 抽出「用途 + 用法」， | `python skill_manifest.py <skill 目录名或绝对路径> [...]      # 指定 skill<br>python skill_manifest.py --all-civ6                          # 批量刷新全部 civ6-* skill` |
-| `tools/strip_comments.py` | 发布前剥离代码注释（**默认只剥离 Lua**），只作用于**发布副本**，不动源工程。 | `python strip_comments.py <目标目录>                 # 就地剥离（默认仅 .lua）<br>python strip_comments.py <目标目录> --dry-run        # 只统计，不写` |
-| `tools/verify_mod_package.py` | 交付包体检：源工程 ↔ Mods 副本 ↔ 上传工作区 三处一致性 + .modinfo 结构与引用闭合。三类预期差异自动放行：剥离（.lua 命中 strip(源)）、cook 产物（BLPs 与 .dep 源工程本就没有）、美术引用管线文件（见 ART_PIPELINE_EXTS，按规范不进 Content 与 Files）。ImportFiles/ 之下不豁免，须三处齐全。UpdateArt 与 .dep 另做独立硬检查，不参与软放行 | `python verify_mod_package.py --src <源工程目录> --mods <Mods/<ModName>> [--ws <上传工作区 content>] [--files a/b.lua,c.lua] [--strict]
+| `tools/verify_mod_package.py` | 交付包体检：源工程 ↔ Mods 副本 ↔ 上传工作区 三处一致性 + .modinfo 结构与引用闭合。两类预期差异自动放行：cook 产物（BLPs 与 .dep 源工程本就没有）、美术引用管线文件（见 ART_PIPELINE_EXTS，按规范不进 Content 与 Files）。ImportFiles/ 之下不豁免，须三处齐全。UpdateArt 与 .dep 另做独立硬检查，不参与软放行 | `python verify_mod_package.py --src <源工程目录> --mods <Mods/<ModName>> [--ws <上传工作区 content>] [--files a/b.lua,c.lua] [--strict]
 --strict = 关掉全部放行，逐字节 + 零未登记（默认关闭）` |
 | `tools/workshop_cover.py` | 工坊封面合成：生图模型出的底图/徽记 + **确定性 CJK 排版**。 | `python workshop_cover.py --bg bg_7.png --emblem emblem.png         --line1 "人类玩家所有单位" --line2 "可以建立城市"         --subtitle "CIVILIZATION VI MOD"         --master "D:\desktop\X_Surface.png" --preview out/image.png` |
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
@@ -129,17 +129,19 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 ### 新 mod 从工程到线上的推荐顺序
 
 ```
-⓪ python tools/modinfo_build.py <X.civ6proj> --deploy   # 生成 .modinfo + 部署到 Mods
-                                                        # ★ 一切工作区/剥离动作都必须在本次 deploy 之后
+⓪ python tools/modinfo_build.py <X.civ6proj> --deploy   # cook 美术产物 → 生成 .modinfo → 部署到 Mods
+                                                        #   --deploy 内部先调 tools/cook_assets.py
+                                                        #   （ArtDef / XLP 三分区，69 次调用约 35 秒）；
+                                                        #   没有 *.Art.xml 的工程加 --no-cook 跳过
+                                                        # ★ 一切工作区动作都必须在本次 deploy 之后
 ① python tools/verify_mod_package.py --src <工程> --mods <Mods副本>
                                                         # 三处一致性 + 引用闭合
 ② python scripts/check_lua_registration.py <工程>       # 改过 .lua 时
    scripts/README.md「标准验证顺序」①–⑥                  # 改过 SQL 时（另有 ⓿ 运行时库）
-③ release/scripts/make_workspace.ps1 -ModDir <Mods副本> -ItemId <ID> -Src <源工程>
+③ release/scripts/make_workspace.ps1 -ModDir <Mods副本> -ItemId <ID>
                                                         # 建工作区（首选入口，幂等）：
                                                         #   content 用 junction 指向 Mods，不物理复制
-                                                        #   → workshop.json → mod_id.txt → 剥离注释 → validate
-                                                        # ★ 内置剥离，不必再单独跑 strip_comments.py
+                                                        #   → workshop.json → mod_id.txt → validate
                                                         # ★ 别再用 new -w 铺骨架；也别 Copy-Item 751 MB。
                                                         #   DSH 会话 TEMP 每会话独立 → 每次重建，别想复用
 ④ python tools/workshop_meta.py <spec.json> --out <ws>/workshop.json --record <桌面存档>
@@ -179,7 +181,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 #### ★ 例外：`ImportFiles/` 之下不豁免（显式导入通道）
 
 美术素材若走「不经 XLP 直接导入」，落点是 `ImportFiles/<子目录>/`。这类文件属**显式导入
-通道**而非 cook 链路，与其它 ImportFiles 文件同等对待，须 `.civ6proj` 的 `<Content>` +
+通道**，与 cook 链路不同，与其它 ImportFiles 文件同等对待，须 `.civ6proj` 的 `<Content>` +
 `<ImportFiles>` 加载动作 + `.modinfo` 顶层 `<Files>` 三处齐全。故 `verify_mod_package.py`
 对 `ImportFiles/` 前缀一律不豁免，其下素材漏登记照报。
 

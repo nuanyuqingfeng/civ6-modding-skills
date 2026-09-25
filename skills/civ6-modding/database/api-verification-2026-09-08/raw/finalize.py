@@ -21,7 +21,7 @@ DESKTOP = Path(r"<作者机桌面>")
 
 EXIST = {"function", "table", "userdata", "number", "string", "boolean", "thread"}
 
-# 需要「活体实例」的类：无实例即不可判（而非不存在）
+# 需要「活体实例」的类：无实例即无法判定，不能记为不存在
 PROVIDER_CLASSES = {"Player", "City", "Unit", "Plot", "Notification", "Game", "Control"}
 # 需要特定运行条件才能取到实例的类
 CONDITIONAL = {

@@ -189,7 +189,7 @@ python artdef_sync_check.py <工程名> --detail 3 # 语义层差异时打印样
 - 1 个 **L5**（再加注释剥离）：`StrategicView`
 - 3 个语义层：`Districts` / `Landmarks` / `Overlay`
 
-#### 2.3.1 ★ 怎么把「源保持 LF」**钉死**：`.gitattributes`
+#### 2.3.1 ★ 怎么让「源保持 LF」**固定不变**：`.gitattributes`
 
 上面只是"结论"。真正让源不退回 CRLF 的是**版本控制侧强制** —— 本机 `core.autocrlf` 常见为 `true`，
 它会**在 checkout 时把仓库里的 LF 写成工作区的 CRLF**，于是"源永远 CRLF、产物永远 LF"，
@@ -374,7 +374,7 @@ BLP: '...\landmarks\tilebases.blp' HAS MISSING ENTRIES!
 之类凑数）→ 条目会**成功打包**，BLP 体积变化，并且因为 mod 最后挂载，
 **同名条目会覆盖 DLC 的几何体** → 实机表现被改坏。
 
-> 口诀：**消音的唯一安全方式是让它解析失败**，而不是让它解析成功。
+> 口诀：**消音的唯一安全方式是让它解析失败**。
 
 ### 4.4 命名约定
 

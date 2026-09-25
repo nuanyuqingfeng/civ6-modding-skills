@@ -192,9 +192,9 @@
 
 ### 验证
 
-- `verify_frontend_portrait.py` 在 `示例工程` 实跑：**5 error**（5 位领袖 `Portrait` 留空 +
+- `verify_frontend_portrait.py` 在 `Ragunna_Pack` 实跑：**5 error**（5 位领袖 `Portrait` 留空 +
   `LEADER_*_NEUTRAL` 不可解析 = 真实空白风险）+ 6 info + 0 warn，**证明了该类静默失败可被机械拦下**；
-- `pick_vanilla_background.py` 在 `示例工程` 实跑：`--list` 40 张、
+- `pick_vanilla_background.py` 在 `Ragunna_Pack` 实跑：`--list` 40 张、
   `--reference SUK_UI_PORTRAIT_CARTETHYIA_QYQXP.dds` → top1 `LEADER_PEDRO_BACKGROUND`（Δh=7.3）、
   `--check` 正确产出别名接线且**未写盘**（exit 0）。
 
@@ -301,7 +301,7 @@
 
 ## 2026-09-17 · 新增类别⑤「UI 领袖立绘 / 选人界面背景」（Suk 适配）
 
-**来源**：在 `示例工程` 上首次落地并实测通过的 Sukritact's Civ Selection Screen 适配流程，
+**来源**：在 `示例工程` 上首次写入并实测通过的 Sukritact's Civ Selection Screen 适配流程，
 用户确认「实测效果很好」后要求固化为备选管线。
 
 ### 新增

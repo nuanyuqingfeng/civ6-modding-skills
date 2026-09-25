@@ -75,7 +75,7 @@
 > ⚠️ **本类别（单位晋升图标）生成管线已作废**，本节仅保留尺寸/格式事实。
 > **注册口径以 `civ6-art-reference/reference/chain-map.md` §七 为准**：
 > - **图集贴图一律需要 XLP 条目**（`Filename` 带不带 `.dds` 都要以 stem 登记进对应 XLP）；
-> - 简化点是**图片本身走 `ImportFiles`（写法与 bink 视频同款）而非丢进 `Textures/`**；
+> - 简化点是**图片本身走 `ImportFiles`（写法与 bink 视频同款），不丢进 `Textures/`**；
 > - 仅**领袖外交相关图片**（立绘 / 外交背景 / 纸片人 TEXTURE·OPACITY）才必须走 XLP + artdef 链。
 - 面板底框引用原版 `Promotion_Button` 即可，**无需复刻**。
 - **本类别不产出 `.tex`**，因此没有类别专属的 `m_ClassName` / `m_Tags` / mips 取值可写。

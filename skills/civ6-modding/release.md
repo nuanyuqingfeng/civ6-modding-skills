@@ -37,7 +37,7 @@
 > （`e7dc27a..17b3206` 之间仅两处 README 改动、**零代码差异**），但产物是 **Trimmed 构建**
 > （exe 16 MB vs 本地非 Trimmed 68 MB；内嵌程序集 57 vs 200，缺 `System.Linq.Expressions` /
 > `System.ComponentModel.TypeConverter` 等）——正是下文硬规则 ① 禁止的形态，有卡
-> `PreparingContent` 的风险，且当年堆栈缺 `.cs` 行号（无 PDB）。**换过去零收益、纯担风险。**
+> `PreparingContent` 的风险，且当年调用踪迹缺 `.cs` 行号（无 PDB）。**换过去零收益、纯担风险。**
 > 判据：`Civ6WorkshopUploader.exe --version` 打印的 commit 只说明**源码**同版，**不能**证明构建方式；
 > 要比就比 in-tree 体积与 `tool\` 里有没有 `.pdb`。
 
@@ -63,7 +63,7 @@
    |---|---|---|
    | `0` | 成功 | 继续 |
    | `1` | **硬错误**（缺 `workshop.json` / 参数错 / SteamAPI 初始化失败 / 条目不存在） | 必须先修 |
-   | `2` | validate 的**提示级**问题 | **不阻断**，但**不代表可以忽略**（见 §4） |
+   | `2` | validate 的**提示级**问题 | **不阻断**，但**不代表可以忽略**（见 §3） |
 
    - ★ `remove` **不可逆**，且**只删线上条目、本地 workspace 不受影响**；执行前先确认条目 ID（台账 + `mod_id.txt` 双核对）。
    - ★ `new` 的模板路径是**相对路径** `new DirectoryInfo("template")` ——
@@ -71,7 +71,7 @@
      等价写法：`Push-Location <tool 目录>; & .\Civ6WorkshopUploader.exe new -w $ws; Pop-Location`
      （`& $tool new -w $ws` 从任意 cwd 调用**同样会失败**，因为 exe 不会切自己的 cwd）。
    - `new` 只铺骨架（`workshop.json` / `README.md` / `content/`）——它出的 `workshop.json` 是模板占位，
-     **多语言与正文仍应按 §3 用 `workshop_meta.py` 生成并覆盖**。
+     **多语言与正文仍应按 §2 用 `workshop_meta.py` 生成并覆盖**。
 
 3. **workspace 固定结构**：
    ```text
@@ -138,19 +138,15 @@
     - **为什么该做**：本项目 Mods 副本 420 文件 / 751 MB，其中 **98% 是 cooker 产物**
       （`.blp` 306 MB + `.bik` 221 MB + `.wem` 209 MB），源工程里根本没有这 51 个文件。
       junction 把每次发布的复制量从 751 MB 降到 0。
-    - **★ 语义变化**：`strip_comments.py` 是**就地写盘**的不可逆操作（无 dry-run）。content 是
-      junction 时，剥离**直接改的就是 Mods 副本本体**，不再是「改副本→（忘）回拷」。
-      最终状态相同（发布口径本就是「Mods 副本 == strip(源工程)」），但「就地」这个性质别忘，
-      尤其**别在剥离后、上传前又对 Mods 做修改**。
     - **清理安全**：实测 `Remove-Item -Recurse` 作用在**含 junction 的父目录**上时，PS 5.1 与
       PS 7.6 都只删链接本身、**绝不递归进目标**（目标目录原封不动）。`cleanup.ps1` 在此之上
       另加三重守卫（见该脚本头注释）。
     - **重建工作区**：`release/scripts/make_workspace.ps1` 已把这套流程（建链 → workshop.json →
-      mod_id.txt → 剥离 → validate）固化成一个幂等脚本，**它是本节的执行端**：
+      mod_id.txt → validate）固化成一个幂等脚本，**它是本节的执行端**：
 
       ```powershell
       powershell -File release/scripts/make_workspace.ps1 `
-          -ModDir "D:\...\Mods\<ModName>" -ItemId <工坊ID> -Src "<ModBuddy 源工程>"
+          -ModDir "D:\...\Mods\<ModName>" -ItemId <工坊ID>
       ```
 
 ## Standard Workflow
@@ -163,46 +159,21 @@ D:\documents\My Games\Sid Meier's Civilization VI\Mods\<ModName>
 
 确认存在 `<ModName>.modinfo`。
 
-### 2. 剥离注释（发布前必跑）
-
-> **用 `make_workspace.ps1` 时本步已内置**（§3 ③ 会连剥离一起做）——那就**跳过本节**，
-> 直接看 §3。本节是「脚本不可用」或「想单独剥离并核对」时的手工流程。
-> 无论走哪条路，**顺序恒定：`modinfo_build.py --deploy`（或 Rebuild All）→ 剥离 → 上传**，
-> 因为每次部署都会把注释带回来。
-
-对外产物不该带内部说明。**2026-09-16 起默认只剥 `.lua`**（SQL/XML 注释保留）：
-
-```powershell
-python "$env:USERPROFILE\.agents\skills\civ6-modding\tools\strip_comments.py" `
-    "<Mods 路径>\<ModName>" --src "<ModBuddy 源工程>"
-```
-
-- 期望输出 `OK  目标目录 == strip(源工程)`、exit 0
-- 需要旧的全类型剥离（Lua+SQL+XML+modinfo）时加 `--all-exts`
-- `.lua` 剥离后自动跑 `luac -p` **差分**自检（仅「原文能过 → 剥离后不过」才算失败）；
-  Civ6 的类型标注语法（`local x:table = {}`）源文件本就过不了，会被跳过并计数
-- ★ 每次 `modinfo_build.py --deploy` 或 ModBuddy `Rebuild All` 都会把注释带回来，**故本步必跑**
-- ★ 本步是**就地写盘**的不可逆操作（`--dry-run` 只统计、不写），作用对象是 **Mods 副本本体**。
-  工作区 `content/` 是 junction 时（Hard Rules ⑩），「工作区里的那份」与「Mods 副本」是
-  **同一个目录**，所以本步与「剥离工作区」是同一件事，不存在「剥了工作区却没剥 Mods」的中间态
-
-### 3. 创建 workspace
+### 2. 创建 workspace
 
 **首选：一条命令搞定**（`release/scripts/make_workspace.ps1`）——它依次做
-「建 junction → workshop.json → mod_id.txt → 剥离注释 → validate」，且**幂等可重跑**：
+「建 junction → workshop.json → mod_id.txt → validate」，且**幂等可重跑**：
 
 ```powershell
 powershell -File "$env:USERPROFILE\.agents\skills\civ6-modding\release\scripts\make_workspace.ps1" `
     -ModDir "D:\documents\My Games\Sid Meier's Civilization VI\Mods\<ModName>" `
-    -ItemId <工坊条目ID> `
-    -Src    "D:\documents\Firaxis ModBuddy\Civilization VI\<工程>\<工程>"
+    -ItemId <工坊条目ID>
 ```
 
 - `-ItemId` 省略时**不会自作主张**：若工作区已有 `mod_id.txt` 就沿用，否则打 WARN 提醒你
-  「这样 upload 会新建条目」——这是最贵的失误（见 §3.1），脚本刻意不猜。
-- `-NoStrip` 跳过剥离、`-SkipValidate` 跳过 validate、`-Force` 才允许覆盖已存在的**普通
+  「这样 upload 会新建条目」——这是最贵的失误（见 §2.1），脚本刻意不猜。
+- `-SkipValidate` 跳过 validate、`-Force` 才允许覆盖已存在的**普通
   目录**形式的 `content`（普通目录默认**拒绝**，防止把 mod 本体当旧副本删掉）。
-- 剥离是**就地**改 Mods 副本（Hard Rules ⑩），脚本会显式打印这一点。
 
 **手工等价流程**（脚本不可用时照此做）：
 
@@ -212,7 +183,7 @@ $modDir  = "<Mods 路径>\<ModName>"
 
 New-Item -ItemType Directory -Force -Path $ws | Out-Null
 New-Item -ItemType Junction -Path "$ws\content" -Target $modDir    # ★ 不复制，只建链
-# workshop.json 见下；mod_id.txt 见 §3.1
+# workshop.json 见下；mod_id.txt 见 §2.1
 ```
 
 > **旧式（物理复制）工作区怎么升级**：**直接整个删掉重建**，别手工「删 content 再建链」——
@@ -224,7 +195,7 @@ New-Item -ItemType Junction -Path "$ws\content" -Target $modDir    # ★ 不复�
 > 本来就要覆盖）。更新已有条目更是用不上。`new` 仍需 `Push-Location <tool 目录>` 才能跑
 > （相对路径找 `template\`）——这条坑只在真的要新建条目时才相关。
 
-#### 3.1 `mod_id.txt`
+#### 2.1 `mod_id.txt`
 
 - **首建**：**不要**手工创建，`upload` 成功后自动回写条目 ID。
 - **更新**：必须已存在且内容为正确 ID（从台账抄；台账是唯一真源）。
@@ -247,7 +218,7 @@ New-Item -ItemType Junction -Path "$ws\content" -Target $modDir    # ★ 不复�
 > 用了空对象后，上传器日志会显示 `Uploading '' to the steam workshop`（标题为空串），
 > 这是正常的；标题/描述/标签/可见性/封面均保持原样。**上传后仍须用 Steam API 复核标题未被清空。**
 
-#### 3.2 预览图 `image.png`（可选）
+#### 2.2 预览图 `image.png`（可选）
 
 workspace 根放 **`image.png`** 即会上传为工坊预览图；**没有就跳过**（不报错、不阻断，
 线上保留原有预览图），这与官方上传器行为一致。
@@ -272,7 +243,7 @@ python "$env:USERPROFILE\.agents\skills\civ6-modding\art\make_workshop_preview.p
 - 换图后 `upload` 会重传预览图（日志出现 `k_EItemUpdateStatusUploadingPreviewFile`）；
   只想改文字元数据、不想动图时**别放** `image.png`。
 
-### 4. validate
+### 3. validate
 
 ```powershell
 & "$toolDir\Civ6WorkshopUploader.exe" validate -w $ws
@@ -294,16 +265,16 @@ python "$env:USERPROFILE\.agents\skills\civ6-modding\art\make_workshop_preview.p
 > 一律打印 `Upload may still proceed (validation is advisory).`。所以
 > **`validate` 通过 ≠ 包是好的**——本项目交付前仍必须跑
 > `tools/verify_mod_package.py`（引用闭合 + 三处一致性），它才是硬门。
-> 该工具对三类**预期差异**自动放行、不产生假红灯：`.lua` 已剥离、`BLPs/**`+`.dep` 是
-> cooker 产物、美术引用管线文件（按规范不进 proj 的 `<Content>`、也不进 `.modinfo` 的
-> `<Files>`）。想按逐字节严格口径复核时加 `--strict`。
+> 该工具对两类**预期差异**自动放行、不产生假红灯：`BLPs/**`+`.dep` 是 cooker 产物、
+> 美术引用管线文件（按规范不进 proj 的 `<Content>`、也不进 `.modinfo` 的 `<Files>`）。
+> 想按逐字节严格口径复核时加 `--strict`。
 
-### 4.5 预览图（要换封面时）
+### 3.5 预览图（要换封面时）
 
 **执行端在 `art/`**（缩放/锐化属美术管线；上传只负责把成品放到 `<ws>\image.png`）：
 
 ```powershell
-# 已有达标 512 成品 → 直通（不重采样，见 §3.2 铁律）
+# 已有达标 512 成品 → 直通（不重采样，见 §2.2 铁律）
 python "$env:USERPROFILE\.agents\skills\civ6-modding\art\make_workshop_preview.py" `
     "<母版>.png" --out "$ws\image.png" --qa
 
@@ -318,7 +289,7 @@ python "$env:USERPROFILE\.agents\skills\civ6-modding\tools\workshop_cover.py" `
 - **不换封面就别放 `image.png`**（跳过上传、线上保留原图，不报错）。
 - **别用 `magick -resize` 裸缩**——默认 Mitchell 滤镜偏软，是封面发糊的经典根因。
 
-### 5. upload
+### 4. upload
 
 ```powershell
 & "$toolDir\Civ6WorkshopUploader.exe" upload -w $ws
@@ -327,7 +298,7 @@ python "$env:USERPROFILE\.agents\skills\civ6-modding\tools\workshop_cover.py" `
 大文件建议给足超时（如 30 分钟），并把输出保存到日志。
 注：**直调 exe 不写 `tool\logs\`**，只有 `release/scripts/upload.ps1` 包装才写日志文件。
 
-### 6. verify
+### 5. verify
 
 ```powershell
 & "$env:USERPROFILE\.agents\skills\civ6-modding\release\scripts\verify.ps1" -ItemId <id>
@@ -338,11 +309,11 @@ python "$env:USERPROFILE\.agents\skills\civ6-modding\tools\workshop_cover.py" `
 - `hcontent_file` 变了 → 内容真的更新
 - `hcontent_file` 没变 → 假成功，需要排查
 
-### 7. 更新台账
+### 6. 更新台账
 
 在 `workshop-ledger.md` 改四处：表 1 版本号、内容规模、历史版本、表 3 操作历史。
 
-### 8. 清理（真成功必做）
+### 7. 清理（真成功必做）
 
 ```powershell
 & "$env:USERPROFILE\.agents\skills\civ6-modding\release\scripts\cleanup.ps1" -Workspace $ws
@@ -353,7 +324,7 @@ python "$env:USERPROFILE\.agents\skills\civ6-modding\tools\workshop_cover.py" `
 再整体递归删除。`content/` 是 junction 时日志会打印
 `已摘除链接: … -> <Mods 路径>`，看到这行属**正常**，Mods 副本不受影响。
 
-### 9. 下架（`remove`，不可逆）
+### 8. 下架（`remove`，不可逆）
 
 ```powershell
 Push-Location $toolDir
@@ -434,7 +405,7 @@ Pop-Location
 | 路径 | 用途 |
 |---|---|
 | `release/scripts/build.ps1` | 构建非 Trimmed `Civ6WorkshopUploader.exe`（`dotnet publish -c Release -r win-x64`） |
-| `release/scripts/make_workspace.ps1` | **建上传工作区（首选入口）**：content 用 junction 指向 Mods 副本 → workshop.json → mod_id.txt → 剥离注释 → validate，幂等可重跑 |
+| `release/scripts/make_workspace.ps1` | **建上传工作区（首选入口）**：content 用 junction 指向 Mods 副本 → workshop.json → mod_id.txt → validate，幂等可重跑 |
 | `release/scripts/validate.ps1` | 上传前 validate（`-Workspace <ws>`） |
 | `release/scripts/upload.ps1` | 上传/更新（`-Workspace <ws> [-TimeoutSeconds 1800]`，日志默认写 `<tool目录>\logs`） |
 | `release/scripts/verify.ps1` | 上传后 Steam API 验证（`-ItemId <id>`，比对 `time_updated` / `hcontent_file`） |

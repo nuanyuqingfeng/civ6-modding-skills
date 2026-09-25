@@ -73,7 +73,7 @@ These pieces of vocabulary are identical between `.modinfo` and `.civ6proj` (onl
 **分层实践**（推荐骨架，来自真实工程）：
 
 ```
--1        内容/类型定义（被他人引用的先落地）
+-1        内容/类型定义（被他人引用的先写入）
 200       常规内容（Types / Icons / 主数据）
 600000    ImportFiles（共享 Core 文件）
 600005+   Modifiers（晚于 Types，因为要引用它们）
@@ -97,7 +97,7 @@ These pieces of vocabulary are identical between `.modinfo` and `.civ6proj` (onl
 
 ### 加载顺序的两级手段：`LoadOrder`（动作级）与 `Priority`（文件级）
 
-> **先说结论**：两者**分工不同、互补而非替代**，按你要控制的粒度选用：
+> 两者**分工不同、互补**，按你要控制的粒度选用：
 >
 > | 想控制什么 | 用什么 | 说明 |
 > |---|---|---|
@@ -579,7 +579,7 @@ Hand-friendly XML with a single `<Mod id="GUID" version="V">` root.
    1. **Types 先加载才能被其他逻辑遍历到** —— 遍历要在 `Types`（及依赖它的表）里查目标；Types 后到则遍历得到空集。
    2. **遍历延迟才能遍历到其他 mod 的部分** —— 遍历是**全库扫描**语义，越晚执行越能覆盖其他 mod（尤其加载较晚、写得不够规范的 mod）已写入的行。
    3. **对环境影响小** —— 遍历会把全库已有行一并纳入处理；推后等于把自己隔离在「上游已定型」之后，不易被其他 mod 不规范的遍历波及（或反过来波及它们），是风险最小的位置。
-   > **来源说明**：这是**成熟第三方工程惯例**（本机 4 例一致：`示例工程` `RGN_Types` LO=200 → `RGN_Modifiers` LO=600005；`工程 I`、`工程 C`、`工程 A` 同构），**官方 42 个 .modinfo 0 例**这样做（反而 70 个动作把二者合并）。**本项目采用它**，但不要对外称「官方要求」。
+   > **来源说明**：这是**成熟第三方工程惯例**（本机 4 例一致：`Ragunna_Pack` `RGN_Types` LO=200 → `RGN_Modifiers` LO=600005；`UnitRover`、`Jinzhou_Jinhsi`、`Black_Shores_Pack` 同构），**官方 42 个 .modinfo 0 例**这样做（反而 70 个动作把二者合并）。**本项目采用它**，但不要对外称「官方要求」。
 5. **`.dep` 文件名 = 工程名** — 由 `.Art.xml` 的 `<id><name text="…"/>` 决定（ModBuddy 构建时生成
    `<name>.dep`）。实测 12 个工程里 11 个用 `<工程名>.dep`；**不要用 mod 标题的 LOC key**
    （反例：某工程写成 `LOC_XXX_MOD_TITLE.dep`，与全家族惯例不符）。
@@ -620,7 +620,7 @@ ModBuddy 工程属性页有一个 **`Custom Properties`** 面板（`Civ6.Project
 | ModBuddy 二进制（`Civ6.Tasks.dll`、`Civ6.Project.dll` 等） | **0 命中** `CustomParameter` |
 
 **结论**：那些 xlsx 片段更可能是**作者自用的纯文本模板**
-（填好 `Value` 列后手工复制进工程），而非 ModBuddy 特性。
+（填好 `Value` 列后手工复制进工程），ModBuddy 不提供该特性。
 **要"一份模板套多个领袖"，用生成器脚本，别赌这套机制**：
 
 1. **生成器脚本（推荐）**：读一份变量表，直接渲染出完整

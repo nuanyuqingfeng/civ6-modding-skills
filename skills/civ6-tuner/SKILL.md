@@ -4,7 +4,7 @@ version: "1.0"
 author: 千与千寻瀑
 license: MIT
 category: game-modding
-description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局里执行任意 Lua，用于接口行为/参数/PROPERTY/modifier 的运行时验证、游戏内快速测试、复现脚本报错。当静态校验(rgn_validate)无法回答"这个 API 实际行为是什么"、需要查询运行时状态或验证 GP/UI 链路时使用。
+description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局里执行任意 Lua，用于接口行为/参数/PROPERTY/modifier 的运行时验证、游戏内快速测试、复现脚本报错。当静态校验(rgn_validate)无法回答"这个 API 实际行为是什么"、需要查询运行时状态或验证 GP/UI 通信时使用。
 ---
 
 > 🧰 **工具先查名录（硬性）**：要写脚本做某件事之前，先看本 skill 的 [`TOOLS.md`](TOOLS.md)
@@ -188,7 +188,7 @@ python $T logs --log-file Database.log -n 50
 | `dump_props.lua` | **按 `GameInfo` 权威清单批量转储实体属性**（不手写 key，避免漏项）：清单来源可切 `sword`/`list`，目标实体可切 plot/player/game，并反查某前缀下已置位的残留 | 双端（`exec --both`，比对「mod 写的」与「引擎写的」是否一致） |
 | `settle_read.lua` | **对抗「重算延迟」的稳定读数**：连读 N 次、两次一致才算稳定（复位未必同帧被下游重算，批量跑会带上一条残留） | gamecore |
 | `modifier_probe.lua` | Modifier/RequirementSet 是否入库及挂载链 | gamecore |
-| `event_trigger.lua` | 手动触发 LuaEvents 验证通知链路 | ingame |
+| `event_trigger.lua` | 手动触发 LuaEvents 验证通知通路 | ingame |
 | `bridge_probe_1_register.lua` → `_2_dispatch.lua` → `_3_read.lua` | **UI→GP 派发可达性三连测**（确认 `EXECUTE_SCRIPT` 的 `OnStart` 是否到达你注册的那个 GP 态） | gamecore → ingame → gamecore |
 | `cheat_setup.lua` | 造测试条件（金币/信仰/刷兵/科技进度） | ingame |
 | `end_turn.lua` | 结束回合观察跨回合结算 | ingame |

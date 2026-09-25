@@ -223,7 +223,7 @@ ctrl:ReprocessAnchoring()     -- 重新处理锚定
 | 文字在本行**内**居中 / 靠右 | 给控件显式 `Size="宽,高"`（宽 > 文本宽），**再**设 `Align` |
 | 整块文本摆到容器**中间** | 用 `Anchor="C,*"`，无需 `Align` |
 
-> 排查“对齐不生效”时**先查有没有 `Size`**。示例工程 曾踩坑：17 处 `Alignment`→`Align` 后实机毫无变化，一度误判属性无效，实为这些 Label 全都没有 `Size`；补上 `Size` 后 `Align="Left"` 立即靠左，才证实属性有效。
+> 排查“对齐不生效”时**先查有没有 `Size`**。Ragunna_Pack 曾踩坑：17 处 `Alignment`→`Align` 后实机毫无变化，一度误判属性无效，实为这些 Label 全都没有 `Size`；补上 `Size` 后 `Align="Left"` 立即靠左，才证实属性有效。
 >
 > 其余支持 `Align` 的控件（原版用量）：`CheckBox` 12、`TextButton` 4、`EditBox` 3、`Stack` 2，同样遵循“需有 `Size` 才生效”的规律。
 
@@ -737,7 +737,7 @@ ctrl:SetTextureAndMask(t, m)      -- 同时设置纹理和遮罩
 - `<ButtonData>` - 定义打开下拉框的按钮
 - `<GridData>` - 定义下拉框背景网格
 - `<ScrollPanelData>` - 包含子按钮的滚动面板
-- `<StackData>` - 包含子按钮的堆栈
+- `<StackData>` - 包含子按钮的堆叠容器
 - `<InstanceData>` - 子按钮模板
 
 **Lua 方法：**
@@ -750,7 +750,7 @@ ctrl:ForceClose()                    -- 强制关闭
 ctrl:GetButton() -> Button           -- 获取按钮
 ctrl:GetGrid() -> Grid               -- 获取网格
 ctrl:GetScrollPanel() -> ScrollPanel -- 获取滚动面板
-ctrl:GetStack() -> Stack             -- 获取堆栈
+ctrl:GetStack() -> Stack             -- 获取堆叠容器
 ctrl:IsOpen() -> bool                -- 是否打开
 ctrl:RegisterSelectionCallback(func) -- 注册选择回调
 ctrl:SetDisabled(bool)               -- 设置禁用

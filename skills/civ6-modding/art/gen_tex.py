@@ -10,7 +10,7 @@
 .assets 源文件使用「中文名-角色」友好名，通过 scripts/asset_map.json
 （技术名 -> 友好名）解析；无映射时回退同名（兼容旧项目）。
 
-编码（重要）：.tex 按【系统 ANSI 代码页】写出，而不是 UTF-8。m_SourceFilePath
+编码（重要）：.tex 按【系统 ANSI 代码页】写出。m_SourceFilePath
 里含 .assets 中文路径，AssetEditor（WinForm/.NET）读取 .tex 用 Encoding.Default
 （= 系统 ANSI 代码页，中文系统即 GBK/cp936）。若写成 UTF-8，GBK 解读会乱码并
 导致 AssetEditor 崩溃。系统 ANSI 代码页用 GetACP() 取（勿用
@@ -341,7 +341,7 @@ def gen_tex(dds_path):
         return False
 
     try:
-        info = parse_dds_info(dds_path)   # 读的是 dds 本身，而不是源 png
+        info = parse_dds_info(dds_path)   # 读取 dds 本身，不使用源 png
     except ValueError as e:
         print(f"  skip ({e})")
         return False
@@ -383,7 +383,7 @@ def gen_tex(dds_path):
 
     # 按系统 ANSI 代码页写出（与 AssetEditor 读取编码一致，见模块 docstring）。
     # 若该代码页装不下路径里的字符（如西文系统 cp1252 遇中文路径），用 XML
-    # 字符引用（&#x...;）转义而非报错——任何 XML 解析器都能还原原文，
+    # 字符引用（&#x...;）转义，不报错——任何 XML 解析器都能还原原文，
     # 也不会因非法字节导致 AssetEditor 乱码崩溃。
     errs = "strict"
     try:
@@ -404,7 +404,7 @@ def gen_tex(dds_path):
 def main():
     # `-h` / `--help`：本脚本在**导入期**就读 sys.argv 定目录（见文件头部），
     # 此前 `--help` 会被当成贴图目录 → FileNotFoundError 指向 "<cwd>\--help"。
-    # 这里在真正干活前拦下，给出用法而不是令人困惑的路径错误。
+    # 这里在真正干活之前拦下，给出用法提示，避免令人困惑的路径错误。
     if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
         # 注意：TEXTURES_DIR 在导入期已把 "--help" 当成 argv[1] 吃掉了，
         # 所以这里不能直接打印它（会显示 textures_dir=--help）。

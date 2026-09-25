@@ -6,8 +6,16 @@
 
 用法：
     python modinfo_build.py <X.civ6proj>                 # 只生成到 <proj目录>/Build/X.modinfo
-    python modinfo_build.py <X.civ6proj> --deploy        # 复制 Content 文件 + 写 modinfo 到 Mods/<X>/
+    python modinfo_build.py <X.civ6proj> --deploy        # cook 美术产物 + 复制 Content + 写 modinfo
     python modinfo_build.py <X.civ6proj> --deploy --mods-root <目录>
+    python modinfo_build.py <X.civ6proj> --deploy --no-cook   # 跳过 cook（没有 Art.xml 的工程）
+
+与美术产物（BLP / ArtDef / .dep）的顺序关系：
+    `--deploy` 在拷贝 Content 之前会先调 `tools/cook_assets.py` 重放 ModBuddy 的
+    ArtDef 与 XLP 分区 —— 否则 Mods 副本里的 BLP 与 `.dep` 停留在上一次构建，
+    游戏读到的是旧包。cook 失败（产物缺失、退出码无法解释）时 `--deploy` 立即返回 1，
+    不做部分部署。cook 收尾会把源工程 `ArtDefs/*.artdef` 覆盖进副本以保住完好的
+    引用链，故 `sync_artdefs` 放在自检最后一步、且对内容相同的文件不再写盘。
 
 产出与自检：
     · modinfo 结构（对齐 ModBuddy 产物）：Properties / Dependencies / ActionCriteria /
@@ -15,6 +23,7 @@
     · 动作片段按 XML 解析重新序列化——兼容 ModBuddy 默认的单行 CDATA 与逐行 CDATA
       （旧实现逐行过滤会把单行 CDATA 整段跳过，导致 InGameActions 全空）
     · 生成后做 XML 良构解析 + FrontEnd/InGameActions 内全部 <File> 引用存在性检查（悬空即 exit 1）
+    · 部署末尾把源工程 ArtDefs/*.artdef 强制同步进 Mods 副本（见 sync_artdefs 的说明）
     · Content Include 是拷贝清单（ModBuddy 只拷 Content 条目 —— 只写在 InGameActions 里
       而漏进 Content 的文件不会被部署，是踩过的坑）；去重在分隔符规范化之后，
       反斜杠/斜杠两种写法不会产生重复 <File> 项
@@ -24,9 +33,12 @@
 from __future__ import annotations
 
 import argparse
+import filecmp
+import glob
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
@@ -154,7 +166,7 @@ def build_modinfo(proj_path: str) -> tuple[str, str]:
     #   派生到 .modinfo 时必须换成真实 <ModName>.dep —— 否则游戏报：
     #     ERROR: Invalid file reference in action, did you forgot to add it in <Files>? - (Mod Art Dependency File)
     #   且该 mod 的 UpdateArt 不会被加载（ModArtLoader 无记录）→ 全部美术/图标静默空白。
-    #   （实测对照：工程 A.civ6proj 写占位符，其 ModBuddy 产物是真名 .dep）
+    #   （实测对照：Black_Shores_Pack.civ6proj 写占位符，其 ModBuddy 产物是真名 .dep）
     ingame = ingame.replace(ART_DEP_PLACEHOLDER, mod_name + ".dep")
     frontend = frontend.replace(ART_DEP_PLACEHOLDER, mod_name + ".dep")
     if not guid:
@@ -225,6 +237,50 @@ def build_modinfo(proj_path: str) -> tuple[str, str]:
     return text, mod_name, content
 
 
+def sync_artdefs(proj_dir: str, mod_dir: str) -> tuple[int, int]:
+    """把源工程 ArtDefs/*.artdef 同步进 Mods 副本，返回 (写入数, 总数)。
+
+    为什么需要单独一步：ArtDefs 不在 .civ6proj 的 <Content Include> 清单里（该清单只放
+    XML/SQL/Lua 与音频 bank，359 条 Content 中 artdef 为 0），所以 --deploy 的拷贝循环
+    从不写它 —— Mods 副本里留着的始终是上一次 cook 的产物。cook 会把 pantry 解析不到的
+    引用归一化成空值，而本工程这些引用的来源包 KublaiKhan_Vietnam 没有 pantry
+    Art.xml，无法用 .Art.xml 的 <requiredGameArtIDs> 声明，于是每次部署之后源与
+    Mods 的 artdef 都不一致。此处逐字节覆盖，消除该差异。
+    artdef 属资产类文本（LF），copy2 原样搬运，不做任何换行或编码转换。
+    """
+    src_dir = os.path.join(proj_dir, "ArtDefs")
+    if not os.path.isdir(src_dir):
+        return 0, 0
+    names = sorted(f for f in os.listdir(src_dir) if f.lower().endswith(".artdef"))
+    dst_dir = os.path.join(mod_dir, "ArtDefs")
+    synced = 0
+    for fn in names:
+        s, d = os.path.join(src_dir, fn), os.path.join(dst_dir, fn)
+        if os.path.isfile(d) and filecmp.cmp(s, d, shallow=False):
+            continue
+        os.makedirs(dst_dir, exist_ok=True)
+        shutil.copy2(s, d)
+        synced += 1
+        print("SYNC ArtDefs/%-30s %8d B（源 → Mods）" % (fn, os.path.getsize(d)))
+    return synced, len(names)
+
+
+def run_cook(proj_dir: str, mods_root: str) -> int:
+    """调用同目录的 cook_assets.py 重放 ArtDef / XLP 分区，返回其退出码。
+
+    用 sys.executable + 脚本绝对路径的 argv 列表（不经 shell，路径含空格也安全）。
+    子进程输出直接继承本进程的 stdout/stderr —— 受限宿主禁止管道捕获。
+    """
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cook_assets.py")
+    if not os.path.isfile(script):
+        print("FAIL 找不到 cook_assets.py：%s" % script)
+        return 1
+    print()
+    print("=== cook 美术产物（cook_assets.py --quiet）===")
+    return subprocess.run([sys.executable, script, proj_dir, "--mods-root", mods_root,
+                           "--quiet"]).returncode
+
+
 def action_files(modinfo_text: str) -> list[str]:
     # 注意必须容忍 <File Priority="N">：旧正则 <File>(.*?)</File> 会漏掉全部带 Priority 的文件
     return FILE_IN_ACTION_RE.findall(modinfo_text)
@@ -235,6 +291,8 @@ def main() -> int:
     ap.add_argument("project", help="X.civ6proj 路径")
     ap.add_argument("--deploy", action="store_true", help="复制 Content 文件并写 modinfo 到 Mods/<ModName>/")
     ap.add_argument("--mods-root", default=None, help="Mods 根目录（默认自动解析本机路径）")
+    ap.add_argument("--no-cook", action="store_true",
+                    help="--deploy 时跳过 cook_assets.py（没有 *.Art.xml 的工程用）")
     args = ap.parse_args()
 
     proj = os.path.abspath(args.project)
@@ -260,6 +318,21 @@ def main() -> int:
     mod_dir = os.path.join(mods_root, mod_name)
     os.makedirs(mod_dir, exist_ok=True)
 
+    # ★ cook 必须排在 Content 拷贝之前：BLP / ArtDef / .dep 是游戏实际加载的美术产物，
+    #   它们不进 <Content Include>，只能由 cook 写进副本。放在拷贝之后会让本次部署
+    #   携带「新数据 + 旧美术」，而 .dep 缺失时下面的硬拦还会误报成配置错误。
+    if args.no_cook:
+        print("SKIP cook（--no-cook）")
+    else:
+        art_xml = glob.glob(os.path.join(proj_dir, "*.Art.xml"))
+        if not art_xml:
+            print("SKIP cook（工程里没有 *.Art.xml）")
+        else:
+            rc = run_cook(proj_dir, mods_root)
+            if rc != 0:
+                print("FAIL cook_assets.py 退出码 %d，部署中止（未拷贝任何 Content）。" % rc)
+                return 1
+
     missing_src = []
     for rel in content:
         s = os.path.join(proj_dir, rel.replace("/", os.sep))
@@ -276,7 +349,7 @@ def main() -> int:
 
     dest = os.path.join(mod_dir, mod_name + ".modinfo")
     # .modinfo 属配置类文本 → CRLF（换行分层铁律，见 gotchas.md §68）。
-    # 原先写 LF，而 ModBuddy 构建/部署出的 modinfo 是 CRLF（实测线上 示例工程.modinfo
+    # 原先写 LF，而 ModBuddy 构建/部署出的 modinfo 是 CRLF（实测线上 Ragunna_Pack.modinfo
     # CRLF=1114 / LF=0）——两者混用会让「工具产物 vs ModBuddy 产物」出现伪不一致。
     open(dest, "w", encoding="utf-8", newline="\r\n").write("\ufeff" + text.replace("\r\n", "\n"))
     print("OK  ->  %s" % dest)
@@ -314,6 +387,15 @@ def main() -> int:
         print("FAIL 悬空引用（modinfo 声明但 Mods 副本里没有）：%s" % bad)
         return 1
     print("OK  modinfo 引用的动作文件全部存在（%d 个）" % len(action_files(action_part)))
+
+    # ③ ArtDefs 强制同步（放在自检最后一步，见 sync_artdefs 的说明）
+    n_sync, n_total = sync_artdefs(proj_dir, mod_dir)
+    if n_total == 0:
+        print("OK  ArtDefs 同步：源工程无 artdef，跳过")
+    elif n_sync:
+        print("OK  ArtDefs 强制同步 %d / %d 个（源 → Mods 副本）" % (n_sync, n_total))
+    else:
+        print("OK  ArtDefs 已一致（%d 个）" % n_total)
     return 0
 
 

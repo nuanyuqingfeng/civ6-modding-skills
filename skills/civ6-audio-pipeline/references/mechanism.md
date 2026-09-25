@@ -26,7 +26,7 @@
 3. **`.civ6proj`**（ModBuddy 源工程）：`InGameActionData` CDATA 内单行 `<UpdateAudio id="X"><File>Platforms/Windows/Audio/xxx.ini</File></UpdateAudio>`（正斜杠）+ MSBuild 条目
    `    <Content Include="Platforms\Windows\Audio\x.wem">` + `      <SubType>Content</SubType>`（反斜杠）。
    实证先例：本地某领袖 mod 源工程 .civ6proj（CDATA 单行 UpdateAudio + Content 条目）。
-   > 背景：给**既有 mod 首次加音频**时，P1 源工程与 P2 运行目录往往都没有音频注册——两边都要写（`register_to_mod.py` 默认双写），并非"防止重建丢失"。
+   > 背景：给**既有 mod 首次加音频**时，P1 源工程与 P2 运行目录往往都没有音频注册——两边都要写（`register_to_mod.py` 默认双写）；该做法与"防止重建丢失"无关。
 
 ## 4. Wwise 工程直改（免 GUI）要点
 
@@ -93,7 +93,7 @@
 | 本地某领袖+伟人 mod | .civ6proj 注册 + GreatWorks.Audio + 伟人音 Lua 触发 |
 | 本地某多领袖 mod 包 | .modinfo 注册 + MediaStop 统一媒体协调器（Play_→Stop_ 转换停止） |
 
-## 8. 已知坑位（注册链路）
+## 8. 已知坑位（注册流程）
 
 - **UpdateAudio 语义污染（已修+防呆）**：早期 `register_to_mod.py` 的 Files 条目锚点误匹配 UpdateAudio 块内自带 `<File>...ini</File>` 行，把 wem/bnk 条目塞进 `<UpdateAudio>` 内部。XML 良构校验通过、但游戏读 bank 时发现指向非 ini → bank 不加载 → 按钮静音（其他游戏声音正常）。**特征**：`<UpdateAudio>` 内出现 `<File>*.wem</File>`。**防线**：脚本已锚定 `</Files>` 插入 + 写后语义校验（UpdateAudio 只指向 .ini）+ 独立 `--verify` 命令（每次交付前跑，期望 PASS）。
 - **媒体 ID 重建漂移**：重建 work unit 后流式媒体 ID 会重新分配，旧 wem 成孤儿。注册后必须清理运行目录中不被当前 bank xml 引用的 `\d+.wem`，并同步清理 modinfo Files 条目。

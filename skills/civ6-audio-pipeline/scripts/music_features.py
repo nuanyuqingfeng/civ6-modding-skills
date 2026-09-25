@@ -7,7 +7,7 @@ music_features.py -- BGM 音乐特征分析: BPM/响度/动态/亮度/打击密�
 输出: 控制台按唤醒度升序清单 + --out CSV (含 quartile 四分位建议 1=远古..4=原子)。
 用法:
   python music_features.py <文件或目录...> [--out features.csv] [--jobs 4] [--cache DIR]
-特征均为客观信号量, 时代归属是参考建议而非裁定; 文件夹间人工微调不影响格式合规。
+特征均为客观信号量, 时代归属只作参考建议; 文件夹间人工微调不影响格式合规。
 """
 import os, sys, csv, json, argparse, subprocess, shutil
 from concurrent.futures import ThreadPoolExecutor
