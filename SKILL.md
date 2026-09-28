@@ -94,8 +94,11 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 **L0 的一条命令**（把「检索词表」整表喂给 ripgrep；词表真源见 `reference/context-matrix.md` 第六节）：
 
 ```powershell
-Select-String -Path "<skills>\civ6-*\*.md" -Pattern "跨上下文|跨端|跨脚本|跨文件|调用函数|全局函数|互不可见|独立沙箱|LuaEvents|ExposedMembers|EXECUTE_SCRIPT|ReportingEvents|SendLuaEvent|RequestPlayerOperation|GetProperty|SetProperty|attempt to call a nil value|attempt to index a nil value"
+Select-String -Path "<skills>\civ6-modding\*.md","<skills>\civ6-tuner\*.md","<skills>\civ6-asset-forge\*.md","<skills>\civ6-art-reference\*.md","<skills>\civ6-audio-pipeline\*.md" -Pattern "跨上下文|跨端|跨脚本|跨文件|调用函数|全局函数|互不可见|独立沙箱|LuaEvents|ExposedMembers|EXECUTE_SCRIPT|ReportingEvents|SendLuaEvent|RequestPlayerOperation|GetProperty|SetProperty|attempt to call a nil value|attempt to index a nil value"
 ```
+
+> ⚠ 检索范围是**显式枚举**：受限通道 `civ6-art-unpack` 永远不在 L0 检索范围（无授权禁止读取）；
+> 家族新增成员时在此处与上方 L0 清单同步登记，门禁 skill 除外。
 
 ## Task Routing — Read This First
 
