@@ -63,7 +63,8 @@ languages:
 ```
 L0  skill 家族正文检索（最先，零许可）
     在 <skills>\civ6-modding、civ6-tuner、civ6-asset-forge、civ6-art-reference、
-    civ6-audio-pipeline 的 *.md 里按「检索词表」逐个搜；命中即用，不再往下走
+    civ6-audio-pipeline、civ6-html-ui 的 *.md 里按「检索词表」逐个搜；命中即用，不再往下走
+    （受限通道 civ6-art-unpack 不在检索范围；新增成员在此与下方 Select-String 同步登记）
     ⚙ 结论型知识（能不能调用、走哪个通道、有没有这种用法）**只在 md 正文里**，
       sqlite 库存的是表结构与函数签名，L1 对这类问题无解 —— 先在 L0 搜正文
     │  无结果
@@ -94,7 +95,7 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 **L0 的一条命令**（把「检索词表」整表喂给 ripgrep；词表真源见 `reference/context-matrix.md` 第六节）：
 
 ```powershell
-Select-String -Path "<skills>\civ6-modding\*.md","<skills>\civ6-tuner\*.md","<skills>\civ6-asset-forge\*.md","<skills>\civ6-art-reference\*.md","<skills>\civ6-audio-pipeline\*.md" -Pattern "跨上下文|跨端|跨脚本|跨文件|调用函数|全局函数|互不可见|独立沙箱|LuaEvents|ExposedMembers|EXECUTE_SCRIPT|ReportingEvents|SendLuaEvent|RequestPlayerOperation|GetProperty|SetProperty|attempt to call a nil value|attempt to index a nil value"
+Select-String -Path "<skills>\civ6-modding\*.md","<skills>\civ6-tuner\*.md","<skills>\civ6-asset-forge\*.md","<skills>\civ6-art-reference\*.md","<skills>\civ6-audio-pipeline\*.md","<skills>\civ6-html-ui\*.md" -Pattern "跨上下文|跨端|跨脚本|跨文件|调用函数|全局函数|互不可见|独立沙箱|LuaEvents|ExposedMembers|EXECUTE_SCRIPT|ReportingEvents|SendLuaEvent|RequestPlayerOperation|GetProperty|SetProperty|attempt to call a nil value|attempt to index a nil value"
 ```
 
 > ⚠ 检索范围是**显式枚举**：受限通道 `civ6-art-unpack` 永远不在 L0 检索范围（无授权禁止读取）；
@@ -102,7 +103,7 @@ Select-String -Path "<skills>\civ6-modding\*.md","<skills>\civ6-tuner\*.md","<sk
 
 ## Task Routing — Read This First
 
-> 🧭 **第一次接触这个 skill 家族？先读 `reference/FAMILY_INDEX.md`**（5 个 skill 的职责/边界/路由表 + 共用约定 + 分享状态）。
+> 🧭 **第一次接触这个 skill 家族？先读 `reference/FAMILY_INDEX.md`**（6 个 skill 的职责/边界/路由表 + 共用约定 + 分享状态）。
 
 **Full workflow:** `workflows.md` · **Gotchas (必读):** `gotchas.md`  
 **若项目根目录存在 AGENTS.md，也需提前阅读。**
@@ -632,7 +633,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 
 | 文件 | 用途 |
 |------|------|
-| `reference/FAMILY_INDEX.md` | **家族索引**：5 个 civ6 skill 的职责/边界/路由表 + 共用约定 + 分享状态 |
+| `reference/FAMILY_INDEX.md` | **家族索引**：6 个 civ6 skill 的职责/边界/路由表 + 共用约定 + 分享状态 |
 | `reference/api_enhanced.json` | 增强 API + 中文注释（核验标记见「API 核验字段」） |
 | `reference/events_enhanced.json` (1.2MB) | 增强事件（`query_events.py` 查询） |
 | `database/schema-annotated.md` | 常用多列表注解（列定义/必填/示例值） |

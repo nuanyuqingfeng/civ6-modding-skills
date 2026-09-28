@@ -1,12 +1,14 @@
 # Civ6 skill 家族索引（Family Index）
 
 > 一页式导航：**什么任务 → 加载哪个 skill**，以及各 skill 的边界、共用约定与分享状态。
-> 生成于 2026-09-14 的 12 工程横向审查；2026-09 家族整合后由 9 个 skill 收缩为 **5 个**。
+> 生成于 2026-09-14 的 12 工程横向审查；2026-09 家族整合后由 9 个 skill 收缩为 **5 个**；
+> 2026-09-28 吸收 ModTools 5.4 部分能力后为 **6 个**（另有 1 个门禁通道 `civ6-art-unpack`，
+> 不入本表路由，唯一入口见 `civ6-art-reference` SKILL.md）。
 > 各 skill 的详细内容以各自 `SKILL.md` 为准。
 
 ---
 
-## 一、家族总览（5 个 skill）
+## 一、家族总览（6 个 skill）
 
 | Skill | 版本 | 管什么（一句话） | 体量 |
 |---|---|---|---|
@@ -15,6 +17,7 @@
 | `civ6-audio-pipeline` | 1.3 | **音频全流程**：素材整备→核验→按类别响度均衡→Wwise 工程直改→自动注册（语音 / BGM / 普通 sfx 三类路由） | 4.93 MiB |
 | `civ6-tuner` | — | **FireTuner 运行时验证**（TCP 4318）：在运行中的对局里执行 Lua，回答"这个 API 实际行为是什么" | 0.11 MiB |
 | **`civ6-asset-forge`** | 1.0 | **2D 美术素材总入口**：由原 `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` **四个 skill 合并而成**——忠诚度/宗教压力图标、总督素材、2D 领袖立绘注册（各成一册 `reference/*.md`）；2026-09-17 增第 ⑤ 类 **UI 领袖立绘 / 选人界面背景（Suk 适配）** 与第 ⑥ 类 **历史时刻插画（MomentIllustrations）**；2026-09-19 增第 ⑦ 类 **原版 FrontEnd 立绘/背景（选人 placard + 加载界面）**——此前该链被误判为"不关联"而无人承接。⚠ **单位晋升图标（原第 ③ 类）生成管线已于 2026-09-18 作废**，只保留规格 `reference/promotion-icon-sizes.md` | 14.6 MiB |
+| `civ6-html-ui` | 1.0 | **HTML/CSS 设计 → UI 纹理 → 原生 XML/Lua**：HTML 设计源导出精确像素 PNG（背景/透明装饰/四态按钮/精灵表），原生布局指导与静态检查（2026-09-28 自 ModTools 5.4 整包吸收，MIT；原生布局规范与通信口径以 `civ6-modding` 为准） | 117 KiB |
 
 > **体量口径**（2026-09-18 实测）：**不含 `.git/` 与 `__pycache__/`**，1 MiB = 1,048,576 字节
 > （`Get-ChildItem -Recurse -File | Measure-Object Length -Sum` 同口径）；asset-forge 的 14.6 MiB
@@ -24,7 +27,7 @@
 > - `civ6-workshop-uploader` → 并入 **`civ6-modding/release.md`**（发布同属工程管理；脚本落在 `civ6-modding/release/scripts/`、模板 `release/templates/`、清单 `release/docs/`）。
 > - `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` → 合并为 **`civ6-asset-forge`**。
 
-> **家族外的依赖**：本家族 5 个 skill 自洽，**不依赖任何家族外 skill**；多语言文本按 `SKILL.md` §4.1 的
+> **家族外的依赖**：本家族 6 个 skill 自洽，**不依赖任何家族外 skill**；多语言文本按 `SKILL.md` §4.1 的
 > Civ6 侧规则自行处理（工具自备）。
 
 > 🧰 **每个 skill 都有 `TOOLS.md`（可复用工具名录）** —— 要写脚本做某件事之前先查它：
@@ -42,6 +45,8 @@
 | 你要做的事 | 加载 |
 |---|---|
 | 写 UI 面板 / 按钮 / 弹窗（XML + Lua） | `civ6-modding` → `ui-lua.md` / `ui-controls.md` / `xml-templates.md` |
+| **用 HTML/CSS 设计界面并导出纹理（背景 / 透明装饰 / 四态按钮 / 精灵表）** | `civ6-html-ui`（原生布局与通信口径仍按 `civ6-modding` 的 `xml-templates.md` / `gotchas.md` §43 / `context-matrix.md`） |
+| **写前查「某个效果原版怎么实现」**（含整句自然语言，BM25 兜底） | `civ6-modding` → `database/scripts/search_impl.py` |
 | 写玩法逻辑（GP Lua）、事件、PROPERTY、UI↔GP 通信 | `civ6-modding` → `gameplay-lua.md` / `events.md` / `gotchas.md` |
 | **跨文件 / 跨上下文 / 跨端怎么通信**、**UI 能不能调 GP 的函数**、**UI 收不到 GP 消息** | `civ6-modding` → **`reference/context-matrix.md`**（Lua 上下文口径唯一真源：术语 / 通道矩阵 / 症状表 / 实测记录 / 检索词表） |
 | 增删改游戏数据（单位/建筑/区域/政策/资源/改良） | `civ6-modding` → `database.md` + `schema-annotated.md` |
@@ -83,7 +88,7 @@
 | `civ6-tuner` | 只做**运行时**验证；静态校验走 `civ6-modding` 的 `rgn_validate` / `scripts/*.py`，不在本 skill 重复 |
 | `civ6-asset-forge` | **素材处理前必须先询问用户是否提供素材**（默认只生成注册文件）；只管美术规格与素材合成，**玩法注册链**仍在 `civ6-modding`（如总督玩法见 `governor-authoring.md`）；2D UI 宗教图标（`IconTextureAtlases` 270px 图集）不在范围（→ `civ6-modding/art-pipeline.md` §图标规范化）。五类素材见其 `SKILL.md` §一（③ 晋升图标只剩尺寸规格） |
 
-### 3.1 本家族**不负责**的方向（职责真空 —— 先看这里，别在 5 个 skill 之间空转）
+### 3.1 本家族**不负责**的方向（职责真空 —— 先看这里，别在 6 个 skill 之间空转）
 
 下面三类**没有任何一个 civ6 skill 负责**。列在这里是为了让你在 30 秒内知道"这条路本家族走不通"，
 省去把 5 个 skill 逐个翻完才发现。确需自建时，只能使用家族外的资料 / 工具链。
@@ -168,7 +173,7 @@ UTF-8 读写；不改编码/换行；PowerShell 先 `chcp 65001`；**查看中�
 | Skill | git | 说明 |
 |---|---|---|
 | `civ6-modding` | ✅ | 含 `.gitignore`（排除 SQLite 快照与 `local_paths.json`）与 `.gitattributes`（钉 LF） |
-| 其余 4 个 | ✅ | 2026-09-14 纳入版本控制，各含 `.gitignore` / `.gitattributes` |
+| 其余 5 个 | ✅ | 2026-09-14 纳入版本控制（`civ6-html-ui` 为 2026-09-28 新入），各含 `.gitignore` / `.gitattributes` |
 
 **分享包形态**（历史做法，见 `.agents/skills/civ6-modding_2026-08-06_*.zip`）：
 
