@@ -639,7 +639,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `database/schema-annotated.md` | 常用多列表注解（列定义/必填/示例值） |
 | `reference/MODIFIER_ARGUMENTS.md` | Modifier 参数分类 |
 | `database/scripts/query_effect_args.py` | **Effect/Modifier 参数取值域查询**（参数签名 + `DatabaseKind`→`Types` 权威全集 + 官方实际用值；支持 `--effect` / `--modifier` / `--arg` / `--search` / `--dump-json`） |
-| `database/scripts/search_impl.py` | **「某对象/效果原版怎么实现」反查**（14 类对象 × 6 种绑定路径；递归展开 ATTACH / GRANT_ABILITY / 嵌套 REQSET，自带防环限深；支持 `--object` / `--modifier` / `--effect` / `--json`） |
+| `database/scripts/search_impl.py` | **「某对象/效果原版怎么实现」反查**（16 类对象 × 6 种绑定路径；递归展开 ATTACH / GRANT_ABILITY / 嵌套 REQSET，自带防环限深；支持 `--object` / `--modifier` / `--effect` / `--bm25` / `--json`；整句自然语言走 BM25 兜底，约 1-3 分钟建索引） |
 | `database/scripts/build_localization.py` | **分层合成两个本地化文本库**（主库 / 模式库）：从游戏安装按 `.modinfo` 权威分段（main/mode/scenario），主库 `EXP2>EXP1>base` + 既有库补缺，Mode 独立成库只加不覆盖；`--rebuild` 一键重建两库 / `--report` 只读 / `--build-main` / `--build-mode` / `--augment-main`；不删行、不动 schema、不应用 `<Delete>`。两库均**不入 git**（可重建），见 `database/README.md` §零 |
 | `reference/WORKSHOP_PATTERNS.md` | 高级 SQL 模式 |
 | `reference/TYPE_NAME_MAPPING.md` | Type→名称 + Trait→Modifier 关联链 |
@@ -651,6 +651,8 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `database/scripts/query_civ6_db.py` | 通用 DB 查询 CLI（SQLite 封装；`--check-id <TYPE>` 可做新 Type 的 id 冲突前置检查） |
 | `database/CALIBRATION_LOG_2026-08.md` | 2026-08 **全量校准验证日志**（库补全 / 来源标注 / API 核验的取证过程与结论） |
 | `database/source_index.sqlite` | **官方行级来源索引**（`row_source` 457 表 / 5.8 万行）+ 人工 `dlc_dependency`（12 行 Mode/Scenario DLC 依赖；版本真值镜像见 `database/annotations/dynamic_modifiers_dlc.json`） |
+| `reference/modifiers-catalog/` | **Modifier 分域参考**（16 篇 EffectType 分类 + patterns A-G + 实案库；来源 ModTools 5.4 MIT，吸收边界见 FAMILY_INDEX §八） |
+| `reference/ui-panels/` | **官方 UI 面板 XML+Lua 双文件对照**（17 篇：InGame 结构 / PopupDialog / InstanceManager / Support 库 / HUD / 外交 / 全屏 / 样式；来源同上） |
 | `release/docs/checklist.md` · `release/docs/troubleshooting.md` | 工坊发布**核对清单**与**异常诊断**（`release.md` 引用） |
 | `reference/sources/` | 外部参考件（Civ VI Modding Companion、原版议程表、原版图标标记全表、颜色/图标常量、StretchMode 统计）；出处与许可见该目录 README |
 | `art/bin/texconv.exe` | 随包内置的 PNG→DDS 转换器（Microsoft DirectXTex，MIT，v2026.5.8.1）；探测顺序见 `art/bin/README.md` |
