@@ -259,7 +259,7 @@
 
 38. **UI 可直接读取 PROPERTY，共享读取函数放 Core 文件** — `Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")` 在 UI 侧同样可用。将读取函数定义在 Core 文件中，GP 和 UI 各自 `include()` 即可；跨端不需要也不允许用 `ExposedMembers` 包装。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
 
-43. **ForgeUI `Offset` 正负号：左对齐(L)与右对齐(R)相反，上对齐(T)与下对齐(B)相反 —— 正值恒指向容器内部** — `Anchor` 是 `L/C/R × T/C/B` 九宫格，Offset 正值方向不是全局坐标系而是相对锚点镜像翻转：`L`→右、`R`→**左**、`T`→下、`B`→**上**；`C` 无镜像（正值即屏幕正向：右/下）。⚠ 不要把「负值」一概判为 bug —— 负值只是「往容器外推」，本工程 45 个 UI XML 实测 `R,T` 负值 6 处均在正常运行面板中；`B` 锚点 28 正 0 负（镜像零反例）。症状：同一面板中一个按钮正常、另一个"贴屏幕边缘/面板外"，通常就是 `R,B`/`B` 系锚点写了负值（或镜像错值）。例：`R,B` + `Offset="-80,33"` = 向右 80 推出右缘；正确应为 `"80,33"`（向左）。vanilla 佐证 `WorldBuilderMenu.xml:14-15`（`R,B`/`L,B` 均正值正常）、`BoostUnlockedPopup.xml:38`（`C,B` + `0,15` 向上）。规避：角落锚点先按上表反推符号；或统一用 `C,*` 锚点 + 正值，无镜像歧义。详见 `xml-templates.md` "Anchor Syntax Reference"。
+43. **ForgeUI `Offset` 正负号：左对齐(L)与右对齐(R)相反，上对齐(T)与下对齐(B)相反 —— 正值恒指向容器内部** — `Anchor` 是 `L/C/R × T/C/B` 九宫格，Offset 正值方向不是全局坐标系而是相对锚点镜像翻转：`L`→右、`R`→**左**、`T`→下、`B`→**上**；`C` 无镜像（与 `L,T` 同向，2026-09-28 用户裁定：CC 与 LT 正负判断一致；正值即屏幕正向：右/下）。⚠ 不要把「负值」一概判为 bug —— 负值只是「往容器外推」，本工程 45 个 UI XML 实测 `R,T` 负值 6 处均在正常运行面板中；`B` 锚点 28 正 0 负（镜像零反例）。症状：同一面板中一个按钮正常、另一个"贴屏幕边缘/面板外"，通常就是 `R,B`/`B` 系锚点写了负值（或镜像错值）。例：`R,B` + `Offset="-80,33"` = 向右 80 推出右缘；正确应为 `"80,33"`（向左）。vanilla 佐证 `WorldBuilderMenu.xml:14-15`（`R,B`/`L,B` 均正值正常）、`BoostUnlockedPopup.xml:38`（`C,B` + `0,15` 向上）。规避：角落锚点先按上表反推符号；或统一用 `C,*` 锚点 + 正值，无镜像歧义。详见 `xml-templates.md` "Anchor Syntax Reference"。
 
 ---
 

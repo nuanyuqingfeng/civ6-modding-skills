@@ -63,6 +63,7 @@ python _paths.py --path mods                # 同上，取 P1-P6 路径键；未
 | `tools/civ_leader_data.py` | civ_leader_data.py — 新文明 / 新领袖的**数据与文本机械推导**（规格 JSON → SQL） | `python civ_leader_data.py <spec.json> --project <工程根>          # 预演（不写盘）<br>python civ_leader_data.py <spec.json> --project <工程根> --write` |
 | `tools/cook_assets.py` | cook_assets.py — 无 GUI 重放 ModBuddy 的 ArtDef / XLP cook（Civ6.targets 的三组分区）。 | `python cook_assets.py <工程根>                    # 全量 cook 到 Mods 副本<br>python cook_assets.py <工程根> --check            # 只列 pantry 展开、调用清单与对账结果` |
 | `tools/cook_dep.py` | cook_dep.py — 从 <ModName>.Art.xml 生成 <ModName>.dep（AssetObjects..GameDependencyData）。 | `python cook_dep.py <工程根><br>python cook_dep.py <工程根> --out "<Mods>/<ModName>"` |
+| `tools/landmark_tool.py` | — 静态地标（SDK TileBase AST 组合）全流程 CLI，与 .CIV 工程通道完全解耦。 | `python landmark_tool.py catalog  --sdk-assets <SDK Assets> [--query 关键词]<br>python landmark_tool.py compose  --recipe r.json --sdk-assets <SDK Assets> --out <bundle 目录> [--template t.artdef]` |
 | `tools/local_flux.py` | 本地 FLUX.2-klein-4B 文生图封装（免费、离线、约 8–30s/张）。 | `python local_flux.py --prompt "..." --out x.png [--seed 42] [--size 1024]<br>python local_flux.py --prompt-file p.txt --out x.png --seeds 42,7,123   # 多 seed 取样挑图` |
 | `tools/modinfo_build.py` | 从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。 | `python modinfo_build.py <X.civ6proj>                 # 派生结果打到 stdout（不写盘）<br>python modinfo_build.py <X.civ6proj> --out <文件>    # 派生结果写到指定文件` |
 | `tools/new_project.py` | new_project.py — 从零生成 Civ6 ModBuddy 工程骨架（`.civ6proj` + 目录 + 版本控制骨架） | `python new_project.py "<源工程根>\MyMod" --name MyMod<br>python new_project.py <目录> --name MyMod --title-en "My Mod" --title-zh "我的模组"` |
@@ -73,7 +74,7 @@ python _paths.py --path mods                # 同上，取 P1-P6 路径键；未
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 60 个脚本。
+共 61 个脚本。
 
 ## 第三方依赖（非标准库）
 
