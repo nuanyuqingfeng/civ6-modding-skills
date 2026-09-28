@@ -53,6 +53,7 @@ What needs to talk to what?
 │
 ├─ UI → Gameplay (read game state)
 │   └─ Use: PROPERTY 直接读 / Core 共享读取函数（跨端）；GP 同端跨文件通知用 LuaEvents，禁止跨端 ExposedMembers
+│       （端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。）
 │       → See ui-lua.md "UI <—> Gameplay Communication"
 │
 ├─ UI → Gameplay (modify game state)
@@ -479,6 +480,7 @@ What gameplay task?
 ├─ COMMUNICATE between UI and Gameplay
 │   ├─ UI needs to READ game state
 │   │   └─ Use: PROPERTY 直接读 / Core 共享读取函数（跨端）；GP 同端跨文件通知用 LuaEvents，禁止跨端 ExposedMembers
+│   │       （端内跨上下文只有 `LuaEvents`，其余不可达 → `reference/context-matrix.md`）
 │   ├─ UI needs to MODIFY game state
 │   │   └─ Use: PlayerOperations + UI.RequestPlayerOperation()
 │   └─ Gameplay needs to NOTIFY UI
@@ -503,10 +505,12 @@ Where is your code running?
 │   ├─ React to C++ engine events → Events.* (MUST .Remove() in OnShutdown)
 │   ├─ React to other UI contexts → LuaEvents.* (auto-cleanup)
 │   └─ React to Gameplay push → LuaEvents.*（GP 用 ReportingEvents.SendLuaEvent 推送；禁止跨端 ExposedMembers）
+│       （跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取 → `reference/context-matrix.md`）
 │
 └─ GamePlay Lua script (no UI access)
     ├─ React to game state changes → GameEvents.*
     └─ Custom hooks for GP 同端跨文件 → LuaEvents.*（表格按引用传递）；GP→UI 推送用 ReportingEvents.SendLuaEvent
+        （端内跨上下文只有 `LuaEvents`，其余不可达 → `reference/context-matrix.md`）
 ```
 
 ## Decision Tree 6: How to Persist Data?
@@ -663,6 +667,8 @@ local level = pCity:GetProperty("MyMod_CityLevel") or 1;
 
 ### Method 1: PROPERTY / Core 共享读取函数（UI 跨端读取）；GP 同端跨文件通知用 LuaEvents
 
+> 端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
+
 **GP 侧写数据**（`Scripts/MyData.lua`）：
 ```lua
 Game:SetProperty("MyMod_CustomData", someValue);
@@ -681,7 +687,7 @@ include("Core_MyMod");
 local data = GetMyModData();
 ```
 
-**GP 同端跨文件通信**（LuaEvents；禁止跨端暴露给 UI）：
+**GP 同端跨文件通信**（LuaEvents；禁止跨端暴露给 UI —— 端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。）：
 ```lua
 -- GP file A（接收端，文件加载期注册）
 LuaEvents.MyModGetValue.Add(function(params)
@@ -935,7 +941,7 @@ Follow Workflow C for the panel, Workflow H for communication.
 | Store per-player data | SetProperty | `pPlayer:SetProperty(key, val)` |
 | Store per-game data | SetProperty | `Game:SetProperty(key, val)` |
 | UI reads Gameplay | PROPERTY / Core 共享读取函数 | `Players[id]:GetProperty()` / `include("Core_Mod")` |
-| GP 同端跨文件通信 | LuaEvents | `LuaEvents.Mod_Func(params)`（表格按引用传递；禁止跨端） |
+| GP 同端跨文件通信 | LuaEvents | `LuaEvents.Mod_Func(params)`（表格按引用传递；禁止跨端。端内跨上下文只有它，其余不可达 → `reference/context-matrix.md`） |
 | UI modifies Gameplay | PlayerOperations | `UI.RequestPlayerOperation()` |
 | Gameplay notifies UI | GameEvents | `GameEvents.X.Call(data)` |
 | Add new content | Database XML | `<Types>` + `<Row>` |

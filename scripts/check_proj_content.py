@@ -27,10 +27,12 @@ except Exception:
 # 需要进 Content 清单的类别（对齐 AGENTS.md「Project 文件同步规范」）
 TRACKED_EXT = {".sql", ".xml", ".lua"}
 # 引擎/工具自动处理、不要求进清单的目录与文件
-#   workspace/.git/bin/obj/Cooked —— 非发布内容
+#   workspace/.git/bin/obj/Cooked/Build —— 非发布内容与构建中间产物
 #   ArtDefs/ XLPs/ —— 美术资产，走 AssetEditor/cooker 特殊流程，不按普通清单条目同步
+#   .assets/ .dsh-* .workbuddy/ lfs/ —— agent 与版本控制工具的私有目录
 #   *.Art.xml / *.civ6proj / *.modinfo —— 工程与美术描述文件，ModBuddy 自行处理
-SKIP_DIRS = {"workspace", ".git", "bin", "obj", "Cooked", "ArtDefs", "XLPs"}
+SKIP_DIRS = {"workspace", ".git", "bin", "obj", "Cooked", "Build", "ArtDefs", "XLPs",
+             ".assets", ".dsh-file-claim", ".dsh-vision-toolkit", ".workbuddy", "lfs"}
 SKIP_FILE_SUFFIX = (".art.xml", ".civ6proj", ".modinfo")
 
 
@@ -94,8 +96,26 @@ def main():
             print("    - " + p)
 
     print("\n磁盘应入库文件总数: %d" % len(on_disk))
+
+    # 3) 零文件目录（自身及整棵子树都没有文件）
+    #    空目录会随整树拷贝进 Mods 副本，也会在 ModBuddy 解决方案树里挂空节点；
+    #    <Folder Include> 只应声明真正有文件的目录。
+    empty_dirs = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        rel = os.path.relpath(dirpath, root)
+        if rel == ".":
+            continue
+        if not any(f for _, _, fs in os.walk(dirpath) for f in fs):
+            empty_dirs.append(rel.replace("/", "\\"))
+    empty_dirs.sort()
+    print("\n[3] 零文件目录: %d" % len(empty_dirs))
+    if not args.quiet:
+        for p in empty_dirs:
+            print("    - " + p)
+
     ok = not dangling and not missing
-    print("RESULT: %s" % ("闭合" if ok else "存在缺口"))
+    print("\nRESULT: %s" % ("闭合" if ok else "存在缺口"))
     return 0 if ok else 1
 
 

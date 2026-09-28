@@ -44,6 +44,11 @@ languages:
 |---|---|---|---|
 | P1 | ModBuddy 源工程目录 | `D:\documents\Firaxis ModBuddy\Civilization VI` | ① `%USERPROFILE%\Documents\Firaxis ModBuddy\Civilization VI` → ② 询问用户 |
 | P2 | Mods 加载目录 | `D:\documents\My Games\Sid Meier's Civilization VI\Mods` | ① 注册表 `UserPath`＋`\Mods` → ② `%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods` → ③ 询问用户 |
+
+> ⚠ **P2 是游戏递归扫描的加载根**：任何位置的 `*.modinfo` 都会被收成一条 mod 记录。
+> **源工程目录绝不允许放在 P2 之内**（否则工程里的构建产物会被当成第二个 mod，同一 GUID
+> 两条记录）。判定由 `tools/_paths.py` 的 `assert_source_tree()` 提供，四个写入工具入口已接入；
+> 依据见 `gotchas.md`「Mods 加载树里不能放工程」。
 | P3 | 游戏本体（UI/Lua/XML/Text 官方原文） | `F:\Steam\steamapps\common\Sid Meier's Civilization VI` | ① 注册表 `ToolsPath` 去尾部 ` SDK` → ② Steam `libraryfolders.vdf` 找 appid 289070 → ③ 询问用户 |
 | P4 | SDK Assets（artdef/解包素材） | `F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK Assets` | ① 注册表 `AssetsPath` → ② P3＋` SDK Assets` → ③ 询问用户 |
 | P5 | SDK 工具（ModBuddy/MSBuild） | `F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK` | ① 注册表 `ToolsPath` → ② P3＋` SDK` → ③ 询问用户 |
@@ -53,10 +58,17 @@ languages:
 `HKCU\SOFTWARE\Firaxis\Civilization6_ModBuddy\2013\DialogPage\Firaxis.VisualStudio.Projects.Civ6.OptionsPages.OptionsDialogPage`
 → `UserPath / AssetsPath / ToolsPath`
 
-## 查询三级阶梯（无结果时的强制流程，禁止跳步）
+## 查询阶梯（无结果时的强制流程，禁止跳步）
 
 ```
-L1  skill 自带参考库（最先，零许可）
+L0  skill 家族正文检索（最先，零许可）
+    在 <skills>\civ6-modding、civ6-tuner、civ6-asset-forge、civ6-art-reference、
+    civ6-audio-pipeline 的 *.md 里按「检索词表」逐个搜；命中即用，不再往下走
+    ⚙ 结论型知识（能不能调用、走哪个通道、有没有这种用法）**只在 md 正文里**，
+      sqlite 库存的是表结构与函数签名，L1 对这类问题无解 —— 先在 L0 搜正文
+    │  无结果
+    ▼
+L1  skill 自带参考库（零许可）
     database\DebugGameplay.sqlite(427表) / database\api.sqlite(4857函数) /
     database\DebugLocalization.sqlite / database\DebugConfiguration.sqlite /
     reference\*.json / 各 *.md
@@ -79,6 +91,12 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 
 > L2 的许可一次性按关键词批：换新目标回 L1 重走阶梯。
 
+**L0 的一条命令**（把「检索词表」整表喂给 ripgrep；词表真源见 `reference/context-matrix.md` 第六节）：
+
+```powershell
+Select-String -Path "<skills>\civ6-*\*.md" -Pattern "跨上下文|跨端|跨脚本|跨文件|调用函数|全局函数|互不可见|独立沙箱|LuaEvents|ExposedMembers|EXECUTE_SCRIPT|ReportingEvents|SendLuaEvent|RequestPlayerOperation|GetProperty|SetProperty|attempt to call a nil value|attempt to index a nil value"
+```
+
 ## Task Routing — Read This First
 
 > 🧭 **第一次接触这个 skill 家族？先读 `reference/FAMILY_INDEX.md`**（5 个 skill 的职责/边界/路由表 + 共用约定 + 分享状态）。
@@ -90,7 +108,8 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 
 | Type | Go To |
 |------|-------|
-| **从零新建工程**（"建一个新 mod / 新工程骨架"、要一个可构建的 `.civ6proj`） | → `python tools/new_project.py <目录> --name <ModName>`（生成 `.civ6proj` + 目录 + `.gitignore`/`.gitattributes`，并自动派生 `.modinfo`）；格式细节见 `project-setup.md`，**GUID 必须新生成**（工具内置全网查重） |
+| **从零新建工程**（"建一个新 mod / 新工程骨架"、要一个可构建的 `.civ6proj`） | → `python tools/new_project.py <源工程根>\<ModName> --name <ModName>`（生成 **两层布局**：工作区根放 `.civ6sln`、同名子目录放 `.civ6proj` + **按需创建的目录** + `.gitignore`/`.gitattributes` + **`workspace/_tools/build.py` 构建入口**；`--deploy` 建完直接部署到 Mods）；格式细节见 `project-setup.md`「两层目录布局」，**GUID 必须新生成**（工具内置全网查重）。★ **目标目录不得位于 Mods 加载目录内** —— 游戏递归扫描 Mods 全树，工程里的构建产物会被当成第二个 mod（同一 GUID 两条记录），命中即退出码 2 |
+| **"直接生成在 Mods 目录"**（用户只要一份游戏能加载的成品，不要工程） | → 两种情况：**工程已存在** → `python tools/modinfo_build.py <X.civ6proj> --deploy`（cook 美术 + 拷 Content + 写 modinfo + ArtDefs 同步，一条命令出成品）；**工程不存在** → `python tools/new_project.py <源工程根>\<ModName> --name <ModName> --deploy`。**不要**把工程目录取在 Mods 里 |
 | **新文明 / 新领袖的数据与文本** | → `civilization-authoring.md` / `leader-authoring.md`（表清单、LOC 推导、注册位置）；美术→`civ6-asset-forge`、3D 引用→`civ6-art-reference`、BGM/语音→`civ6-audio-pipeline` |
 | **领袖前景（立绘）/ 背景**（选人界面立绘、加载界面背景、`Players.Portrait/PortraitBackground`、`LoadingInfo`、借用原版背景） | → `civ6-asset-forge` skill 的 **`reference/frontend-portrait.md`**（三环境对照：选人 placard / 加载界面 / 外交；含 328×935 推导与色调近似选型）；Suk 分支另见其 `reference/ui-leader-portrait.md` |
 | **UI panel** (XML + Lua) | → UI Routing ↓ |
@@ -111,6 +130,8 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 | **翻译 / 多语言文本**（补缺失语言、审计语言齐缺失、主工程 vs 补丁文本 diff） | → `SKILL.md` §4.1 的 Civ6 侧规则（语言代码 / 标记必须保留 / 合并进原 SQL / 写后复核）；工具自备 |
 | **Mixed** | → Read all relevant |
 | **Steam 创意工坊上传/更新** | → `release.md` |
+| **"能不能从这个文件调用那个文件的函数"** / **"跨文件、跨上下文、跨端怎么通信"** / **"UI 怎么调 GP 的函数"** | → **`reference/context-matrix.md`**（唯一真源：术语 / 通道矩阵 / 症状表 / 检索词） |
+| **"UI 收不到 GP 的消息"** / **`attempt to call a nil value`** / **`attempt to index a nil value`** / **`function expected instead of nil`** | → **`reference/context-matrix.md`** 症状表，再进 `gotchas.md` §36–§38 |
 | **Debug** | → `debug-tools.md` + `gotchas.md` |
 
 ### 2. UI Routing
@@ -397,12 +418,17 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 ### 跨脚本通信
 
+> **端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。**
+
+完整口径（术语 / 通道矩阵 / 症状表 / 实测记录 / 检索词表）见 **`reference/context-matrix.md`**。
+
 | 方向 | 方式 | 场景 |
 |------|------|------|
-| UI ↔ UI / GP ↔ GP | LuaEvents（表格按引用传递；禁传 C++ 对象） | 端内跨文件广播/通知 |
+| UI ↔ UI / GP ↔ GP | LuaEvents（表格按引用传递；禁传 C++ 对象） | 端内跨文件广播/通知；**端内跨上下文只有这一个通道** → `reference/context-matrix.md` |
 | UI → Gameplay | EXECUTE_SCRIPT | 按钮触发 GP 动作 |
-| Gameplay → UI | ReportingEvents.SendLuaEvent | 数据变更推送 |
-| GP ↔ UI 被动读 | PROPERTY 直接读（跨端） | 查询，非按钮回调；GP 同端跨文件的主动通知走 LuaEvents，不用 ExposedMembers |
+| Gameplay → UI | ReportingEvents.SendLuaEvent | 数据变更推送（接收方拿到的是副本） |
+| GP ↔ UI 被动读 | PROPERTY 直接读（跨端） | 查询，非按钮回调 |
+| 其余任意组合 | 无 | **不可达**，见 `reference/context-matrix.md` |
 
 ### PROPERTY 系统速查
 
@@ -425,7 +451,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 写任何代码前，先澄清：
 - 任务类型：UI（XML+Lua）/ Gameplay（Lua）/ Data（SQL/XML）/ 混合
 - 范围：新增 / 修改 / 修复
-- 通信需求：需要 UI↔GP 吗？需要跨脚本传数据吗？
+- 通信需求：需要 UI↔GP 吗？需要跨脚本传数据吗？（→ `reference/context-matrix.md` 通道矩阵）
 - 持久化：需要跨存档保存状态吗？（→ PROPERTY）
 
 ### ② Route — 确定走向
@@ -451,7 +477,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 ### ⑤ Validate — 验证
 
-对照 `validation.md` 清单逐项确认。
+按 `scripts/README.md` 的标准顺序跑完全部脚本（含改过 `.lua` 时必跑的 `check_lua_context.py`，必须 0 问题）；对照 `validation.md` 清单逐项确认。
 
 ---
 
@@ -490,7 +516,9 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 | `art/verify_tex_class.py` | **`.tex` 类别 vs XLP 注册类**是否匹配（如 `UITexture` 包里的贴图必须 `UserInterface`） | ★ 唯一能防「类别写错 → cooker 静默替换成 error asset」的机械防线；`check_pantry`/`verify_icon_atlas`/`align_tex_format` 都不查它 |
 | `scripts/clear_ae_cache.py` | 清 AssetEditor 依赖缓存（动过贴图后**必须**清，否则验证结论是缓存假象） | 同上 |
 | `scripts/verify_trees.py` | 两棵目录逐字节相同（源 ↔ Mods 副本） | 双目录一致性 |
-| `scripts/check_lua_registration.py` | **`.lua` 注册体检** —— 按角色（UI 上下文 / include 扩展件 / GP 脚本）判定哪些 `.lua` 实际不会被加载 | 改过 `.lua` 后必跑（`scripts/README.md` 标准顺序第 ⑥ 步） |
+| `scripts/check_lua_registration.py` | **`.lua` 注册体检** —— 按角色（UI 上下文 / include 扩展件 / GP 脚本）判定哪些 `.lua` 实际不会被加载；角色判定在 `scripts/_lua_roles.py`（与下一个脚本共用） | 改过 `.lua` 后必跑（`scripts/README.md` 标准顺序第 ⑥ 步） |
+| `scripts/check_lua_context.py` | **跨上下文体检** —— UI 侧 `GameEvents` / UI 侧 `SetProperty` / 跨端注册触发 `LuaEvents` / 调用不在 include 闭包内的全局函数 / `ExposedMembers` 使用点；端内跨上下文只有 `LuaEvents`，其余不可达，口径真源 `reference/context-matrix.md` | 新增或改过 `.lua` 后必跑（标准顺序第 ⑦ 步） |
+| `scripts/check_doc_anchors.py` | **文档指针一致性** —— 跨上下文结论行是否都带 `context-matrix.md` 指针、指针行是否带排他结论 | 改过家族 md 或移动真源文件后 |
 | `scripts/normalize_eol.py` | **换行归一化** —— 按 `gotchas.md` §68「资产类 LF / 代码·配置类 CRLF」体检（默认只报告，`--fix` 才写盘） | 接手他人工程、批量改过行尾后 |
 
 
@@ -549,6 +577,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `project-setup.md` | .civ6proj / .modinfo 项目结构与注册指南 | 注册文件时 |
 | `release.md` | **Steam 创意工坊发布**：workspace 准备 / 非 Trimmed 上传工具构建 / validate→upload→Steam API 验证 / Clash Verge 代理诊断（附带脚本见 `release/scripts/`、模板 `release/templates/`、`release/docs/`） | **上传或更新工坊条目时** |
 | `conventions.md` | 命名规范/文件模板 | 写任何文件前 |
+| `reference/context-matrix.md` | **Lua 上下文口径唯一真源**：术语 / 通信矩阵（端内只有 LuaEvents、跨端三个固定通道）/ 症状表 / 实测记录 / 检索词表 | **写任何跨文件、跨端、跨上下文的通信代码前** |
 | `validation.md` | 验证清单 | 完成开发后 |
 | `debug-tools.md` | 调试面板/热重载 | 调试时 |
 | `gotchas.md` | **常见错误（必读）** | **写代码前扫一遍** |

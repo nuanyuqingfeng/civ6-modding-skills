@@ -239,7 +239,7 @@ end)
 
 #### 2. UI→GP 动作: `PlayerOperations.EXECUTE_SCRIPT`（按钮触发的唯一方式）
 
-按钮回调中触发的一切 UI→GP 调用必须走 EXECUTE_SCRIPT，禁止通过 ExposedMembers 直接调用 GP 函数。
+按钮回调中触发的一切 UI→GP 调用必须走 EXECUTE_SCRIPT，禁止通过 ExposedMembers 直接调用 GP 函数。端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`。
 
 ```lua
 -- UI calls:
@@ -255,7 +255,9 @@ end
 GameEvents.MyOperationName.Add(MyOperationName);
 ```
 
-#### 3. GP↔UI 被动读取: PROPERTY 直接读（跨端）；GP 同端跨文件通知用 LuaEvents
+#### 3. GP↔UI 被动读取: PROPERTY 直接读（跨端）；GP 同端跨文件通知用 LuaEvents → `reference/context-matrix.md`
+
+> 端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`。
 
 UI 刷新查询时被动读取 GP 数据。优先用 PROPERTY 直接读（零跨状态调用），共享读取函数定义在 Core 文件中，GP 和 UI 各自 `include()` 即可。
 
@@ -267,7 +269,9 @@ end
 ```
 
 UI 可直接读 PROPERTY：`Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")` 在 UI 侧同样可用。
-`LuaEvents` 用于 GP 同端跨文件通信（多个 GP 文件互相通知）：接收端 `LuaEvents.X.Add(fn)`（文件加载期注册），触发端 `LuaEvents.X(params)`；表格按引用传递，handler 回写结果、调用方无需 return 即可读。**禁止跨端**：GP↔UI 不互通，GP→UI 用 `ReportingEvents.SendLuaEvent`，UI→GP 用 `EXECUTE_SCRIPT`。UI 需要读取 GP 数据时使用 PROPERTY 直接读或 Core 共享读取函数。
+`LuaEvents` 用于 GP 同端跨文件通信（多个 GP 文件互相通知）：接收端 `LuaEvents.X.Add(fn)`（文件加载期注册），触发端 `LuaEvents.X(params)`；表格按引用传递，handler 回写结果、调用方无需 return 即可读。**禁止跨端**：GP↔UI 不互通，GP→UI 用 `ReportingEvents.SendLuaEvent`，UI→GP 用 `EXECUTE_SCRIPT`。UI 需要读取 GP 数据时使用 PROPERTY 直接读或 Core 共享读取函数。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
+
+> 端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`。
 
 ### AttachModifierByID — Dynamic Modifier
 

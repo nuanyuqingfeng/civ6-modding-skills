@@ -1,14 +1,23 @@
 # -*- coding: utf-8 -*-
-"""从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。
+r"""从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。
 
 为什么需要它：ModBuddy（VS 扩展）不便在无 GUI 环境调用，而 `.modinfo` 完全可以由
 `.civ6proj` 机械派生 —— 本项目所有新 mod 都走这条路，无需每次手写 modinfo。
 
 用法：
-    python modinfo_build.py <X.civ6proj>                 # 只生成到 <proj目录>/Build/X.modinfo
+    python modinfo_build.py <X.civ6proj>                 # 派生结果打到 stdout（不写盘）
+    python modinfo_build.py <X.civ6proj> --out <文件>    # 派生结果写到指定文件
     python modinfo_build.py <X.civ6proj> --deploy        # cook 美术产物 + 复制 Content + 写 modinfo
     python modinfo_build.py <X.civ6proj> --deploy --mods-root <目录>
     python modinfo_build.py <X.civ6proj> --deploy --no-cook   # 跳过 cook（没有 Art.xml 的工程）
+
+工程目录位置（硬性）：
+    工程目录不得位于游戏 Mods 加载目录（本机 P2）之内 —— 游戏递归扫描 Mods 全树，
+    工程里的构建产物会被当成第二个 mod 收录（同一 GUID 两条记录）。命中即退出码 2。
+
+部署目标名：
+    <Mods>\<ModName> 的 <ModName> 取工程内 *.Art.xml 的 <id><name>（与 cook_assets.py 同源），
+    工程无 *.Art.xml 时回落到 .civ6proj 文件名。两处若各按各的取，会分裂成两个 Mods 目录。
 
 与美术产物（BLP / ArtDef / .dep）的顺序关系：
     `--deploy` 在拷贝 Content 之前会先调 `tools/cook_assets.py` 重放 ModBuddy 的
@@ -34,7 +43,6 @@ from __future__ import annotations
 
 import argparse
 import filecmp
-import glob
 import os
 import re
 import shutil
@@ -45,6 +53,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _paths  # noqa: E402
+import cook_assets  # noqa: E402  （只借它的 *.Art.xml 解析，避免两套实现漂移）
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -143,8 +152,22 @@ def indent_localized(localized: str) -> list[str]:
     return out
 
 
-def build_modinfo(proj_path: str) -> tuple[str, str]:
-    """返回 (modinfo 文本, mod 名)。"""
+def project_mod_name(proj_dir: str, proj_path: str) -> str:
+    """工程对应的 mod 名：优先 *.Art.xml 的 <id><name>，回落到 .civ6proj 文件名。
+
+    与 cook_assets.py 取自同一处 —— 两处各按各的取会把产物分裂进两个 Mods 目录
+    （工程目录叫 NtE_Eidolon_Mode 而 mod 名是 NtE_Anomaly_Mode）。
+    """
+    art_xml, _err = cook_assets.find_art_xml(proj_dir)
+    if art_xml:
+        name = cook_assets.art_xml_identity(art_xml)
+        if name:
+            return name
+    return os.path.splitext(os.path.basename(proj_path))[0]
+
+
+def build_modinfo(proj_path: str, mod_name: str) -> tuple[str, str, list]:
+    """返回 (modinfo 文本, mod 名, <Content Include> 拷贝清单)。"""
     raw = open(proj_path, encoding="utf-8").read()
     tree = ET.parse(proj_path)
     pg = tree.getroot().find("msb:PropertyGroup", NS)
@@ -156,7 +179,6 @@ def build_modinfo(proj_path: str) -> tuple[str, str]:
         return (el.text or "").strip() if el is not None and el.text else ""
 
     guid, version = g("Guid"), g("ModVersion") or "1"
-    mod_name = os.path.splitext(os.path.basename(proj_path))[0]
     localized = extract_cdata(raw, "LocalizedTextData").strip()
     ingame = extract_cdata(raw, "InGameActionData").strip()
     frontend = extract_cdata(raw, "FrontEndActionData").strip()
@@ -291,6 +313,7 @@ def main() -> int:
     ap.add_argument("project", help="X.civ6proj 路径")
     ap.add_argument("--deploy", action="store_true", help="复制 Content 文件并写 modinfo 到 Mods/<ModName>/")
     ap.add_argument("--mods-root", default=None, help="Mods 根目录（默认自动解析本机路径）")
+    ap.add_argument("--out", default=None, help="不部署时把派生结果写到该文件（默认打到 stdout）")
     ap.add_argument("--no-cook", action="store_true",
                     help="--deploy 时跳过 cook_assets.py（没有 *.Art.xml 的工程用）")
     args = ap.parse_args()
@@ -299,24 +322,29 @@ def main() -> int:
     if not os.path.isfile(proj):
         raise SystemExit("找不到工程文件：%s" % proj)
     proj_dir = os.path.dirname(proj)
+    # ★ 工程落在 Mods 加载树内 → 构建产物会被游戏当成第二个 mod（同一 GUID 两条记录）。
+    _paths.assert_source_tree(proj_dir, "工程目录")
 
+    mod_name = project_mod_name(proj_dir, proj)
     # content = <Content Include> 拷贝清单（只拷这些；不含 .dep 这类 cook 产物）
-    text, mod_name, content = build_modinfo(proj)
+    text, mod_name, content = build_modinfo(proj, mod_name)
 
     if not args.deploy:
-        dest_dir = os.path.join(proj_dir, "Build")
-        os.makedirs(dest_dir, exist_ok=True)
-        dest = os.path.join(dest_dir, mod_name + ".modinfo")
-        open(dest, "w", encoding="utf-8", newline="\r\n").write("\ufeff" + text.replace("\r\n", "\n"))
-        print("OK  ->  %s" % dest)
-        print("    （未部署；加 --deploy 才会复制到 Mods 目录）")
+        body = "\ufeff" + text.replace("\r\n", "\n")
+        if args.out:
+            open(args.out, "w", encoding="utf-8", newline="\r\n").write(body)
+            print("OK  ->  %s" % os.path.abspath(args.out))
+        else:
+            sys.stdout.write(text)
+            sys.stdout.flush()
+            print("\n（以上为派生结果，未写盘；加 --out <文件> 落盘，或加 --deploy 部署到 Mods 目录）",
+                  file=sys.stderr)
         return 0
 
     mods_root = args.mods_root or _paths.get("mods")
     if not mods_root:
         raise SystemExit("找不到 Mods 目录，请用 --mods-root 指定")
     mod_dir = os.path.join(mods_root, mod_name)
-    os.makedirs(mod_dir, exist_ok=True)
 
     # ★ cook 必须排在 Content 拷贝之前：BLP / ArtDef / .dep 是游戏实际加载的美术产物，
     #   它们不进 <Content Include>，只能由 cook 写进副本。放在拷贝之后会让本次部署
@@ -324,7 +352,7 @@ def main() -> int:
     if args.no_cook:
         print("SKIP cook（--no-cook）")
     else:
-        art_xml = glob.glob(os.path.join(proj_dir, "*.Art.xml"))
+        art_xml, _art_err = cook_assets.find_art_xml(proj_dir)
         if not art_xml:
             print("SKIP cook（工程里没有 *.Art.xml）")
         else:
@@ -340,6 +368,7 @@ def main() -> int:
         if not os.path.isfile(s):
             missing_src.append(rel)
             continue
+        # 目录按需创建：没有产物就不该在 Mods 树里留空目录
         os.makedirs(os.path.dirname(d), exist_ok=True)
         shutil.copy2(s, d)
         print("COPY %-46s %7d B" % (rel, os.path.getsize(d)))
@@ -347,6 +376,7 @@ def main() -> int:
         print("FAIL <Content Include> 指向的文件不存在：%s" % missing_src)
         return 1
 
+    os.makedirs(mod_dir, exist_ok=True)
     dest = os.path.join(mod_dir, mod_name + ".modinfo")
     # .modinfo 属配置类文本 → CRLF（换行分层铁律，见 gotchas.md §68）。
     # 原先写 LF，而 ModBuddy 构建/部署出的 modinfo 是 CRLF（实测线上 Ragunna_Pack.modinfo
@@ -363,8 +393,9 @@ def main() -> int:
     # ② <UpdateArt> 必须指向真实 <ModName>.dep，且该文件存在于 Mods 副本。
     #    .dep 由 cooker 生成（--mode Dependency 或任意 cook 模式的副产物）；
     #    缺失时游戏只写一行 ERROR 然后美术全空，属静默失效，故在这里硬拦。
-    if re.search(r"<UpdateArt[^>]*>\s*<File>([^<]+)</File>", action_part):
-        dep_rel = mod_name + ".dep"
+    m_art = re.search(r"<UpdateArt[^>]*>\s*<File>([^<]+)</File>", action_part)
+    if m_art:
+        dep_rel = m_art.group(1).strip()
         dep_abs = os.path.join(mod_dir, dep_rel)
         if not os.path.isfile(dep_abs):
             print("FAIL <UpdateArt> 需要 %s，但 Mods 副本里没有该文件。" % dep_rel)
@@ -388,7 +419,24 @@ def main() -> int:
         return 1
     print("OK  modinfo 引用的动作文件全部存在（%d 个）" % len(action_files(action_part)))
 
-    # ③ ArtDefs 强制同步（放在自检最后一步，见 sync_artdefs 的说明）
+    # ③ Mods 树里不得出现嵌套的 .modinfo（相对 <Mods>\<ModName> 深度 > 1）
+    #    游戏递归扫描 Mods 全树，嵌套 modinfo 会被当成第二个 mod 收录（同一 GUID 两条记录）。
+    #    历史事故形态：工程目录建在 Mods 里，构建产物落进 <Mods>\<ModName>\Build\。
+    nested = []
+    for dp, dn, fn in os.walk(mods_root):
+        dn[:] = [d for d in dn if d not in (".git", "__pycache__")]
+        for f in fn:
+            if not f.lower().endswith(".modinfo"):
+                continue
+            rel = os.path.relpath(os.path.join(dp, f), mods_root)
+            if len(rel.split(os.sep)) > 2:
+                nested.append(rel)
+    if nested:
+        print("WARN ★ Mods 树里发现 %d 个嵌套 .modinfo（游戏会当成第二个 mod 收录）：" % len(nested))
+        for r in sorted(nested)[:10]:
+            print("       %s" % r)
+
+    # ④ ArtDefs 强制同步（放在自检最后一步，见 sync_artdefs 的说明）
     n_sync, n_total = sync_artdefs(proj_dir, mod_dir)
     if n_total == 0:
         print("OK  ArtDefs 同步：源工程无 artdef，跳过")

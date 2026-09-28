@@ -93,6 +93,33 @@ def is_cook_artifact(rel: str) -> bool:
     return r.startswith(COOK_ARTIFACT_PREFIXES) or r.endswith(COOK_ARTIFACT_SUFFIXES)
 
 
+# ★ Mods 副本里**不允许**出现的东西：源工程与构建中间产物。
+#   游戏递归扫描 Mods 全树，这些文件放进来会被当成第二个 mod 的素材或第二个 modinfo，
+#   同一 GUID 出现两条记录（历史事故：工程建在 Mods\<ModName> 里，构建产物落进 Build\）。
+FORBIDDEN_IN_MODS_DIRS = ("build", "cooked", "obj", "bin")
+FORBIDDEN_IN_MODS_NAMES = (".gitignore", ".gitattributes", ".gitmodules")
+
+
+def mods_intrusion(rel: str, modinfo_count_seen: int) -> str:
+    """返回越界说明；合法返回空串。rel 用 / 分隔、相对 Mods 副本根。"""
+    low = rel.replace("\\", "/").lower()
+    parts = low.split("/")
+    name = parts[-1]
+    if name.endswith(".modinfo") and modinfo_count_seen > 1:
+        # 事故签名优先：嵌套 modinfo 会让同一 GUID 出现两条记录
+        return "第二个 .modinfo（游戏会当成两个 mod）"
+    if name.endswith(".civ6proj") or name.endswith(".civ6sln"):
+        return "源工程文件"
+    if name in FORBIDDEN_IN_MODS_NAMES or name.startswith(".git"):
+        return "版本控制文件"
+    for d in parts[:-1]:
+        if d in FORBIDDEN_IN_MODS_DIRS:
+            return "构建中间目录 %s/" % d
+    if parts[0] in ("textures", "xlps") and len(parts) > 1:
+        return "源工程素材目录 %s/" % parts[0]
+    return ""
+
+
 def is_art_pipeline(rel: str) -> bool:
     """美术引用管线文件：按规范不进 proj 的 <Content>、也不进 modinfo 的 <Files>。
 
@@ -188,10 +215,24 @@ def main() -> int:
         print("\n悬空引用（modinfo 声明但 Mods 副本没有）：%s" % dangling)
 
     unregistered = []
+    modinfo_seen = 0
     for dirpath, _, names in os.walk(mods_dir):
         for n in names:
-            rel = os.path.relpath(os.path.join(dirpath, n), mods_dir).replace(os.sep, "/")
-            if not rel.lower().endswith(".modinfo") and rel not in declared:
+            if n.lower().endswith(".modinfo"):
+                modinfo_seen += 1
+    nested_modinfo = []
+    intrusion = []
+    for dirpath, dn, names in os.walk(mods_dir):
+        dn[:] = [d for d in dn if d not in (".git", "__pycache__")]
+        for n in names:
+            full = os.path.join(dirpath, n)
+            rel = os.path.relpath(full, mods_dir).replace(os.sep, "/")
+            why = mods_intrusion(rel, modinfo_seen)
+            if why:
+                intrusion.append((rel, why))
+                if why.startswith("第二个 .modinfo"):
+                    nested_modinfo.append(rel)
+            if not n.lower().endswith(".modinfo") and rel not in declared:
                 unregistered.append(rel)
     if unregistered:
         # 分级：art  = 美术引用管线（见 ART_PIPELINE_EXTS，ImportFiles/ 除外）
@@ -214,6 +255,16 @@ def main() -> int:
                   % (len(art), ", ".join(sorted({os.path.dirname(r) or "." for r in art}))))
         if cook:
             print("（另有 %d 个 cook 产物未登记，属预期、不计入问题）" % len(cook))
+
+    if intrusion:
+        problems += 1
+        print("\n★ Mods 副本越界文件（游戏会把它们当成 mod 内容）：")
+        for rel, why in intrusion[:20]:
+            print("   - %-52s %s" % (rel, why))
+        if len(intrusion) > 20:
+            print("   …余 %d 条" % (len(intrusion) - 20))
+        if nested_modinfo:
+            print("   嵌套 modinfo 会让同一 GUID 出现两条记录（「额外内容」界面显示两份同名 mod）。")
 
     langs = sorted({e.tag for e in root.findall("LocalizedText/Text/*")})
     print("\n本地化语言   : %s（%d 条 Text）" % (", ".join(langs) if langs else "无", len(root.findall("LocalizedText/Text"))))

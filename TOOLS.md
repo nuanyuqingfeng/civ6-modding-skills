@@ -44,6 +44,9 @@
 | `release/scripts/upload.ps1` | 上传 / 更新工坊条目（日志默认写 <tool目录>\logs） | `powershell -File upload.ps1 -Workspace <工作区> [-TimeoutSeconds 1800]` |
 | `release/scripts/validate.ps1` | 上传前 validate 工作区（exit 0 才允许 upload） | `powershell -File validate.ps1 -Workspace <工作区>` |
 | `release/scripts/verify.ps1` | 上传后经 Steam API 验证（比对 time_updated / hcontent_file，识别假成功） | `powershell -File verify.ps1 -ItemId <工坊条目ID>` |
+| `scripts/_lua_roles.py` | `.lua` 角色判定单一真源。 | `（库：被其它脚本 import，无独立 CLI）` |
+| `scripts/check_doc_anchors.py` | 跨上下文口径的文档指针一致性体检。 | `python check_doc_anchors.py [--skills <skills 根目录>]` |
+| `scripts/check_lua_context.py` | Lua 跨上下文体检 —— 找出「在另一个 Lua 上下文里根本调用不到」的写法。 | `python check_lua_context.py <工程根目录>` |
 | `scripts/check_lua_registration.py` | `.lua` 注册体检 —— 用「按角色判定」的规则找出真正不会被加载的脚本。 | `python check_lua_registration.py <工程根目录> [--modinfo <构建产物.modinfo>]` |
 | `scripts/check_pantry.py` | pantry 体检：`.tex` 位置 / 重名 / depot 库路径 / 非 ASCII / `.tex`↔`.dds` 配对 —— 开 AssetEditor / cook 前必跑。（注：其中 `m_SourceFilePath` 期望 `D:\desktop\<stem>.png` 这一条是**示例工程（作者 mod 工程）的约定**，不是 Civ6 通用规则；别的工程会命中 `[src-convention]` 告警，按你自己工程的约定判断即可。） | `python check_pantry.py --root <工程根> [--quiet]        # 注意：根目录只走 --root（不是位置参数），也没有贴图目录过滤选项` |
 | `scripts/check_proj_content.py` | 核对 .civ6proj 的 <Content Include> 清单与实际磁盘内容是否闭合。 | `python check_proj_content.py <工程根目录><br>python check_proj_content.py --root <工程根目录>     # 等价写法` |
@@ -61,8 +64,8 @@ python _paths.py --path mods                # 同上，取 P1-P6 路径键；未
 | `tools/cook_assets.py` | cook_assets.py — 无 GUI 重放 ModBuddy 的 ArtDef / XLP cook（Civ6.targets 的三组分区）。 | `python cook_assets.py <工程根>                    # 全量 cook 到 Mods 副本<br>python cook_assets.py <工程根> --check            # 只列 pantry 展开、调用清单与对账结果` |
 | `tools/cook_dep.py` | cook_dep.py — 从 <ModName>.Art.xml 生成 <ModName>.dep（AssetObjects..GameDependencyData）。 | `python cook_dep.py <工程根><br>python cook_dep.py <工程根> --out "<Mods>/<ModName>"` |
 | `tools/local_flux.py` | 本地 FLUX.2-klein-4B 文生图封装（免费、离线、约 8–30s/张）。 | `python local_flux.py --prompt "..." --out x.png [--seed 42] [--size 1024]<br>python local_flux.py --prompt-file p.txt --out x.png --seeds 42,7,123   # 多 seed 取样挑图` |
-| `tools/modinfo_build.py` | 从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。 | `python modinfo_build.py <X.civ6proj>                 # 只生成到 <proj目录>/Build/X.modinfo<br>python modinfo_build.py <X.civ6proj> --deploy        # cook 美术产物 + 复制 Content + 写 modinfo` |
-| `tools/new_project.py` | new_project.py — 从零生成 Civ6 ModBuddy 工程骨架（`.civ6proj` + 目录 + 版本控制骨架） | `python new_project.py "D:\documents\Firaxis ModBuddy\Civilization VI\MyMod" --name MyMod<br>python new_project.py <目录> --name MyMod --title-en "My Mod" --title-zh "我的模组"` |
+| `tools/modinfo_build.py` | 从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可选部署到游戏 Mods 目录。 | `python modinfo_build.py <X.civ6proj>                 # 派生结果打到 stdout（不写盘）<br>python modinfo_build.py <X.civ6proj> --out <文件>    # 派生结果写到指定文件` |
+| `tools/new_project.py` | new_project.py — 从零生成 Civ6 ModBuddy 工程骨架（`.civ6proj` + 目录 + 版本控制骨架） | `python new_project.py "<源工程根>\MyMod" --name MyMod<br>python new_project.py <目录> --name MyMod --title-en "My Mod" --title-zh "我的模组"` |
 | `tools/skill_manifest.py` | 名录生成器：扫描一个 skill 的脚本，从各自 docstring 抽出「用途 + 用法」， | `python skill_manifest.py <skill 目录名或绝对路径> [...]      # 指定 skill<br>python skill_manifest.py --all-civ6                          # 批量刷新全部 civ6-* skill` |
 | `tools/verify_mod_package.py` | 交付包体检：源工程 ↔ Mods 副本 ↔ 上传工作区 三处一致性 + .modinfo 结构与引用闭合。两类预期差异自动放行：cook 产物（BLPs 与 .dep 源工程本就没有）、美术引用管线文件（见 ART_PIPELINE_EXTS，按规范不进 Content 与 Files）。ImportFiles/ 之下不豁免，须三处齐全。UpdateArt 与 .dep 另做独立硬检查，不参与软放行 | `python verify_mod_package.py --src <源工程目录> --mods <Mods/<ModName>> [--ws <上传工作区 content>] [--files a/b.lua,c.lua] [--strict]
 --strict = 关掉全部放行，逐字节 + 零未登记（默认关闭）` |
@@ -70,7 +73,7 @@ python _paths.py --path mods                # 同上，取 P1-P6 路径键；未
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 57 个脚本。
+共 60 个脚本。
 
 ## 第三方依赖（非标准库）
 

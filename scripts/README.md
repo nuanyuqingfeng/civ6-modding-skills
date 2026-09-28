@@ -16,7 +16,9 @@
 | `check_sql_antipatterns.py` | **语义反模式**：语法合法但恒假/恒错 —— `LIKE ('%A%' OR '%B%')`、`WHERE … = NULL` | `python check_sql_antipatterns.py <工程根目录> [--esc]` | 0 / 1 |
 | `check_types_kinds.py` | `INSERT INTO Types` 的 `Kind` 是否是引擎合法枚举（复现 `Invalid Reference on Types.Kind`） | `python check_types_kinds.py [--root <工程>] [--db <库>] [--dirs Data,Mod_Adaptation]` | 0 / 1 |
 | `check_proj_content.py` | `.civ6proj` 的 `<Content Include>` 与磁盘是否**双向闭合**（悬空清单项 / 漏登记） | `python check_proj_content.py <工程根目录>` | 0 / 1 |
-| `check_lua_registration.py` | **`.lua` 有没有有效加载路径**（按「UI 上下文 / include 扩展件 / GP 脚本」三角色判定） | `python check_lua_registration.py <工程根目录>` | 0 / 1 |
+| `check_lua_registration.py` | **`.lua` 有没有有效加载路径**（按「UI 上下文 / include 扩展件 / GP 脚本」三角色判定；角色判定实现在 `_lua_roles.py`，与本目录 `check_lua_context.py` 共用同一份） | `python check_lua_registration.py <工程根目录>` | 0 / 1 |
+| `check_lua_context.py` | **Lua 跨上下文体检**：UI 侧 `GameEvents` / UI 侧 `SetProperty` / UI 侧 `ReportingEvents` / 跨端注册触发 `LuaEvents` / 调用不在 include 闭包内的全局函数 / `ExposedMembers` 使用点。口径真源 `../reference/context-matrix.md` | `python check_lua_context.py <工程根目录>` | 0 / 1 |
+| `check_doc_anchors.py` | **跨上下文文档指针一致性**：结论行是否都带 `context-matrix.md` 指针、指针行是否带排他结论 | `python check_doc_anchors.py [--skills <skills 根>]` | 0 / 1 |
 | `check_pantry.py` | **pantry 卫生**：`.tex` 是否只在 `Textures/`、`m_Name`/`m_RelativePath` 是否全工程唯一、有无 depot 库路径、非 ASCII 文件名、`.tex`↔`.dds` 配对 | `python check_pantry.py [--root <pantry>] [--quiet]` | 0 通过 / 1 有 error |
 | `verify_trees.py` | 两棵目录树是否**逐字节相同**（递归 SHA256）—— 源 ↔ Mods 副本一致性 | `python verify_trees.py <dirA> <dirB>` | 0 相同 / 1 不同 |
 
@@ -64,7 +66,8 @@ check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR �
 ④ python check_sql_antipatterns.py <工程>         # 语法合法但恒假吗
 ⑤ python check_proj_content.py <工程>             # 打包清单闭合吗
 ⑥ python check_lua_registration.py <工程>         # 每个 .lua 都有有效加载路径吗
-⑦ （动过贴图时）
+⑦ python check_lua_context.py <工程>              # 跨上下文写法可达吗（口径真源 reference/context-matrix.md）
+⑧ （动过贴图时）
    python check_pantry.py --root <工程>           # pantry 卫生
    python clear_ae_cache.py --mod <工程名>        # 清 AE 缓存，再开 AssetEditor 看日志有无 CRASH
 ```

@@ -43,6 +43,7 @@
 |---|---|
 | 写 UI 面板 / 按钮 / 弹窗（XML + Lua） | `civ6-modding` → `ui-lua.md` / `ui-controls.md` / `xml-templates.md` |
 | 写玩法逻辑（GP Lua）、事件、PROPERTY、UI↔GP 通信 | `civ6-modding` → `gameplay-lua.md` / `events.md` / `gotchas.md` |
+| **跨文件 / 跨上下文 / 跨端怎么通信**、**UI 能不能调 GP 的函数**、**UI 收不到 GP 消息** | `civ6-modding` → **`reference/context-matrix.md`**（Lua 上下文口径唯一真源：术语 / 通道矩阵 / 症状表 / 实测记录 / 检索词表） |
 | 增删改游戏数据（单位/建筑/区域/政策/资源/改良） | `civ6-modding` → `database.md` + `schema-annotated.md` |
 | 写议程、外交好感、领袖 AI 偏好 | `civ6-modding` → `agenda-authoring.md` |
 | **新增总督 / 改晋升树 / 就职回合 / 名额扩容** | `civ6-modding` → **`governor-authoring.md`**（美术另见 `civ6-asset-forge` 的总督素材分册） |
