@@ -21,6 +21,7 @@
 | `check_doc_anchors.py` | **跨上下文文档指针一致性**：结论行是否都带 `context-matrix.md` 指针、指针行是否带排他结论 | `python check_doc_anchors.py [--skills <skills 根>]` | 0 / 1 |
 | `check_pantry.py` | **pantry 卫生**：`.tex` 是否只在 `Textures/`、`m_Name`/`m_RelativePath` 是否全工程唯一、有无 depot 库路径、非 ASCII 文件名、`.tex`↔`.dds` 配对 | `python check_pantry.py [--root <pantry>] [--quiet]` | 0 通过 / 1 有 error |
 | `verify_trees.py` | 两棵目录树是否**逐字节相同**（递归 SHA256）—— 源 ↔ Mods 副本一致性 | `python verify_trees.py <dirA> <dirB>` | 0 相同 / 1 不同 |
+| `check_script_write_targets.py` | **工程文件写入体检**：六份 `_projwrite.py` 副本是否逐字节相同；凡认识「工程」的脚本，写盘是否都走守卫（铁律见 `../SKILL.md`「工程文件写入铁律」） | `python check_script_write_targets.py [--skills <skills 根>]` | 0 通过 / 1 违规 |
 
 ### 四个互补，缺一不可
 

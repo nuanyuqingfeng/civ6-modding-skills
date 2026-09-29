@@ -102,6 +102,10 @@ python tools/civ_leader_data.py reference/civ-leader-spec.example.json \
 产出 `Data/CivLeader_<Slug>.sql` + `Data/Config_<Slug>.sql` + `Text/Text_<Slug>.sql`，
 并自检 LOC tag 闭包、8 语言齐缺、`Portrait` 未登记 XLP 告警。
 
+三个 `.sql` 目标文件不存在时脚本新建直写；任一已存在且内容有变化时，改写结果落到
+`<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时
+打印待写入清单。
+
 `leaders[]` 里支持 `civilization` 字段指定挂靠文明；与本规格的 `civilization.type`
 不一致时会告警提示"确认这是 leader-only"。
 

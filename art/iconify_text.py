@@ -31,7 +31,8 @@ Civ6 文本里写 `[ICON_Science]` 会在游戏内渲染成图标。手工加很
     # 2) 预演：看会给哪些文本加什么图标（不写盘）
     python iconify_text.py <工程根> --check
 
-    # 3) 实际写入（默认就地改，建议先 git commit）
+    # 3) 实际写入：新建直写；既有文本内容有变化时，改写结果落到 <工程>/workspace/gen/，
+    #    由 AI 用文件编辑工具写入工程（退出码 2 并打印清单）
     python iconify_text.py <工程根> --write
 
     # 4) 单个文件
@@ -57,6 +58,9 @@ import os
 import re
 import sqlite3
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import finish, write_project_file  # noqa: E402
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -529,12 +533,12 @@ def main() -> int:
             if not changed:
                 continue
             new_content = apply_entries(content, [e for e in entries if e["new"] != e["text"]])
+            # 写入走守卫：既有文本内容有变化时，改写结果入位 <工程>/workspace/gen。
             # newline="" 防止 Windows 把已有 \r\n 变成 \r\r\n（原桌面版同款处理）
-            with open(p, "w", encoding=enc, newline="") as f:
-                f.write(new_content)
+            write_project_file(p, new_content.encode(enc), args.root or os.path.dirname(p))
             written += 1
-        print("\n已写入 %d 个文件（保持原编码与换行）。" % written)
-        return 0
+        print("\n已处理 %d 个文件（新建直写；既有文件内容有变化时改写结果落到 workspace/gen/）。" % written)
+        return finish()
 
     if total_changed:
         print("\n[--check] %d 条待改。加 --write 执行（建议先 git commit）。" % total_changed)

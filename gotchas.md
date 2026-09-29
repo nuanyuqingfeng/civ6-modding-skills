@@ -592,7 +592,9 @@
     所谓"换行"只是字节碰巧命中 `0x0A`，**语义上不存在换行**；`.dds` 同理。
     归一化脚本必须**按扩展名排除 + 逐文件 NUL 探测双重把关**。
 
-    **施工与体检**：`python civ6-modding/scripts/normalize_eol.py <工程目录>`（默认只报告，`--fix` 才写盘）。
+    **施工与体检**：`python civ6-modding/scripts/normalize_eol.py <工程目录>`（默认只报告；`--fix` 才写入 ——
+    工程内既有文件内容有变化时，改写结果落到 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具
+    写入工程对应路径，脚本在退出码 2 时打印待写入清单；`--repo-skill` 清理 skill 自身仓库仍直写）。
     工程侧在 `.gitattributes` 落实：
 
     ```gitattributes
@@ -678,6 +680,7 @@
 
     修复：`python art/regen_atlas_tiers.py <projectRoot> --report --write-damaged`
     从 256 母版逐格 LANCZOS 重出，**尺寸不变，`.tex` / 网格 / 注册链都不用动**。
+    产物是 `.dds`（可再生资产），脚本直接覆盖写回 `Textures\`，不需要 AI 再写入工程。
 
     ⚠ **配套陷阱**：素材目录里常有**每档一份的独立 PNG**（`ATLAS_X32.png`、`ATLAS_X45.png`…），
     这些小档 PNG **本身就是受损产物**。若把它们当"源素材"重跑 `make_atlas.py`，

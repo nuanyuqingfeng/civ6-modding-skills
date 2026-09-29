@@ -24,11 +24,14 @@ civ6/modart.pyc 的 buildModArtXml + civ6/modart_data.pyc 的静态表。
 """
 
 import argparse
+import os
 import re
-import shutil
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import finish, write_project_file  # noqa: E402
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -312,17 +315,20 @@ def main():
             out = root / (modname + ".Art.xml")
         else:
             out = existing
-            shutil.copy2(out, out.with_suffix(out.suffix + ".bak"))
-            print(f"已备份原文件: {out.name}.bak")
             # 保持原文件行尾风格（项目规范：不得改变换行风格）
             cur = existing.read_bytes()
             if b"\r\n" in cur:
                 xml = xml.replace("\r\n", "\n").replace("\n", "\r\n")
             if not cur.endswith(b"\n"):
                 xml = xml.rstrip("\r\n")
-        out.write_text(xml, encoding="utf-8", newline="")
-        print(f"已写入: {out}")
-        return
+        result = write_project_file(str(out), xml, str(root))
+        if result in ("NEW", "OVERWRITE"):
+            print(f"已写入: {out}")
+        elif result == "SAME":
+            print(f"无需改动: {out}")
+        else:
+            print(f"改写结果已写到 workspace/gen/：{out}")
+        sys.exit(finish())
     print(xml, end="")
 
 

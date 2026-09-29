@@ -34,6 +34,19 @@ languages:
 > 跨 skill 找工具先看 [`reference/FAMILY_INDEX.md`](reference/FAMILY_INDEX.md)（家族路由）；
 > `tools/` 的用法细节、推荐顺序与踩坑记录见 [`tools/README.md`](tools/README.md)。
 
+## ★ 工程文件写入铁律（适用本家族全部 skill）
+
+> **脚本可以新建工程文件，绝不允许改写工程文件。既有的工程文件，每一次改动都由 AI 使用文件编辑工具完成。**
+
+「工程文件」指工程根之下的一切文件：`.civ6proj`、`.modinfo`、`.civ6sln`、`*.Art.xml`，以及 `Data/`、`Text/`、`Scripts/`、`UI/`、`Mod_Adaptation/`、`ImportFiles/`、`Assets/`、`Textures/`、`XLPs/`、`ArtDefs/`、`Materials/`、`Geometries/`、`LightRigs/`、`EnvironmentLights/`、`Platforms/` 下的全部文件。
+
+1. **判定只看目标路径有没有文件**：没有 → 脚本新建直写；已有且内容与生成结果一致 → 跳过、不动盘；已有且内容有变化 → 把结果写到 `<工程>/workspace/gen/` 的同一相对路径下，由 AI 用文件编辑工具写入工程。`.civ6proj`、`.modinfo`、`.civ6sln`、`*.Art.xml` 永不例外。
+2. **唯一例外是二进制与编码敏感的可再生资产**：`Textures/` 之下的贴图、`Platforms/` 之下的音频产物，以及扩展名为 `.dds`、`.tex`、`.bnk`、`.wem`、`.wav` 的文件，文件编辑工具无法忠实写出其字节，允许脚本直接覆盖。文本类工程文件（`.sql`、`.lua`、`.xml`、`.xlp`、`.artdef`、`.ast`、`.civ6proj`、`.modinfo`、`_Banks.ini` 等）一律走第 1 条。
+3. **实现的唯一通道是 `_projwrite.py`**：`write_project_file(target, data, project_root)` 返回 `NEW`（新建直写）、`SAME`（未动盘）、`OVERWRITE`（可再生资产直写覆盖）、`STAGED`（改写结果入位 `workspace/gen`）；`finish()` 给出退出码（有 `STAGED` 时返回 2）。该模块在本家族有六份逐字节相同的副本（`civ6-modding/art/`、`civ6-modding/tools/`、`civ6-modding/scripts/`、`civ6-asset-forge/scripts/`、`civ6-art-reference/scripts/`、`civ6-audio-pipeline/scripts/`），不得各写一份，一致性由 `scripts/check_script_write_targets.py` 体检。
+4. **不受本条约束的动作**：`tools/new_project.py`（建立全新工程骨架，目标目录已存在且非空即拒绝执行）、`tools/modinfo_build.py`、`tools/cook_assets.py`、`tools/cook_dep.py`、`landmark_tool.py cook` 写的是 Mods 加载副本与构建输出目录；`scripts/` 的校验器与 `database/scripts/` 的查询器只读。
+5. **AI 拿到 `workspace/gen/` 的产物之后**：读一遍内容，与工程既有文件逐段比对，再用文件编辑工具写入工程对应路径。`.tex` 按工程既定的 ANSI 代码页写出（口径见 `art-pipeline.md`）。
+6. 用户要求「直接用脚本改工程」时，说明本条铁律，改用第 1 条与第 5 条的做法。
+
 ## 环境路径总表（必读 · 分享自举）
 
 > **使用顺序：`<skill目录>\local_paths.json`（若存在）＞ 下表硬编码值。**
@@ -118,8 +131,8 @@ Select-String -Path "<skills>\civ6-modding\*.md","<skills>\civ6-tuner\*.md","<sk
 | **新文明 / 新领袖的数据与文本** | → `civilization-authoring.md` / `leader-authoring.md`（表清单、LOC 推导、注册位置）；美术→`civ6-asset-forge`、3D 引用→`civ6-art-reference`、BGM/语音→`civ6-audio-pipeline` |
 | **领袖前景（立绘）/ 背景**（选人界面立绘、加载界面背景、`Players.Portrait/PortraitBackground`、`LoadingInfo`、借用原版背景） | → `civ6-asset-forge` skill 的 **`reference/frontend-portrait.md`**（三环境对照：选人 placard / 加载界面 / 外交；含 328×935 推导与色调近似选型）；Suk 分支另见其 `reference/ui-leader-portrait.md` |
 | **UI panel** (XML + Lua) | → UI Routing ↓ |
-| **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节，图标规范化/占幅/边距规范查其第四节 |
-| **图标实机锯齿 / 边缘发硬 / 毛刺**（"游戏里图标不清晰"、"小尺寸档有锯齿"、接手他人图集想验中间档） | → `art-pipeline.md` **第 8.1 节「边缘质量门」**：`verify_icon_atlas.py --edge-qa` 体检 + `regen_atlas_tiers.py` 从母版重出。**注意结构校验查不出这类问题** |
+| **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节，图标规范化/占幅/边距规范查其第四节。★ 该管线改写既有 Icons XML / XLP / `Mod.Art.xml` 时结果落 `<工程>/workspace/gen/`，由 AI 用文件编辑工具写入工程，脚本退出码 2 打印待写入清单；`.tex` / `.dds` 属可再生资产，由脚本直接写入 |
+| **图标实机锯齿 / 边缘发硬 / 毛刺**（"游戏里图标不清晰"、"小尺寸档有锯齿"、接手他人图集想验中间档） | → `art-pipeline.md` **第 8.1 节「边缘质量门」**：`verify_icon_atlas.py --edge-qa` 体检 + `regen_atlas_tiers.py` 从母版重出（产物是 `.dds`，脚本直接覆盖，不必 AI 回写）。**注意结构校验查不出这类问题** |
 | **原版美术素材引用 / ArtDef·XLP 链**（给新对象配原版模型、查引用链、排查美术悬空、ArtDef cook 报错或"不同步"、单位渲染残缺） | → **`civ6-art-reference` skill**（引用链与 cook 层逻辑全在该 skill 内，此处不重复） |
 | **Gameplay logic** (Lua only) | → Gameplay Routing ↓ |
 | **Game data** (units, buildings, modifiers) | → Data Routing ↓ |
@@ -128,7 +141,7 @@ Select-String -Path "<skills>\civ6-modding\*.md","<skills>\civ6-tuner\*.md","<sk
 | **文明周边数据收尾**（百科资料卡 `CivilizationInfo` / 城市名 `CityNames` / 市民名 `CivilizationCitizenNames` / 出生关联 `StartBias*` / BGM 开关 `CivilizationAudioTags` / 知名地名 `NamedMountains·NamedRivers` 等） | → **`reference/civ-metadata.md`**（各表 schema、取值域、写作要点、数量建议、最小检查清单） |
 | **Asset Editor 字段名 / 调试查日志 / 枚举取值**（"AE 里那个框叫什么"、"Database.log 怎么看"、"Culture 有哪些值"、"忠诚度材质的字段名"） | → **`reference/editor-and-enums.md`**（AE 字段速查 / 调试三板斧 / `Cultures.artdef` 取值表 / 忠诚度 3D 链字段） |
 | **平衡补丁 / 差分覆盖**（改主工程数值、解挂载、覆盖文本的补丁 mod） | → `balance-patch.md` |
-| **换行 / EOL 归一化**（"CRLF 还是 LF"、行尾混了、`.gitattributes` 怎么写、接手他人工程先体检） | → `gotchas.md` **§68「换行分层铁律」**（唯一真源）+ `scripts/normalize_eol.py`（默认只报告，`--fix` 才写盘） |
+| **换行 / EOL 归一化**（"CRLF 还是 LF"、行尾混了、`.gitattributes` 怎么写、接手他人工程先体检） | → `gotchas.md` **§68「换行分层铁律」**（唯一真源）+ `scripts/normalize_eol.py`（默认只报告；`--fix` 才写入 —— 工程内既有文件内容有变化时改写结果落 `<工程>/workspace/gen/`，由 AI 用文件编辑工具写入工程；`--repo-skill` 清理 skill 自身仓库仍直写） |
 | **工坊封面 / 预览图**（做封面、"封面上的中文别画错"、"封面太模糊"） | → 排版走 `tools/workshop_cover.py`（确定性 CJK 排版）；**预览图缩放执行端在 `art/make_workshop_preview.py`**（Lanczos 阶梯 + unsharp、默认 512、已达标直通不二次缩放；见 `art-pipeline.md` 第九·补节）；发布流程见 `release.md` §3.2 |
 | **音频**（导入 / 素材整备 / 响度均衡 / Wwise / bank / 语音 / BGM） | → **`civ6-audio-pipeline` skill**（音频全流程在该 skill 内，此处不重复） |
 | **运行时验证**（"这个 API 实际行为是什么"、复现脚本报错、PROPERTY/modifier 实测） | → **`civ6-tuner` skill**（FireTuner TCP 4318，在运行中的对局里执行 Lua；静态校验回答不了的问题走这里） |
@@ -198,6 +211,8 @@ ADD resource/feature    → database.md
 REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "LoadOrder"（优先查 .civ6proj）
 ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
                          批量插图标/查图标名悬空 → `python art/iconify_text.py <工程根> --audit`
+                         （`--write` 改写既有文本时结果落 `<工程>/workspace/gen/`，由 AI 用文件编辑工具写入工程；
+                          退出码 2 时打印待写入清单）
                          DLC 文本查不到 → `python database/scripts/build_localization.py --report`
 ```
 
@@ -524,7 +539,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 | `scripts/check_lua_registration.py` | **`.lua` 注册体检** —— 按角色（UI 上下文 / include 扩展件 / GP 脚本）判定哪些 `.lua` 实际不会被加载；角色判定在 `scripts/_lua_roles.py`（与下一个脚本共用） | 改过 `.lua` 后必跑（`scripts/README.md` 标准顺序第 ⑥ 步） |
 | `scripts/check_lua_context.py` | **跨上下文体检** —— UI 侧 `GameEvents` / UI 侧 `SetProperty` / 跨端注册触发 `LuaEvents` / 调用不在 include 闭包内的全局函数 / `ExposedMembers` 使用点；端内跨上下文只有 `LuaEvents`，其余不可达，口径真源 `reference/context-matrix.md` | 新增或改过 `.lua` 后必跑（标准顺序第 ⑦ 步） |
 | `scripts/check_doc_anchors.py` | **文档指针一致性** —— 跨上下文结论行是否都带 `context-matrix.md` 指针、指针行是否带排他结论 | 改过家族 md 或移动真源文件后 |
-| `scripts/normalize_eol.py` | **换行归一化** —— 按 `gotchas.md` §68「资产类 LF / 代码·配置类 CRLF」体检（默认只报告，`--fix` 才写盘） | 接手他人工程、批量改过行尾后 |
+| `scripts/normalize_eol.py` | **换行归一化** —— 按 `gotchas.md` §68「资产类 LF / 代码·配置类 CRLF」体检（默认只报告；`--fix` 才写入，工程内既有文件内容有变化时改写结果落 `workspace/gen/`，由 AI 用文件编辑工具写入工程） | 接手他人工程、批量改过行尾后 |
 
 
 ### rgn_validate 离线执行器

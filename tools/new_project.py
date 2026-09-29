@@ -39,6 +39,8 @@ r"""new_project.py — 从零生成 Civ6 ModBuddy 工程骨架（`.civ6proj` + �
 > `workspace/`，它已被 .gitignore 忽略。日常迭代走 `build.py stage` + `verify`，产物全部
 > 落在 `workspace/gen/`，不碰游戏目录。
 
+> ★ **写入边界**：本工具只新建，绝不改写。目标工程目录已存在且非空即退出码 2，不写任何文件。
+
 > ⚠ **只建本次确实要写文件的目录**。空目录会随整树拷贝进 Mods 副本，也会在 ModBuddy
 > 解决方案树里挂一排空节点。`ArtDefs/` `XLPs/` `Textures/` 用 `--with-art` 预建，
 > `Scripts/` `UI/` `ImportFiles/` 用 `--extra-dirs` 预建，或者等你真正放文件时自建。
@@ -70,7 +72,7 @@ r"""new_project.py — 从零生成 Civ6 ModBuddy 工程骨架（`.civ6proj` + �
 `<目录>` 是**工作区根**：工程会建在 `<目录>\<Name>\`，解决方案放 `<目录>\<Name>.civ6sln`。
 生成后 `<目录>\<Name>` 即「工程根」，后续所有工具（modinfo_build / check_* / cook_*）都指向它。
 
-退出码：0 成功 / 1 失败 / 2 已存在同名工程或目标位于 Mods 树内（需换目录）
+退出码：0 成功 / 1 失败 / 2 目标目录已有文件、已存在同名工程或目标位于 Mods 树内（需换目录）
 """
 from __future__ import annotations
 
@@ -82,6 +84,10 @@ import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _paths  # noqa: E402
+from _projwrite import finish, write_project_file  # noqa: E402
+
+# 本次运行的工程根（w() 的写入作用域），在 main() 校验通过后填入
+PROJECT_SCOPE = [""]
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -177,11 +183,20 @@ EndGlobal
 WS_DIRS = ["_tools", "gen", "src", "tmp"]
 
 def w(path, text, eol):
-    """写文本；eol ∈ {'crlf','lf'}。显式控制，避免平台默认把 CRLF 写成 LF。"""
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    """写文本；eol ∈ {'crlf','lf'}。显式控制，避免平台默认把 CRLF 写成 LF。
+
+    工程根之内的文件经 _projwrite 写入（铁律：脚本只可新建工程文件），目标已存在即拒绝；
+    工程根之外的解决方案文件（工作区根的 <Name>.civ6sln）不在工程范围，由本函数直写。
+    """
     data = text.replace("\r\n", "\n")
     if eol == "crlf":
         data = data.replace("\n", "\r\n")
+    scope = os.path.abspath(PROJECT_SCOPE[0])
+    if os.path.abspath(path).startswith(scope + os.sep):
+        if write_project_file(path, data.encode("utf-8"), scope) != "NEW":
+            raise SystemExit("目标文件已存在，按铁律拒绝覆盖：%s" % path)
+        return
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="") as f:
         f.write(data)
 
@@ -357,6 +372,17 @@ def main() -> int:
     if os.path.exists(proj) and not args.force:
         print("FAIL 目标已有 %s —— 换目录或加 --force" % proj)
         return 2
+    # ★ 铁律：脚本只可新建工程文件。目标工程根已有任何文件即拒绝执行，
+    #   避免把已有工程的内容覆盖掉（--force 只放行 GUID 查重，不放行覆盖）。
+    if os.path.isdir(target):
+        existing = [n for n in sorted(os.listdir(target))]
+        if existing:
+            print("FAIL 目标目录已有文件，按铁律拒绝覆盖：%s" % target)
+            print("     共 %d 项：" % len(existing))
+            for n in existing[:10]:
+                print("   %s" % n)
+            return 2
+    PROJECT_SCOPE[0] = target
 
     guid = args.guid
     if guid:
@@ -458,7 +484,7 @@ def main() -> int:
     print("   3) 进游戏：build.py deploy")
     print("   4) 美术：civ6-asset-forge（图标/立绘）；3D 引用：civ6-art-reference")
     print("   5) 发布：release.md")
-    return 0
+    return finish()
 
 
 if __name__ == "__main__":

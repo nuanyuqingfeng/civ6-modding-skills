@@ -22,12 +22,13 @@
     python landmark_tool.py install  --bundle <manifest.json> --project <工程根> [--force] [--dry-run]
     python landmark_tool.py cook     --bundle <manifest.json> --sdk-assets X [--sdk <SDK 根>] --out <输出目录> [--project <工程根>]
 
-退出码：0 成功；1 结果含错误；2 用法/环境错误。
+退出码：0 成功；1 结果含错误；2 用法/环境错误，或本次有改写被 guard 入位 workspace/gen。
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -39,7 +40,11 @@ import xml.etree.ElementTree as ET
 _TOOLS_DIR = Path(__file__).resolve().parent
 if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
+_SCRIPTS_DIR = _TOOLS_DIR.parent / "scripts"
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 
+from _projwrite import is_direct, write_project_file, finish  # noqa: E402
 from landmark_lib import (  # noqa: E402
     SDKIndex,
     LocalResourceIndex,
@@ -57,7 +62,6 @@ SOURCE_DIRS = ("Assets", "Geometries", "Materials", "Textures")
 
 def default_sdk_assets() -> Path | None:
     """--sdk-assets > 环境变量 CIV6_SDK_ASSETS > 本机路径真源 _paths（P4）。"""
-    import os
     env = os.environ.get("CIV6_SDK_ASSETS")
     if env and Path(env).is_dir():
         return Path(env)
@@ -162,6 +166,23 @@ def _read_text(path: Path) -> str:
     return path.read_text(encoding='utf-8-sig')
 
 
+def _inside(path: Path, root: Path) -> bool:
+    """path 是否位于 root 之内（用于判断 --out 是否落在工程里）。"""
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
+def _find_project(path: Path) -> Path | None:
+    """从 path 向上找最近的工程根（含 *.civ6proj 的目录）；找不到返回 None。"""
+    for candidate in (path, *path.parents):
+        if candidate.is_dir() and next(candidate.glob('*.civ6proj'), None):
+            return candidate
+    return None
+
+
 def _entity_artdef_path(project: Path, kind: str) -> Path:
     return project / 'ArtDefs' / ('Districts.artdef' if kind == 'district' else 'Improvements.artdef')
 
@@ -175,6 +196,11 @@ def install_bundle(manifest_path: Path, project: Path, *, force: bool = False, d
     project = Path(project).resolve()
     if not project.is_dir():
         raise ValueError(f'工程目录不存在：{project}')
+
+    def guarded(dest, text):
+        """既有文件有变化时由守卫入位 workspace/gen；返回值与 dest.write_text 相同。"""
+        write_project_file(str(dest), text.encode('utf-8'), str(project))
+        return len(text)
 
     written: list[str] = []
     merged: list[str] = []
@@ -199,8 +225,7 @@ def install_bundle(manifest_path: Path, project: Path, *, force: bool = False, d
         exists = dest.exists()
         if not exists:
             if not dry_run:
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_bytes(content) if isinstance(content, bytes) else dest.write_text(content, encoding='utf-8', newline='\n')
+                write_project_file(str(dest), content, str(project))
             written.append(str(dest.relative_to(project)))
             continue
         current = dest.read_bytes() if isinstance(content, bytes) else _read_text(dest)
@@ -211,7 +236,7 @@ def install_bundle(manifest_path: Path, project: Path, *, force: bool = False, d
         if mode == 'merge-or-write' and not isinstance(content, bytes):
             if not dry_run:
                 merged_text = merge_artdef(current, content if isinstance(content, str) else content.decode('utf-8'))
-                dest.write_text(merged_text, encoding='utf-8', newline='\n')
+                guarded(dest, merged_text)
             merged.append(str(dest.relative_to(project)))
             continue
         if mode == 'write-guarded' and not force:
@@ -219,7 +244,7 @@ def install_bundle(manifest_path: Path, project: Path, *, force: bool = False, d
                           f'确认后加 --force 覆盖')
             continue
         if not dry_run:
-            dest.write_bytes(content) if isinstance(content, bytes) else dest.write_text(content, encoding='utf-8', newline='\n')
+            write_project_file(str(dest), content, str(project))
         written.append(f'{dest.relative_to(project)}（覆盖）' if mode == 'write-guarded' else str(dest.relative_to(project)))
 
     # 实体条目 → Landmark Xref 回填（Improvements/Districts.artdef 是 mod 自有内容，可改）
@@ -240,7 +265,7 @@ def install_bundle(manifest_path: Path, project: Path, *, force: bool = False, d
         if len(refs) == 1:
             if not dry_run:
                 refs[0].find('m_ElementName').set('text', binding['landmark'])
-                path.write_text(xml_text(root), encoding='utf-8', newline='\n')
+                guarded(path, xml_text(root))
             info['status'] = 'Xref 已指向 landmark' + ('（dry-run 未写入）' if dry_run else '')
         elif len(refs) == 0:
             info['status'] = ('条目缺少 Landmark Xref 参数——手工补一个 ArtDefReferenceValue：'
@@ -277,16 +302,35 @@ def install_bundle(manifest_path: Path, project: Path, *, force: bool = False, d
 
 # ------------------------------------------------------------------ cook（移植自 modgen/landmark.py）
 
-def cook_bundle(manifest: Path, sdk_assets: Path, sdk: Path, output: Path, project: Path | None = None) -> dict:
+def cook_bundle(manifest: Path, sdk_assets: Path, sdk: Path, output: Path, project: Path | None = None, *,
+                project_root: Path | None) -> dict:
     """Stage to ASCII because the official Cooker corrupts non-ASCII pantry paths.
 
     No game deployment and no full mod build. Logs and staged files remain for
     diagnosis. Each run uses a new directory, so old BLPs cannot fake success.
+
+    --out 落在工程内时每份产物都交给守卫：工程里尚不存在的照常直写，既有文件有变化
+    则改写结果入位 workspace/gen。
     """
     report = verify_bundle(manifest, sdk_assets, project)
     if not report['ok']:
         raise ValueError('\n'.join(report['errors']))
     _, files = load_bundle(manifest)
+
+    def routed(dest):
+        """该产物是否落在工程内、且不属于可再生资产（需要交给守卫判定）。"""
+        return (project_root is not None and _inside(dest.resolve(), project_root.resolve())
+                and not is_direct(os.path.relpath(dest, project_root)))
+
+    def emit(dest, data):
+        """--out 与暂存目录在工程外时直写；落在工程内时交给守卫判定。"""
+        if routed(dest):
+            write_project_file(str(dest), data, str(project_root))
+            return
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with open(dest, 'wb') as handle:
+            handle.write(data)
+
     stage = Path(tempfile.mkdtemp(prefix='civ6-landmarks-'))
     if not str(stage).isascii():
         raise ValueError('Official Cooker needs an ASCII temporary directory; set TMP/TEMP to one')
@@ -320,7 +364,7 @@ def cook_bundle(manifest: Path, sdk_assets: Path, sdk: Path, output: Path, proje
         process = subprocess.run(cmd, cwd=cooker, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=300)
         log = process.stdout.decode('utf-8', errors='replace')
         log_path = stage / (Path(relative).stem + '-' + mode + '.log')
-        log_path.write_text(log, encoding='utf-8')
+        emit(log_path, log.encode('utf-8'))
         artifact = stage / 'cooked' / expected
         failures = [line.strip() for line in log.splitlines() if re.search(r'\b(error|failed|failure)\b|could not find|could not load.*(?:asset|geometry|material)|does not exist|Unable to (?:load|open)', line, re.I)]
         warnings = [line.strip() for line in log.splitlines() if re.search(r'warn|empty OB|Geometry is required|Unable to find|Unable to auto-generate', line, re.I)]
@@ -328,18 +372,25 @@ def cook_bundle(manifest: Path, sdk_assets: Path, sdk: Path, output: Path, proje
                      'bytes': artifact.stat().st_size if artifact.exists() else 0,
                      'errors': failures, 'warnings': warnings})
     output.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(stage / 'cooked', output / 'cooked', dirs_exist_ok=True)
+    for source in sorted((stage / 'cooked').rglob('*')):
+        if source.is_file():
+            emit(output / 'cooked' / source.relative_to(stage / 'cooked'), source.read_bytes())
     for log in stage.glob('*.log'):
-        shutil.copy2(log, output / log.name)
+        emit(output / log.name, log.read_bytes())
     result = {'ok': all(r['exit_code'] == 0 and r['bytes'] > 0 and not r['errors'] for r in runs),
               'stage': str(stage), 'runs': runs, 'visual_verified': False}
-    (output / 'cook-report.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    emit(output / 'cook-report.json', (json.dumps(result, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
     return result
 
 
 # ------------------------------------------------------------------ CLI
 
 def main(argv: list[str] | None = None) -> int:
+    # 写入作用域：--project，或 --out 自身所在的工程（向上找 *.civ6proj）。
+    # --out 落在工程内时产物交给守卫判定；工程外与 %TEMP% 暂存目录直写。
+    project: Path | None = None
+    project_root: Path | None = None
+
     ap = argparse.ArgumentParser(description='静态地标组合/校验/落地/隔离 Cooker（与 .CIV 工程通道解耦）')
     sub = ap.add_subparsers(dest='op', required=True)
 
@@ -372,6 +423,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument('--project', default=None)
 
     args = ap.parse_args(argv)
+    project = Path(args.project).resolve() if getattr(args, 'project', None) else None
+    project_root = project if project is not None else (
+        _find_project(Path(args.out).resolve()) if args.op == 'cook' else None)
     sdk_assets = Path(args.sdk_assets) if getattr(args, 'sdk_assets', None) else default_sdk_assets()
     if args.op in ('catalog', 'compose', 'cook') and (not sdk_assets or not sdk_assets.is_dir()):
         print('错误：找不到 SDK Assets（--sdk-assets / 环境变量 CIV6_SDK_ASSETS / _paths P4）', file=sys.stderr)
@@ -394,16 +448,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.op == 'install':
         result = install_bundle(Path(args.bundle), Path(args.project), force=args.force, dry_run=args.dry_run)
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 0 if result['ok'] else 1
+        return (0 if result['ok'] else 1) if args.dry_run else (finish() or (0 if result['ok'] else 1))
     if args.op == 'cook':
         sdk = Path(args.sdk) if args.sdk else default_sdk_tools()
         if not sdk or not sdk.is_dir():
             print('错误：找不到 SDK 工具根（--sdk / _paths P5）', file=sys.stderr)
             return 2
-        result = cook_bundle(Path(args.bundle), sdk_assets, sdk, Path(args.out),
-                             Path(args.project) if args.project else None)
+        result = cook_bundle(Path(args.bundle), sdk_assets, sdk, Path(args.out), project,
+                             project_root=project_root)
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 0 if result.get('ok') else 1
+        return finish() or (0 if result.get('ok') else 1)
     return 2
 
 

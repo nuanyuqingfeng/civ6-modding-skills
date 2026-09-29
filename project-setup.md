@@ -626,6 +626,8 @@ ModBuddy 工程属性页有一个 **`Custom Properties`** 面板（`Civ6.Project
 1. **生成器脚本（推荐）**：读一份变量表，直接渲染出完整
    `Data/*.sql`、`Text/*.sql`、`.civ6proj`。本 skill 家族的
    `civ6-asset-forge/scripts/gen_leader_2d.py`、`gen_suk_portrait.py` 即此形态。
+   目标文件不存在时脚本新建直写；已存在且内容有变化时，改写结果落到 `<工程>/workspace/gen/` 的
+   同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
 2. **SQL 拼接**：`INSERT ... SELECT 'PREFIX_' || ...`
    （注意本工程 AGENTS.md 对 `SELECT` 拼接样式另有约定）。
 
@@ -876,7 +878,9 @@ workspace/
 
 > `.gitattributes` 的完整论证与实测支撑见 `civ6-art-reference/reference/cook-layer.md §2.3.1`
 > 与 `gotchas.md` §68。加完规则后若出现大批"看似被改动"的文件，**先跑
-> `python scripts/normalize_eol.py <工程目录>` 看报告**（默认只报告），确认方向符合上表再写盘；
+> `python scripts/normalize_eol.py <工程目录>` 看报告**（默认只报告），确认方向符合上表再写盘 ——
+> `--fix` 时工程内既有文件内容有变化的话，改写结果落到 `<工程>/workspace/gen/` 的同一相对路径，
+> 由 AI 用文件编辑工具写入工程对应路径，脚本在退出码 2 时打印待写入清单；
 > **不要用 `git add --renormalize .` 一把梭** —— 它会把被 `eol=lf` 覆盖的 Lua/SQL/XML 烘成 LF 写进索引。
 
 ### 加载动作更新（动作定义 / Action definitions）

@@ -23,7 +23,7 @@
 
 用法:
     python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）
-    python normalize_eol.py <工程目录> --fix           # 就地归一化
+    python normalize_eol.py <工程目录> --fix           # 归一化（既有文件内容有变化时，改写结果落到 <工程>/workspace/gen/）
     python normalize_eol.py <工程目录> --fix --quiet
     python normalize_eol.py <工程目录> --only .lua,.xml
     python normalize_eol.py <工程目录> --exclude workspace,.git
@@ -38,6 +38,9 @@
 import argparse
 import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import finish, write_project_file  # noqa: E402
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -115,7 +118,8 @@ def convert(raw: bytes, target: str) -> bytes:
 def main() -> int:
     ap = argparse.ArgumentParser(description="按原版换行分层铁律归一化文本文件")
     ap.add_argument("root", help="工程根目录")
-    ap.add_argument("--fix", action="store_true", help="就地写入（默认只报告）")
+    ap.add_argument("--fix", action="store_true",
+                    help="写入（默认只报告）：工程既有文件内容有变化时，改写结果落到 <工程>/workspace/gen/")
     ap.add_argument("--only", default=None,
                     help="只处理这些扩展名，逗号分隔（如 .lua,.xml）")
     ap.add_argument("--exclude", default=None,
@@ -184,8 +188,12 @@ def main() -> int:
             new = convert(raw, target)
             changed.append((rel, kind, target, len(raw), len(new)))
             if args.fix:
-                with open(p, "wb") as f:
-                    f.write(new)
+                if args.repo_skill:
+                    # skill 仓库自身不是 civ6 工程，不受工程文件写入铁律约束
+                    with open(p, "wb") as f:
+                        f.write(new)
+                else:
+                    write_project_file(p, new, root)
 
     if not args.quiet:
         for rel, kind, target, before, after in changed:
@@ -205,6 +213,10 @@ def main() -> int:
     if changed and not args.fix:
         print("\n[!] 以上 %d 个文件换行偏离目标；加 --fix 执行归一化。" % len(changed))
         return 1
+    if args.fix:
+        code = finish()
+        if code:
+            return code
     print("\n[OK] 换行风格已符合分层铁律")
     return 0
 

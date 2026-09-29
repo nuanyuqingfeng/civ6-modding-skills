@@ -5,6 +5,7 @@
 
 用法：python gen_tex.py [textures_dir] [assets_dir] [asset_map_json]
   不传参则使用脚本内默认路径。
+写入：新建 .tex 直写；既有 .tex 内容有变化时，改写结果落到 <工程>/workspace/gen/（铁律见 SKILL.md）。
 零第三方依赖（纯标准库）：直接解析 DDS 头获取分辨率 / mip 层数 / 像素格式，
 不需要 texdiag。
 .assets 源文件使用「中文名-角色」友好名，通过 scripts/asset_map.json
@@ -27,6 +28,9 @@ import re
 import struct
 import sys
 import pathlib
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file  # noqa: E402
 
 # 强制 UTF-8 输出：Windows 控制台默认按 GBK 写、AI 管道按 UTF-8 读，中文会乱码。
 if hasattr(sys.stdout, "reconfigure"):
@@ -396,8 +400,11 @@ def gen_tex(dds_path):
         errs = "xmlcharrefreplace"
         print(f"  warn: 未知编解码名 {TEX_ENCODING!r}，退用 XML 字符引用转义")
 
-    with open(tex_path, "w", encoding=TEX_ENCODING, errors=errs, newline="\n") as f:
-        f.write(content)
+    # 写入走守卫：新建时直写（按系统 ANSI 代码页写出），既有 .tex 有变化时入位 workspace/gen。
+    project_root = str(pathlib.Path(dds_path).resolve().parent.parent)
+    result = write_project_file(tex_path, content.encode(TEX_ENCODING, errors=errs), project_root)
+    if result == "STAGED":
+        print(f"  stage: {tex_name} 内容有变化，改写结果落到 workspace/gen/")
     return True
 
 
