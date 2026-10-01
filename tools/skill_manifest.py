@@ -99,12 +99,15 @@ THIRD_PARTY = {
     ],
     "civ6-asset-forge": [
         ("scripts/apply_moment_template.py", "numpy、Pillow、psd_tools"),
+        ("scripts/build_district_icon.py", "numpy、Pillow、scipy、psd_tools、opencv-python"),
         ("scripts/build_icon_set.py", "numpy、Pillow"),
         ("scripts/edge_gradient.py", "numpy、Pillow、scipy"),
         ("scripts/gen_suk_portrait.py", "Pillow"),
+        ("scripts/prepare_leader_avatar.py", "numpy、Pillow、psd_tools"),
         ("scripts/process_leader_png.py", "Pillow"),
         ("scripts/process_loyalty_icon.py", "Pillow"),
         ("scripts/psd_inspect.py", "psd_tools（--export-layers 另需 Pillow、numpy）"),
+        ("scripts/ps_place_district.py", "pywin32、psd_tools、Pillow、numpy、scipy、opencv-python（另需本机 Photoshop）"),
         ("scripts/verify_badge.py", "numpy、Pillow"),
     ],
     "civ6-audio-pipeline": [

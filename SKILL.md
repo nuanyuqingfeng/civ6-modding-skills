@@ -38,7 +38,7 @@ languages:
 
 > **脚本可以新建工程文件，绝不允许改写工程文件。既有的工程文件，每一次改动都由 AI 使用文件编辑工具完成。**
 
-「工程文件」指工程根之下的一切文件：`.civ6proj`、`.modinfo`、`.civ6sln`、`*.Art.xml`，以及 `Data/`、`Text/`、`Scripts/`、`UI/`、`Mod_Adaptation/`、`ImportFiles/`、`Assets/`、`Textures/`、`XLPs/`、`ArtDefs/`、`Materials/`、`Geometries/`、`LightRigs/`、`EnvironmentLights/`、`Platforms/` 下的全部文件。
+「工程文件」指工程根之下的一切文件：`.civ6proj`、`.modinfo`、`*.Art.xml`，以及 `Data/`、`Text/`、`Scripts/`、`UI/`、`Mod_Adaptation/`、`ImportFiles/`、`Assets/`、`Textures/`、`XLPs/`、`ArtDefs/`、`Materials/`、`Geometries/`、`LightRigs/`、`EnvironmentLights/`、`Platforms/` 下的全部文件；`.civ6sln` 按两层目录布局位于工作区根（工程根的上一层，见 `project-setup.md`），同样受本铁律约束。
 
 1. **判定只看目标路径有没有文件**：没有 → 脚本新建直写；已有且内容与生成结果一致 → 跳过、不动盘；已有且内容有变化 → 把结果写到 `<工程>/workspace/gen/` 的同一相对路径下，由 AI 用文件编辑工具写入工程。`.civ6proj`、`.modinfo`、`.civ6sln`、`*.Art.xml` 永不例外。
 2. **唯一例外是二进制与编码敏感的可再生资产**：`Textures/` 之下的贴图、`Platforms/` 之下的音频产物，以及扩展名为 `.dds`、`.tex`、`.bnk`、`.wem`、`.wav` 的文件，文件编辑工具无法忠实写出其字节，允许脚本直接覆盖。文本类工程文件（`.sql`、`.lua`、`.xml`、`.xlp`、`.artdef`、`.ast`、`.civ6proj`、`.modinfo`、`_Banks.ini` 等）一律走第 1 条。

@@ -109,7 +109,7 @@ GITIGNORE = """# 默认忽略一切，只放行可管理的源文件
 !.gitignore
 !.gitattributes
 !*.civ6proj
-!*.civ6sln
+# .civ6sln 位于工作区根（工程根的上一层、仓库之外），不入库，故无白名单行
 !*.xlp
 !*.artdef
 !*.sql

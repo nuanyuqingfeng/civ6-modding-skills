@@ -827,7 +827,7 @@ ModBuddy 把构建输出与部署输出放在同一个目录：`Civ6.targets` �
 !.gitignore
 !.gitattributes
 !*.civ6proj
-!*.civ6sln
+# .civ6sln 位于工作区根（工程根的上一层、仓库之外），不入库，故无白名单行
 !*.xlp
 !*.artdef
 !*.sql
