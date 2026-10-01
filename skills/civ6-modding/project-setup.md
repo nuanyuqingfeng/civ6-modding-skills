@@ -626,6 +626,8 @@ ModBuddy 工程属性页有一个 **`Custom Properties`** 面板（`Civ6.Project
 1. **生成器脚本（推荐）**：读一份变量表，直接渲染出完整
    `Data/*.sql`、`Text/*.sql`、`.civ6proj`。本 skill 家族的
    `civ6-asset-forge/scripts/gen_leader_2d.py`、`gen_suk_portrait.py` 即此形态。
+   目标文件不存在时脚本新建直写；已存在且内容有变化时，改写结果落到 `<工程>/workspace/gen/` 的
+   同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
 2. **SQL 拼接**：`INSERT ... SELECT 'PREFIX_' || ...`
    （注意本工程 AGENTS.md 对 `SELECT` 拼接样式另有约定）。
 
@@ -751,6 +753,69 @@ XML / SQL / Lua 同步时的条目格式：
 **自检**：把 Action 段引用的文件与 `<Content Include>` 做归一化（`\`→`/`）差集，再按上表判角色 —— ③类落在差集里 = 真漏；①类落在差集里 = 正常。
 参考实现：示例工程 `workspace/_tools/check_proj_content.py`。
 
+### 两层目录布局（ModBuddy 固定处理方式）
+
+```
+<工作区根>/                  ← .civ6sln 在这一层
+├── <ModName>.civ6sln
+└── <ModName>/               ← 工程根，.civ6proj 在这一层
+    ├── Data/  Text/  ...    ← mod 成品
+    └── workspace/           ← 除 mod 成品以外的一切
+```
+
+**恰好两层，内层与 mod 同名。** 只建一层就没地方放 `.civ6sln`；多套一层同名目录会让
+`<源工程根>\<ModName>` 这条到处在用的路径解析不到工程。`tools/new_project.py` 按此布局生成：
+传入的 `<目录>` 是工作区根，工程建在 `<目录>\<Name>\`，解决方案放 `<目录>\<Name>.civ6sln`。
+
+**落盘边界（工程根只放 mod 成品）**：
+
+| 位置 | 放什么 |
+|---|---|
+| **工程根** | `Data/` `Text/` 里的 XML·SQL·Lua、美术源素材、`*.Art.xml`、`*.civ6proj`、`.gitignore`、`.gitattributes`、`AGENTS.md` |
+| **`workspace/`**（.gitignore 已忽略） | 脚本（`_tools/`）、派生产物（`gen/`）、设计文档与资料（`src/`）、一次性中间产物（`tmp/`） |
+
+`.modinfo`、`Cooked/`、`Build/` 属构建产物，**不进工程根**。日常迭代用 `workspace/_tools/build.py`
+的 `stage` + `verify`，产物全部落在 `workspace/gen/`，不碰游戏目录；确要进游戏时再 `deploy`。
+
+### 工程目录位置与两侧归属（硬性）
+
+**源工程目录不得位于游戏 Mods 加载目录之内**（本机 P2，见 `SKILL.md` 环境路径总表）。
+游戏把 Mods 目录当加载根**递归扫描整棵树**，工程里的构建产物会被当成第二个 mod 收录，
+同一 GUID 出现两条记录（「额外内容」界面显示两份同名 mod）。依据与实证见
+`gotchas.md`「Mods 加载树里不能放工程」。
+
+ModBuddy 把构建输出与部署输出放在同一个目录：`Civ6.targets` 的
+`BuildDir = $(Civ6_UserPath)\Mods\$(MSBuildProjectName)`、
+`ModInfoPath = $(BuildDir)\$(MSBuildProjectName).modinfo`。两侧归属如下：
+
+| 位置 | 允许 | 禁止 |
+|---|---|---|
+| **源工程**（git 管理） | `*.civ6proj` / `.gitignore` / `.gitattributes` / `Data` `Text` `Scripts` `UI` `ImportFiles` 下的 XML·SQL·Lua / `ArtDefs` `XLPs` `Textures` `Assets` `Materials` `Geometries` 源素材 / `*.Art.xml` / `Platforms/Windows/Audio` 的 bnk·ini·txt / `workspace/` | `<ModName>.modinfo`、`<ModName>.dep`、`Platforms/*/BLPs/**`、`Build/`、`Cooked/` |
+| **Mods 副本**（游戏加载） | `<ModName>.modinfo`、`<Content Include>` 清单内的运行时文件、cook 产物（`.dep`、`ArtDefs/*.artdef`、`Platforms/<平台>/BLPs/**`）、音频 bank | `*.civ6proj`、`.git*`、`Build/`、`Cooked/`、`Textures/`、`XLPs/`、源素材、第二个 `*.modinfo` |
+
+**落点由工具保证**：
+
+- `tools/new_project.py` / `modinfo_build.py` / `cook_assets.py` / `cook_dep.py` 入口调用
+  `_paths.assert_source_tree()`，工程目录命中 Mods 树即退出码 2、不写任何文件；
+- `tools/modinfo_build.py` 不带 `--deploy` 时**只把派生结果打到 stdout**（`--out <文件>` 才落盘），
+  不再往工程里写 `Build/<ModName>.modinfo`；
+- `tools/verify_mod_package.py` 把 Mods 副本里的越界文件（上表右列）判为问题；
+- `scripts/check_proj_content.py` 额外报告工程内的**零文件目录**（`[3] 零文件目录`）。
+
+**部署目标名取 `*.Art.xml` 的 `<id><name>`**（与 `tools/cook_assets.py` 同源），
+工程无 `*.Art.xml` 时回落到 `.civ6proj` 文件名 —— 两处各按各的取会把产物分裂进两个 Mods 目录。
+
+### 按需创建目录（不要空目录占位）
+
+`<Folder Include>` 只声明**真正写了文件**的目录。空目录会随整树拷贝进 Mods 副本，
+也会在 ModBuddy 解决方案树里挂一排空节点。
+
+- `tools/new_project.py` 默认只建并声明 `Data` 与 `Text`；美术相关目录用 `--with-art`
+  （`ArtDefs` `XLPs` `Textures`），其余用 `--extra-dirs Scripts,UI,ImportFiles`；
+- `<UpdateArt>` 只在工程存在 `*.Art.xml`（cooker 的输入）时写入 —— 它引用的
+  `<ModName>.dep` 由 cooker 产出，无美术工程写它必然悬空；
+- `tools/cook_assets.py` 与 `tools/modinfo_build.py` 不再预建输出目录，产物写盘时才创建。
+
 ### 工程骨架：`.gitignore` 白名单 + `.gitattributes` 换行分层
 
 真实工程（多个独立收敛到同一策略）推荐的仓库骨架：
@@ -760,13 +825,15 @@ XML / SQL / Lua 同步时的条目格式：
 *
 !*/
 !.gitignore
+!.gitattributes
 !*.civ6proj
-!*.civ6sln
+# .civ6sln 位于工作区根（工程根的上一层、仓库之外），不入库，故无白名单行
 !*.xlp
 !*.artdef
 !*.sql
 !*.xml
 !*.lua
+!*.md
 
 # 专用的 agent/素材工作区（中间产物、源素材，统一不入库）
 workspace/
@@ -811,7 +878,9 @@ workspace/
 
 > `.gitattributes` 的完整论证与实测支撑见 `civ6-art-reference/reference/cook-layer.md §2.3.1`
 > 与 `gotchas.md` §68。加完规则后若出现大批"看似被改动"的文件，**先跑
-> `python scripts/normalize_eol.py <工程目录>` 看报告**（默认只报告），确认方向符合上表再写盘；
+> `python scripts/normalize_eol.py <工程目录>` 看报告**（默认只报告），确认方向符合上表再写盘 ——
+> `--fix` 时工程内既有文件内容有变化的话，改写结果落到 `<工程>/workspace/gen/` 的同一相对路径，
+> 由 AI 用文件编辑工具写入工程对应路径，脚本在退出码 2 时打印待写入清单；
 > **不要用 `git add --renormalize .` 一把梭** —— 它会把被 `eol=lf` 覆盖的 Lua/SQL/XML 烘成 LF 写进索引。
 
 ### 加载动作更新（动作定义 / Action definitions）

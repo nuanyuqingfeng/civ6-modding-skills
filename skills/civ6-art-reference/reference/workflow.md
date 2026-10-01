@@ -1,7 +1,7 @@
 # 美术素材配置完整流程（mod 引用原版素材）
 
 > 场景："为 XX（区域/资源/改良/建筑/单位…）配置美术素材"。目标是让新对象直接复用
-> 原版已打包的模型/贴图，**全程不解包任何 .blp**。规律细节见 `chain-map.md`。
+> 原版已打包的模型/贴图，全程按名引用。规律细节见 `chain-map.md`。
 
 ## 流程总览
 
@@ -52,8 +52,12 @@ python art_copy.py <模板名> <原版条目> <新Type名> \
 
 - 行为：从原版 artdef 提取该条目**整棵子树**（含全部子集合与变体），改名后追加到
   mod artdef（文件不存在自动建骨架；已存在同名条目则跳过并 WARN）。
+- 目标 artdef 尚不存在时脚本直写新建；工程里已有且内容有变化时，命令跑完后结果落在
+  `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；
+  脚本会在退出码 2 时打印待写入清单。
 - `--set-xref` 统一替换条目内所有 `XrefName`（含 ClutterVariants 变体）。需要按
-  地形/特征区分变体时，生成后手改各变体子条目的 `XrefName`。
+  地形/特征区分变体时，生成后手改各变体子条目的 `XrefName`；改写既有 artdef 时，
+  这一步改的是入位 `<工程>/workspace/gen/` 的那份结果，由 AI 写入工程后生效。
 - 克隆后的条目引用的是**原版已打包资产**（BLP 按名引用），mod 不携带模型文件。
 - 不指定 `--out` 时打印 XML 到 stdout（预览/dry-run）。
 - 若参照物本身是 Landmark 挂载型（如 `RESOURCE_TURTLES`→`RES_LM_TURTLES`），克隆后
@@ -88,10 +92,15 @@ python art_copy.py <模板名> <原版条目> <新Type名> \
    python art_copy_building.py BUILDING_BASE BUILDING_NEW        --buildings-out "<mod>/ArtDefs/Buildings.artdef"        --landmarks-out "<mod>/ArtDefs/Landmarks.artdef"        --district DISTRICT_MY_RGN
    ```
 
+   `--buildings-out` / `--landmarks-out` 指向的文件尚不存在时脚本直写新建；工程里已有同名
+   artdef 且内容有变化时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，
+   由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+
    工具会：克隆建筑条目 → 逐区域从「该区域自己的子条目」推导形状 →
    改标签 / `Tag_HeroBuilding` / `Set` 引用 → **增量追加**（同名子条目自动跳过，幂等）。
 
-4. **必须过 ⑥ 的「原有内容零丢失」自检**（工具自带，输出 `原有内容丢失 = 0`）。
+4. **必须过 ⑥ 的「原有内容零丢失」自检**（工具自带，输出 `原有内容丢失 = 0`）；
+   改写既有 artdef 时，自检针对的是入位 `<工程>/workspace/gen/` 的那份结果。
    区域条目是增量追加进已有 `Landmarks.artdef` 的，通常不需要改 `.Art.xml`。
 
 ## ⑤ 注册 .Art.xml 消费者
@@ -157,8 +166,8 @@ python art_copy.py <模板名> <原版条目> <新Type名> \
 |---|---|
 | `artdef_indexer.py` | 扫描游戏+SDK 全部 artdef/xlp，建引用链索引（assets/art_index.json.gz，可随时重建） |
 | `art_lookup.py` | 查条目引用链 / 列模板条目 / 列 XLP 包内容；`--building B` 反查建筑 3D 模型链；`--district-buildings D` 列区域 hero 组合表 |
-| `art_copy.py` | 克隆原版条目为 mod 条目（改名 + 换 Xref + 合并/跳重） |
-| `art_copy_building.py` | **替换型建筑 3D 注册**：反查相关区域 → 生成 BuildingSets/BuildingVariants/BaseVariants 三组子条目 → 增量追加（自带零丢失自检）|
+| `art_copy.py` | 克隆原版条目为 mod 条目（改名 + 换 Xref + 合并/跳重）；目标 artdef 不存在则新建直写，存在且内容有变化则结果入位 `workspace/gen/` |
+| `art_copy_building.py` | **替换型建筑 3D 注册**：反查相关区域 → 生成 BuildingSets/BuildingVariants/BaseVariants 三组子条目 → 增量追加（自带零丢失自检）；目标 artdef 不存在则新建直写，存在且内容有变化则结果入位 `workspace/gen/` |
 | `artdef_sync_check.py` | **源 vs Mods 副本差异分级判定**（只读）：L0–L5 编码层 / 语义层，识别 `cook 补结构` 与 `引用被清空`（`_MissingArt` / 空值）。`--all` 扫全工程，`--report` / `--json` 出报告，退出码 1 = 有语义层差异 |
 
 索引覆盖：`Base/ArtDefs` + `DLC/**/ArtDefs`（运行时真实合并集）+ SDK pantry 全部 xlp。

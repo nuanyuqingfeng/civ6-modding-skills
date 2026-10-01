@@ -1,0 +1,178 @@
+# ATTACH 链 案例
+
+> `MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER` 和 `MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER` 都是标准 ModifierType，**无需 DynamicModifiers 注册**。
+>
+> ATTACH 的精髓：**外层决定"范围"，内层决定"效果"**。同一个 Inner Modifier 可被多个 Outer 复用。
+
+---
+
+## 链路模板
+
+```
+TraitModifiers
+  → Modifiers(ModifierType=MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER)
+    → ModifierArguments(ModifierId=内层 ModifierId)    ← 参数名 ModifierId
+      → 内层 Modifiers(实际效果的 ModifierType)
+        → ModifierArguments(内层参数)
+```
+
+---
+
+## 变体 A：基础 ATTACH — 城市 → 地块效果
+
+**来源**：Siqi_Leaders_0040
+
+```sql
+-- Outer: 对所有城市附加 Inner
+INSERT INTO Modifiers(ModifierId, ModifierType) VALUES
+('MODIFIER_SIQI_0040_MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER_A0040',
+ 'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER');
+
+INSERT INTO ModifierArguments (ModifierId, Name, Value) VALUES
+('MODIFIER_SIQI_0040_MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER_A0040',
+ 'ModifierId', 'MODIFIER_SIQI_0040_ABILITY_A0040');
+
+-- Inner: 城市3环内敌方单位 -10战力
+INSERT INTO Modifiers(ModifierId, ModifierType, SubjectRequirementSetId) VALUES
+('MODIFIER_SIQI_0040_ABILITY_A0040', 'MODIFIER_ALL_UNITS_GRANT_ABILITY',
+ 'REQSET_SIQI_0040_PLOT_ADJACENT_TO_OWNER_3');
+
+INSERT INTO ModifierArguments (ModifierId, Name, Value) VALUES
+('MODIFIER_SIQI_0040_ABILITY_A0040', 'AbilityType', 'ABILITY_SIQI_A0040_1');
+```
+
+---
+
+## 变体 B：带条件的 ATTACH — OwnerRequirementSetId 控制触发
+
+**来源**：Siqi_Leaders_0042
+
+```sql
+-- Outer: 回合开始时附加（OwnerRequirementSetId=回合事件）
+INSERT INTO Modifiers(ModifierId, ModifierType, OwnerRequirementSetId, RunOnce, Permanent) VALUES
+('MODIFIER_SIQI_0042_ATTACH_MODIFIER_TURN_STARTED', 'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER',
+ 'REQSET_SIQI_0042_TURN_STARTED', 1, 1);
+
+INSERT INTO ModifierArguments (ModifierId, Name, Value) VALUES
+('MODIFIER_SIQI_0042_ATTACH_MODIFIER_TURN_STARTED', 'ModifierId',
+ 'MODIFIER_SIQI_0042_ADJUST_ALL_YIELDS_1');
+
+-- Inner: 自定义类型 COLLECTION_OWNER 城市全产出+1
+INSERT INTO Types (Type, Kind) VALUES
+('MODIFIER_SIQI0042_CITY_ADJUST_CITY_ALL_YIELDS_CHANGE', 'KIND_MODIFIER');
+
+INSERT INTO DynamicModifiers (ModifierType, EffectType, CollectionType) VALUES
+('MODIFIER_SIQI0042_CITY_ADJUST_CITY_ALL_YIELDS_CHANGE',
+ 'EFFECT_ADJUST_CITY_ALL_YIELDS_CHANGE', 'COLLECTION_OWNER');
+
+INSERT INTO Modifiers(ModifierId, ModifierType, RunOnce, Permanent) VALUES
+('MODIFIER_SIQI_0042_ADJUST_ALL_YIELDS_1',
+ 'MODIFIER_SIQI0042_CITY_ADJUST_CITY_ALL_YIELDS_CHANGE', 0, 1);
+
+INSERT INTO ModifierArguments (ModifierId, Name, Value) VALUES
+('MODIFIER_SIQI_0042_ADJUST_ALL_YIELDS_1', 'Amount', 1);
+
+-- OwnerReq: 回合开始（Triggered=1）
+INSERT INTO Requirements (RequirementId, RequirementType, Triggered) VALUES
+('REQ_SIQI_0042_TURN_STARTED', 'REQUIREMENT_PLAYER_TURN_STARTED', 1);
+```
+
+---
+
+## 变体 C：同 Inner 被多 Outer 复用
+
+**来源**：Siqi_Leaders_0032 + SIQI_LEADERS_0006
+
+```sql
+-- 6 个 Outer（每个检查不同建筑），全部指向同一个 Inner
+INSERT INTO Modifiers(ModifierId, ModifierType, SubjectRequirementSetId) VALUES
+('MODIFIER_SIQI_L0032_4_..._CITY_HAS_BUILDING_LIGHTHOUSE', 'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', '...LIGHTHOUSE'),
+('MODIFIER_SIQI_L0032_4_..._CITY_HAS_BUILDING_SEAPORT',   'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', '...SEAPORT'),
+('MODIFIER_SIQI_L0032_4_..._CITY_HAS_BUILDING_SHIPYARD',  'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', '...SHIPYARD'),
+('MODIFIER_SIQI_L0032_4_..._CITY_HAS_BUILDING_MARKET',    'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', '...MARKET'),
+('MODIFIER_SIQI_L0032_4_..._CITY_HAS_BUILDING_BANK',      'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', '...BANK'),
+('MODIFIER_SIQI_L0032_4_..._CITY_HAS_BUILDING_EXCHANGE',  'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', '...EXCHANGE');
+
+-- 全部指向同一个 Inner
+INSERT INTO ModifierArguments (...) VALUES
+('...LIGHTHOUSE', 'ModifierId', 'MODIFIER_SIQI_L0032_4_TRADE_ROUTE_YIELD_MODIFIER_DESTINATION'),
+('...SEAPORT',   'ModifierId', 'MODIFIER_SIQI_L0032_4_TRADE_ROUTE_YIELD_MODIFIER_DESTINATION'),
+-- ... 其余同理
+```
+
+---
+
+## 变体 D：ALL_PLAYERS_ATTACH_MODIFIER — 跨玩家附加
+
+**来源**：Siqi_Leaders_0045
+
+```sql
+-- 挂载到全游戏领袖/城邦默认特质
+INSERT INTO TraitModifiers (TraitType, ModifierId) VALUES
+('TRAIT_LEADER_MAJOR_CIV', 'MODIFIER_SIQI_0045_ATTACH_MODIFIER_LEADER_L0045'),
+('MINOR_CIV_DEFAULT_TRAIT', 'MODIFIER_SIQI_0045_ATTACH_MODIFIER_SUZERAIN_AND_L0045');
+
+-- 对宗主国且领袖匹配的玩家施加效果
+INSERT INTO Modifiers(ModifierId, ModifierType, OwnerRequirementSetId) VALUES
+('MODIFIER_SIQI_0045_ATTACH_MODIFIER_SUZERAIN_AND_L0045', 'MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER',
+ 'REQSET_SIQI_0045_SUZERAIN_AND_L0045');
+
+INSERT INTO ModifierArguments (ModifierId, Name, Value) VALUES
+('MODIFIER_SIQI_0045_ATTACH_MODIFIER_SUZERAIN_AND_L0045', 'ModifierId',
+ 'MODIFIER_SIQI_0045_ADJUST_MOVEMENT_2');
+
+-- Owner RequirementSet: TEST_ALL 双条件
+INSERT INTO RequirementSets (RequirementSetId, RequirementSetType) VALUES
+('REQSET_SIQI_0045_SUZERAIN_AND_L0045', 'REQUIREMENTSET_TEST_ALL');
+
+INSERT INTO RequirementSetRequirements (RequirementSetId, RequirementId) VALUES
+('REQSET_SIQI_0045_SUZERAIN_AND_L0045', 'REQ_SIQI_0045_IS_SUZERAIN'),
+('REQSET_SIQI_0045_SUZERAIN_AND_L0045', 'REQ_SIQI_0045_LEADER_L0045');
+```
+
+---
+
+## 变体 E：人口阈值 ATTACH（大规模复制模式）
+
+**来源**：Siqi_Leaders_0045（11档人口 × 6种产出 = 66 对 Outer→Inner）
+
+```sql
+-- 每人囗档一个 Outer，带 REQUIREMENT_CITY_HAS_X_POPULATION 条件
+INSERT INTO Modifiers(ModifierId, ModifierType, OwnerRequirementSetId) VALUES
+('MODIFIER_SIQI_0045_ATTACH_MODIFIER_CITY_HAS_10_POPULATION',
+ 'MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER', 'REQSET_SIQI_0045_CITY_HAS_10_POPULATION');
+
+INSERT INTO ModifierArguments (ModifierId, Name, Value) VALUES
+('MODIFIER_SIQI_0045_ATTACH_MODIFIER_CITY_HAS_10_POPULATION',
+ 'ModifierId', 'MODIFIER_SIQI_0045_ADJUST_PLOT_YIELD_CULTURE_1_PLOT_ADJACENT_TO_OWNER');
+
+-- 条件: 城市人口≥10
+INSERT INTO Requirements (RequirementId, RequirementType) VALUES
+('REQ_SIQI_0045_CITY_HAS_10_POPULATION', 'REQUIREMENT_CITY_HAS_X_POPULATION');
+
+INSERT INTO RequirementArguments (RequirementId, Name, Value) VALUES
+('REQ_SIQI_0045_CITY_HAS_10_POPULATION', 'Amount', 10);
+```
+
+---
+
+## ATTACH 常见挂载表
+
+| 挂载表 | 挂载目标 |
+|--------|---------|
+| `TraitModifiers` | 文明/领袖/区域/建筑/单位/改良特质 |
+| `BeliefModifiers` | 信条（INSERT...SELECT 遍历信仰） |
+| `PolicyModifiers` | 政策卡 |
+| `BuildingModifiers` | 建筑 |
+| `DistrictModifiers` | 区域 |
+| 直接挂到 `TRAIT_LEADER_MAJOR_CIV` | 全局（对所有主要文明领袖生效） |
+
+## ATTACH 关键参数
+
+| ModifierType | CollectionType | 用途 |
+|-------------|---------------|------|
+| `MODIFIER_PLAYER_CITIES_ATTACH_MODIFIER` | COLLECTION_PLAYER_CITIES | 对玩家城市附加 |
+| `MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER` | COLLECTION_ALL_PLAYERS | 对全游戏玩家附加 |
+| `MODIFIER_ALL_CITIES_ATTACH_MODIFIER` | COLLECTION_ALL_CITIES | 对全游戏城市附加 |
+| `MODIFIER_ALL_UNITS_ATTACH_MODIFIER` | COLLECTION_ALL_UNITS | 对全游戏单位附加 |
+| `MODIFIER_PLAYER_UNITS_ATTACH_MODIFIER` | COLLECTION_PLAYER_UNITS | 对玩家单位附加 |

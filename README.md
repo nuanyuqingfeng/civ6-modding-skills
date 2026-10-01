@@ -1,7 +1,7 @@
 # Civ6 Modding Skills
 
 面向 AI 编码代理（Claude Code / DSH / opencode 等支持 `SKILL.md` 约定的 harness）的
-**文明 6（Civilization VI）模组开发技能合集**：5 个互相引用的 skill，覆盖玩法逻辑、数据、
+**文明 6（Civilization VI）模组开发技能合集**：8 个互相引用的 skill，覆盖玩法逻辑、数据、
 UI、2D 美术素材、原版美术引用链、音频管线、工坊发布与运行时验证。
 
 作者：**千与千寻瀑** · 许可：**MIT**（见 [`LICENSE`](LICENSE)）
@@ -23,9 +23,12 @@ UI、2D 美术素材、原版美术引用链、音频管线、工坊发布与运
 | skill | 定位 | 关键内容 |
 |---|---|---|
 | **`civ6-modding`** | 玩法侧总入口 | Lua（UI + GamePlay）、ForgeUI XML 布局、`.civ6proj` / `.modinfo` 注册、数据库 XML/SQL、事件系统与 API 参考、总督/城邦/议程/平衡补丁分册、Steam 工坊发布；含离线数据库目录与 8 个校验器 |
-| **`civ6-asset-forge`** | 2D 美术素材合成 + 注册链（六类） | 总督素材 / 忠诚度与宗教压力图标 / 单位晋升图标 / 2D 领袖纸片人 / UI 领袖立绘（Suk 适配）/ 历史时刻插画；每类附规格、模板、生成脚本与校验脚本 |
+| **`civ6-asset-forge`** | 2D 美术素材合成 + 注册链（九类） | 总督素材 / 忠诚度与宗教压力图标 / 单位晋升图标（仅尺寸规格）/ 2D 领袖纸片人 / UI 领袖立绘（Suk 适配）/ 历史时刻插画 / 原版 FrontEnd 立绘·背景 / 区域图标 / 领袖圆形头像；每类附规格、模板、生成脚本与校验脚本 |
 | **`civ6-art-reference`** | 原版美术引用链 + cook 层 | ArtDef / XLP 四层引用链查询与克隆（给新对象配原版模型）、cook 报错排查（pantry 找不到、引用被替换成 error asset）、双端不同步分级判定 |
+| **`civ6-art-unpack`** | 原版素材解包（受限通道） | **默认禁用**、不响应自动路由；仅用户显式授权后按门禁解包原版素材；唯一入口在 `civ6-art-reference` 的「原版美术资产路径」路由句 |
 | **`civ6-audio-pipeline`** | 音频全流程 | 素材整备（ncm 解密/指纹查重/音乐特征）→ 核验（PCM/48000Hz/声道/LUFS）→ 响度均衡（ffmpeg loudnorm）→ Wwise 2015 工程直改（WwiseCLI 命令行）→ 自动注册进 `.civ6proj` / `.modinfo` |
+| **`civ6-html-ui`** | HTML/CSS 设计 Mod 界面 | 用 HTML/CSS 出 UI 原型，导出背景、透明装饰与按钮状态纹理，转换为原生 ForgeUI XML/Lua；可独立使用 |
+| **`civ6-landmarks`** | 静态地标模型 | 用 SDK 官方几何体组合改良/区域的静态 TileBase AST：Landmarks.artdef、tilebases.xlp、建筑差分与 Art.xml 引用链，落地 ModBuddy 工程并运行官方 Cooker |
 | **`civ6-tuner`** | 运行时验证 | 通过 FireTuner（TCP:4318）在**运行中的对局**里执行任意 Lua：接口行为/参数/PROPERTY/Modifier 的实测验证、复现脚本报错；附 19 个即用探针片段 |
 
 **家族路由**（任务 → 去哪个 skill）见 [`skills/civ6-modding/reference/FAMILY_INDEX.md`](skills/civ6-modding/reference/FAMILY_INDEX.md)。
@@ -35,7 +38,7 @@ UI、2D 美术素材、原版美术引用链、音频管线、工坊发布与运
 
 ## 二、安装
 
-skill 目录是**纯文件**，没有构建步骤。把 `skills/` 下的 5 个目录放进你的 harness 的 skill 根目录即可：
+skill 目录是**纯文件**，没有构建步骤。把 `skills/` 下的 8 个目录放进你的 harness 的 skill 根目录即可：
 
 ```bash
 git clone https://github.com/nuanyuqingfeng/civ6-modding-skills.git
@@ -44,7 +47,7 @@ mkdir -p ~/.agents/skills
 cp -r civ6-modding-skills/skills/* ~/.agents/skills/
 ```
 
-> 5 个 skill **互为同级目录**：文档里的跨 skill 引用（如 `civ6-modding/art/gen_tex.py`、
+> 8 个 skill **互为同级目录**：文档里的跨 skill 引用（如 `civ6-modding/art/gen_tex.py`、
 > `civ6-asset-forge/reference/loyalty-icon.md`）都按"**同一 skills 根下的兄弟目录**"解析。
 > 只装其中一部分也能用，但跨 skill 引用会落空——建议整套装。
 
@@ -68,12 +71,14 @@ cp -r civ6-modding-skills/skills/* ~/.agents/skills/
 |---|---|
 | **Pillow** | `civ6-modding/art/`（图标/图集/DDS 读写，8 个脚本）、`civ6-asset-forge/scripts/`（11 个脚本） |
 | **numpy** | 同上（5 + 7 个脚本）、`civ6-audio-pipeline/scripts/`（2 个） |
-| **scipy** | `civ6-modding/art/normalize_icon.py`、`art/survey_icon_atlas.py`、`civ6-asset-forge/scripts/edge_gradient.py`、`recolor_template.py` |
-| **psd_tools** | `civ6-asset-forge/scripts/apply_moment_template.py`（读 PSD 模板） |
+| **scipy** | `civ6-modding/art/normalize_icon.py`、`art/survey_icon_atlas.py`、`civ6-asset-forge/scripts/edge_gradient.py`、`build_district_icon.py`、`ps_place_district.py` |
+| **psd_tools** | `civ6-asset-forge/scripts/apply_moment_template.py`、`build_district_icon.py`、`prepare_leader_avatar.py`、`ps_place_district.py`、`psd_inspect.py`（读 PSD 模板/结构） |
+| **opencv-python** | `civ6-asset-forge/scripts/build_district_icon.py`、`ps_place_district.py`（INTER_AREA/INTER_CUBIC 重采样） |
+| **pywin32** | `civ6-asset-forge/scripts/ps_place_district.py`（COM 驱动本机 Photoshop） |
 | **pycryptodome** | `civ6-audio-pipeline/scripts/ncm_decrypt.py`（网易云 ncm 解密） |
 
 ```bash
-pip install pillow numpy scipy psd_tools pycryptodome
+pip install pillow numpy scipy psd_tools opencv-python pywin32 pycryptodome
 ```
 
 每个 skill 的 `TOOLS.md` 有**逐脚本**的用途/用法/依赖清单（由 `civ6-modding/tools/skill_manifest.py` 生成）。
@@ -202,7 +207,10 @@ civ6-modding-skills/
     ├── civ6-modding/      SKILL.md · TOOLS.md · 30+ 分册 · database/ · scripts/ · art/ · tools/ · release/
     ├── civ6-asset-forge/  SKILL.md · TOOLS.md · reference/ · scripts/ · assets/ · templates/
     ├── civ6-art-reference/SKILL.md · TOOLS.md · reference/ · scripts/ · assets/art_index.json.gz
+    ├── civ6-art-unpack/   SKILL.md · THIRD_PARTY_NOTICES.md · references/ （默认禁用的受限解包通道）
     ├── civ6-audio-pipeline/SKILL.md · TOOLS.md · references/ · scripts/ · assets/
+    ├── civ6-html-ui/      SKILL.md · TOOLS.md · README.md · references/ · scripts/ · assets/ · agents/
+    ├── civ6-landmarks/    SKILL.md · references/ · assets/ （landmark_tool 由 civ6-modding/tools 承载）
     └── civ6-tuner/        SKILL.md · TOOLS.md · reference/ · scripts/ · snippets/
 ```
 

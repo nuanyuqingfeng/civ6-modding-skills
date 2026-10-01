@@ -1,0 +1,4 @@
+interface:
+  display_name: "文明6 HTML 转原生 UI"
+  short_description: "独立导出 HTML 纹理并落地文明6 XML/Lua，ModTools 接入可选"
+  default_prompt: "使用 $civ6-html-ui 将这个 HTML 界面转换为文明6原生 UI，保留独立页面，导出纹理并按现有 SDK 工程或可选 ModTools 流程注册和验证。"

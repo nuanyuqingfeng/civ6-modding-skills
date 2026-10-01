@@ -283,8 +283,12 @@ def xlp_allowed_platforms(path: str) -> set:
 
 def run_call(cooker: str, config: str, pantry: list, call: CookCall,
              cwd: str, logdir: str) -> tuple:
-    """spawn 一次 cooker；输出落日志文件再读回（受限宿主禁管道捕获）。"""
-    os.makedirs(call.outdir, exist_ok=True)
+    """spawn 一次 cooker；输出落日志文件再读回（受限宿主禁管道捕获）。
+
+    输出目录由 cooker 自己按需创建 —— 这里不再预建。预建会让「平台声明里没有这一档」
+    的轮次也留下空目录（本工程 MacOS 轮 28 个 XLP 全是 WINDOWS，于是
+    <Mods>\\<ModName>\\Platforms\\MacOS\\BLPs\\SHARED_DATA 常年是空壳）。
+    """
     log = os.path.join(logdir, "%s_%s.log" % (call.order.replace("/", "_"), call.stem))
     with open(log, "wb") as fh:
         rc = subprocess.run(call.cmd(cooker, config, pantry), cwd=cwd,
@@ -363,8 +367,12 @@ def sync_artdefs(root: str, out_root: str) -> tuple:
     if not os.path.isdir(src_dir):
         problems.append("源工程没有 ArtDefs 目录：%s" % src_dir)
         return synced, problems
+    names = sorted(f for f in os.listdir(src_dir) if f.lower().endswith(".artdef"))
+    if not names:
+        return synced, problems
+    # 目录按需创建：源工程没有 artdef 时不该在副本里留一个空 ArtDefs/
     os.makedirs(dst_dir, exist_ok=True)
-    for name in sorted(f for f in os.listdir(src_dir) if f.lower().endswith(".artdef")):
+    for name in names:
         s, d = os.path.join(src_dir, name), os.path.join(dst_dir, name)
         if os.path.isfile(d):
             with open(s, "rb") as fa, open(d, "rb") as fb:
@@ -380,6 +388,8 @@ def artdefs_match_source(root: str, out_root: str) -> list:
     bad: list = []
     src_dir = os.path.join(root, "ArtDefs")
     dst_dir = os.path.join(out_root, "ArtDefs")
+    if not os.path.isdir(src_dir):
+        return bad
     for name in sorted(f for f in os.listdir(src_dir) if f.lower().endswith(".artdef")):
         s, d = os.path.join(src_dir, name), os.path.join(dst_dir, name)
         if not os.path.isfile(d):
@@ -447,6 +457,8 @@ def main() -> int:
     if not os.path.isdir(root):
         print("ERROR 工程目录不存在：%s" % root, file=sys.stderr)
         return 2
+    # ★ 工程落在 Mods 加载树内 → cook 产物与工程本体同处一棵被游戏递归扫描的树
+    _paths.assert_source_tree(root, "工程目录")
 
     art_xml, art_err = find_art_xml(root)
     if art_err:
@@ -513,8 +525,6 @@ def main() -> int:
     cook_cwd = os.path.join(root, "workspace", "tmp", "cook_cwd")
     logdir = os.path.join(cook_cwd, "logs")
     os.makedirs(logdir, exist_ok=True)
-    for c in calls:
-        os.makedirs(c.outdir, exist_ok=True)
 
     rep = Report(calls=calls)
     print()

@@ -1,0 +1,8 @@
+* text=auto eol=lf
+
+*.png binary
+*.gz  binary
+*.ast binary
+*.geo binary
+*.fgx binary
+*.dds binary

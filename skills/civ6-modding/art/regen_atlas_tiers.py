@@ -59,6 +59,9 @@ import struct
 import sys
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file  # noqa: E402
+
 import numpy as np
 from PIL import Image
 
@@ -79,7 +82,7 @@ RATIO_FACTOR = 0.7      # 归一化斜坡宽度低于参考值 70% → 受损
 
 # 头部构造复用共享模块（单一真源）。此处原先自带一份 dds_header_bytes，
 # 2026-09-17 与 dds_io.dds_header_bytes 做过多尺寸逐字节比对（1x1…1920x1080）完全一致后去重。
-# read_dds/write_dds 仍留本地：它们走 numpy 数组，与本文件的质量指标计算耦合，
+# read_dds/dds_bytes 仍留本地：它们走 numpy 数组，与本文件的质量指标计算耦合，
 # 而 dds_io 走 PIL.Image（两者用途不同，不强行统一）。
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dds_io import dds_header_bytes  # noqa: E402
@@ -99,12 +102,10 @@ def read_dds(path):
     return np.frombuffer(raw, dtype=np.uint8).reshape(h, w, 4), w, h, mips
 
 
-def write_dds(path, arr):
+def dds_bytes(arr):
+    """把 RGBA 数组打成单 mip 的 DDS 字节。"""
     h, w = arr.shape[:2]
-    with open(path, 'wb') as f:
-        f.write(dds_header_bytes(w, h))
-        f.write(np.ascontiguousarray(arr, dtype=np.uint8).tobytes())
-    return w, h
+    return dds_header_bytes(w, h) + np.ascontiguousarray(arr, dtype=np.uint8).tobytes()
 
 
 # ---------------------------------------------------------------- 质量指标
@@ -370,7 +371,8 @@ def main():
         print(f'{dst.name:<40} {size:>4} {cols}x{rows_n:<4} | {fmt(q_old):>22} | '
               f'{fmt(q_new):>22}')
         if do_write:
-            w, h = write_dds(dst, new)
+            h, w = new.shape[:2]
+            write_project_file(str(dst), dds_bytes(new), args.projectRoot)
             back, bw, bh, bm = read_dds(dst)
             assert (bw, bh) == (w, h) and bm == 1 and np.array_equal(back, new)
             n_ok += 1

@@ -23,6 +23,15 @@ def snapshot(root):
     return out
 
 
+def dirset(root):
+    """相对目录集合（含空目录）——只比文件会让两侧的空目录差异完全不可见。"""
+    out = set()
+    for dirpath, dirnames, _filenames in os.walk(root):
+        for d in dirnames:
+            out.add(os.path.relpath(os.path.join(dirpath, d), root))
+    return out
+
+
 def main():
     if len(sys.argv) >= 2 and sys.argv[1] in ("-h", "--help"):
         print(__doc__.strip())
@@ -35,13 +44,18 @@ def main():
     only_a = sorted(set(sa) - set(sb))
     only_b = sorted(set(sb) - set(sa))
     diff = sorted(k for k in set(sa) & set(sb) if sa[k][0] != sb[k][0])
-    print("A=%s files=%d" % (a, len(sa)))
-    print("B=%s files=%d" % (b, len(sb)))
-    for label, items in (("only in A", only_a), ("only in B", only_b), ("content differs", diff)):
+    da, db = dirset(a), dirset(b)
+    dirs_only_a = sorted(da - db)
+    dirs_only_b = sorted(db - da)
+    print("A=%s files=%d dirs=%d" % (a, len(sa), len(da)))
+    print("B=%s files=%d dirs=%d" % (b, len(sb), len(db)))
+    for label, items in (("only in A", only_a), ("only in B", only_b),
+                         ("content differs", diff),
+                         ("dirs only in A", dirs_only_a), ("dirs only in B", dirs_only_b)):
         print("%s: %d" % (label, len(items)))
         for k in items[:200]:
             print("   - " + k)
-    if not only_a and not only_b and not diff:
+    if not only_a and not only_b and not diff and not dirs_only_a and not dirs_only_b:
         print("RESULT: IDENTICAL")
         return 0
     print("RESULT: DIFFERENT")

@@ -22,13 +22,14 @@
 
 - **美术素材只允许在** `F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK Assets` 内查找。
   总督素材在 `Civ6\DLC\Shared\pantry\Textures`（142 个文件）与 `Civ6\DLC\Expansion2\pantry\Textures`。
-- **任何情况下不允许解包**（.blp 不碰）。需要原版图就用 pantry 散装 DDS，
+- 需要原版图就用 pantry 散装 DDS，
   用 **`civ6-modding` 的 texconv**（随包内置 `civ6-modding/art/bin/texconv.exe`，定位真源 `art/_texconv.py`）
   跑 `texconv -ft png -m 1 -o <dir> <file.dds>` 做纯格式转换。
 - 游戏安装目录只读 XML/Lua 定义，不作素材来源。
 - 交付产物一律写到用户指定目录；**不修改游戏文件**。
 - 视觉评审：视觉评审不可用（模型侧 429 / 配额耗尽）时不要反复重试，改用本地像素度量（`scripts/verify_badge.py`）
   + 输出棋盘底预览图给人眼验收。
+- **素材的认定与询问条件**：头像/立绘路径已知且文件存在时直接执行，不提问；路径未写明、或文件不存在时才按 `SKILL.md` §三询问。执行顺序与收敛判据见 `SKILL.md` §〇 与 §七。
 
 ---
 

@@ -9,7 +9,9 @@
 
 | 工具 | 干什么 | 用法 |
 |---|---|---|
+| `scripts/_projwrite.py` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/apply_moment_template.py` | apply_moment_template.py — 历史时刻插画：把源图套上官方形状模板 | `python apply_moment_template.py (--input <源图> \| --input-dir <目录>) [--template N \| --auto] [--out <目录>] [--dds] [--list]` |
+| `scripts/build_district_icon.py` | build_district_icon.py — 文明6 区域图标合成：官方 PSD 模板底图 + 白色图案素材 | `python build_district_icon.py --input <图案.png> --outdir <目录> [--preview]<br>python build_district_icon.py --input <png> --outdir out --districts "Theater,Holy Site"` |
 | `scripts/build_icon_set.py` | build_icon_set.py - 由"一张头像"生成总督全套图标（色调高度一致） | `python build_icon_set.py --avatar 头像.png --outdir out --key CTTH_RGN<br>python build_icon_set.py --avatar 头像.png --outdir out --glyph 图形.png --checker` |
 | `scripts/edge_gradient.py` | edge_gradient.py - 立绘"边缘透明渐变"处理器 | `python edge_gradient.py --input 立绘.png --outdir out --key CTTH_RGN<br>python edge_gradient.py --input a.png --input b.png --outdir out --key CTTH_RGN` |
 | `scripts/gen_leader_2d.py` | gen_leader_2d.py — Civ6 2D 领袖（立绘纸片人）注册文件生成器 | `python gen_leader_2d.py --project <工程路径> --leader-types "LEADER_A_QYQXP,LEADER_B"<br>python gen_leader_2d.py --project <工程路径> [--pack 包名] [--abbr 缩写]       --leaders "Cartethyia:CTTH,Fleurdelys:FDL"        # 旧写法（会自动补 --leader-types 缺省值）` |
@@ -20,27 +22,32 @@
 | `scripts/migrate_suk_namespace.py` | migrate_suk_namespace.py — 把「Suk 选人界面适配」素材从**官方前缀借用**迁到**独立命名空间** | `python migrate_suk_namespace.py <工程根>                  # 预演（默认，不写盘）<br>python migrate_suk_namespace.py <工程根> --check          # 只体检：有待迁移项则 exit 2` |
 | `scripts/pick_vanilla_background.py` | pick_vanilla_background.py — 「借用原版领袖背景」的量化挑选 + 接线产出 | `python pick_vanilla_background.py --list<br>python pick_vanilla_background.py --reference <立绘.png> --top 5` |
 | `scripts/prepare_frontend_portrait.py` | prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与接线** | `python prepare_frontend_portrait.py --project <工程根> --leader LEADER_X_QYQXP \<br>python prepare_frontend_portrait.py --project <工程根> --leader LEADER_X_QYQXP \` |
+| `scripts/prepare_leader_avatar.py` | prepare_leader_avatar.py - 领袖圆形头像（ICON_LEADER_*）素材整备：判定 + 定标合成 + 底图换色 | `python prepare_leader_avatar.py --material 立绘.png --anchors 锚点.json --outdir out<br>python prepare_leader_avatar.py --material a.png --anchors a.json --outdir out --canvas 256 --canvas 300` |
 | `scripts/process_leader_png.py` | process_leader_png.py — Civ6 2D 领袖立绘 PNG -> TEXTURE/OPACITY 1024x1024 素材生成器 | `python process_leader_png.py --input <源PNG> --leader-type LEADER_CANTARELLA` |
 | `scripts/process_loyalty_icon.py` | 文明6 忠诚度/宗教图标合成：图标 + 黑色光晕模板 → PNG 组。 | `python process_loyalty_icon.py --kind {loyalty\|religion} (--icon <png> \| --project <工程>) --suffix <后缀> [--out-dir <目录>] [--fit-mode {core,extent}]` |
+| `scripts/ps_place_district.py` | ps_place_district.py — 区域图标 PS 自动化引擎（效果最好的首选流程） | `python ps_place_district.py --input <图案.png> --outdir <目录> [--enhance] [--psd <自定义模板.psd>]` |
 | `scripts/psd_inspect.py` | PSD 结构检视 + 图层导出（类别⑥ 历史时刻模板反推用）。 | `python psd_inspect.py <psd或目录> [--pick 1,4,18] [--all] [--export-layers] [--out <目录>]` |
 | `scripts/verify_badge.py` | verify_badge.py - 总督 24px 徽章几何/配色验证 | `python verify_badge.py 生成.png                  # 只做几何自洽校验<br>python verify_badge.py 生成.png 官方格.png        # 与官方对照，输出 IoU 与配色误差` |
 | `scripts/verify_frontend_portrait.py` | verify_frontend_portrait.py — **原版环境** 领袖前景/背景接线的只读校验器 | `python verify_frontend_portrait.py --project <工程根><br>python verify_frontend_portrait.py --project <工程根> --json` |
 | `scripts/verify_moment.py` | verify_moment.py — 历史时刻插画与接线的只读校验器 | `python verify_moment.py --project <工程根><br>python verify_moment.py --project <工程根> --coverage-min 75 --coverage-max 99` |
 | `scripts/verify_suk_portrait.py` | verify_suk_portrait.py — Suk 选人界面适配素材与接线的只读校验器 | `python verify_suk_portrait.py --project <工程根><br>python verify_suk_portrait.py --project <工程根> --namespace SUK_UI` |
 
-共 18 个脚本。
+共 22 个脚本。
 
 ## 第三方依赖（非标准库）
 
 本 skill 的脚本**多数是纯标准库**；下列脚本需要先 `pip install` 对应第三方库：
 
 - `scripts/apply_moment_template.py` → numpy、Pillow、psd_tools
+- `scripts/build_district_icon.py` → numpy、Pillow、scipy、psd_tools、opencv-python
 - `scripts/build_icon_set.py` → numpy、Pillow
 - `scripts/edge_gradient.py` → numpy、Pillow、scipy
 - `scripts/gen_suk_portrait.py` → Pillow
+- `scripts/prepare_leader_avatar.py` → numpy、Pillow、psd_tools
 - `scripts/process_leader_png.py` → Pillow
 - `scripts/process_loyalty_icon.py` → Pillow
 - `scripts/psd_inspect.py` → psd_tools（--export-layers 另需 Pillow、numpy）
+- `scripts/ps_place_district.py` → pywin32、psd_tools、Pillow、numpy、scipy、opencv-python（另需本机 Photoshop）
 - `scripts/verify_badge.py` → numpy、Pillow
 
 > 口径：对脚本 `import` 的实测扫描；纯标准库脚本不列。新增/改动依赖时同一次改动里更新 `skill_manifest.py` 的 `THIRD_PARTY`。
@@ -83,7 +90,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 <!-- 在这里写：工具之间的顺序、踩过的坑、必须人工确认的边界。
      不要在这里重复上表的机械信息 —— 那部分由 skill_manifest.py 重生成。 -->
 
-### 五类素材的边界（先读 SKILL.md「一、本 skill 覆盖的五类素材」）
+### 各类素材的边界（先读 SKILL.md「一、本 skill 覆盖的素材类别」）
 
 各类共用同一条注册链（`SKILL.md` §六），**但形状/尺寸不得混用**：
 总督 = 八边形 24px 徽章，单位晋升 = 五边形盾形（**该类别生成管线已作废**，仅存尺寸规格
@@ -102,7 +109,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 ### 边界
 
 - 用户素材**必须先问**（§三 铁律一）；不做静默备份（§四）。
-- 原版素材只读 pantry，**禁止解包**（§五）；素材搬运边界见 §6.3（别污染工程 pantry）。
+- 原版素材只读 pantry（§五）；素材搬运边界见 §6.3（别污染工程 pantry）。
 - 尺寸规格一律查 `civ6-modding/art-pipeline.md` 的图标尺寸表，不要凭记忆报数。
 
 <!-- MANUAL:END -->

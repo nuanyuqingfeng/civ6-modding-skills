@@ -21,7 +21,7 @@ XLP 条目（*.xlp 是"资产清单"）→ 打包 .blp（模型/贴图/材质本
 关键结论：
 
 1. **ArtDef 是装配图，XLP 是资产清单，模型本体在打包 .blp 里**。mod 引用原版素材
-   **不需要、也不应该解包任何 .blp**——所有引用都是"按名引用"：
+   一律走"按名引用"，不涉及打包文件本体：
    artdef 条目名、XrefName 字符串、BLPEntryValue 四元组（entry + xlppath + package + class）。
 2. **跨文件按名解析**：`ArtDefReferenceValue` 的 `m_ArtDefPath` 指向目标模板文件；
    `m_ElementName` 为空时用成对的 `XrefName` 字符串值作为目标条目名。
@@ -170,7 +170,9 @@ python art_lookup.py --district-buildings DISTRICT_THEATER   # 列出某区域�
   必须一起挂。`art_copy_building.py` 自动反查游戏侧全部相关区域；
   **mod 侧区域不在索引里，必须用 `--district` 显式补**。
 
-一键生成：
+一键生成（`--buildings-out` / `--landmarks-out` 指向的 artdef 尚不存在时脚本直写新建；工程里
+已有同名 artdef 且内容有变化时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，
+由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单）：
 
 ```
 python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY_RGN     --buildings-out "<mod>/ArtDefs/Buildings.artdef"     --landmarks-out "<mod>/ArtDefs/Landmarks.artdef"     --district DISTRICT_ODYSSEY_RGN
@@ -178,7 +180,8 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
 
 工具行为：反查相关区域 → 逐区域从**该区域自己的子条目**推导形状（目标文件里已有该区域
 就用它自己的，否则取游戏侧同名区域）→ 改标签 / `Tag_HeroBuilding` / `Set` 引用 →
-**增量追加**（同名子条目自动跳过，幂等）→ 写完后自检「原有内容零丢失」。
+**增量追加**（同名子条目自动跳过，幂等）→ 写完后自检「原有内容零丢失」（改写既有 artdef 时，
+自检针对的是入位 `<工程>/workspace/gen/` 的那份结果）。
 
 取舍：`BuildingVariants` 一条 `Tag_Era=DEFAULT` 即可全时代通用；`BaseVariants` 建议按原建筑
 逐条镜像，以保证区域底座随时代变化。

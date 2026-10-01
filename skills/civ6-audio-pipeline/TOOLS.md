@@ -9,6 +9,7 @@
 
 | 工具 | 干什么 | 用法 |
 |---|---|---|
+| `scripts/_projwrite.py` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/audio_check.py` | audio_check.py -- Civ6 音频素材核验 | `python audio_check.py <文件或目录...> [--category voice\|bgm\|sfx] [--era ancient\|later] [--fix]` |
 | `scripts/audio_dedupe.py` | audio_dedupe.py -- 跨目录音频指纹查重: 同曲判定 -> 组内质量排序 -> 淘汰件备份隔离(默认只报告) | `python audio_dedupe.py <文件或目录...> [--auto 0.975 --env 0.985 --dur 0.99]` |
 | `scripts/audio_normalize.py` | audio_normalize.py -- Civ6 audio loudness normalization (ffmpeg loudnorm 2-pass, linear) | `python audio_normalize.py <文件或目录...> [--category voice\|quote\|bgm\|sfx] [--era ancient\|later] [--mode absolute\|relative\|shortterm] [--i <目标LUFS>] [--out DIR] [--filelist F]` |
@@ -21,12 +22,12 @@
 | `scripts/ncm_decrypt.py` | ncm_decrypt.py -- 网易云 .ncm 解密为裸流 (flac/mp3/wav/ogg) | `python ncm_decrypt.py <ncm文件或目录...> [--out DIR] [--delete-source] [--selftest]` |
 | `scripts/new_bank_project.py` | new_bank_project.py -- 克隆模板工程 -> 独立 bank 工程 (素材导入 + work unit 注入 + 可选生成) | `python new_bank_project.py --proj <新工程目录> --bank <Bank名> --media <素材目录\|文件...>` |
 | `scripts/paths.py` | Skill 路径配置中心（本机私有，不随 skill 分发）。 | `读取 skill 根目录 local_paths.json；也支持同名 CIV6_* 环境变量覆盖，<br>local_paths.json 示例：` |
-| `scripts/register_to_mod.py` | register_to_mod.py -- bank 产物注册到 mod (P1 源工程 .civ6proj / P2 运行目录 .modinfo 双注册) | `python register_to_mod.py --bank-dir <工程>\GeneratedSoundBanks\Windows --bank <Bank名>       (--find <mod名> \| --mod <mod目录>) [--section ingame\|global\|menu] [--civ6proj <路径>] [--dry-run]` |
+| `scripts/register_to_mod.py` | register_to_mod.py -- bank 产物注册到 mod (P1 源工程 .civ6proj / P2 运行目录 .modinfo 双注册) | `python register_to_mod.py --bank-dir <工程>\GeneratedSoundBanks\Windows --bank <Bank名>       (--find <mod名> \| --mod <mod目录>) [--section ingame\|global\|menu] [--civ6proj <路径>]       [--project-root <mod 工程根>] [--dry-run]` |
 | `scripts/unregister_audio.py` | unregister_audio.py -- 从 mod 注册点移除音频注册 (与 register_to_mod.py 互逆) | `python unregister_audio.py --audio-id <id> [--find <mod名> \| --mod <目录> \| --civ6proj <路径>]` |
 | `scripts/wwise_shortid.py` | wwise_shortid.py - WWise ShortID 核心规律 + 纯 Python bank 打包核心库。 | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/wwise_wire.py` | wwise_wire.py -- Wwise 工程直改工具 (Wwise 2015.x, Yuni 谱系工程实测) | `扫描   python wwise_wire.py <工程目录> --scan<br>接线   python wwise_wire.py <工程目录> --wire <BANK名> [--events-wu <名称>]` |
 
-共 16 个脚本。
+共 17 个脚本。
 
 ## 第三方依赖（非标准库）
 
@@ -64,7 +65,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 | `sd_cpp` | 本地生图（stable-diffusion.cpp + FLUX 权重） |
 | `imagemagick` | ImageMagick（图标阈值 / 裁边） |
 | `luac` | Lua 5.1 语法检查 |
-| `ws_root` | 上传临时工作区根（`%TEMP%\civ6-ws`） |
+| `ws_root` | 上传临时工作区根；`content/` 用 junction 指向 Mods 副本（见 `release/scripts/make_workspace.ps1`） |
 | `steam_logs` | Steam 日志目录（反查工坊条目 ID） |
 
 > 完整路径表与各键本机取值见 `civ6-modding/tools/README.md` 第 2 节。

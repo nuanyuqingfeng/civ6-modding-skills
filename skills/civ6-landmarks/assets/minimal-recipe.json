@@ -1,0 +1,56 @@
+{
+  "format": "MODTOOLS54_LANDMARK_RECIPE",
+  "assets": [
+    {
+      "name": "EXAMPLE_SPIRE",
+      "source": "IMP_Sphinx_Obelisk"
+    },
+    {
+      "name": "EXAMPLE_COURT",
+      "source": "IMP_Sphinx",
+      "attachments": [
+        {
+          "asset": "EXAMPLE_SPIRE",
+          "instance": "IMP_Sphinx",
+          "bone": "IMP_Sphinx_Obelisk001"
+        },
+        {
+          "asset": "EXAMPLE_SPIRE",
+          "instance": "IMP_Sphinx",
+          "bone": "IMP_Sphinx_Obelisk002"
+        }
+      ]
+    },
+    {
+      "name": "EXAMPLE_DISTRICT_BASE",
+      "source": "DIS_THR_CLA_Base01",
+      "drop_stale_groups": true
+    },
+    {
+      "name": "EXAMPLE_AMPHITHEATER",
+      "source": "DIS_THR_CLA_Base02Ampitheater"
+    }
+  ],
+  "bindings": [
+    {
+      "kind": "improvement",
+      "entity": "IMPROVEMENT_EXAMPLE_COURT",
+      "source": "IMPROVEMENT_SPHINX",
+      "landmark": "LM_EXAMPLE_COURT",
+      "base_asset": "EXAMPLE_COURT"
+    },
+    {
+      "kind": "district",
+      "entity": "DISTRICT_EXAMPLE_HALL",
+      "source": "DISTRICT_THEATER",
+      "landmark": "DISTRICT_EXAMPLE_HALL",
+      "base_asset": "EXAMPLE_DISTRICT_BASE",
+      "buildings": [
+        {
+          "type": "BUILDING_AMPHITHEATER",
+          "asset": "EXAMPLE_AMPHITHEATER"
+        }
+      ]
+    }
+  ]
+}

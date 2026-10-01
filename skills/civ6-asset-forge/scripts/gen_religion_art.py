@@ -8,6 +8,9 @@
 用法：
   python gen_religion_art.py --project "<工程路径>" --religion-types RELIGION_CUSTOM_RGN[,RELIGION_X2...]
 
+写入：目标不存在时脚本新建直写；已存在且内容有变化时，改写结果落到
+      <工程>/workspace/gen/ 的同一相对路径，由 AI 用文件编辑工具写入工程（退出码 2 并打印清单）。
+
 命名约定（{R} = 宗教类型去掉 RELIGION_ 前缀，如 CUSTOM_RGN）：
   3D Box 资产        Religion_Overlay_{R}_Box / Religion_Pressure_{R}_Box   （UILensModels.xlp）
   战略视图 sprite     ReligionPressureIcon_{R}                               （StrategicView_UILenses.xlp）
@@ -28,9 +31,13 @@
 """
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file, finish  # noqa: E402
 
 XML_DECL = '<?xml version="1.0" encoding="UTF-8" ?>\n'
 XLP_HEAD = """{xml}<AssetObjects..XLP>
@@ -589,24 +596,22 @@ def read_preserve(path: Path) -> tuple[str, str]:
     return (raw.replace("\r\n", "\n"), "\r\n" if crlf else "\n")
 
 
-def write_preserve(path: Path, text: str, newline: str) -> None:
-    if newline != "\r\n":
-        newline = "\r\n"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8", newline="") as f:
-        f.write(text.replace("\n", newline))
+def stage_project_file(path: Path, text: str, newline: str, project: Path) -> str:
+    """把拼好的完整文本交给工程写入守卫（新建直写，改写入位 <工程>/workspace/gen）。
+
+    换行风格：既有文件的内容已在 read_preserve 统一为 \n，故按统一结果交给守卫；
+    新建文本按 CRLF 交给守卫（Windows 工程惯例）。
+    """
+    content = text if newline != "\r\n" else text.replace("\n", "\r\n")
+    return write_project_file(str(path), content, str(project))
 
 
-def write_if_changed(path: Path, content: str) -> str:
-    if path.exists():
-        old, _ = read_preserve(path)
-        if old == content:
-            return f"  未变   {path.name}"
-    write_preserve(path, content, "\r\n")
-    return f"  写入   {path}"
+def write_if_changed(path: Path, content: str, project: Path) -> str:
+    return f"  {stage_project_file(path, content, '\r\n', project)}   {path}"
 
 
-def gen_xlp(path: Path, cls: str, pkg: str, entry_ids: list[str], results: list[str]) -> None:
+def gen_xlp(path: Path, cls: str, pkg: str, entry_ids: list[str], project: Path,
+            results: list[str]) -> None:
     """创建或追加 XLP 条目（幂等：已存在的 EntryID 跳过）。"""
     if path.exists():
         text, nl = read_preserve(path)
@@ -619,12 +624,12 @@ def gen_xlp(path: Path, cls: str, pkg: str, entry_ids: list[str], results: list[
         if "<m_Entries/>" in text:
             text = text.replace("<m_Entries/>", "<m_Entries>\n\t</m_Entries>")
         text = text.replace("\t</m_Entries>", new_entries + "\t</m_Entries>")
-        write_preserve(path, text, nl)
-        results.append(f"  追加   {path}（{new_entries.count('<m_EntryID')} 条）")
+        results.append(f"  {stage_project_file(path, text, nl, project)}   {path}"
+                       f"（{new_entries.count('<m_EntryID')} 条）")
     else:
         entries = "".join(XLP_ENTRY.format(eid=e) for e in entry_ids)
-        write_preserve(path, XLP_HEAD.format(xml=XML_DECL, cls=cls, pkg=pkg, entries=entries), "\r\n")
-        results.append(f"  创建   {path}")
+        head = XLP_HEAD.format(xml=XML_DECL, cls=cls, pkg=pkg, entries=entries)
+        results.append(f"  {stage_project_file(path, head, '\r\n', project)}   {path}")
 
 
 def append_into_collection(text: str, coll_name: str, blocks: list[str]) -> tuple[str, list[str]]:
@@ -664,7 +669,8 @@ def append_lensmodel_child(text: str, container: str, child_block: str) -> tuple
     return text[:close] + "\n" + child_block.rstrip("\n") + text[close:], True
 
 
-def merge_overlay_artdef(p: Path, religions: list[str], results: list[str]) -> None:
+def merge_overlay_artdef(p: Path, religions: list[str], project: Path,
+                        results: list[str]) -> None:
     """Overlay.artdef：不存在则整体生成；存在则按官方同名元素合并语义幂等追加。"""
     text, nl = read_preserve(p)
     orig = text
@@ -706,14 +712,14 @@ def merge_overlay_artdef(p: Path, religions: list[str], results: list[str]) -> N
                     notes.append(f"    警告   {container} 缺少 LensModel 锚点，RELIGION_{r} 子项未插入，请手动合并")
 
     if text != orig:
-        write_preserve(p, text, nl)
-        results.append(f"  更新   {p}")
+        results.append(f"  {stage_project_file(p, text, nl, project)}   {p}")
     else:
         results.append(f"  未变   {p.name}（宗教条目已存在）")
     results.extend(notes)
 
 
-def merge_strategicview_artdef(p: Path, religions: list[str], results: list[str]) -> None:
+def merge_strategicview_artdef(p: Path, religions: list[str], project: Path,
+                               results: list[str]) -> None:
     """StrategicView.artdef：不存在则整体生成；存在则向 UILenses/UILensEntries 幂等追加。"""
     text, nl = read_preserve(p)
     orig = text
@@ -734,14 +740,13 @@ def merge_strategicview_artdef(p: Path, religions: list[str], results: list[str]
         if not inserted:
             notes.append("    警告   找不到 UILensEntries 根集合锚点，请手动合并 " + str(p))
     if text != orig:
-        write_preserve(p, text, nl)
-        results.append(f"  更新   {p}")
+        results.append(f"  {stage_project_file(p, text, nl, project)}   {p}")
     else:
         results.append(f"  未变   {p.name}（宗教条目已存在）")
     results.extend(notes)
 
 
-def patch_art_xml(art_xml: Path, results: list[str]) -> None:
+def patch_art_xml(art_xml: Path, project: Path, results: list[str]) -> None:
     """幂等补齐 consumer 与 library 接线（与忠诚度共用同一组 consumer/library）。"""
     text, nl = read_preserve(art_xml)
     orig = text
@@ -770,13 +775,14 @@ def patch_art_xml(art_xml: Path, results: list[str]) -> None:
         text = text[:m.end(1)] + '\n\t\t\t\t<Element text="UILensAssets"/>' + text[m.end(1):]
 
     if text != orig:
-        write_preserve(art_xml, text, nl)
-        results.append(f"  更新   {art_xml.name}（consumer/library 接线）")
+        results.append(f"  {stage_project_file(art_xml, text, nl, project)}   {art_xml.name}"
+                       "（consumer/library 接线）")
     else:
         results.append(f"  未变   {art_xml.name}")
 
 
-def patch_civ6proj(civ6proj: Path, content_files: list[str], results: list[str]) -> None:
+def patch_civ6proj(civ6proj: Path, content_files: list[str], project: Path,
+                   results: list[str]) -> None:
     text, nl = read_preserve(civ6proj)
     missing = [f for f in content_files if f'<Content Include="{f}">' not in text]
     if not missing:
@@ -790,8 +796,8 @@ def patch_civ6proj(civ6proj: Path, content_files: list[str], results: list[str])
     else:
         insert_at = text.find("</Content>", idx) + len("</Content>\n")
     text = text[:insert_at] + block + text[insert_at:]
-    write_preserve(civ6proj, text, nl)
-    results.append(f"  更新   {civ6proj.name}（新增 {len(missing)} 条 Content）")
+    results.append(f"  {stage_project_file(civ6proj, text, nl, project)}   {civ6proj.name}"
+                   f"（新增 {len(missing)} 条 Content）")
 
 
 def _find_project_files(project: Path):
@@ -826,42 +832,42 @@ def main() -> None:
     # 1. XLP 条目包
     gen_xlp(xlp_dir / "UILensModels.xlp", "UILensAsset", "UILensAssets",
             [f"Religion_Overlay_{r}_Box" for r in religions]
-            + [f"Religion_Pressure_{r}_Box" for r in religions], results)
+            + [f"Religion_Pressure_{r}_Box" for r in religions], project, results)
     gen_xlp(xlp_dir / "StrategicView_UILenses.xlp", "StrategicView_Sprite",
             "strategicview/strategicview_uilenses",
-            [f"ReligionPressureIcon_{r}" for r in religions], results)
+            [f"ReligionPressureIcon_{r}" for r in religions], project, results)
 
     # 2. ArtDef（存在则幂等合并追加，支持与忠诚度内容共存）
     artdefs = project / "ArtDefs"
     ov, sv = artdefs / "Overlay.artdef", artdefs / "StrategicView.artdef"
     if ov.exists():
-        merge_overlay_artdef(ov, religions, results)
+        merge_overlay_artdef(ov, religions, project, results)
     else:
-        results.append(write_if_changed(ov, overlay_artdef(religions)))
+        results.append(write_if_changed(ov, overlay_artdef(religions), project))
     if sv.exists():
-        merge_strategicview_artdef(sv, religions, results)
+        merge_strategicview_artdef(sv, religions, project, results)
     else:
-        results.append(write_if_changed(sv, strategicview_artdef(religions)))
+        results.append(write_if_changed(sv, strategicview_artdef(religions), project))
 
     # 3. 材质与 Box 素材
     for r in religions:
         for kind in ("Overlay", "Pressure"):
             results.append(write_if_changed(
                 project / "Materials" / f"Religion_{kind}_{r}_material.mtl",
-                MTL.format(xml=XML_DECL, Kind=kind, r=r)))
+                MTL.format(xml=XML_DECL, Kind=kind, r=r), project))
             fields = AST_OVERLAY if kind == "Overlay" else AST_PRESSURE
             results.append(write_if_changed(
                 project / "Assets" / f"Religion_{kind}_{r}_Box.ast",
-                AST_COMMON.format(xml=XML_DECL, Kind=kind, r=r, **fields)))
+                AST_COMMON.format(xml=XML_DECL, Kind=kind, r=r, **fields), project))
 
     # 4. Art.xml + civ6proj 注册（与忠诚度共用同一批 consumer/library/Content）
-    patch_art_xml(art_xml, results)
+    patch_art_xml(art_xml, project, results)
     patch_civ6proj(civ6proj, [
         f"{xlp_dir.name}\\UILensModels.xlp",
         f"{xlp_dir.name}\\StrategicView_UILenses.xlp",
         "ArtDefs\\Overlay.artdef",
         "ArtDefs\\StrategicView.artdef",
-    ], results)
+    ], project, results)
 
     print("\n".join(results))
     print("\n待办（素材审核通过后）：源 PNG 留在原处直接转换，勿复制进工程（.tex 源路径可悬空）")
@@ -869,7 +875,8 @@ def main() -> None:
         print(f"  - Religion_Overlay_{r}.png → DDS + .tex 输出 Textures/（art-pipeline，role=loyalty_3d，512×512）")
         print(f"  - Religion_Pressure_{r}.png → DDS + .tex 输出 Textures/（role=loyalty_3d，128×128）")
         print(f"  - ReligionPressureIcon_{r}.png → DDS + .tex 输出 Textures/（role=loyalty_sv，128×128）")
+    return finish()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

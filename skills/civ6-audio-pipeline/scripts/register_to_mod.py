@@ -3,14 +3,20 @@
 register_to_mod.py -- bank 产物注册到 mod (P1 源工程 .civ6proj / P2 运行目录 .modinfo 双注册)
 拷贝: bank 三件套(bnk/xml/txt) + bank xml 内引用的全部流式 wem -> Platforms/Windows/Audio
 写盘: <名>_Banks.ini (无BOM/CRLF) + modinfo(UpdateAudio+Files) + civ6proj(CDATA UpdateAudio + Content 条目)
+      modinfo/civ6proj/ini 的写入全部经 _projwrite 守卫; 目标已存在且内容有变化时结果写到
+      <工程>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具写入工程 (退出码 2 并打印清单)
 用法:
   python register_to_mod.py --bank-dir <工程>\\GeneratedSoundBanks\\Windows --bank <Bank名> \
-      (--find <mod名> | --mod <mod目录>) [--section ingame|global|menu] [--civ6proj <路径>] [--dry-run]
+      (--find <mod名> | --mod <mod目录>) [--section ingame|global|menu] [--civ6proj <路径>] \
+      [--project-root <mod 工程根>] [--dry-run]
 先例: 本地某 .civ6proj mod / 本地某 .modinfo mod 双实证
 """
-import os, sys, re, glob, shutil, argparse
+import os, sys, re, glob, argparse
 import xml.etree.ElementTree as ET
 import paths
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import workspace_gen, write_project_file, finish
 
 P1 = paths.get('p1') or '<未配置 p1>'
 P2 = paths.get('p2') or '<未配置 p2>'
@@ -37,29 +43,28 @@ INI_HEADER = ''';\r
 [FMV]\r
 '''
 
-def backup(p, tag='.bak_reg'):
-    b = p + tag
-    if not os.path.exists(b):
-        shutil.copy2(p, b)
+def bank_media_names(bank_dir, bank):
+    """返回该 bank 的产物文件名 (三件套 + xml 引用的 wem)，不要求文件已存在。"""
+    names = [bank + ext for ext in ('.bnk', '.xml', '.txt')]
+    xml = os.path.join(bank_dir, bank + '.xml')
+    if os.path.exists(xml):
+        ids = re.findall(r'<File Id="(\d+)" Language="SFX">', open(xml, encoding='utf-8').read())
+        names += [i + '.wem' for i in sorted(set(ids))]
+    return names
 
 def bank_media(bank_dir, bank):
-    """返回 (三件套列表, wem列表)"""
-    base = []
-    for ext in ('.bnk', '.xml', '.txt'):
-        f = os.path.join(bank_dir, bank + ext)
-        if os.path.exists(f):
-            base.append(f)
+    """返回 (三件套列表, wem列表)；wem 清单由 bank 的 SoundBanksInfo xml 反查。"""
+    base = [os.path.join(bank_dir, n) for n in bank_media_names(bank_dir, bank)[:3]
+            if os.path.exists(os.path.join(bank_dir, n))]
     if not base:
         raise SystemExit('bank 产物不存在: ' + os.path.join(bank_dir, bank + '.bnk'))
     wems = []
-    xml = os.path.join(bank_dir, bank + '.xml')
-    ids = re.findall(r'<File Id="(\d+)" Language="SFX">', open(xml, encoding='utf-8').read())
-    for i in sorted(set(ids)):
-        w = os.path.join(bank_dir, i + '.wem')
+    for n in bank_media_names(bank_dir, bank)[3:]:
+        w = os.path.join(bank_dir, n)
         if os.path.exists(w):
             wems.append(w)
         else:
-            print('  [WARN] xml 引用的流式文件缺失:', i + '.wem')
+            print('  [WARN] xml 引用的流式文件缺失:', n)
     return base, wems
 
 def find_mod(name):
@@ -96,14 +101,34 @@ def choose_ini(audio_dir, bank):
     return legacy
 
 def is_backup_or_meta(name):
-    """验证时忽略备份/系统元数据文件，避免 .bak_reg 等干扰 磁盘↔清单 一致性。"""
-    return name.endswith(('.bak', '.bak_reg')) or '.bak_' in name or name.startswith('.') or name == 'desktop.ini'
+    """验证时忽略备份与系统元数据文件，避免它们干扰 磁盘↔清单 一致性。"""
+    return name.endswith('.bak') or '.bak_' in name or name.startswith('.') or name == 'desktop.ini'
 
-def write_ini(audio_dir, bank, section):
+def project_root(target):
+    """mod 工程根: 从目标文件向上找含 .civ6proj 的目录, 找不到时用目标文件所在目录"""
+    d = os.path.dirname(os.path.abspath(target))
+    cur = d
+    while True:
+        if glob.glob(os.path.join(cur, '*.civ6proj')):
+            return cur
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            return d
+        cur = parent
+
+
+def same_tree(a, b):
+    """两份文本是否语义一致（忽略属性顺序与空白差异）"""
+    try:
+        return ET.tostring(ET.fromstring(a)) == ET.tostring(ET.fromstring(b))
+    except ET.ParseError:
+        return a == b
+
+
+def write_ini(audio_dir, bank, section, root):
     ini = choose_ini(audio_dir, bank)
-    txt = INI_HEADER
     if not os.path.exists(ini):
-        open(ini, 'wb').write(txt.encode('ascii'))
+        write_project_file(ini, INI_HEADER.encode('ascii'), root)
     b = open(ini, 'rb').read().decode('ascii')
     sec = {'ingame': '[InGame]', 'global': '[Global]', 'menu': '[Menu]'}[section]
     m = re.search(re.escape(sec) + r'\r\n((?:[^\[]|\r\n)*)', b)
@@ -112,8 +137,8 @@ def write_ini(audio_dir, bank, section):
         print('  [INI] 已存在条目, 跳过:', ini)
         return ini
     b = b[:m.end(1)] + bank + '.bnk\r\n' + b[m.end(1):]
-    backup(ini)
-    open(ini, 'wb').write(b.encode('ascii'))
+    # 既有 ini 内容有变化时, 改写结果由守卫入位 <工程>/workspace/gen
+    write_project_file(ini, b.encode('ascii'), root)
     return ini
 
 def rel_audio(fn):
@@ -176,9 +201,8 @@ def cmd_verify(modinfo, audio_id=None, audio_dir=None):
 
 def patch_modinfo(modinfo, bank, audio_id, section, files, dry):
     rt_audio = os.path.join(os.path.dirname(modinfo), 'Platforms', 'Windows', 'Audio')
-    if not dry:
-        os.makedirs(rt_audio, exist_ok=True)
-    ini_name = os.path.basename(write_ini(rt_audio, bank, section)) if not dry else os.path.basename(choose_ini(rt_audio, bank))
+    root = project_root(rt_audio)
+    ini_name = os.path.basename(write_ini(rt_audio, bank, section, root)) if not dry else os.path.basename(choose_ini(rt_audio, bank))
     # 约束: 所有物理文件(含 ini)都要进 Files; ini 额外在 UpdateAudio 注册
     all_files = list(files) + [os.path.join(rt_audio, ini_name)]
     raw = open(modinfo, 'rb').read()
@@ -216,12 +240,12 @@ def patch_modinfo(modinfo, bank, audio_id, section, files, dry):
     if dry:
         print('  [DRY] modinfo 将写入(若与原文不同):', modinfo)
         return
-    backup(modinfo)
-    open(modinfo, 'wb').write((b'\xef\xbb\xbf' if bom else b'') + txt.encode('utf-8'))
-    ok, problems = verify_modinfo(modinfo, audio_id, rt_audio)
+    result = write_project_file(modinfo, (b'\xef\xbb\xbf' if bom else b'') + txt.encode('utf-8'), root)
+    checked = os.path.join(workspace_gen(root), os.path.relpath(modinfo, root)) if result == 'STAGED' else modinfo
+    ok, problems = verify_modinfo(checked, audio_id, rt_audio)
     if not ok:
         raise SystemExit('[FAIL] 注册后语义校验未通过——UpdateAudio 只指向 ini 且所有物理文件进 Files:\n  ' + '\n  '.join(problems))
-    print('  [MODINFO] 注册完成 + 语义校验通过:', modinfo)
+    print('  [MODINFO] 注册完成 + 语义校验通过 (%s): %s' % (result, modinfo))
 
 def verify_civ6proj(civ6proj, audio_id=None, audio_dir=None):
     """语义校验 .civ6proj:
@@ -280,11 +304,11 @@ def cmd_verify_civ6proj(civ6proj, audio_id=None, audio_dir=None):
     return 0 if ok else 1
 
 def patch_civ6proj(civ6proj, srcdir, bank, audio_id, section, files, dry):
+    root = project_root(civ6proj)
     audio_dir = os.path.join(srcdir, 'Platforms', 'Windows', 'Audio')
     ini_name = os.path.basename(choose_ini(audio_dir, bank))
     if not dry:
-        os.makedirs(audio_dir, exist_ok=True)
-        write_ini(audio_dir, bank, section)
+        write_ini(audio_dir, bank, section, root)
     raw = open(civ6proj, 'rb').read()
     bom = raw[:3] == b'\xef\xbb\xbf'
     txt = raw.decode('utf-8-sig')
@@ -314,16 +338,18 @@ def patch_civ6proj(civ6proj, srcdir, bank, audio_id, section, files, dry):
     if dry:
         print('  [DRY] civ6proj 将写入(若与原文不同):', civ6proj)
         return
-    backup(civ6proj)
-    open(civ6proj, 'wb').write((b'\xef\xbb\xbf' if bom else b'') + txt.encode('utf-8'))
-    try:
-        ET.fromstring(txt)
-        print('  [CIV6PROJ] 注册完成 + XML 回验通过:', civ6proj)
-    except ET.ParseError as e:
-        print('  [CIV6PROJ] 已写入, 但 XML 回验警告:', e)
-    # 拷贝产物到源工程
+    result = write_project_file(civ6proj, (b'\xef\xbb\xbf' if bom else b'') + txt.encode('utf-8'), root)
+    checked = os.path.join(workspace_gen(root), os.path.relpath(civ6proj, root)) if result == 'STAGED' else civ6proj
+    checked_txt = open(checked, 'rb').read().decode('utf-8-sig')
+    if same_tree(checked_txt, txt):
+        print('  [CIV6PROJ] 注册完成 + XML 回验通过 (%s): %s' % (result, civ6proj))
+    else:
+        print('  [CIV6PROJ] 已入位, 但 XML 回验警告: workspace/gen 的副本与预期文本不同')
+    # 拷贝产物到源工程（Platforms/ 之下的再生资产, 由守卫判 OVERWRITE 直写）
     for f in files:
-        shutil.copy2(f, os.path.join(audio_dir, os.path.basename(f)))
+        fn = os.path.basename(f)
+        with open(f, 'rb') as src:
+            write_project_file(os.path.join(audio_dir, fn), src.read(), root)
     print('  [CIV6PROJ] 产物已拷入源工程:', audio_dir)
 
 def main():
@@ -335,6 +361,7 @@ def main():
     ap.add_argument('--section', choices=['ingame', 'global', 'menu'], default='ingame')
     ap.add_argument('--audio-id', default=None, help='UpdateAudio id, 默认 <Bank>_Audio')
     ap.add_argument('--civ6proj', default=None)
+    ap.add_argument('--project-root', default=None, help='mod 工程根（运行目录的 modinfo 不在工程内时必填）')
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--verify', action='store_true', help='仅语义校验既有 modinfo (UpdateAudio 只指向 ini)')
     a = ap.parse_args()
@@ -363,12 +390,16 @@ def main():
     if a.mod:
         mi = glob.glob(os.path.join(a.mod, '*.modinfo'))
         targets.append(dict(modinfo=mi[0] if mi else None, rtdir=a.mod,
-                            civ6proj=a.civ6proj, srcdir=None))
+                            civ6proj=a.civ6proj, srcdir=None,
+                            root=a.project_root or (os.path.dirname(mi[0]) if mi else a.mod)))
     else:
         t = find_mod(a.find)
         if a.civ6proj:
             t['civ6proj'] = a.civ6proj
             t['srcdir'] = os.path.dirname(a.civ6proj)
+        t['root'] = a.project_root or t['srcdir'] or t['rtdir']
+        if t['root'] is None:
+            raise SystemExit('未定位到工程根 (在运行目录改 modinfo 时请用 --project-root 指定)')
         targets.append(t)
     if not any(t['modinfo'] or t['civ6proj'] for t in targets):
         raise SystemExit('未定位到 mod (P1/P2 均未命中 %s), 可用 --mod 或 --civ6proj 指定' % a.find)
@@ -378,9 +409,10 @@ def main():
         if t['rtdir'] and t['modinfo']:
             ad = os.path.join(t['rtdir'], 'Platforms', 'Windows', 'Audio')
             if not a.dry_run:
-                os.makedirs(ad, exist_ok=True)
+                # bank 产物属可再生二进制资产, 由守卫判 OVERWRITE 直写
                 for f in files:
-                    shutil.copy2(f, os.path.join(ad, os.path.basename(f)))
+                    with open(f, 'rb') as src:
+                        write_project_file(os.path.join(ad, os.path.basename(f)), src.read(), t['root'])
             print('  [COPY] 运行目录 %s <- %d 个文件' % (ad, len(files)))
             patch_modinfo(t['modinfo'], a.bank, audio_id, a.section, files, a.dry_run)
         # 源工程
@@ -388,6 +420,7 @@ def main():
             patch_civ6proj(t['civ6proj'], t['srcdir'], a.bank, audio_id, a.section,
                            files, a.dry_run)
     print('[REG] 完成%s' % (' (dry-run 未写盘)' if a.dry_run else ''))
+    return finish()
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

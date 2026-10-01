@@ -18,13 +18,24 @@ r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与
 
 分析 alpha 通道，把素材分成三类（判据在 `Ragunna_Pack` 6 位领袖 × 3 类素材上实测可复现）：
 
-| 类别 | 判据 | 处理 |
-|---|---|---|
-| **① 人物抠图** | 透明像素 ≥ `--subject-min-transp`（默认 40%） | 定内容框 → 缩到高 1024 → **底部对齐** → 按内容定宽居中 → `LEADER_<KEY>_NEUTRAL` |
-| **② 满幅图** | 透明 ≤ `--bleed-max-transp`（默认 5%） | **空白前景（显式空串）+ 铺满背景** → `LEADER_<KEY>_BACKGROUND` |
-| **③ 中间地带** | 其余 | **停下问用户**（exit 3），用 `--force-subject` / `--force-bleed` 表明裁决 |
+判据**先透明率、后尺寸**：
+
+| 次序 | 类别 | 判据 | 处理 |
+|---|---|---|---|
+| 1 | **① 人物抠图** | 透明像素 ≥ `--subject-min-transp`（默认 40%） | 定内容框 → 缩到高 1024 → **底部对齐** → 按内容定宽居中 → `LEADER_<KEY>_NEUTRAL` |
+| 2 | **② 满幅图（placard 形）** | 长宽比 1:2.85 ±3%（控件 328×935 的比例） | **素材本身作 placard 背景；`Players.Portrait` 置显式空串**（★ 见下） |
+| 3 | **② 满幅图** | 透明 ≤ `--bleed-max-transp`（默认 5%）且不透明 ≥90% | **空白前景（显式空串）+ 铺满背景** → `LEADER_<KEY>_BACKGROUND` |
+| 4 | **③ 中间地带** | 其余 | **停下问用户**（exit 3），用 `--force-subject` / `--force-bleed` 表明裁决 |
 
 实测参考（`Ragunna_Pack`）：人物抠图透明率 60~74%、满幅图 ~0%。
+
+尺寸这条判据补的缺口：柔边竖版背景透明率 0.7%、不透明 29.6%，只看透明率会落进中间地带；
+按 1:2.85 判定即为 placard 背景。透明率仍优先——高瘦人物抠图同为 1:2.85、透明 81.6%，仍按抠图处理。
+
+★ **1:2.85 竖条这条规则只在 FrontEnd（环境 A）触发。** 它管的是选人 placard
+（`Players.Portrait` / `Players.PortraitBackground`，Config 库）。**加载界面（环境 B）不受它管辖**：
+`LoadingInfo.ForegroundImage` 是另一条独立通道（Gameplay 库、`LoadScreen.lua` 消费），
+照旧取 `LEADER_<KEY>_NEUTRAL`。竖条本身是背景，顶替不了加载界面的前景。
 
 ## 二、分支②「空白前景」的正确写法（极易写错）
 
@@ -40,8 +51,9 @@ r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与
 
 ## 三、背景获取顺序（分支① 需要背景时，严格降级）
 
-1. **工程约定文件**：`PORTRAIT_<KEY>_BACKGROUND` → `IMG_LEADER_<KEY>_DIPLOMACY_BACKGROUND`
-   → `IMG_LOADING_BACKGROUND_<KEY>` → `LEADER_<KEY>_BACKGROUND`
+1. **工程约定文件**：`PORTRAIT_<KEY>_BACKGROUND` → `LEADER_<KEY>_PLACARD_BACKGROUND`
+   → `IMG_LEADER_<KEY>_DIPLOMACY_BACKGROUND` → `IMG_LOADING_BACKGROUND_<KEY>`
+   → `LEADER_<KEY>_BACKGROUND`
 2. **`--bg-dir`**：目录内文件名含领袖名片段（模糊匹配）
 3. **色系回退**：用 `pick_vanilla_background` 的调色板，以**人物抠图的加权圆平均色相**为参考挑官方背景；
    **仅当 Δh ≤ 60°** 才自动采用（否则判"不相似"，停下问用户）
@@ -53,7 +65,7 @@ r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与
 |---|---|---|
 | 前景 | `LEADER_<KEY>_NEUTRAL` | 官方约定（选人 placard 与加载界面**共用**） |
 | 加载界面背景 | `LEADER_<KEY>_BACKGROUND` | 官方约定；**高 ≥960**（960 是基准、非上限） |
-| placard 竖版背景 | `LEADER_<KEY>_PLACARD_BACKGROUND` | 官方无此物（官方直接拿 1920×960 去凑），故取官方前缀 + 语义后缀 |
+| placard 竖版背景 | `LEADER_<KEY>_PLACARD_BACKGROUND` | 官方无此物（官方直接拿 1920×960 去凑），故取官方前缀 + 语义后缀；素材本身就是 1:2.85 竖条时按此名产出 |
 
 > 本工程既有的 `PORTRAIT_*` / `IMG_LOADING_*` **不做重构**（仅被当作"①工程约定文件"读取）。
 
@@ -87,11 +99,13 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
+from _projwrite import write_project_file, finish    # noqa: E402
+
 _SKILLS = os.path.dirname(os.path.dirname(_HERE))
 sys.path.insert(0, os.path.join(_SKILLS, "civ6-modding", "art"))
 
 try:
-    from dds_io import read_dds, write_dds            # noqa: E402
+    from dds_io import read_dds, dds_header_bytes     # noqa: E402
     from PIL import Image                              # noqa: E402
 except ImportError as e:                               # pragma: no cover
     print("需要 Pillow，且需能找到 civ6-modding/art/dds_io.py：%s" % e)
@@ -115,6 +129,10 @@ if hasattr(sys.stdout, "reconfigure"):
 
 # placard 竖版背景控件尺寸（reference/frontend-portrait.md §1.3 推导）
 PLACARD_BG = (328, 935)
+# 控件长宽比 935/328 ≈ 2.8506。素材本身就是这个比例的竖条时，它按尺寸就该落在 placard 背景位，
+# 与 alpha 构成无关：柔和边缘的背景图透明率常常只有零点几，会落进透明率判据的中间地带。
+PLACARD_RATIO = PLACARD_BG[1] / float(PLACARD_BG[0])
+PLACARD_RATIO_TOL = 0.03          # 相对容差 ±3%
 # 加载界面背景**基准**高（官方基线 1920×960；960 是基准不是上限）
 LOADING_BASE_H = 960
 LOADING_TARGET = (1920, 1080)     # 本项目实测良好的档位（16:9 零裁切）
@@ -128,11 +146,26 @@ class NeedsDecision(Exception):
 
 # ---------------------------------------------------------------- 分类
 
+def is_placard_shape(size):
+    """素材是否就是 placard 竖版背景的尺寸形（1:2.85 的竖直长条）。
+
+    控件 LeaderBG 是 328×935（1:2.8506）且 StretchMode="None"。素材长宽比落在这个比例上时，
+    它按尺寸就该进 PortraitBackground 位；这条判据只看尺寸，不看 alpha ——
+    柔和边缘或带少量透明的竖版背景图透明率可能只有零点几，用透明率分不出来。
+    """
+    w, h = size
+    if not w or not h:
+        return False
+    return abs(h / float(w) - PLACARD_RATIO) <= PLACARD_RATIO * PLACARD_RATIO_TOL
+
+
 def classify(img, subject_min_transp=40.0, bleed_max_transp=5.0):
     """→ (kind, stats)。kind ∈ {'subject','bleed','middle'}。
 
-    判据（alpha 通道）：
+    判据（透明率优先，其次尺寸）：
       - 透明像素（alpha<=5）占比 ≥ subject_min_transp → 'subject'（人物抠图）
+        这一条放最前：高瘦的人物抠图同样可能是 1:2.85，透明率说它是抠图就按抠图办。
+      - 长宽比命中 placard 形（1:2.85 ±3%）→ 'bleed'（竖版背景：空白前景 + 铺满背景）
       - 透明占比 ≤ bleed_max_transp 且不透明（alpha>=250）占比 ≥ 90 → 'bleed'（满幅图）
       - 其余 → 'middle'（需用户裁决）
     """
@@ -147,9 +180,11 @@ def classify(img, subject_min_transp=40.0, bleed_max_transp=5.0):
     if bb:
         touches = sum([bb[0] <= 1, bb[1] <= 1, bb[2] >= w - 1, bb[3] >= h - 1])
     st = dict(size=(w, h), transp=round(transp, 1), opaque=round(opaque, 1),
-              bbox=bb, touches=touches)
+              bbox=bb, touches=touches, placard_shape=is_placard_shape((w, h)))
     if transp >= subject_min_transp:
         return "subject", st
+    if st["placard_shape"]:
+        return "bleed", st
     if transp <= bleed_max_transp and opaque >= 90.0:
         return "bleed", st
     return "middle", st
@@ -266,7 +301,7 @@ def make_placard_bg(src_img):
     return inter.crop((x0, 0, x0 + tw, th)), dict(scale=round(scale, 3))
 
 
-def emit(files, name, img, check, report=None):
+def emit(files, root, name, img, check, report=None):
     """写 dds + tex（.tex 为 LF）。**已存在的贴图不覆盖** → 交用户裁决。"""
     dds = os.path.join(files["textures"], name + ".dds")
     if os.path.isfile(dds):
@@ -274,10 +309,9 @@ def emit(files, name, img, check, report=None):
             "目标贴图 %s 已存在 —— 本 skill 不覆盖已有素材（除非用户明确授权）。"
             "请改名、移走旧图，或明确指示覆盖。" % os.path.basename(dds))
     if not check:
-        write_dds(os.path.join(files["textures"], name + ".dds"), img)
-        with open(os.path.join(files["textures"], name + ".tex"),
-                  "w", encoding="utf-8", newline="\n") as f:
-            f.write(tex_text(name, img.size[0], img.size[1]))
+        write_project_file(dds, dds_header_bytes(img.size[0], img.size[1]) + img.tobytes(), root)
+        write_project_file(os.path.join(files["textures"], name + ".tex"),
+                           tex_text(name, img.size[0], img.size[1]), root)
 
 
 # ---------------------------------------------------------------- 主流程
@@ -295,11 +329,16 @@ def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, w
     if forced:
         kind = forced
     report.append("  %s ← %s" % (lt, os.path.basename(image_path)))
-    report.append("     尺寸 %dx%d · 透明 %s%% · 不透明 %s%% · 触边 %d → **%s**"
+    # 只有当"尺寸"这条规则真正决定了结果时才标注它（透明率本可判满幅图时不标）
+    by_size = (st["placard_shape"] and kind == "bleed"
+               and not (st["transp"] <= args.bleed_max_transp and st["opaque"] >= 90.0))
+    shape = ("（1:%.2f 竖条 = placard 形，按尺寸判定）" % (st["size"][1] / float(st["size"][0]))
+             if by_size else "")
+    report.append("     尺寸 %dx%d · 透明 %s%% · 不透明 %s%% · 触边 %d → **%s**%s"
                   % (st["size"][0], st["size"][1], st["transp"], st["opaque"],
                      st["touches"],
                      {"subject": "人物抠图", "bleed": "满幅图",
-                      "middle": "中间地带(需裁决)"}[kind]))
+                      "middle": "中间地带(需裁决)"}[kind], shape))
 
     if kind == "middle":
         report.append("     ⛔ 像素构成落在中间地带（透明 %s%%），**需用户裁决**："
@@ -312,7 +351,9 @@ def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, w
     # placard 与 loading 的背景**来源不同、尺寸不同**，必须分开取：
     #   placard 要竖版 328×935；loading 要 ≥960 高（同一张竖版会因 935<960 被裁）
     placard_bg, loading_bg = acquire_bgs(root, textures_dir, key, img, bg_dir,
-                                         packs, args, report, check)
+                                         packs, args, report, check,
+                                         strip_src=(img if (st["placard_shape"]
+                                                            and kind == "bleed") else None))
 
     if kind == "subject":
         # ① 人物抠图：定内容框 → 高 1024 → 底部对齐 → 内容定宽居中
@@ -320,8 +361,22 @@ def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, w
         report.append("     前景 → %s（%dx%d，内容宽 %d，裁切 %d）"
                       % (fg_name, out.size[0], out.size[1], meta["content_w"],
                          meta["clipped"]))
-        emit({"textures": textures_dir}, fg_name, out, check)
+        emit({"textures": textures_dir}, root, fg_name, out, check)
         portrait = fg_name
+        loading_fg = fg_name
+    elif st["placard_shape"]:
+        # ② placard 形竖条：**这条规则只在 FrontEnd（环境 A）触发**。
+        #   1:2.85 竖条按尺寸就是 placard 背景，placard 那时不该再叠前景 → Players.Portrait 写显式空串。
+        #   加载界面（环境 B，LoadingInfo）是另一条独立通道，**不受本规则管辖**：它的前景照旧
+        #   取 LEADER_<KEY>_NEUTRAL。竖条本身是背景，不能拿来顶替那张前景，所以这里不产出前景 ——
+        #   加载界面的前景仍需另一张立绘抠图（本轮没给就按惯例名留着，交用户补）。
+        report.append("     前景 → Players.Portrait = '' （**显式空串**：Lua 空串 truthy → 真空白"
+                      "且短路回退；写 NULL 会回退到不存在的 _NEUTRAL）")
+        report.append("     ⚠ 1:2.85 竖条这条规则**只在 FrontEnd（环境 A）触发**；"
+                      "加载界面（LoadingInfo）不受它管辖，前景仍按惯例取 %s" % fg_name)
+        if not os.path.isfile(os.path.join(textures_dir, fg_name + ".dds")):
+            report.append("        该前景贴图当前不在工程里 → 加载界面另有需要时请单独提供立绘抠图")
+        portrait = "''"
         loading_fg = fg_name
     else:
         # ② 满幅图：空白前景（显式空串！）
@@ -374,18 +429,26 @@ def _ensure_alias(root, xlp_name, entry_id, object_name, check, report):
                       % (xlp_name, entry_id))
         return False
     try:
-        st = insert_alias(xp, entry_id, object_name, write=not check)
+        st = insert_alias(xp, entry_id, object_name, write=not check, project=root)
     except SystemExit as e:
         report.append("     ⚠ 登记别名失败：%s" % e)
         return False
+    if st == "exists":
+        state = "已存在"
+    elif check:
+        state = "将写入"
+    elif st == "staged":
+        state = "改写入位 workspace/gen"
+    else:
+        state = "已写入"
     report.append("     XLP %s：%s → %s（%s）"
-                  % (os.path.basename(xp), entry_id, object_name,
-                     "已存在" if st == "exists" else ("将写入" if check else "已写入")))
+                  % (os.path.basename(xp), entry_id, object_name, state))
     return True
 
 
-# placard 竖版背景（本工程既有形态，328×935）
-PLACARD_BG_PATTERNS = ("PORTRAIT_%s_BACKGROUND",)
+# placard 竖版背景：先认工程既有形态（PORTRAIT_*，本类不重构），再认本脚本新产的官方命名
+PLACARD_BG_PATTERNS = ("PORTRAIT_%s_BACKGROUND",
+                       "LEADER_%s_PLACARD_BACKGROUND")
 # 加载界面背景（宽幅，高 ≥960）
 LOADING_BG_PATTERNS = ("IMG_LOADING_BACKGROUND_%s",
                        "LEADER_%s_BACKGROUND",
@@ -402,7 +465,8 @@ def _find_by_patterns(textures_dir, key, patterns):
     return None, None
 
 
-def acquire_bgs(root, textures_dir, key, ref_img, bg_dir, packs, args, report, check):
+def acquire_bgs(root, textures_dir, key, ref_img, bg_dir, packs, args, report, check,
+                strip_src=None):
     """取两种背景 → (placard_bg, loading_bg)。两个目标**各自独立**取源。
 
     两者尺寸要求不同，**不能共用一个源**：
@@ -412,8 +476,11 @@ def acquire_bgs(root, textures_dir, key, ref_img, bg_dir, packs, args, report, c
     降级顺序：
       loading : ① 工程 IMG_LOADING_* / LEADER_*_BACKGROUND → ② --bg-dir（**高 ≥960 才可用**）
                 → ③ --pick → ④ 色系回退 → ⑤ 缺失
-      placard : ① 工程 PORTRAIT_* 竖版 → ② --bg-dir（能裁出 328×935 即用）
-                → ③ 由 loading 工程源 cover → ④ 停下询问
+      placard : ① 工程 PORTRAIT_* 竖版 → ② 素材本身即 1:2.85 竖条
+                → ③ --bg-dir（能裁出 328×935 即用）→ ④ 停下询问
+
+    strip_src：当次传入的素材本身长宽比就是 1:2.85 时由调用方给出。
+    此时它按尺寸就是 placard 背景，直接 cover 到 328×935 采用。
     """
     p_nm, _ = _find_by_patterns(textures_dir, key, PLACARD_BG_PATTERNS)
     l_nm, l_fp = _find_by_patterns(textures_dir, key, LOADING_BG_PATTERNS)
@@ -443,7 +510,7 @@ def acquire_bgs(root, textures_dir, key, ref_img, bg_dir, packs, args, report, c
         c, im = bg_for_loading
         out, meta = make_loading_bg(im)
         l_nm = "LEADER_%s_BACKGROUND" % key
-        emit({"textures": textures_dir}, l_nm, out, check)
+        emit({"textures": textures_dir}, root, l_nm, out, check)
         report.append("     加载界面背景 ← ② --bg-dir：%s → %s（%dx%d，%s）"
                       % (os.path.basename(c), l_nm, out.size[0], out.size[1], meta["mode"]))
     elif args.pick:
@@ -465,12 +532,19 @@ def acquire_bgs(root, textures_dir, key, ref_img, bg_dir, packs, args, report, c
             return p_nm, None
     if p_nm:
         report.append("     placard 背景 ← ① 工程既有竖版：%s" % p_nm)
+    elif strip_src is not None:
+        # 素材本身就是 1:2.85 竖条 —— 它按尺寸就是 placard 背景，无需再找别的源。
+        pb, pm = make_placard_bg(strip_src)
+        p_nm = "LEADER_%s_PLACARD_BACKGROUND" % key
+        emit({"textures": textures_dir}, root, p_nm, pb, check)
+        report.append("     placard 背景 ← ② 素材本身即 1:2.85 竖条：%s → %s（%dx%d，cover %s×）"
+                      % (os.path.basename(args.image), p_nm, pb.size[0], pb.size[1], pm["scale"]))
     elif bg_for_placard:
         c, im = bg_for_placard
         pb, pm = make_placard_bg(im)
         p_nm = "LEADER_%s_PLACARD_BACKGROUND" % key
-        emit({"textures": textures_dir}, p_nm, pb, check)
-        report.append("     placard 背景 ← ② --bg-dir：%s → %s（%dx%d，cover %s×）"
+        emit({"textures": textures_dir}, root, p_nm, pb, check)
+        report.append("     placard 背景 ← ③ --bg-dir：%s → %s（%dx%d，cover %s×）"
                       % (os.path.basename(c), p_nm, pb.size[0], pb.size[1], pm["scale"]))
     else:
         # 既无竖版素材、也无可用宽幅源 → **停下询问用户**。
@@ -585,7 +659,7 @@ def main():
             print("（**未写盘**。请先把以上计划交用户确认并解决 ⛔ 项。）")
         else:
             print("（**未写盘**。把以上计划交用户确认后，再加 --write --confirmed 执行。）")
-    return worst
+    return finish() if not check else worst
 
 
 if __name__ == "__main__":

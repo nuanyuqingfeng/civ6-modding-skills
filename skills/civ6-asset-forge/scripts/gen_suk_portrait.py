@@ -56,6 +56,9 @@ import re
 import struct
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file, finish  # noqa: E402
+
 # 复用 civ6-modding 的 DDS 读写（单一真源，避免重复实现头构造）。
 # 解析顺序：本 skill 同级 → ~/.agents/skills → 环境变量 CIV6_SKILLS_ROOT 指定。
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -71,7 +74,7 @@ for _cand in _CANDS:
         sys.path.insert(0, _cand)
         break
 try:
-    from dds_io import read_dds, write_dds          # noqa: E402
+    from dds_io import read_dds, dds_header_bytes   # noqa: E402
     from PIL import Image                            # noqa: E402
 except ImportError as e:                             # pragma: no cover
     print("需要 Pillow，且需能找到 civ6-modding/art/dds_io.py")
@@ -86,9 +89,10 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-PORTRAIT_H = 1024          # 立绘目标高（与原版 LEADER_*_NEUTRAL 一致）
-MARGIN = 8                 # 内容左右各留透明边距（px）
-MAX_W = 1024
+PORTRAIT_H = 1024          # 非外交立绘缩放到此高度；外交立绘（正方形源）保持原尺寸
+TARGET_PEAK = 0.7          # 峰值列目标位置（画布宽比例）= 右侧 60% 区间的中点
+BODY_COL_FRAC = 0.30       # 主体列判定阈值：列像素 ≥ 峰值列的该比例
+BODY_MAX_FRAC = 0.70       # 主体列占画布宽超过该比例时询问用户，不自行裁切
 ALPHA_THR = 8
 BG_W, BG_H = 1440, 1080    # 兄弟工程实证的 Suk 背景尺寸（4:3）
 BG_CROP_X = 240            # 1920→1440 的中心裁切起点
@@ -241,19 +245,42 @@ def alpha_bbox(img, thr=ALPHA_THR):
 
 
 def make_portrait(src):
-    """源立绘 → 高 1024、内容自适应宽度、内容居中的画布（不裁切）。"""
-    inter = src.resize((1024, PORTRAIT_H), Image.LANCZOS)
+    """外交立绘（正方形源）保持原尺寸；否则缩放到高 1024。
+    峰值列（竖直方向像素最多的一列）对齐画布 70%，允许裁切越界像素；
+    主体列占画布宽超过 BODY_MAX_FRAC 时询问用户。
+    下边缘不留空（源已触底则保留原上下留空）。"""
+    if src.size[0] == src.size[1]:
+        inter = src
+    else:
+        inter = src.resize((1024, PORTRAIT_H), Image.LANCZOS)
+    W, H = inter.size
     bb = alpha_bbox(inter)
     if bb is None:
         raise ValueError("立绘完全透明，无法定内容宽")
-    x0, _y0, x1, _y1 = bb
-    content_w = x1 - x0
-    canvas_w = max(1, min(MAX_W, content_w + MARGIN * 2))
-    out = Image.new("RGBA", (canvas_w, PORTRAIT_H), (0, 0, 0, 0))
-    paste_x = (canvas_w - content_w) // 2
-    out.paste(inter.crop((x0, 0, x1, PORTRAIT_H)), (paste_x, 0))
-    return out, dict(content_w=content_w, canvas_w=canvas_w,
-                     left=paste_x, right=canvas_w - paste_x - content_w, clipped=0)
+    x0, y0, x1, y1 = bb
+
+    mask = inter.getchannel("A").point(lambda v: 255 if v > ALPHA_THR else 0)
+    cols = [round(v * H / 255)
+            for v in mask.resize((W, 1), Image.BOX).tobytes()]
+    peak = max(cols)
+    peak_xs = [i for i, v in enumerate(cols) if v == peak]
+    peak_x = peak_xs[len(peak_xs) // 2]
+    thr = max(round(peak * BODY_COL_FRAC), 1)
+    body_xs = [i for i, v in enumerate(cols) if v >= thr]
+    body_l, body_r = min(body_xs), max(body_xs)
+    body_w = body_r - body_l + 1
+
+    if body_w / W > BODY_MAX_FRAC:
+        raise SystemExit(
+            "立绘主体列占画布宽 %.1f%%，超过 %.0f%%，无法自行裁切，请指定裁切方式"
+            % (body_w / W * 100, BODY_MAX_FRAC * 100))
+
+    dx = round(W * TARGET_PEAK) - peak_x
+    paste_y = H - y1
+    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    out.paste(inter.crop((x0, 0, x1, H)), (x0 + dx, paste_y))
+    return out, dict(content_w=x1 - x0, canvas_w=W,
+                     left=x0 + dx, right=W - (x1 + dx), clipped=0)
 
 
 def make_background(src):
@@ -313,6 +340,14 @@ def tex_text(name, w, h):
     return body.replace("\r\n", "\n")
 
 
+def dds_bytes(img):
+    """单 mip RGBA8 的完整 DDS 字节（头走 dds_io 单一真源，头部口径与 write_dds 一致）。"""
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+    w, h = img.size
+    return dds_header_bytes(w, h) + img.tobytes()
+
+
 def gen_assets(files, srcs, check):
     """生成素材。缺少源素材的领袖**跳过**（返回 ok=False），不中断其余领袖。"""
     rows = []
@@ -330,12 +365,12 @@ def gen_assets(files, srcs, check):
         pname = "%s_PORTRAIT_%s" % (UI_NS, s["key"])
         bname = "%s_BACKGROUND_%s" % (UI_NS, s["key"])
         if not check:
-            write_dds(os.path.join(files["textures"], pname + ".dds"), por)
-            write_dds(os.path.join(files["textures"], bname + ".dds"), bg)
+            root = files["proj_dir"]
             for nm, im in ((pname, por), (bname, bg)):
-                with open(os.path.join(files["textures"], nm + ".tex"),
-                          "w", encoding="utf-8", newline="\n") as f:
-                    f.write(tex_text(nm, im.size[0], im.size[1]))
+                write_project_file(os.path.join(files["textures"], nm + ".dds"),
+                                   dds_bytes(im), root)
+                write_project_file(os.path.join(files["textures"], nm + ".tex"),
+                                   tex_text(nm, im.size[0], im.size[1]), root)
         rows.append((lt, pname, bname, "%dx%d" % por.size, True))
         s["_ok"] = True
         s["_pname"], s["_bname"] = pname, bname
@@ -364,9 +399,7 @@ def gen_sql(files, srcs, check):
     text = "\n".join(lines).rstrip() + "\n"
     path = os.path.join(files["proj_dir"], SUK_DIR, SUK_SQL)
     if not check and ok:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8", newline="\r\n") as f:
-            f.write(text)
+        write_project_file(path, text.replace("\n", "\r\n"), files["proj_dir"])
     return path, len(ok)
 
 
@@ -391,8 +424,7 @@ def gen_xlp(files, srcs, check):
     if text.count(marker) != 1:
         raise SystemExit("XLP %s 的 </m_Entries> 锚点不唯一，请手工合并" % path)
     text = text.replace(marker, blocks + "\n" + marker)
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(text)
+    write_project_file(path, text, files["proj_dir"])
     return path, len(add)
 
 
@@ -459,8 +491,8 @@ def gen_proj(files, check):
             changed.append("frontend:ok")
     if check:
         return changed
-    payload = (b"\xef\xbb\xbf" if bom else b"") + t.encode("utf-8")
-    open(path, "wb").write(payload)
+    write_project_file(path, (b"\xef\xbb\xbf" if bom else b"") + t.encode("utf-8"),
+                       files["proj_dir"])
     return changed
 
 
@@ -541,7 +573,7 @@ def main():
     print("DONE (no write)" if check else "DONE (written)")
     print()
     print("后续：check_pantry.py → clear_ae_cache.py → AssetEditor → ModBuddy 构建 → 进游戏双态验证")
-    return 0
+    return finish()
 
 
 if __name__ == "__main__":

@@ -223,7 +223,7 @@ def action_sections(proj_files):
         root = os.path.dirname(p)
         for tag, bucket in (("FrontEndActionData", fe), ("InGameActionData", ig)):
             body = grab(tag)
-            for m in re.finditer(r"<File>([^<]+)</File>", body):
+            for m in re.finditer(r"<File(?:\s[^>]*)?>([^<]+)</File>", body):
                 f = m.group(1).strip().replace("/", os.sep)
                 bucket.add(os.path.normpath(os.path.join(root, f)).lower())
     return fe, ig

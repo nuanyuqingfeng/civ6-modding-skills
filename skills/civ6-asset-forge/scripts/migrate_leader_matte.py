@@ -44,10 +44,13 @@ r"""migrate_leader_matte.py — 把 2D 领袖纸片材质从 PBR 人物类 Leade
 
     python migrate_leader_matte.py <工程根>                 # 预演（默认，不写盘）
     python migrate_leader_matte.py <工程根> --check         # 只体检：有待迁移项则 exit 2
-    python migrate_leader_matte.py <工程根> --write         # 实际执行
+    python migrate_leader_matte.py <工程根> --write         # 执行（.mtl 属工程文件：改写结果落 workspace/gen）
     python migrate_leader_matte.py <根目录1> <根目录2> ... --write   # 批量
 
     --all-siblings        扫描 <Civ6 工程父目录> 下全部兄弟工程
+
+写入：既有 .mtl 内容有变化时，改写结果落到 <工程>/workspace/gen/Materials/ 的同一相对路径，
+      由 AI 用文件编辑工具写入工程（退出码 2 并打印待写入清单）。
 
 ## 识别规则（只动「领袖纸片材质」）
 
@@ -59,16 +62,20 @@ r"""migrate_leader_matte.py — 把 2D 领袖纸片材质从 PBR 人物类 Leade
 
 ★ 本工具**不**负责 cook 与同步 Mods 副本：改完必须在 AssetEditor 重新 cook 才生效。
 
-退出码：0 无需迁移或已成功 / 1 错误 / 2 --check 发现待迁移项
+退出码：0 无需迁移或已成功 / 1 错误 / 2 --check 发现待迁移项，或有改写入位 workspace/gen
 """
 from __future__ import annotations
 
 import argparse
+import glob
 import io
 import os
 import re
 import sys
 import xml.etree.ElementTree as ET
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import finish, write_project_file  # noqa: E402
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -164,6 +171,18 @@ def collect(roots, all_siblings):
     return sorted(set(files))
 
 
+def root_of(path):
+    """从 .mtl 向上找到含 .civ6proj 的工程根；找不到时退回 Materials 目录的上一级。"""
+    d = os.path.dirname(os.path.abspath(path))
+    while True:
+        if glob.glob(os.path.join(d, "*.civ6proj")):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            return os.path.dirname(os.path.dirname(os.path.abspath(path)))
+        d = parent
+
+
 def main():
     ap = argparse.ArgumentParser(description="2D 领袖纸片材质 Leader -> Leader_Matte 迁移器")
     ap.add_argument("roots", nargs="+", help="工程根目录（可多个）")
@@ -211,12 +230,12 @@ def main():
         raw = open(p, "rb").read()
         nl = "\r\n" if raw.count(b"\r\n") > raw.count(b"\n") / 2 else "\n"
         out = text if nl == "\n" else text.replace("\n", "\r\n")
-        with io.open(p, "w", encoding="utf-8", newline="") as f:
-            f.write(out)
+        # .mtl 属工程文本文件：改写经 _projwrite 守卫，既有文件内容有变化时结果入位 workspace/gen
+        result = write_project_file(p, out.encode("utf-8"), root_of(p))
         ok += 1
-        print("   已迁移 %s" % p)
+        print("   已迁移 %s（%s）" % (p, result))
     print("\n完成：%d/%d 个材质已迁到 Leader_Matte。请在 AssetEditor 重新 cook 后验证。" % (ok, len(todo)))
-    return 0
+    return finish()
 
 
 if __name__ == "__main__":

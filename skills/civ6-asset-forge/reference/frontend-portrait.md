@@ -295,7 +295,7 @@ XLP 条目的 `m_EntryID` 与 `m_ObjectName` **可以不同** —— 后者才�
 所以"按色调挑一张"是**本 skill 新增的约定**，不是原版事实——按下列口径执行：
 
 **调色板数据**：`reference/vanilla-leader-backgrounds.json`（脚本
-`scripts/pick_vanilla_background.py` 维护）。每张官方背景记录：
+`scripts/pick_vanilla_background.py` 维护，属 skill 自带缓存，不写进工程）。每张官方背景记录：
 
 - `mean` / `median`（缩到 96px 后的平均 / 中位 RGB）
 - `hue`（**饱和度×明度加权的圆平均色相**，规避暗部噪声；排除 `S·V < 0.02` 的近黑像素）
@@ -349,6 +349,8 @@ python <skill>/scripts/pick_vanilla_background.py --reference <主角图.png> --
 python <skill>/scripts/pick_vanilla_background.py --project <工程根>     --leader LEADER_CARTETHYIA_QYQXP --reference <立绘.png> --write
 ```
 
+XLP 里已有同名条目时跳过；别名条目要加进工程 XLP 时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。`Players` / `LoadingInfo` 两段接线 SQL 只打印，由 AI 用文件编辑工具写入工程 SQL。
+
 > 🔴 **仍必须先问用户**（本 skill 通用铁律一）：借用官方背景属"素材决策"，
 > 脚本只出**候选与理由**；**未确认前不写盘**（`--write` 需显式给出，且 `--check` 可先预演）。
 
@@ -361,13 +363,30 @@ python <skill>/scripts/pick_vanilla_background.py --project <工程根>     --le
 
 ### 3b.1 像素构成分类（核心）
 
-分析 alpha 通道，把素材分成三类：
+先看 alpha 通道（透明率），**再看尺寸**（是否为 placard 形）：
 
-| 类别 | 判据 | 处理 |
-|---|---|---|
-| **① 人物抠图** | 透明像素（alpha≤5）占比 **≥40%** | 定内容框 → 缩到高 1024 → **底部对齐** → 按内容定宽居中 → `LEADER_<KEY>_NEUTRAL` |
-| **② 满幅图** | 透明 **≤5%** 且不透明（alpha≥250）**≥90%** | **空白前景（显式空串）+ 铺满背景** |
-| **③ 中间地带** | 其余 | **停下问用户**（exit 3），用 `--force-subject` / `--force-bleed` 裁决 |
+| 次序 | 类别 | 判据 | 处理 |
+|---|---|---|---|
+| 1 | **① 人物抠图** | 透明像素（alpha≤5）占比 **≥40%** | 定内容框 → 缩到高 1024 → **底部对齐** → 按内容定宽居中 → `LEADER_<KEY>_NEUTRAL` |
+| 2 | **② 满幅图（placard 形）** | 长宽比 **1:2.85 ±3%**（控件 328×935 的比例，即 1:2.8506） | **以素材本身作 placard 背景**；`Players.Portrait` 置显式空串 |
+| 3 | **② 满幅图** | 透明 **≤5%** 且不透明（alpha≥250）**≥90%** | **空白前景（显式空串）+ 铺满背景** |
+| 4 | **③ 中间地带** | 其余 | **停下问用户**（exit 3），用 `--force-subject` / `--force-bleed` 裁决 |
+
+> ★ **1:2.85 竖条这条规则只在 FrontEnd（环境 A）触发。**
+> 它管的是选人 placard：`LeaderBG` 控件是 328×935 且 `StretchMode="None"`，
+> 长宽比落在这个比例上的素材按尺寸就该进 `Players.PortraitBackground`，
+> 那时 placard 不该再叠前景，于是 `Players.Portrait` 写显式空串。
+>
+> **加载界面（环境 B）不受这条规则管辖。** `LoadingInfo.ForegroundImage` 是另一条独立通道
+> （Gameplay 库、`LoadScreen.lua` 消费），它照旧取 `LEADER_<KEY>_NEUTRAL`。
+> 竖条本身是背景，顶替不了加载界面的前景——那份前景仍需单独一张立绘抠图。
+>
+> **为什么尺寸要单列一条**：只看透明率会漏掉竖条——带柔和边缘或少量透明的竖版背景图
+> 透明率可能只有 0.1%~1%，既够不上人物抠图的 40%，也够不上满幅图的"不透明 ≥90%"，
+> 于是被误判成中间地带、白问用户一轮。
+>
+> **透明率仍然优先**：高瘦的人物抠图同样可能是 1:2.85，所以透明率判据排在尺寸前面——
+> 透明 ≥40% 就按抠图办，不被尺寸抢走。
 
 **实测参考**（`Ragunna_Pack` 6 位领袖 × 3 类素材）：
 
@@ -378,8 +397,7 @@ python <skill>/scripts/pick_vanilla_background.py --project <工程根>     --le
 | `IMG_LOADING_BACKGROUND_*_QYQXP` | 0.0 | 99.7~100 | ② 满幅图 |
 | `PORTRAIT_*_BACKGROUND`（竖版） | 0.0 | 100 | ② 满幅图 |
 
-→ 两类的透明率差距极大（0% vs 60%+），默认阈值（40% / 5%）把它们分得很干净，
-**中间地带只会在真正模棱两可时命中**。
+→ 两类的透明率差距极大（0% vs 60%+），默认阈值（40% / 5%）把它们分得很干净。
 
 ### 3b.2 分支②「空白前景」的**正确写法**（极易写错，★）
 
@@ -392,8 +410,9 @@ python <skill>/scripts/pick_vanilla_background.py --project <工程根>     --le
 | **`NULL`** | `nil`（falsy） | 走回退 → `<LeaderType>_NEUTRAL`（mod 通常没有 → **空白且不报错**） |
 
 > **结论**：分支② **必须写显式空串 `''`，不能写 `NULL`**。
-> 本项目当前 `Config_RGN.sql` 写的正是 `''`，属**正确设计**（早期版本的校验器曾把它
-> 误报成"空白风险"，已于 2026-09-19 修正为三态判定）。
+> **适用范围**：本节讲的是 `Players.Portrait`（环境 A）。`LoadingInfo.ForegroundImage`（环境 B）
+> 是另一条通道，1:2.85 竖条那条规则不管它——它的前景照旧取 `LEADER_<KEY>_NEUTRAL`。
+> 本项目当前 `Config_RGN.sql` 写的正是 `''`，属**正确设计**。
 
 ### 3b.3 背景获取顺序（严格降级，不静默编造）
 
@@ -402,7 +421,12 @@ python <skill>/scripts/pick_vanilla_background.py --project <工程根>     --le
 | 目标 | 降级顺序 |
 |---|---|
 | **加载界面背景** | ① 工程既有 `IMG_LOADING_BACKGROUND_<KEY>` / `LEADER_<KEY>_BACKGROUND` → ② `--bg-dir` → ③ **色系回退**（§三）→ ④ 报缺失 |
-| **placard 竖版背景** | ① 工程既有 `PORTRAIT_<KEY>_BACKGROUND` → ② 由加载背景 cover 到 328×935 → ③ 官方别名（会警告"横版被裁"） |
+| **placard 竖版背景** | ① 工程既有 `PORTRAIT_<KEY>_BACKGROUND` / `LEADER_<KEY>_PLACARD_BACKGROUND` → ② **素材本身即 1:2.85 竖条**（直接 cover 到 328×935 采用）→ ③ `--bg-dir` → ④ 报缺失（exit 3） |
+
+> **素材本身是 1:2.85 竖条时直接采用**：这时它就是 placard 背景本身，不必再去别处找竖版源，
+> 也不再因"横版被裁"而报缺失。产出的贴图按官方前缀 + 语义后缀命名为
+> `LEADER_<KEY>_PLACARD_BACKGROUND`（见 §3b.4），重复执行会走"① 工程既有"分支，幂等。
+> **这条只作用于 placard**（环境 A）；加载界面的前景与背景仍按各自轨道取（§3b.1 的 ★）。
 
 **色系回退仅当 Δh ≤ 60° 才自动采用**；否则判"不相似" → **exit 3 交用户裁决**
 （可用 `--pick <官方背景名>` 手动指定）。
@@ -413,7 +437,7 @@ python <skill>/scripts/pick_vanilla_background.py --project <工程根>     --le
 |---|---|---|
 | 前景 | `LEADER_<KEY>_NEUTRAL` | 官方约定；选人 placard 与加载界面**共用** |
 | 加载界面背景 | `LEADER_<KEY>_BACKGROUND` | 官方约定；高 ≥960 |
-| placard 竖版背景 | `LEADER_<KEY>_PLACARD_BACKGROUND` | 官方无此物（官方直接拿 1920×960 凑），取官方前缀 + 语义后缀 |
+| placard 竖版背景 | `LEADER_<KEY>_PLACARD_BACKGROUND` | 官方无此物（官方直接拿 1920×960 凑），取官方前缀 + 语义后缀；素材本身即 1:2.85 竖条时按此名产出 |
 
 > **本项目既有的 `PORTRAIT_*` / `IMG_LOADING_*` 不做重构**——脚本只把它们
 > 当作"① 工程既有"读入。新做的才走上面的官方命名。
@@ -428,6 +452,8 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> \
 # ② 用户确认后执行
 python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> \
     --leader LEADER_X_QYQXP --image <素材.png> --write --confirmed
+#    已有 XLP 条目要加别名时，命令跑完后结果落在 <工程>/workspace/gen/ 的同一相对路径，
+#    由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单
 
 # ③ 裁决项由用户拍板后强制指定
 ... --force-subject --write --confirmed      # 或 --force-bleed
@@ -439,15 +465,19 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> --imag
 退出码：`0` 成功 / `1` 错误 / `2` 告警 / **`3` 需用户裁决**。
 
 **`--write` 必须与 `--confirmed` 同时给**：只给 `--write` 会被直接拒绝（exit 3），
-防止在用户没看过计划时落盘。
+防止在用户没看过计划时写入。
 
-### 3b.6 会停下询问的情形（§1.0 总规则）
+**落点**：`.dds` 与 `.tex` 落在工程 `Textures/`（属可再生资产，脚本直接写盘，AI 无需再写）；XLP 别名的改写结果、退出码 2 时的待写入清单，都落在 `<工程>/workspace/gen/` 的同一相对路径。
+
+### 3b.6 会停下询问的情形（`SKILL.md` §三）
+
+本类的素材询问、判定树与执行顺序以 `SKILL.md` §〇 / §三 为准：**素材路径已知且文件存在时不提问**。
 
 以下情形脚本**不自行决定**，一律 exit 3 并要求用户裁决：
 
 | 情形 | 原因 |
 |---|---|
-| 像素构成落在**中间地带** | 分类不明确，需人判"人物抠图 or 满幅图" |
+| 像素构成落在**中间地带**（且非 1:2.85 竖条） | 分类不明确，需人判"人物抠图 or 满幅图" |
 | 色系回退**最佳候选 Δh > 60°** | 判为不相似，需人指定 `--pick` |
 | **placard 竖版背景缺失** | 不自行拿横版去凑（`StretchMode=None` 只显示左上角），也不自行补边 |
 | **源图高 < 960** | 加载界面背景高度不足会有两侧裁剪风险 |
@@ -458,8 +488,8 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> --imag
 
 | 会 | 不会 |
 |---|---|
-| 产出 `.dds` + `.tex`（前景 / placard 背景 / 加载背景） | **不自动改工程 SQL**（打印接线 SQL 供你落位） |
-| 幂等登记 XLP 别名（`Shell_Loading.xlp` / `UILeaders.xlp`） | **不覆盖**已存在的工程贴图 |
+| 产出 `.dds` + `.tex`（前景 / placard 背景 / 加载背景，直写工程 `Textures/`） | **不自动改工程 SQL**（打印接线 SQL，由 AI 用文件编辑工具写入工程） |
+| 幂等登记 XLP 别名（`Shell_Loading.xlp` / `UILeaders.xlp`；改写结果落 `workspace/gen/`） | **不覆盖**已存在的工程贴图 |
 | 打印 FrontEnd 段 / InGame 段的接线 SQL | 不重构本项目既有的 `PORTRAIT_*` / `IMG_LOADING_*` 命名 |
 | 只做**裁剪 / 通道透明度 / 描边**（§1.0 总规则） | 不做重绘、修补、重着色、调色、生成式补图、迭代调参 |
 
@@ -479,6 +509,8 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> --imag
      │    ├─ 第 1 次（计划态，不写盘）→ 把计划交用户确认
      │    ├─ 透明 ≥40%  → ① 人物抠图：LEADER_<X>_NEUTRAL（高 1024、底对齐、内容定宽）
      │    │               背景走 §三bis.3 降级（工程 → --bg-dir → 色系回退 → 问用户）
+     │    ├─ 1:2.85 竖条 → ② placard 形（**仅 FrontEnd**）：素材本身作 placard 背景（cover 328×935）
+     │    │               Players.Portrait = ''；LoadingInfo.ForegroundImage **不受影响**，仍取 _NEUTRAL
      │    ├─ 透明 ≤5%   → ② 满幅图：前景 = '' （**显式空串**）+ 铺满背景
      │    ├─ 中间地带   → ⛔ exit 3，**停下问用户**（--force-subject / --force-bleed）
      │    └─ 第 2 次（用户确认后）→ 加 --write --confirmed 执行
@@ -499,7 +531,8 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> --imag
 ## 五、验证清单
 
 ```
-0. （若有素材）**两段式**：先跑计划态交用户确认，确认后再 `--write --confirmed`
+0. （若有素材）**两段式**：先跑计划态交用户确认，确认后再 `--write --confirmed`；
+   XLP 别名等改写结果落在 `<工程>/workspace/gen/` 的，先由 AI 用文件编辑工具写入工程
 1. python <skill>/scripts/verify_frontend_portrait.py --project <工程根>   # A+B 两环境专用校验器
 2. python <civ6-modding>/scripts/check_pantry.py                           # 0 error
 3. python <civ6-modding>/art/verify_tex_class.py --project <工程根>          # .tex 类别

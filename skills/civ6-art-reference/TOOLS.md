@@ -9,13 +9,14 @@
 
 | 工具 | 干什么 | 用法 |
 |---|---|---|
+| `scripts/_projwrite.py` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/art_copy.py` | ArtDef 条目克隆生成器（civ6-art-reference skill） | `python art_copy.py <模板名> <原版条目> <新条目名> [选项]` |
 | `scripts/art_copy_building.py` | 替换型建筑的 3D 模型注册生成器（civ6-art-reference skill） | `python art_copy_building.py <src_building> <new_building> [--district <区域>] [--tag <token>] [--landmarks-out <path>] [--buildings-out <path>] [--dry-run]` |
 | `scripts/art_lookup.py` | ArtDef 引用链查询工具（civ6-art-reference skill） | `python art_lookup.py <关键词> [模板名]           # 查包含关键词的条目及其完整引用链<br>python art_lookup.py --list <模板名> --prefix <前缀>   # 列出某模板全部条目（--prefix 按前缀过滤）` |
 | `scripts/artdef_indexer.py` | 文明6 ArtDef/XLP 引用链索引器（civ6-art-reference skill 版） | `python artdef_indexer.py [--game <Civ6安装根目录>] [--sdk <SDK Assets根目录>]` |
 | `scripts/artdef_sync_check.py` | artdef_sync_check.py —— ArtDef 源文件 vs Mods 副本「差异性质」判定器 | `python artdef_sync_check.py 示例工程<br>python artdef_sync_check.py "D:/.../示例工程/示例工程/ArtDefs" --name 示例工程` |
 
-共 5 个脚本。
+共 6 个脚本。
 
 ## 第三方依赖
 
@@ -47,7 +48,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 | `sd_cpp` | 本地生图（stable-diffusion.cpp + FLUX 权重） |
 | `imagemagick` | ImageMagick（图标阈值 / 裁边） |
 | `luac` | Lua 5.1 语法检查 |
-| `ws_root` | 上传临时工作区根（`%TEMP%\civ6-ws`） |
+| `ws_root` | 上传临时工作区根；`content/` 用 junction 指向 Mods 副本（见 `release/scripts/make_workspace.ps1`） |
 | `steam_logs` | Steam 日志目录（反查工坊条目 ID） |
 
 > 完整路径表与各键本机取值见 `civ6-modding/tools/README.md` 第 2 节。

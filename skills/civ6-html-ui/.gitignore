@@ -1,0 +1,8 @@
+# ---- Python / 运行缓存 ----
+__pycache__/
+*.pyc
+output/
+
+# ---- MacOS / 编辑器噪声 ----
+.DS_Store
+Thumbs.db

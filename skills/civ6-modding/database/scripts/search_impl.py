@@ -14,9 +14,11 @@
 
 | 入口 | 干什么 |
 |------|--------|
-| `--object <词或 Type>` | 给对象（文明/领袖/区域/建筑/单位/改良/政策/总督/伟人…），列出它**全部** Modifier 链 |
+| `--object <词或 Type>` | 给对象（文明/领袖/区域/建筑/单位/改良/政策/科技/市政/总督/伟人…），列出它**全部** Modifier 链 |
 | `--modifier <词或 Type>` | 按 ModifierType / EffectType 关键词，找**谁用了它** + 该 Modifier 的完整定义 |
 | `--effect <EffectType>` | 按 Effect 精确查：哪些 ModifierType 指向它、哪些对象在用它 |
+| `--object <自然语言> --bm25` | 整句自然语言（"相邻农场加食物"）→ BM25 检索（中文 bigram + 领域词典）|
+| （默认兜底） | `--object` 的子串匹配零命中时自动走一次 BM25，无需加旗标 |
 
 ## 「对象 → Modifier」的绑定路径（本工具的核心抽象）
 
@@ -48,6 +50,8 @@
 
     python search_impl.py --object 农场
     python search_impl.py --object TRAIT_CIVILIZATION_KHMER_BARAYS
+    python search_impl.py --object 相邻农场加食物          # 整句 → BM25 兜底（约 1-3 分钟建索引）
+    python search_impl.py --object 贸易路线加产出 --bm25   # 跳过子串，直接 BM25
     python search_impl.py --modifier ADJUST_PLOT_YIELD
     python search_impl.py --effect EFFECT_ADJUST_PLOT_YIELD
     python search_impl.py --list-objects              # 列出支持的对象类别
@@ -63,6 +67,9 @@
 
 > 思路借鉴自 ModTools 5.4（Siqi，MIT）的 `db/ability_search.py`；
 > 本实现为独立重写（纯标准库、对接本 skill 自带库、按本项目规范输出），未拷贝其代码。
+> 2026-09-28 增量吸收（同源 MIT）：BM25 自然语言检索层 `search_bm25_lib/`
+> （`search_index.py` / `loc_text.py`，移植自 ModTools `ModTools_5_4/db/`，原样复制）；
+> 并补 `technology` / `civic` 两个对象类别（ModTools 版有、本实现此前缺）。
 """
 from __future__ import annotations
 
@@ -166,6 +173,22 @@ OBJECT_TYPES: dict[str, dict[str, Any]] = {
              "table": "PolicyModifiers", "obj_col": "PolicyType", "mod_col": "ModifierId"},
         ],
     },
+    "technology": {
+        "label": "科技", "table": "Technologies",
+        "type_col": "TechnologyType", "name_col": "Name", "desc_col": "Description",
+        "binding_sources": [
+            {"label": "TechnologyModifiers", "kind": "direct",
+             "table": "TechnologyModifiers", "obj_col": "TechnologyType", "mod_col": "ModifierId"},
+        ],
+    },
+    "civic": {
+        "label": "市政", "table": "Civics",
+        "type_col": "CivicType", "name_col": "Name", "desc_col": "Description",
+        "binding_sources": [
+            {"label": "CivicModifiers", "kind": "direct",
+             "table": "CivicModifiers", "obj_col": "CivicType", "mod_col": "ModifierId"},
+        ],
+    },
     "governor": {
         "label": "总督", "table": "Governors",
         "type_col": "GovernorType", "name_col": "Name", "desc_col": "Description",
@@ -211,7 +234,8 @@ OBJECT_TYPES: dict[str, dict[str, Any]] = {
 }
 
 OBJECT_ORDER = ["civilization", "leader", "trait", "district", "building", "unit",
-                "improvement", "project", "policy", "governor", "governor_promotion",
+                "improvement", "project", "policy", "technology", "civic",
+                "governor", "governor_promotion",
                 "great_person", "unit_ability", "unit_promotion"]
 
 
@@ -438,6 +462,34 @@ def find_objects(g: sqlite3.Connection, loc: Loc, keyword: str, limit: int = 40)
     return list(dedup.values())
 
 
+def bm25_find_objects(gcon: sqlite3.Connection, loc_con: Optional[sqlite3.Connection],
+                      keyword: str, limit: int = 40) -> list[dict]:
+    """自然语言 BM25 检索（中文 bigram + 领域词典扩展）。
+
+    算法层在 `search_bm25_lib/`（移植自 ModTools 5.4，MIT）；文本库缺失时返回 []
+    （中文整句无法命中英文 Type，属预期边界）。索引按次构建，约 1-3 分钟。
+    """
+    if loc_con is None:
+        return []
+    try:
+        from search_bm25_lib import search_objects_bm25
+    except ImportError:
+        return []
+    try:
+        raw = search_objects_bm25(gcon, loc_con, OBJECT_TYPES, keyword, limit=limit)
+    except Exception as exc:  # 索引构建属重操作，失败降级为空结果并提示
+        print("（BM25 检索失败，降级为空：%s）" % exc, file=sys.stderr)
+        return []
+    out: list[dict] = []
+    for r in raw:
+        cat = str(r.get("category") or "")
+        if cat not in OBJECT_TYPES:
+            continue
+        out.append({"kind": cat, "label": OBJECT_TYPES[cat]["label"], "type": r.get("type"),
+                    "name": r.get("name"), "hit": "BM25"})
+    return out
+
+
 def object_modifiers(g: sqlite3.Connection, loc: Loc, kind: str, obj_type: str) -> list[dict]:
     """按注册表解析某对象的全部 (绑定来源, ModifierId)。"""
     spec = OBJECT_TYPES.get(kind)
@@ -561,10 +613,12 @@ def main() -> int:
     ap.add_argument("--db", default=DEFAULT_DB, help="游戏库（默认 skill 自带 DebugGameplay.sqlite）")
     ap.add_argument("--loc", default=DEFAULT_LOC, help="文本库（默认 DebugLocalization.sqlite）")
     g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--object", help="对象关键词或 Type（文明/领袖/区域/建筑/单位/改良/政策/总督/伟人/能力/晋升）")
+    g.add_argument("--object", help="对象关键词或 Type（文明/领袖/区域/建筑/单位/改良/政策/科技/市政/总督/伟人/能力/晋升）")
     g.add_argument("--modifier", help="ModifierType / EffectType 关键词：谁在用它")
     g.add_argument("--effect", help="EffectType 精确查：哪些 ModifierType 指向它")
     g.add_argument("--list-objects", action="store_true", help="列出支持的对象类别")
+    ap.add_argument("--bm25", action="store_true",
+                    help="跳过子串匹配，直接用 BM25 自然语言检索（索引构建约 1-3 分钟）")
     ap.add_argument("--json", action="store_true", help="机读 JSON 输出")
     ap.add_argument("--limit", type=int, default=20, help="--modifier/--effect 最多列多少个实现（默认 20）")
     args = ap.parse_args()
@@ -584,16 +638,20 @@ def main() -> int:
 
     # ---- 模式 1：按对象
     if args.object:
-        hits = find_objects(gcon, loc, args.object)
+        hits = [] if args.bm25 else find_objects(gcon, loc, args.object)
+        if not hits and (args.bm25 or loc.con is not None):
+            # 子串零命中时自动兜底一次 BM25；--bm25 则跳过子串直接检索
+            hits = bm25_find_objects(gcon, loc.con, args.object, limit=max(args.limit, 20))
         if not hits:
             print("未找到与「%s」相关的对象。" % args.object)
-            print("提示：用 --list-objects 看支持的类别；或直接给完整 Type（如 IMPROVEMENT_FARM）。")
+            print("提示：用 --list-objects 看支持的类别；或直接给完整 Type（如 IMPROVEMENT_FARM）；"
+                  "文本库缺失时中文整句无法命中英文 Type。")
             return 1
         payload = []
         shown = 0
         for o in hits[:args.limit]:
             mods = object_modifiers(gcon, loc, o["kind"], o["type"])
-            if not mods and o["hit"] != "Type":
+            if not mods and o["hit"] not in ("Type", "BM25"):
                 continue
             payload.append({"object": o, "modifiers": mods})
             if not args.json:

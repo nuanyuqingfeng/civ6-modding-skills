@@ -1,6 +1,6 @@
 ---
 name: civ6-art-reference
-description: "Civ6 mod 引用原版美术素材全流程：ArtDef/XLP 四层引用链（DB Type → artdef 条目 → Xref → BLPEntryValue → 打包资产）查询与克隆生成，外加一层 cook 层机制（.Art.xml 依赖声明 → pantry 解析、产物归一化、警告即静默降级、XLP 条目可解析性与打包后果、源/产物差异分级判定）。适用场景：为新增资源/区域/建筑/改良/单位配置原版模型素材（按语义自动匹配相近原版对象并完整复制其美术引用）、查询某对象用哪些模型/贴图/战略视图、排查美术引用悬空、排查 ArtDef 双端不同步（编码层 CRLF/LF vs 语义层 _MissingArt）与 cook 报错（pantry 找不到、引用被替换成默认值）、单位渲染残缺（如只剩头）。内含建筑 hero-building 组合链（BuildingSets/BaseVariants/BuildingVariants）与替换型建筑上模型流程。内置全量引用链索引（Base+全DLC artdef + SDK 262 xlp）与五个工具：artdef_indexer（重建索引）/ art_lookup（查链路/列条目/列包/反查建筑模型链）/ art_copy（克隆原版条目为 mod 条目）/ art_copy_building（替换型建筑 3D 注册一键生成）/ artdef_sync_check（源 vs Mods 副本差异分级体检）。不处理 2D 图标链（除非悬空），不解包任何 .blp。领袖/文明美术另有 civ6-asset-forge 专项 skill。"
+description: "Civ6 mod 引用原版美术素材全流程：ArtDef/XLP 四层引用链（DB Type → artdef 条目 → Xref → BLPEntryValue → 打包资产）查询与克隆生成，外加一层 cook 层机制（.Art.xml 依赖声明 → pantry 解析、产物归一化、警告即静默降级、XLP 条目可解析性与打包后果、源/产物差异分级判定）。适用场景：为新增资源/区域/建筑/改良/单位配置原版模型素材（按语义自动匹配相近原版对象并完整复制其美术引用）、查询某对象用哪些模型/贴图/战略视图、排查美术引用悬空、排查 ArtDef 双端不同步（编码层 CRLF/LF vs 语义层 _MissingArt）与 cook 报错（pantry 找不到、引用被替换成默认值）、单位渲染残缺（如只剩头）。内含建筑 hero-building 组合链（BuildingSets/BaseVariants/BuildingVariants）与替换型建筑上模型流程。内置全量引用链索引（Base+全DLC artdef + SDK 262 xlp）与五个工具：artdef_indexer（重建索引）/ art_lookup（查链路/列条目/列包/反查建筑模型链）/ art_copy（克隆原版条目为 mod 条目）/ art_copy_building（替换型建筑 3D 注册一键生成）/ artdef_sync_check（源 vs Mods 副本差异分级体检）。不处理 2D 图标链（除非悬空）。领袖/文明美术另有 civ6-asset-forge 专项 skill。"
 version: "1.3"
 author: 千与千寻瀑
 license: MIT
@@ -43,6 +43,13 @@ languages:
 - 领袖立绘/文明图标走 civ6-asset-forge 专项 skill（reference/leader-2d.md / reference/loyalty-icon.md）。
 - 素材源文件查询只读 SDK pantry；游戏合并集以 `Base/ArtDefs` + `DLC/**/ArtDefs` 为准。
 
+## 工程文件写入铁律
+
+脚本可以**新建**工程文件，绝不允许**改写**工程文件；既有工程文件的每一次改动由 AI 用文件编辑工具完成。
+判据、`workspace/gen/` 落点、可再生二进制资产的例外、六份 `_projwrite.py` 副本，全部以 `civ6-modding/SKILL.md` 的「工程文件写入铁律」为唯一真源。
+
+本 skill 的落点：`art_copy.py` 与 `art_copy_building.py` 对 `ArtDefs/*.artdef` 的插入与骨架生成全部经过 `scripts/_projwrite.py`。
+
 ## ⚠ 注意事项：mod 工程目录**本身就是 pantry**（曾致 AssetEditor 闪退）
 
 AssetEditor / cooker 会把**整个工程目录树**递归当 pantry 扫描 —— **不只是 `Textures/`**。
@@ -84,8 +91,9 @@ AssetEditor / cooker 会把**整个工程目录树**递归当 pantry 扫描 —�
   （官方源素材库：`pantry\Textures` 内有散装 .dds 源贴图，另有 ArtDefs / XLPs / Geometries 等；
   `Civ6\pantry`、`Civ6\DLC\*\pantry` 为各资料片补充源素材。）
 - 涉及原版美术资产的任务**只允许在上面这个路径里查找**，不得去其他目录挖素材。
-- **任何情况下不允许尝试解包**：`.blp` 等打包文件一律不做解包/逆向/自写解包器，
-  需要源素材时只查 pantry 的散装文件或通过引用链按名引用。
+- **素材仅以 BLP 包体存在时**：pantry 散装文件与按名引用都无法满足，且用户在本会话
+  明确授权后，才允许路由到 `civ6-art-unpack` skill（其首行门禁未解除前禁止读取其任何内容）；
+  未授权即止，改用按名引用或向用户回报素材缺失。这是全家族唯一通往解包知识的入口。
 - 游戏安装根目录（`...\Sid Meier's Civilization VI`）仅用于读取 XML/Lua/数据库等
   游戏数据定义，不作为美术素材来源。
 
@@ -126,6 +134,7 @@ python art_copy.py Resources RESOURCE_OLIVES RESOURCE_OLIVES_RGN \
 ```
 
 克隆原版条目整棵子树 → 改名 → 换 XrefName → 追加进 mod artdef（自动建骨架/幂等跳重）。
+`--out` 指向的 artdef 尚不存在时脚本直写新建；工程里已有同名 artdef 且内容有变化时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
 
 **替换型建筑（取代原版建筑）走另一条链**：建筑模型由「所在区域」给出，且必须反查
 `DistrictReplaces`；完整步骤见 `reference/workflow.md` §④′，机制见 `reference/chain-map.md` §三.3：
@@ -135,6 +144,8 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
 ```
 
 `--district` 里的 **mod 侧区域不在索引里，必须显式给出**。
+
+`--buildings-out` / `--landmarks-out` 指向的文件尚不存在时脚本直写新建；工程里已有同名 artdef 且内容有变化时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
 
 **两条铁律**：① 只能**新增**新标签子条目，绝不改名覆盖原版子条目；
 ② 必须把**所有**取代该区域的 District 都挂上（原版特色区域 + 本 mod 特色区域）。
@@ -162,7 +173,7 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
   `引用被清空`（`_MissingArt` / `text=""`，**真实缺陷**）。详见 `cook-layer.md` §2.2–2.4。
 - 替换型建筑附加校验：① **原有子条目零丢失**（读改写前后同区域内各子集合的子条目名集合，
   旧集合必须是新集合的子集）；② 所有取代该区域的 District 都已挂。
-  `art_copy_building.py` 自带第 ① 项自检，输出 `原有内容丢失 = 0` 才算过。
+  `art_copy_building.py` 自带第 ① 项自检，输出 `原有内容丢失 = 0` 才算过；改写既有 artdef 时，自检针对的是入位 `<工程>/workspace/gen/` 的那份结果。
 - **克隆单位条目前**：先按 `chain-map.md` §5.2 做 bin 可解析性体检（原版自身存在
   引用了不存在 bin 的成员类型，克隆过去会渲染残缺，典型表现是「只剩一个头」）。
 

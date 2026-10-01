@@ -30,7 +30,7 @@
 ## 用法
 
     python align_tex_format.py <projectRoot> --check     # 体检，只报告
-    python align_tex_format.py <projectRoot> --write     # 实际改写
+    python align_tex_format.py <projectRoot> --write     # 写出（新建直写；既有 .tex 改写结果落到 workspace/gen/）
     python align_tex_format.py <projectRoot> --write --only encoding,groups,complete
     python align_tex_format.py <projectRoot> --check --list
 
@@ -44,6 +44,9 @@ import struct
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file  # noqa: E402
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -246,9 +249,9 @@ def main():
         for name, _ch, new in todo:
             p = tex_dir / name
             # 官方约定：UTF-8 无 BOM + LF
-            Path(p).write_bytes(new.replace('\r\n', '\n').encode('utf-8'))
+            write_project_file(str(p), new.replace('\r\n', '\n').encode('utf-8'), args.projectRoot)
         print()
-        print(f'已改写 {len(todo)} 个 .tex（UTF-8 无 BOM + LF）')
+        print(f'已写出 {len(todo)} 个 .tex（新建直写；既有文件改写结果落到 workspace/gen/）')
 
     print()
     if todo and not args.write:

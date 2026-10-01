@@ -44,13 +44,14 @@ tags:
 > **编码自适应（无需 `PYTHONUTF8=1`）**：`audio_check.py` / `audio_normalize.py` / `new_bank_project.py` / `wwise_wire.py` 已内置 UTF-8 子进程解码，并在输出重定向（管道/采集）时自动切 UTF-8 标准输出；
 
 **铁律（违反即返工）：**
-1. **直改工程文件前 Wwise 必须关闭**——GUI 内存态一旦保存会覆盖直改结果。
+1. **改写工程文件前 Wwise 必须关闭**——GUI 内存态一旦保存会覆盖改写结果。
 2. 只做**增量插入**与按 GUID 的 Name 更新；模板内 `id88602518` 等手调对象一个字节不碰。
 3. bank 必须 Wwise 2015.1 编译（SoundbankVersion=113 / BKHD 布局 ver 24，与本地先例 mod 一致；官方原版 ver 20，引擎兼容两者）。禁止用新版 Wwise 迁移工程。
 4. 评估版许可**每 bank ≤200 媒体项**，大批量拆 bank。
 5. 事件引用全走 GUID；改名=只改 Name（引擎按 GUID 解析）。
 6. ini 写盘：无 BOM、CRLF、ASCII；modinfo/civ6proj：保持原编码与换行。
 7. **注册校对**：所有物理文件（含 ini）必须出现在 `.modinfo` 的 `<Files>` 节 / `.civ6proj` 的 `<Content>` 清单；ini 除此之外还必须单独出现在 `<UpdateAudio>` 加载动作。交付前 `register_to_mod.py --verify` 必须 PASS（自动核对 UpdateAudio→ini、磁盘↔清单一致）。
+8. **工程文件写入铁律**：脚本可以**新建**工程文件，绝不允许**改写**工程文件——`register_to_mod.py` / `unregister_audio.py` 对 `.civ6proj`、`.modinfo`、`_Banks.ini` 的改动，以及 `leader_timeline.py` 对 `.ast` 的改动，全部经过 `scripts/_projwrite.py`，改写结果落到 `workspace/gen/` 由 AI 用文件编辑工具写入。判据与例外（`Platforms/` 之下的 `.bnk`/`.wem` 音频产物属可再生二进制资产，允许直写；`_Banks.ini` 等文本注册文件不在此列）见 `civ6-modding/SKILL.md` 的「工程文件写入铁律」。
 
 ## 1. 三类路由（用户提供分类后先走此表）
 
@@ -220,15 +221,16 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 
 ```
 
-> **`.bak_*` 口径（与家族「不静默备份」的差异，如实记录）**：就地写模式会在原文件旁留一份 `.bak_*` 副本，
-> 分布在两类文件上，处理方式不同：
-> - **素材 / 母带 / 工程内部文件（有意例外，改坏可回退）**：`audio_check.py --fix` → `.bak_check`、
->   `audio_normalize.py` → `.bak_norm`、`leader_timeline.py` → `.bak_ast`、`wwise_wire.py` / `music_wire.py`
->   → `.bak_wire`、`build_combination_bank.py` → `.bak_rebuild`。这些副本**不入库、不进交付包**，
->   验收后自行清理（同 §2.5 的「淘汰件与母带备份隔离」口径）。
-> - **项目主体文件（历史只交给 git）**：`register_to_mod.py` → `.bak_reg`、`unregister_audio.py`
->   → `.bak_unreg` 落在 `.modinfo` / `.civ6proj` 旁边，而这两个文件是 git 管理的项目主体，
->   家族与工程口径均为「默认不建立备份副本」。→ **提交 / 交付前删掉这两类副本**，不要随包分发。
+> ⑤ 改写既有 `.civ6proj` / `.modinfo` 时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对
+> 路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。`.bnk` / `.wem`
+> 属可再生二进制资产，仍由脚本直写。
+
+> **`.bak_*` 口径**：素材与母带类文件（Wwise 工程工作单元、音频素材）在就地写入前会留
+> 一份 `.bak_*` 副本：`audio_check.py --fix` → `.bak_check`、`audio_normalize.py` → `.bak_norm`、
+> `wwise_wire.py` / `music_wire.py` → `.bak_wire`、`build_combination_bank.py` → `.bak_rebuild`。
+> 这些副本**不入库、不进交付包**，验收后自行清理（同 §2.5 的「淘汰件与母带备份隔离」口径）。
+> 工程文件（`.civ6proj` / `.modinfo` / `.ast`）不建任何备份副本——历史只交给 git，写入一律走
+> 铁律第 1 条（结果入位 `workspace/gen/` 由 AI 写入），不存在 `.bak_reg` / `.bak_unreg` / `.bak_ast`。
 
 ## 4. 脚本清单
 
@@ -241,11 +243,11 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 | `audio_normalize.py` | loudnorm 双遍响度均衡；**幂等闸 `--idem`、线性闸（预检拒写 + `normalization_type` 后验，拒写时退出码 2）、短时锚 `--mode shortterm`**；`--out` 统一 .wav 后缀；`--filelist/--jobs`；声道中间件自动对齐测量/输出 | 教程：语音-21、远古 BGM-28、后世-25 + 立体声语音实测修复 + `af_loudnorm.c init()` 线性判定 + 2026-09 重复归一事故（§2.5a） |
 | `new_bank_project.py` | 克隆模板→独立 bank 工程（导入+work unit 注入+可选生成） | 教程模板工程 + 本地实证 XML 模式 |
 | `wwise_wire.py` | scan/wire/rename/generate | 本地 mod 实战交付验证 |
-| `register_to_mod.py` | `.civ6proj`（CDATA UpdateAudio + Content 条目）与 `.modinfo`（UpdateAudio + Files）双注册 + Banks.ini；`--verify` 语义校验（UpdateAudio 只指向 ini） | 本地双案例（.civ6proj 与 .modinfo 各一）实证 |
+| `register_to_mod.py` | `.civ6proj`（CDATA UpdateAudio + Content 条目）与 `.modinfo`（UpdateAudio + Files）双注册 + Banks.ini；改写既有 `.civ6proj` / `.modinfo` 时结果入位 `workspace/gen/` 由 AI 写入工程；`--verify` 语义校验（UpdateAudio 只指向 ini） | 本地双案例（.civ6proj 与 .modinfo 各一）实证 |
 | `build_combination_bank.py` | 组合式 bank：N 分轨 + 全组合 Play/Stop 多动作事件（引擎并轨，UI 零改动） | Wwise 多动作事件 schema |
 | `music_wire.py` | fade 淡出检测 / ExitCustom 自动落点 / 时代权重（教程规则） | 模板 MusicCue CueType=2 + Weight=Real64 实测 |
-| `leader_timeline.py` | 领袖 .ast 时间线：6 槽位 FXName + Duration=语音时长+pad（三案例路由） | civ6-asset-forge → reference/leader-2d.md 模板 ast 实测 schema |
-| `unregister_audio.py` | 移除音频注册（modinfo UpdateAudio/Files、civ6proj CDATA/Content，可选清源目录） | 与 register 互逆 |
+| `leader_timeline.py` | 领袖 .ast 时间线：6 槽位 FXName + Duration=语音时长+pad（三案例路由）；改写既有 `.ast` 时结果入位 `workspace/gen/` 由 AI 写入工程 | civ6-asset-forge → reference/leader-2d.md 模板 ast 实测 schema |
+| `unregister_audio.py` | 移除音频注册（modinfo UpdateAudio/Files、civ6proj CDATA/Content）；改写既有 `.civ6proj` / `.modinfo` / `_Banks.ini` 时结果入位 `workspace/gen/` 由 AI 写入工程。`--purge-source --bank <名>` 另删源工程里该 bank 的产物（三件套 + 它 xml 引用的 wem）并清掉 ini 里该 bank 的行；未给 `--bank` 只列目录内容供确认 | 与 register 互逆 |
 | `ensure_template.py` | 模板缺失时询问用户并从教程仓库拉取，写 local_paths.json 自适应 | 致谢章节同源 |
 | `wwise_shortid.py` | WWise ShortID 核心库：FNV-1 事件哈希 / .bnk 解析 / 字节模板重建 / ID 注册表 / WAV→WEM 编码 | 内化自早期独立打包库（8/8 事件 ID 与成品一致实证）；ShortID 机制有效，编码部分不用于交付 |
 | `audio_pack.py` | ShortID 注册表刷新（scan，有效）+ 实验性纯 Python bank（speechbank/plainbank，⚠️ ADPCM 已实证废弃，勿交付） | 内化自早期独立打包 CLI；正式交付走 Wwise Vorbis |
@@ -261,6 +263,7 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 ```
 `.modinfo`：`<InGameActions>` 开标签后插入 `<UpdateAudio id="…"><File>Platforms/Windows/Audio/….ini</File></UpdateAudio>` + `<Files>` 补条目。
 `.civ6proj`：`InGameActionData` CDATA 内 `</InGameActions>` 前插单行 UpdateAudio（正斜杠）+ `<Content Include="Platforms\Windows\Audio\…"><SubType>Content</SubType></Content>` 条目。
+这两个文件都是既有工程文件，脚本的改写结果先落 `<工程>/workspace/gen/`，由 AI 用文件编辑工具写入。
 
 ## 6. 触发端速查（注册完成后接线用）
 

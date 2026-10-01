@@ -1,6 +1,6 @@
 # 原版总督素材清单（散装 DDS 实测）
 
-来源目录（**只读，禁止解包**）：
+来源目录（**只读**）：
 - `...\SDK Assets\Civ6\DLC\Shared\pantry\Textures`  ← 142 个总督相关文件（立绘 + UI 组件 + 徽章）
 - `...\SDK Assets\Civ6\DLC\Expansion2\pantry\Textures`  ← 18 个（`XP1_*` / `XP2_*` 图集）
 

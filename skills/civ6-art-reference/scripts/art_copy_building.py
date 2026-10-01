@@ -21,6 +21,7 @@ import argparse, copy, os, re, sys
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file, finish
 import art_copy
 
 NL = chr(10)
@@ -239,7 +240,7 @@ def main():
         print('[Buildings.artdef] ' + args.src_building + ' -> ' + args.new_building)
 
     if not args.landmarks_out:
-        return
+        return finish()
 
     targets = list(args.district)
     for n in auto_names:
@@ -344,9 +345,11 @@ def main():
     if args.dry_run:
         print('[dry-run] 未写文件')
         return
-    open(args.landmarks_out, 'w', encoding='utf-8', newline=NL).write(text)
+    # 既有文件内容有变化时，改写结果由守卫入位 <工程>/workspace/gen
+    write_project_file(args.landmarks_out, text.encode('utf-8'),
+                       art_copy.project_root_of(args.landmarks_out))
 
-    after = open(args.landmarks_out, encoding='utf-8-sig').read()
+    after = text
     bad = 0
     for t, colls in before.items():
         span = find_top_entry_span(after, t)
@@ -361,9 +364,10 @@ def main():
             if lost:
                 print('   [FAIL] ' + t + '/' + coll + ' 丢失子条目: ' + str(lost))
                 bad += 1
-    ET.parse(args.landmarks_out)
+    ET.fromstring(text.encode('utf-8'))
     print('[自检] XML 可解析；原有内容丢失 = ' + str(bad) + '（0 = 纯增量）')
+    return finish()
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

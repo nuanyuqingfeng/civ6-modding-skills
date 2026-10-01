@@ -65,6 +65,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file, finish, workspace_gen  # noqa: E402
+
 SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PALETTE_JSON = os.path.join(SKILL_DIR, "reference", "vanilla-leader-backgrounds.json")
 
@@ -250,9 +253,22 @@ def alias_entry(entry_id: str, object_name: str, indent: str = "\t\t") -> str:
             + indent + "</Element>\n")
 
 
-def insert_alias(xlp_file: str, entry_id: str, object_name: str, write: bool):
+def _current_source(xlp_file: str, project: str | None) -> str:
+    """上一次改写已入位 workspace/gen 时，接着那份继续追加。
+
+    同一轮里对同一个 XLP 追加多个别名时，第二次读取必须看到第一次的改写结果；
+    工程里的原文件在人工写入之前始终是旧内容。
+    """
+    if not project:
+        return xlp_file
+    staged = os.path.join(workspace_gen(project), os.path.relpath(xlp_file, project))
+    return staged if os.path.isfile(staged) else xlp_file
+
+
+def insert_alias(xlp_file: str, entry_id: str, object_name: str, write: bool,
+                 project: str | None = None):
     """幂等：EntryID 已存在则跳过（返回 'exists'）。XLP 是 LF + 无 BOM。"""
-    raw = open(xlp_file, encoding="utf-8").read()
+    raw = open(_current_source(xlp_file, project), encoding="utf-8").read()
     if re.search(r'<m_EntryID text="%s"\s*/>' % re.escape(entry_id), raw):
         return "exists"
     if "</m_Entries>" not in raw:
@@ -264,8 +280,8 @@ def insert_alias(xlp_file: str, entry_id: str, object_name: str, write: bool):
     else:
         new = raw.replace("</m_Entries>", alias_entry(entry_id, object_name) + "\t</m_Entries>", 1)
     if write:
-        with open(xlp_file, "w", encoding="utf-8", newline="") as f:
-            f.write(new)
+        result = write_project_file(xlp_file, new, project)
+        return "staged" if result == "STAGED" else "added"
     return "added"
 
 
@@ -375,13 +391,18 @@ def main():
         if not fg_ok:
             warns.append("官方 pantry 里没有 %s（前景别名源）——前景需自建，"
                          "或改用 --pick 指定一位有 _NEUTRAL 的领袖。" % fg_src)
+        staged = False
         for eid, obj in pairs:
             try:
-                st = insert_alias(target_xlp, eid, obj, write=a.write)
+                st = insert_alias(target_xlp, eid, obj, write=a.write, project=a.project)
             except SystemExit as e:
                 print("ERROR " + str(e), file=sys.stderr)
                 return 1
+            staged = staged or st == "staged"
             print("    %s → %s : %s" % (eid, obj, st))
+        if staged:
+            print("    改写结果已写到 workspace/gen/ 的同一相对路径下，"
+                  "请用文件编辑工具写入工程 %s" % target_xlp)
         if not a.write:
             print("\n（预演模式，未写盘；确认候选后加 --write）")
 
@@ -395,4 +416,5 @@ if __name__ == "__main__":
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
-    raise SystemExit(main())
+    code = main()
+    raise SystemExit(code if code else finish())

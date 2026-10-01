@@ -12,6 +12,8 @@ description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局
 > **有能用的就改它，不要重建。** 新增或改名脚本后，跑一次
 > `python "<skills>/civ6-modding/tools/skill_manifest.py" civ6-tuner` 刷新名录（`--check` 可做漂移检测）。
 
+> ⚠ **工程文件写入铁律**：脚本可以新建工程文件，绝不允许改写工程文件。本 skill 的 `tuner_exec.py` 只连 FireTuner 执行 Lua，不写工程文件。真源见 `civ6-modding/SKILL.md` 的「工程文件写入铁律」。
+
 # civ6-tuner：游戏内 Lua 快速测试
 
 ## 前置条件
@@ -46,7 +48,7 @@ GameEvents.某个mod注册过的事件:Count()               = 0     ← 不同�
   ```
   铁律"call 不到 mod"只适用于 `gamecore` / `ingame` 两个沙箱态；能省掉"改 Mods 加 print + 等热重载"的整轮往返。
   ⚠ 反例：GP 态探针里 `UI = nil`（`UI.GetHeadSelectedUnit()` 直接报 `attempt to index a nil value`）→
-  跨端通用的探针必须 `UI and UI.GetHeadSelectedUnit()` 这样判空。
+  跨端通用的探针必须 `UI and UI.GetHeadSelectedUnit()` 这样判空；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取三个通道 → `civ6-modding/reference/context-matrix.md`。
 
 ### 2. 两端**总线可见性不同**：`GameEvents` 在 UI 侧整条不存在
 
@@ -55,6 +57,8 @@ GameEvents.某个mod注册过的事件:Count()               = 0     ← 不同�
 | `Events` | table | table |
 | **`GameEvents`** | table | **nil** |
 | `LuaEvents` / `ReportingEvents` / `ExposedMembers` / `NotificationManager` | table | table |
+
+> 两端的表都在，不等于可以互调：端内跨上下文只有 `LuaEvents`，其余不可达 → `civ6-modding/reference/context-matrix.md`
 
 - 被 UI 加载的文件（含被 UI `include` 的共享库）里出现 `GameEvents.*` → **必然 `attempt to index a nil value`**，并中断该 chunk 使其后语句**全部不执行**。
 - `Events.*` 两端都有（安全）；`Events.X=nil` 且 `GameEvents.X=table` 的才是 Lua 级 GP 事件。
@@ -84,6 +88,7 @@ for _, c in Players[0]:GetCities():Members() do ... end    -- ✅ c 是城市对
 
 同一方法在不同端可能一个有、一个没有（实测：`Game.GetGreatPeople():GetPastTimeline` = **UI 有 / GP nil**；`CityGrowth:GetAmenitiesNeeded` = **UI 有 / GP nil**；`Game.SetProperty` = **GP 有 / UI nil**）。
 **在 GP 测出 nil 不等于"API 不存在"** —— 结论必须写明"在哪一端、测出什么"。用 `exec --both` 或 `ports` 对跑。
+端口可用性只决定「这个方法在这一端有没有」，**跨上下文调用函数本身一律不可达**（见 `civ6-modding/reference/context-matrix.md`）。
 
 ### 6. 属性改动**立即生效**，但"依赖实体不存在"会给出假阴性
 
@@ -91,6 +96,8 @@ for _, c in Players[0]:GetCities():Members() do ... end    -- ✅ c 是城市对
 反之若实体不存在 → 属性置位毫无效果 → 会被误判为"功能失效"。**动手前先确认依赖实体存在。**
 
 ### 7. 验证「跨端写入」前，先确认**对象层级**（读错层级 = 假阴性）
+
+> 跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达 → `civ6-modding/reference/context-matrix.md`。
 
 同一个 `key` 字符串挂在 Game / Player / City / Plot / Unit 上是**不同的属性空间**：
 
@@ -111,7 +118,7 @@ Players[pid]:GetProperty(k)      -- 两端可读；只能读到【Player 层】�
 |---|---|
 | 属性读取批量返回 nil | 在同一 chunk 里对 `GetProperty` 返回的**表做了 `table.sort`**（原地改动污染）。→ 先复制再排序 |
 | 同一表达式一次给 10、一次给 0 | 在调用参数里**现拼属性 key**。→ 先把 key 落到局部变量 |
-| **"跨端写入没生效"（假阴性）** | **读错了对象层级**：写进 `Players[pid]` 却去读 `Game.GetProperty(同名 key)`。→ 先确认属性挂在 Game / Player / City / Plot / Unit 哪一层（详见 `reference/PORT_MATRIX.md` 五） |
+| **"跨端写入没生效"（假阴性）** | **读错了对象层级**：写进 `Players[pid]` 却去读 `Game.GetProperty(同名 key)`。→ 先确认属性挂在 Game / Player / City / Plot / Unit 哪一层（详见 `reference/PORT_MATRIX.md` 五；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取三个通道 → `civ6-modding/reference/context-matrix.md`） |
 | **"派发/事件没到"** | ① 读错层级（同上）；② 派发是**异步**的，读太早；③ 注册所在的 GP 态不是派发目标态 → 最稳做法是**借项目已有的生产接收器复测**（见 `snippets/bridge_probe_*.lua`） |
 | 探针"没跑"但无报错 | chunk 内抛错会**丢弃整段 stdout**。→ 顶层 `pcall` 包住并打印结果 |
 | `--both` 里 UI 段读出空 | GP 段末尾把对照用的探针键**清理掉了**。→ 清理放最后单独跑，或用 `CLEANUP=false` |
@@ -189,6 +196,7 @@ python $T logs --log-file Database.log -n 50
 | `settle_read.lua` | **对抗「重算延迟」的稳定读数**：连读 N 次、两次一致才算稳定（复位未必同帧被下游重算，批量跑会带上一条残留） | gamecore |
 | `modifier_probe.lua` | Modifier/RequirementSet 是否入库及挂载链 | gamecore |
 | `event_trigger.lua` | 手动触发 LuaEvents 验证通知通路 | ingame |
+| `context_channel_probe.lua` | **端内/跨端通道可达性验证**（register → fire → check → unregister 四步）：同端触发时接收器回写可见，跨端触发时回写为 `nil`，用来实证「端内跨上下文只有 `LuaEvents`，其余不可达」→ `civ6-modding/reference/context-matrix.md` | 任意两个 Lua 上下文各投递一次 |
 | `bridge_probe_1_register.lua` → `_2_dispatch.lua` → `_3_read.lua` | **UI→GP 派发可达性三连测**（确认 `EXECUTE_SCRIPT` 的 `OnStart` 是否到达你注册的那个 GP 态） | gamecore → ingame → gamecore |
 | `cheat_setup.lua` | 造测试条件（金币/信仰/刷兵/科技进度） | ingame |
 | `end_turn.lua` | 结束回合观察跨回合结算 | ingame |
@@ -229,7 +237,7 @@ python $T logs --log-file Database.log -n 50
 ## 参考
 
 - `reference/PORT_MATRIX.md` —— **GP/UI 端口可用性实测对照表**（含与 api.sqlite 冲突的条目、审查流程）
-  - 五、跨端写入验证先确认**对象层级**（读错层级 = 假阴性）
+  - 五、跨端写入验证先确认**对象层级**（读错层级 = 假阴性；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取三个通道 → `civ6-modding/reference/context-matrix.md`）
   - 六、`Game.SetProperty` 存表保真（平行数组 / 嵌套表 / 空数组 / 负值哨兵）
   - 七、`EXECUTE_SCRIPT` **派发可达性验证配方**（含"借生产接收器做探针"的最稳变体）
   - 八、探针卫生（`--both` 清理时机、chunk 抛错丢 stdout）

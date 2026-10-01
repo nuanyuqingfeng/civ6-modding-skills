@@ -43,6 +43,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from _projwrite import write_project_file
+
 if hasattr(sys.stdout, "reconfigure"):
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -156,8 +158,15 @@ def main():
             mod_name = proj.parent.name
         textures_dir = root / mod_name / "Textures"
     assets_dir = Path(cfg["assetsDir"]) if cfg.get("assetsDir") else root / ".assets"
-    textures_dir.mkdir(parents=True, exist_ok=True)
-    assets_dir.mkdir(parents=True, exist_ok=True)
+    # 写盘口径（铁律：脚本可新建工程文件，绝不允许改写）：
+    #   组员/整版 PNG 与注册片段、asset_map.json 一律新建直写，已存在即报错；
+    #   .dds 由 texconv 产出、.tex 由 gen_tex.py 写入，两者都走 gen_tex 的守卫分支。
+    for png in sorted(assets_dir.glob("**/*.png")):
+        raise SystemExit(f"组员/中间 PNG 已存在，按铁律拒绝改写：{png}")
+    if not assets_dir.is_dir():
+        assets_dir.mkdir(parents=True, exist_ok=True)
+    if not textures_dir.is_dir():
+        textures_dir.mkdir(parents=True, exist_ok=True)
 
     texconv = find_texconv()
     if not texconv and not args.no_dds:
@@ -214,6 +223,8 @@ def main():
             png_name = dds_name + ".png"
             canvas = compose_grid(images, cols, rows, s)
             out_png = assets_dir / png_name
+            if out_png.exists():
+                raise SystemExit(f"整版 PNG 已存在，按铁律拒绝改写：{out_png}")
             canvas.save(out_png, format="PNG")
 
             # gen_tex 源映射：按其 base 规则登记（组员名→拼好的整版 PNG）
@@ -238,6 +249,7 @@ def main():
                         check=True, capture_output=True)
                     produced = Path(staging) / (Path(out_png).stem + ".dds")
                     # 临时目录与项目可能跨盘，用 shutil.move（os.replace 跨盘会 WinError 17）
+                    # .dds 属可再生二进制资产：新建直写；已存在时交 gen_tex.py 走守卫分支改写
                     shutil.move(str(produced), str(textures_dir / (dds_name + ".dds")))
                 print(f"  ok: {dds_name}.dds  ({cols * s}x{rows * s}, {cols}x{rows} 格)")
 
@@ -248,6 +260,8 @@ def main():
                     f'        <Row Name="{m["tech"]}" Atlas="{atlas}" Index="{i}"/>')
 
         frag = manifest.parent / f"{atlas}_registration.xml"
+        if frag.exists():
+            raise SystemExit(f"注册片段已存在，按铁律拒绝改写：{frag}")
         frag.write_text(
             "<GameData>\n"
             "    <IconTextureAtlases>\n" + "\n".join(atlas_rows) + "\n    </IconTextureAtlases>\n\n"
@@ -257,7 +271,17 @@ def main():
         print(f"  注册片段: {frag.name}（AI 合并进项目 Icons XML，勿直接覆盖项目文件）")
         total_ok += 1
 
-    asset_map_path.write_text(json.dumps(asset_map, ensure_ascii=False, indent=2), encoding="utf-8")
+    if asset_map:
+        payload = json.dumps(asset_map, ensure_ascii=False, indent=2)
+        # asset_map.json 是 gen_tex.py 的源名映射输入：工程内的走守卫，工程外的直接写。
+        # 工程根 = Textures 目录的上一级（两层布局下 root 是工作区根，不是工程根）。
+        proj_root = textures_dir.parent
+        if str(asset_map_path.resolve()).startswith(str(proj_root.resolve()) + os.sep):
+            result = write_project_file(asset_map_path, payload, str(proj_root))
+            if result == "STAGED":
+                print("  asset_map.json 有变化，改写结果落到 workspace/gen/")
+        else:
+            asset_map_path.write_text(payload, encoding="utf-8")
 
     if not args.no_dds:
         py = None

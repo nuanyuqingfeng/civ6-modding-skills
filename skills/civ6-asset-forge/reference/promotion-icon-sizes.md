@@ -81,10 +81,10 @@
 - **本类别不产出 `.tex`**，因此没有类别专属的 `m_ClassName` / `m_Tags` / mips 取值可写。
   若工程 pantry 规范要求补 `.tex`，按 `SKILL.md` §6.2 第 5 条**通用**规则核对：
   带 alpha 的贴图用 `PF_R8G8B8A8_UNORM` + `bUseMips=false`（texconv 必须带 `-m 1`）；
-  `gen_tex.py` 默认写的 `m_ClassName=UserInterface` **必须人工复核**，不要照默认值直接交。
+  `gen_tex.py` 默认写的 `m_ClassName=UserInterface` **必须人工复核**，与所绑 XLP 参数不符时照 `templates/` 的对应模板改正；`.tex` 属可再生资产，脚本直接覆盖写盘，不经 `workspace/gen/`。
 - 原版素材来源（唯一允许）：`F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK Assets\Civ6\pantry\Textures\`
   （散装 DDS，用 `civ6-modding` 的 texconv —— 随包内置 `civ6-modding/art/bin/texconv.exe`，
-定位真源 `art/_texconv.py` —— `-ft png -m 1` 纯格式转换；**禁止解包**）。
+定位真源 `art/_texconv.py` —— `-ft png -m 1` 纯格式转换）。
 - 范围边界：**不处理总督晋升**（XP1/XP2 `GovernorPromotions24` 体系，属类别①）与 3D 单位模型；不修改游戏文件。
 
 ## 七、如需重做

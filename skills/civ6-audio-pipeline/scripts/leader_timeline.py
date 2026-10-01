@@ -7,6 +7,8 @@ leader_timeline.py -- 领袖 2D 行为资产(.ast)的语音时间线自动配置
 用法:
   patch <ast路径|目录> --media <语音wav目录|文件...> [--pad 0.5] [--map 槽位关键字=事件名 ...] [--dry]
   check <ast路径|目录>
+写入: .ast 属工程文件, 改写经 _projwrite 守卫; 既有 .ast 内容有变化时结果写到
+      <工程>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具写入工程 (退出码 2 并打印清单)
 路由(由 agent 按 SKILL.md 执行):
   ① 项目/工程内已有领袖 ast → 直接 patch
   ② 没有 → 跳过并在报告中说明
@@ -14,8 +16,23 @@ leader_timeline.py -- 领袖 2D 行为资产(.ast)的语音时间线自动配置
 """
 import os, re, sys, glob, json, argparse, subprocess
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import workspace_gen, write_project_file, finish
+
 SLOTS = ['01_FIRST_MEET', '02_DECLARE_WAR_FROM_HUMAN', '03_DECLARE_WAR_FROM_AI',
          '04_KUDOS', '05_WARNING', '06_DEFEAT']
+
+def project_root_of(p):
+    """从 .ast 向上找到含 .civ6proj 的工程根"""
+    cur = os.path.dirname(os.path.abspath(p))
+    while True:
+        if glob.glob(os.path.join(cur, '*.civ6proj')):
+            return cur
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            raise SystemExit('未定位到工程根（向上未找到 .civ6proj）: ' + p)
+        cur = parent
+
 
 def find_ast(p):
     if os.path.isfile(p) and p.lower().endswith('.ast'):
@@ -52,9 +69,10 @@ def cmd_check(a):
         txt = open(p, encoding='utf-8-sig', errors='replace').read()
         print('AST:', p)
         for slot in SLOTS:
-            m = re.search(r'<m_Name text="%s"/>.*?<m_FXName text="([^"]*)".*?<m_fDuration>([\d.]+)</m_fDuration>' % slot, txt, re.S)
+            # 读时间线自身的 Duration（m_AnimationName 之后的那个），触发器内的 m_fDuration 恒为 0
+            m = re.search(r'<m_Name text="%s"/>(?:(?!</m_Timelines>).)*?<m_AnimationName text="[^"]*"\s*/>\s*<m_fDuration>([\d.]+)</m_fDuration>(?:(?!</m_Timelines>).)*?<m_FXName text="([^"]*)"' % slot, txt, re.S)
             if m:
-                print('  %-26s FX=%-40s Dur=%.2fs' % (slot, m.group(1), float(m.group(2))))
+                print('  %-26s FX=%-40s Dur=%.2fs' % (slot, m.group(2), float(m.group(1))))
 
 def cmd_patch(a):
     hits = find_ast(a.path)
@@ -87,15 +105,15 @@ def cmd_patch(a):
                 print('  [MISS] %s 未在 ast 中找到' % slot); continue
             blk = m.group(1)
             blk2 = re.sub(r'(<m_FXName text=")[^"]*(")', r'\g<1>%s\g<2>' % ev, blk)
-            blk2 = re.sub(r'(<m_AnimationName text="[^"]*/>\s*<m_fDuration>)[\d.]+(</m_fDuration>)',
+            blk2 = re.sub(r'(<m_AnimationName text="[^"]*"\s*/>\s*<m_fDuration>)[\d.]+(</m_fDuration>)',
                           r'\g<1>%.6f\g<2>' % new_dur, blk2, count=1)
             txt = txt.replace(blk, blk2, 1)
             print('  [OK] %-26s FX=%-40s Dur=%.2fs (语音 %.2fs + pad %.1fs)' % (slot, ev, new_dur, d, a.pad))
         if txt != orig and not a.dry:
-            import shutil
-            shutil.copy2(p, p + '.bak_ast')
-            open(p, 'wb').write(txt.encode('utf-8'))
-            print('  [WRITE] 已写入 (备份 .bak_ast)')
+            root = project_root_of(p)
+            result = write_project_file(p, txt.encode('utf-8'), root)
+            print('  [WRITE] 改写结果已入位 (%s), 待用文件编辑工具写入工程: %s'
+                  % (result, os.path.join(workspace_gen(root), os.path.relpath(p, root))))
         elif a.dry:
             print('  [DRY] 未写盘')
 
@@ -109,8 +127,11 @@ def main():
     p.add_argument('--map', nargs='*', default=None, help='槽位=事件名 覆盖 (如 01_FIRST_MEET=X_FIRST_MEET_A)')
     p.add_argument('--dry', action='store_true')
     a = ap.parse_args()
-    if a.cmd == 'check': cmd_check(a)
-    else: cmd_patch(a)
+    if a.cmd == 'check':
+        cmd_check(a)
+    else:
+        cmd_patch(a)
+    return finish()
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

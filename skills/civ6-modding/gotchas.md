@@ -62,7 +62,7 @@
 
 6. **LuaEvents automatically clean up** — no need to `.Remove()`.
 
-7. **GamePlay 脚本 `Events.*` / `GameEvents.*` / `LuaEvents.*` 均可用；UI 侧不可用 `GameEvents.*`（整条为 `nil`）。** `LuaEvents.*` 是同端广播系统：UI 侧跨 UI 上下文、GP 侧跨 GP 文件均可用（表格按引用传递，handler 回写调用方立即可读）；GP 侧与 UI 侧**不是同一实例**，跨端推送一律用 `ReportingEvents.SendLuaEvent`（见 §36）。
+7. **GamePlay 脚本 `Events.*` / `GameEvents.*` / `LuaEvents.*` 均可用；UI 侧不可用 `GameEvents.*`（整条为 `nil`）。** `LuaEvents.*` 是同端广播系统：UI 侧跨 UI 上下文、GP 侧跨 GP 文件均可用（表格按引用传递，handler 回写调用方立即可读）；GP 侧与 UI 侧**不是同一实例**，跨端推送一律用 `ReportingEvents.SendLuaEvent`（见 §36）。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
 
 > **⚠ 三条总线互不镜像 —— 用错总线是「静默无效」，必须按事件查表，不要凭印象**（2026-09 修订）
 >
@@ -72,7 +72,7 @@
 >
 > | `eventSystem` | 条数 | 注册方式 |
 > |---|---|---|
-> | `LuaEvents` | 481 | `LuaEvents.X.Add()`（同端广播：UI 上下文互播 / GP 文件间跨文件） |
+> | `LuaEvents` | 481 | `LuaEvents.X.Add()`（同端广播：UI 上下文互播 / GP 文件间跨文件；端内跨上下文只有它 → `context-matrix.md`） |
 > | `Events` | 470 | `Events.X.Add()` |
 > | `GameEvents` | 130 | `GameEvents.X.Add()` |
 >
@@ -86,7 +86,7 @@
 >
 > **⚠ `GameEvents.X` 不是存在性探针**——它对**任意**名字都返回 table（自动建表）。只能用 `type(Events.X) == "table"` 判断事件是否存在；对不存在的事件写 `Events.X.Add()`，**UI 侧会直接抛 `attempt to index a nil value` 并中断该函数后续所有初始化**。引擎未暴露到 `Events.*` 的 48 个事件在 `events_enhanced.json` 中标 `availability: "None"`（这 48 条的 `eventSystem` 同为 `GameEvents`，即「按名字该走 GameEvents，但实际哪一层都订阅不到」）。
 
-8. **Never pass C++ objects or UI controls across `LuaEvents`.** The owning context may delete them before the receiver processes the event, causing crashes. Tables are passed by reference（同端实时同步）；C++ 对象禁止。
+8. **Never pass C++ objects or UI controls across `LuaEvents`**. The owning context may delete them before the receiver processes the event, causing crashes. Tables are passed by reference（同端实时同步；跨端经 `ReportingEvents` 为副本 → `reference/context-matrix.md` 第三节第 4 行）；C++ 对象禁止。端内跨上下文只有 `LuaEvents`，其余不可达 → `reference/context-matrix.md`
 
 ## Database Pitfalls
 
@@ -249,17 +249,17 @@
 
 ## GP → UI 通信
 
-36. **GP→UI 推送用 `ReportingEvents.SendLuaEvent`，不用 `LuaEvents.*` 直接触发** — 这是 GP→UI 的标准推送方式：
+36. **GP→UI 推送用 `ReportingEvents.SendLuaEvent`，不用 `LuaEvents.*` 直接触发** — 这是 GP→UI 的标准推送方式。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
      ```lua
      ReportingEvents.SendLuaEvent('Name', { key = value })
      ```
-     UI 侧 `LuaEvents.Name.Add(handler)` 接收。**GP 侧的 `LuaEvents` 表与 UI 侧不是同一实例**，不要依赖 GP 直调 `LuaEvents.Name(...)` 到达 UI —— 跨端推送统一用 `SendLuaEvent`（官方跨 Lua 状态的 API）。
+     UI 侧 `LuaEvents.Name.Add(handler)` 接收。**GP 侧的 `LuaEvents` 表与 UI 侧不是同一实例**，不要依赖 GP 直调 `LuaEvents.Name(...)` 到达 UI —— 跨端推送统一用 `SendLuaEvent`（官方跨 Lua 状态的 API）。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
 
-37. **按钮触发的 UI→GP 动作必须走 `EXECUTE_SCRIPT`，禁止跨端通过 `ExposedMembers` 调用** — 按钮回调中触发的一切 GP 函数调用（升级、增益切换、购买等）统一使用 `UI.RequestPlayerOperation(EXECUTE_SCRIPT)`。GP 同端跨文件通信用 `LuaEvents`，`ExposedMembers` 禁止跨端暴露给 UI；UI 被动读取用 PROPERTY / Core 共享读取函数。
+37. **按钮触发的 UI→GP 动作必须走 `EXECUTE_SCRIPT`，禁止跨端通过 `ExposedMembers` 调用** — 按钮回调中触发的一切 GP 函数调用（升级、增益切换、购买等）统一使用 `UI.RequestPlayerOperation(EXECUTE_SCRIPT)`。GP 同端跨文件通信用 `LuaEvents`，`ExposedMembers` 禁止跨端暴露给 UI；UI 被动读取用 PROPERTY / Core 共享读取函数。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
 
-38. **UI 可直接读取 PROPERTY，共享读取函数放 Core 文件** — `Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")` 在 UI 侧同样可用。将读取函数定义在 Core 文件中，GP 和 UI 各自 `include()` 即可；跨端不需要也不允许用 `ExposedMembers` 包装。
+38. **UI 可直接读取 PROPERTY，共享读取函数放 Core 文件** — `Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")` 在 UI 侧同样可用。将读取函数定义在 Core 文件中，GP 和 UI 各自 `include()` 即可；跨端不需要也不允许用 `ExposedMembers` 包装。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
 
-43. **ForgeUI `Offset` 正负号：左对齐(L)与右对齐(R)相反，上对齐(T)与下对齐(B)相反 —— 正值恒指向容器内部** — `Anchor` 是 `L/C/R × T/C/B` 九宫格，Offset 正值方向不是全局坐标系而是相对锚点镜像翻转：`L`→右、`R`→**左**、`T`→下、`B`→**上**；`C` 无镜像（正值即屏幕正向：右/下）。⚠ 不要把「负值」一概判为 bug —— 负值只是「往容器外推」，本工程 45 个 UI XML 实测 `R,T` 负值 6 处均在正常运行面板中；`B` 锚点 28 正 0 负（镜像零反例）。症状：同一面板中一个按钮正常、另一个"贴屏幕边缘/面板外"，通常就是 `R,B`/`B` 系锚点写了负值（或镜像错值）。例：`R,B` + `Offset="-80,33"` = 向右 80 推出右缘；正确应为 `"80,33"`（向左）。vanilla 佐证 `WorldBuilderMenu.xml:14-15`（`R,B`/`L,B` 均正值正常）、`BoostUnlockedPopup.xml:38`（`C,B` + `0,15` 向上）。规避：角落锚点先按上表反推符号；或统一用 `C,*` 锚点 + 正值，无镜像歧义。详见 `xml-templates.md` "Anchor Syntax Reference"。
+43. **ForgeUI `Offset` 正负号：左对齐(L)与右对齐(R)相反，上对齐(T)与下对齐(B)相反 —— 正值恒指向容器内部** — `Anchor` 是 `L/C/R × T/C/B` 九宫格，Offset 正值方向不是全局坐标系而是相对锚点镜像翻转：`L`→右、`R`→**左**、`T`→下、`B`→**上**；`C` 无镜像（与 `L,T` 同向，2026-09-28 用户裁定：CC 与 LT 正负判断一致；正值即屏幕正向：右/下）。⚠ 不要把「负值」一概判为 bug —— 负值只是「往容器外推」，本工程 45 个 UI XML 实测 `R,T` 负值 6 处均在正常运行面板中；`B` 锚点 28 正 0 负（镜像零反例）。症状：同一面板中一个按钮正常、另一个"贴屏幕边缘/面板外"，通常就是 `R,B`/`B` 系锚点写了负值（或镜像错值）。例：`R,B` + `Offset="-80,33"` = 向右 80 推出右缘；正确应为 `"80,33"`（向左）。vanilla 佐证 `WorldBuilderMenu.xml:14-15`（`R,B`/`L,B` 均正值正常）、`BoostUnlockedPopup.xml:38`（`C,B` + `0,15` 向上）。规避：角落锚点先按上表反推符号；或统一用 `C,*` 锚点 + 正值，无镜像歧义。详见 `xml-templates.md` "Anchor Syntax Reference"。
 
 ---
 
@@ -592,7 +592,9 @@
     所谓"换行"只是字节碰巧命中 `0x0A`，**语义上不存在换行**；`.dds` 同理。
     归一化脚本必须**按扩展名排除 + 逐文件 NUL 探测双重把关**。
 
-    **施工与体检**：`python civ6-modding/scripts/normalize_eol.py <工程目录>`（默认只报告，`--fix` 才写盘）。
+    **施工与体检**：`python civ6-modding/scripts/normalize_eol.py <工程目录>`（默认只报告；`--fix` 才写入 ——
+    工程内既有文件内容有变化时，改写结果落到 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具
+    写入工程对应路径，脚本在退出码 2 时打印待写入清单；`--repo-skill` 清理 skill 自身仓库仍直写）。
     工程侧在 `.gitattributes` 落实：
 
     ```gitattributes
@@ -678,6 +680,7 @@
 
     修复：`python art/regen_atlas_tiers.py <projectRoot> --report --write-damaged`
     从 256 母版逐格 LANCZOS 重出，**尺寸不变，`.tex` / 网格 / 注册链都不用动**。
+    产物是 `.dds`（可再生资产），脚本直接覆盖写回 `Textures\`，不需要 AI 再写入工程。
 
     ⚠ **配套陷阱**：素材目录里常有**每档一份的独立 PNG**（`ATLAS_X32.png`、`ATLAS_X45.png`…），
     这些小档 PNG **本身就是受损产物**。若把它们当"源素材"重跑 `make_atlas.py`，
@@ -718,6 +721,47 @@
     照抄官方会破坏 pom 约定甚至让 AssetEditor 崩溃。**格式对齐只针对格式类字段，值类字段一律不碰。**
 
 
+
+## Mods 加载树里不能放工程（构建产物会被当成第二个 mod）
+
+    **症状**：游戏「额外内容」界面出现两份一模一样的同名 mod，两份都能勾选，勾哪份都分不出差别。
+
+    **机理**：游戏把 `<用户目录>\Mods` 当加载根**递归扫描整棵目录树**，任何位置的
+    `*.modinfo` 都会被收下一条记录。工程目录一旦落在 Mods 树内，构建产物
+    `<Mods>\<ModName>\Build\<ModName>.modinfo` 与部署产物
+    `<Mods>\<ModName>\<ModName>.modinfo` 同时被收，**同一 GUID 出现两条记录**。
+
+    **实证**（本机 `Mods.sqlite`，只读查询）：
+
+    ```sql
+    SELECT m.ModRowId, m.ModId, sf.Path
+    FROM Mods m JOIN ScannedFiles sf ON sf.ScannedFileRowId = m.ScannedFileRowId
+    WHERE m.ModId = '2f19f621-f276-429a-aadc-30d40722afda';
+    ```
+
+    查得两行，`Path` 分别是
+    `Mods/Ragunna_Balance_Patch/Build/Ragunna_Balance_Patch.modinfo` 与
+    `Mods/Ragunna_Balance_Patch/Ragunna_Balance_Patch.modinfo`。该 `Build\` 这一层
+    来自不带 `--deploy` 的 `tools/modinfo_build.py`。
+
+    **ModBuddy 侧同源**：`Civ6.targets` 定义
+    `BuildDir = $(Civ6_UserPath)\Mods\$(MSBuildProjectName)`、
+    `ModInfoPath = $(BuildDir)\$(MSBuildProjectName).modinfo` —— 构建输出与部署输出
+    **本来就是同一个目录**，即 Mods 副本。所以工程侧的界是：
+    `<ModName>.modinfo`、`<ModName>.dep`、`Platforms/*/BLPs/**`、`Build/`、`Cooked/`
+    都不属于源工程。
+
+    **防线（三层，覆盖全部写入路径）**：
+
+    1. `tools/new_project.py` / `modinfo_build.py` / `cook_assets.py` / `cook_dep.py`
+       入口调用 `_paths.assert_source_tree()`，工程目录命中 Mods 树即**退出码 2、不写任何文件**；
+    2. `modinfo_build.py --deploy` 收尾扫描 `<Mods>` 下相对深度 > 1 的 `*.modinfo`，命中即 WARN；
+    3. `tools/verify_mod_package.py` 把 Mods 副本里的 `*.civ6proj` / `.git*` / `Build/` /
+       `Cooked/` / `Textures/` / `XLPs/` / 第二个 `*.modinfo` 一律判为越界并计入问题。
+
+    **附带教训**：把工程建在 Mods 树内后，`new_project.py` 预建的 8 个骨架目录
+    （`ArtDefs` `XLPs` `Textures` 等）会随整树拷贝留在副本里。现在这些目录按需创建，
+    只有 `--with-art` / `--extra-dirs` 才预建。
 
 ## Modifier 附加（ATTACH_MODIFIER）的永久性 —— 位置型效果会无上限叠加
 

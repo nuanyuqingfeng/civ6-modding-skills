@@ -57,6 +57,9 @@ import re
 import sqlite3
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file, finish  # noqa: E402
+
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
@@ -410,11 +413,10 @@ def main() -> int:
             (os.path.join(args.project, "Data", "Config_%s.sql" % slug), c),
             (os.path.join(args.project, "Text", "Text_%s.sql" % slug), t)]
     for path, content in outs:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        # .sql 属代码/配置类 → CRLF（换行分层铁律）
-        with open(path, "w", encoding="utf-8", newline="\r\n") as f:
-            f.write(content.replace("\r\n", "\n"))
-        print("写出  %s  %d B" % (path, os.path.getsize(path)))
+        # .sql 属代码/配置类 → CRLF（换行分层铁律）；既有文件内容有变化时，改写结果由守卫入位 workspace/gen
+        data = content.replace("\r\n", "\n").replace("\n", "\r\n").encode("utf-8")
+        result = write_project_file(path, data, args.project)
+        print("写出  %s  %d B  %s" % (path, len(data), result))
 
     print("\n★ 还需手动在 .civ6proj 注册（本工具不动工程文件）：")
     print("   InGameActions  → UpdateDatabase: Data/CivLeader_%s.sql" % slug)
@@ -424,7 +426,7 @@ def main() -> int:
     print("   并补 <Content Include> 三条（漏了不会被部署）")
     print("\n下一步校验：python tools/modinfo_build.py <civ6proj> --deploy")
     print("            node scripts/rgn_validate_runner.mjs <Data 目录>")
-    return 2 if warns else 0
+    return finish() or (2 if warns else 0)
 
 
 if __name__ == "__main__":

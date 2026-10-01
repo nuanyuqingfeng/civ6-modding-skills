@@ -1,6 +1,6 @@
 # 总督（Governor）素材实测规格
 
-数据来源：`Sid Meier's Civilization VI SDK Assets` 散装 DDS（pantry，禁止解包）→
+数据来源：`Sid Meier's Civilization VI SDK Assets` 散装 DDS（pantry）→
 **`civ6-modding` 的 texconv**（随包内置 `civ6-modding/art/bin/texconv.exe`，定位真源
 `civ6-modding/art/_texconv.py`）`-ft png` 纯格式转换 → 1:1 像素测量。
 全量清单见 `reference/governor-art/inventory.md`，配色表见 `reference/governor-art/palette.json`。

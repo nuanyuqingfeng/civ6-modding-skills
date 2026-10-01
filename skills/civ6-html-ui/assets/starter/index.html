@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>Civ6 原生 UI 纹理示例</title>
+<style>
+* { box-sizing:border-box; }
+html,body { margin:0; }
+body { background:#090f18; color:#eee4ce; font-family:system-ui,sans-serif; }
+.toolbar { margin:24px auto; width:640px; display:flex; align-items:center; gap:16px; }
+.toolbar p { margin:0; flex:1; font-size:14px; color:#aab8c5; }
+select { padding:8px; color:inherit; background:#152431; border:1px solid #a78958; }
+#preview { width:640px; height:400px; margin:24px auto; position:relative; }
+.panel { position:relative; width:640px; height:400px; background:radial-gradient(ellipse at 14% 18%,#233f50,transparent 60%),linear-gradient(140deg,#111d2b,#181320); border:2px solid #af915b; overflow:hidden; }
+.panel::before { content:""; position:absolute; inset:12px; border:1px solid #ab915c55; background:repeating-linear-gradient(125deg,transparent 0 34px,#cbb1790a 35px 36px); }
+.panel::after { content:""; position:absolute; left:28px; top:86px; width:584px; height:1px; background:linear-gradient(90deg,#c6a865,#c6a86500); }
+.skin { width:256px; height:48px; position:relative; background:#274652; border:2px solid #b0935f; box-shadow:inset 0 0 0 3px #122730,inset 0 0 18px #4d819822; }
+.skin::before,.skin::after { content:""; position:absolute; top:18px; width:8px; height:8px; border:1px solid #d7bd81; transform:rotate(45deg); }
+.skin::before { left:7px; } .skin::after { right:7px; }
+.skin.hover { background:#386273; border-color:#ebca89; }
+.skin.down { background:#172e3b; box-shadow:inset 0 3px 9px #0008; border-color:#967747; }
+.skin.disabled { background:#30373b; border-color:#626866; box-shadow:inset 0 0 0 3px #20272b; }
+.skin.disabled::before,.skin.disabled::after { border-color:#7c817b; }
+.selected { width:256px; height:160px; border:3px solid #dfbd78; position:relative; box-shadow:inset 0 0 16px #cfb16944; }
+.selected::before { content:""; position:absolute; top:8px; left:8px; width:12px; height:12px; background:#dfbd78; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); }
+.heading,.desc,.status,.card,.confirm { position:absolute; }
+.heading { left:28px; top:26px; margin:0; font-size:28px; font-weight:500; }
+.desc { left:28px; top:100px; width:270px; height:180px; overflow-y:auto; font-size:16px; line-height:1.6; color:#b7c7ce; }
+.card { left:336px; top:100px; width:256px; height:160px; padding:32px; border:1px solid #53616b; background:#111e29; color:#e7dbc2; text-align:left; font:inherit; cursor:pointer; }
+.card .selected { position:absolute; inset:0; pointer-events:none; }
+.card small { display:block; margin-top:12px; color:#9fb4c1; }
+.status { left:28px; top:314px; font-size:14px; width:280px; }
+.confirm { left:336px; top:320px; width:256px; height:48px; padding:0; border:0; color:#eee4ce; background:none; cursor:pointer; }
+.confirm .skin { position:absolute; inset:0; }
+.confirm span { position:relative; font-size:16px; }
+.confirm:hover:not(:disabled) .skin { background:#386273; border-color:#ebca89; }
+.confirm:active:not(:disabled) .skin { background:#172e3b; border-color:#967747; }
+button:disabled { cursor:default; }
+#texture { display:none; }
+html.export,body.export { background:transparent!important; overflow:hidden; }
+.export .toolbar,.export #preview { display:none!important; }
+.export #texture { display:block; position:absolute; left:0; top:0; margin:0; padding:0; overflow:hidden; }
+</style>
+<div class="toolbar"><p>示例预览 · 文字和业务状态不导出为纹理</p><select id="state"><option value="normal">正常</option><option value="disabled">不可用</option><option value="long">长文本</option></select></div>
+<main id="preview"><div class="panel"></div><h1 class="heading">原生面板标题</h1><div class="desc" id="description"></div>
+<button class="card" id="card">可选择的卡片<small>选择边框独立于标题与说明。</small><div class="selected" id="selection" hidden></div></button>
+<div class="status" id="status"></div><button class="confirm" id="confirm" disabled><div class="skin disabled" id="confirmSkin"></div><span>确认选择</span></button></main>
+<div id="texture"></div>
+<script>
+window.textureSpecs = { UI_DEMO_PANEL:[640,400], UI_DEMO_BUTTON:[256,192], UI_DEMO_SELECTED:[256,160] };
+window.renderTexture = async name => {
+  if (!Object.hasOwn(window.textureSpecs,name)) throw Error('Unknown texture '+name);
+  document.documentElement.classList.add('export'); document.body.classList.add('export');
+  const root=document.querySelector('#texture'),[w,h]=window.textureSpecs[name];
+  root.style.width=w+'px'; root.style.height=h+'px';
+  const markup={ UI_DEMO_PANEL:'<div class="panel"></div>',
+    UI_DEMO_BUTTON:['normal','hover','down','disabled'].map(state=>'<div class="skin '+state+'"></div>').join(''),
+    UI_DEMO_SELECTED:'<div class="selected"></div>' };
+  root.innerHTML=markup[name];
+  await document.fonts.ready; await Promise.all([...document.images].map(image=>image.decode()));
+};
+let selected=false;
+const state=document.querySelector('#state'),card=document.querySelector('#card'),confirm=document.querySelector('#confirm');
+function refresh() {
+  const locked=state.value==='disabled'; if(locked) selected=false;
+  document.querySelector('#selection').hidden=!selected; card.disabled=locked; confirm.disabled=locked||!selected;
+  document.querySelector('#confirmSkin').className='skin'+(confirm.disabled?' disabled':'');
+  document.querySelector('#description').textContent=('这里是原生 Label 的排版预览，最终文字通过 LOC 和 Lua 提供。'+(state.value==='long'?'较长的说明应该在固定视口内滚动，不覆盖底部按钮。'.repeat(12):''));
+  document.querySelector('#status').textContent=locked?'当前不可用':selected?'已选中 1 项':'请选择一项';
+}
+card.onclick=()=>{selected=!selected;refresh();}; state.onchange=refresh;
+confirm.onclick=()=>{document.querySelector('#status').textContent='仅预览：确认事件已触发';}; refresh();
+</script>
+</html>

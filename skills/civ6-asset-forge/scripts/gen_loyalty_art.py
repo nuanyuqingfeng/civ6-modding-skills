@@ -14,13 +14,20 @@
   示例工程.Art.xml             consumer/library 接线（幂等补齐）
   <工程>.civ6proj                  Content 条目（幂等补齐）
 
+写入：目标不存在时脚本新建直写；已存在且内容有变化时，改写结果落到
+      <工程>/workspace/gen/ 的同一相对路径，由 AI 用文件编辑工具写入工程（退出码 2 并打印清单）。
+
 不生成 .tex/.dds（素材审核通过后走 civ6-modding art-pipeline 转换）。
 """
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file, finish  # noqa: E402
 
 XML_DECL = '<?xml version="1.0" encoding="UTF-8" ?>\n'
 XLP_HEAD = """{xml}<AssetObjects..XLP>
@@ -551,24 +558,22 @@ def read_preserve(path: Path) -> tuple[str, str]:
     return (raw.replace("\r\n", "\n"), "\r\n" if crlf else "\n")
 
 
-def write_preserve(path: Path, text: str, newline: str) -> None:
-    """按指定换行风格写出（新文件默认 CRLF，Windows 工程惯例）。"""
-    if newline != "\r\n":
-        newline = "\r\n"
-    with open(path, "w", encoding="utf-8", newline="") as f:
-        f.write(text.replace("\n", newline))
+def stage_project_file(path: Path, text: str, newline: str, project: Path) -> str:
+    """把拼好的完整文本交给工程写入守卫（新建直写，改写入位 <工程>/workspace/gen）。
+
+    换行风格：既有文件的内容已在 read_preserve 统一为 \n，故按统一结果交给守卫；
+    新建文本按 CRLF 交给守卫（Windows 工程惯例）。
+    """
+    content = text if newline != "\r\n" else text.replace("\n", "\r\n")
+    return write_project_file(str(path), content, str(project))
 
 
-def write_if_changed(path: Path, content: str) -> str:
-    if path.exists():
-        old, _ = read_preserve(path)
-        if old == content:
-            return f"  未变   {path.name}"
-    write_preserve(path, content, "\r\n")
-    return f"  写入   {path}"
+def write_if_changed(path: Path, content: str, project: Path) -> str:
+    return f"  {stage_project_file(path, content, '\r\n', project)}   {path}"
 
 
-def gen_xlp(path: Path, cls: str, pkg: str, entry_ids: list[str], results: list[str]) -> None:
+def gen_xlp(path: Path, cls: str, pkg: str, entry_ids: list[str], project: Path,
+            results: list[str]) -> None:
     """创建或追加 XLP 条目（幂等：已存在的 EntryID 跳过）。"""
     if path.exists():
         text, nl = read_preserve(path)
@@ -582,15 +587,15 @@ def gen_xlp(path: Path, cls: str, pkg: str, entry_ids: list[str], results: list[
             # 空条目自闭合形式：先展开为常规形式再追加
             text = text.replace("<m_Entries/>", "<m_Entries>\n\t</m_Entries>")
         text = text.replace("\t</m_Entries>", new_entries + "\t</m_Entries>")
-        write_preserve(path, text, nl)
-        results.append(f"  追加   {path}（{new_entries.count('<m_EntryID')} 条）")
+        results.append(f"  {stage_project_file(path, text, nl, project)}   {path}"
+                       f"（{new_entries.count('<m_EntryID')} 条）")
     else:
         entries = "".join(XLP_ENTRY.format(eid=e) for e in entry_ids)
-        write_preserve(path, XLP_HEAD.format(xml=XML_DECL, cls=cls, pkg=pkg, entries=entries), "\r\n")
-        results.append(f"  创建   {path}")
+        head = XLP_HEAD.format(xml=XML_DECL, cls=cls, pkg=pkg, entries=entries)
+        results.append(f"  {stage_project_file(path, head, '\r\n', project)}   {path}")
 
 
-def patch_art_xml(art_xml: Path, results: list[str]) -> None:
+def patch_art_xml(art_xml: Path, project: Path, results: list[str]) -> None:
     """幂等补齐 consumer 与 library 接线。"""
     text, nl = read_preserve(art_xml)
     orig = text
@@ -620,13 +625,14 @@ def patch_art_xml(art_xml: Path, results: list[str]) -> None:
         text = text[:m.end(1)] + '\n\t\t\t\t<Element text="UILensAssets"/>' + text[m.end(1):]
 
     if text != orig:
-        write_preserve(art_xml, text, nl)
-        results.append(f"  更新   {art_xml.name}（consumer/library 接线）")
+        results.append(f"  {stage_project_file(art_xml, text, nl, project)}   {art_xml.name}"
+                       "（consumer/library 接线）")
     else:
         results.append(f"  未变   {art_xml.name}")
 
 
-def patch_civ6proj(civ6proj: Path, content_files: list[str], results: list[str]) -> None:
+def patch_civ6proj(civ6proj: Path, content_files: list[str], project: Path,
+                   results: list[str]) -> None:
     """幂等补 Content 条目（XLPs / ArtDefs 必须注册才会编译）。"""
     text, nl = read_preserve(civ6proj)
     missing = [f for f in content_files if f'<Content Include="{f}">' not in text]
@@ -642,8 +648,8 @@ def patch_civ6proj(civ6proj: Path, content_files: list[str], results: list[str])
     else:
         insert_at = text.find("</Content>", idx) + len("</Content>\n")
     text = text[:insert_at] + block + text[insert_at:]
-    write_preserve(civ6proj, text, nl)
-    results.append(f"  更新   {civ6proj.name}（新增 {len(missing)} 条 Content）")
+    results.append(f"  {stage_project_file(civ6proj, text, nl, project)}   {civ6proj.name}"
+                   f"（新增 {len(missing)} 条 Content）")
 
 
 def _find_project_files(project: Path):
@@ -678,11 +684,11 @@ def main() -> None:
     # 1. XLP 条目包
     gen_xlp(xlp_dir / "UILensModels.xlp", "UILensAsset", "UILensAssets",
             [f"Loyalty_Overlay_{suffix(c)}_Box" for c in civs]
-            + [f"Loyalty_Pressure_{suffix(c)}_Box" for c in civs], results)
+            + [f"Loyalty_Pressure_{suffix(c)}_Box" for c in civs], project, results)
     gen_xlp(xlp_dir / "StrategicView_UILenses.xlp", "StrategicView_Sprite",
             "strategicview/strategicview_uilenses",
             [f"StrategicView_Loyalty_Overlay_{suffix(c)}" for c in civs]
-            + [f"StrategicView_Loyalty_Pressure_{suffix(c)}" for c in civs], results)
+            + [f"StrategicView_Loyalty_Pressure_{suffix(c)}" for c in civs], project, results)
 
     # 2. ArtDef（本脚本只做整体生成；文件已存在且非本脚本生成时报错请手动合并）
     for name, gen in [("Overlay.artdef", overlay_artdef), ("StrategicView.artdef", strategicview_artdef)]:
@@ -690,7 +696,7 @@ def main() -> None:
         if p.exists():
             results.append(f"  跳过   {p}（已存在，如需合并文明请手动处理）")
         else:
-            results.append(write_if_changed(p, gen(civs)))
+            results.append(write_if_changed(p, gen(civs), project))
 
     # 3. 材质与 Box 素材
     for c in civs:
@@ -698,20 +704,20 @@ def main() -> None:
         for kind in ("Overlay", "Pressure"):
             results.append(write_if_changed(
                 project / "Materials" / f"Loyalty_{kind}_{s}_material.mtl",
-                MTL.format(xml=XML_DECL, Kind=kind, s=s)))
+                MTL.format(xml=XML_DECL, Kind=kind, s=s), project))
             fields = AST_OVERLAY if kind == "Overlay" else AST_PRESSURE
             results.append(write_if_changed(
                 project / "Assets" / f"Loyalty_{kind}_{s}_Box.ast",
-                AST_COMMON.format(xml=XML_DECL, Kind=kind, s=s, **fields)))
+                AST_COMMON.format(xml=XML_DECL, Kind=kind, s=s, **fields), project))
 
     # 4. Art.xml + civ6proj 注册
-    patch_art_xml(art_xml, results)
+    patch_art_xml(art_xml, project, results)
     patch_civ6proj(civ6proj, [
         f"{xlp_dir.name}\\UILensModels.xlp",
         f"{xlp_dir.name}\\StrategicView_UILenses.xlp",
         "ArtDefs\\Overlay.artdef",
         "ArtDefs\\StrategicView.artdef",
-    ], results)
+    ], project, results)
 
     print("\n".join(results))
     print("\n待办（素材审核通过后）：源 PNG 留在原处直接转换，勿复制进工程（.tex 源路径可悬空）")
@@ -721,7 +727,8 @@ def main() -> None:
             print(f"  - Loyalty_{kind}_{s}.png → DDS + .tex 输出 Textures/（art-pipeline，role=loyalty_3d）")
         print(f"  - StrategicView_Loyalty_Overlay_{s}.png → DDS + .tex 输出 Textures/（role=loyalty_sv）")
         print(f"  - StrategicView_Loyalty_Pressure_{s}.png → DDS + .tex 输出 Textures/（role=loyalty_sv）")
+    return finish()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -32,6 +32,17 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 - [ ] **Type annotations used** — `:number`, `:string`, `:boolean`, `:table` on locals
 - [ ] **Naming conventions followed** — `m_` prefix, `PascalCase` functions, `On` prefix for handlers
 
+## Lua 跨上下文 Validation
+
+- [ ] **新增的 `.lua` 是否与另一个上下文交换数据** — 若有，走的是 `reference/context-matrix.md` 第三节列出的通道（端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。）
+- [ ] **UI 角色文件内没有 `GameEvents.*`** — 被 UI 加载的共享库里也不行
+- [ ] **UI 角色文件内没有 `SetProperty(`** — UI 侧无此端口，要写就经 `EXECUTE_SCRIPT` 交给 GP 侧
+- [ ] **GP 侧通知 UI 用的是 `ReportingEvents.SendLuaEvent`** — 不是 `LuaEvents.X(...)`；端内跨上下文只有 `LuaEvents`，其余不可达 → `reference/context-matrix.md`
+- [ ] **UI 侧触发 GP 动作用的是 `EXECUTE_SCRIPT`**
+- [ ] **同端跨文件用 `LuaEvents`，且触发端与接收端在同一端** — 跨端注册/触发不达 → `reference/context-matrix.md`
+- [ ] **`ExposedMembers` 使用处附有会话授权记录**
+- [ ] **交付前跑过 `scripts/check_lua_context.py` 且 0 输出**
+
 ## .modinfo Validation
 
 - [ ] **`AddUserInterfaces` references `.xml` only** — not `.lua`
@@ -72,7 +83,7 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 - [ ] **`Initialize()` called at bottom** — `Initialize();` as last line
 - [ ] **Uses `Events.*` / `GameEvents.*`** — 引擎事件按 `eventSystem` 选线；跨文件通信用 `LuaEvents.*`
 - [ ] **No UI access** — no `ContextPtr`, `Controls`, `UIManager`, etc.
-- [ ] **`LuaEvents.*` 仅用于同端跨文件** — UI 上下文互播 / GP 文件间跨文件；不跨端（GP→UI 用 ReportingEvents.SendLuaEvent）
+- [ ] **`LuaEvents.*` 仅用于同端跨文件** — UI 上下文互播 / GP 文件间跨文件；不跨端（GP→UI 用 ReportingEvents.SendLuaEvent）。端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`
 - [ ] **Nil checks on game objects** — `if pPlayer ~= nil and pPlayer:IsAlive() then`
 - [ ] **No `math.random()` in multiplayer** — use `Game.GetRandNum(n)`
 - [ ] **No `Game.GetLocalPlayer()` in Gameplay** — it's a UI concept
@@ -104,7 +115,8 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 ## UI ↔ Gameplay Communication Validation
 
 - [ ] **No C++ objects passed across boundary** — only primitives
-- [ ] **GP 同端跨文件通信用 LuaEvents** — 接收端 `LuaEvents.X.Add(fn)`（文件加载期注册），触发端 `LuaEvents.X(params)`；表格按引用传递，handler 回写、调用方无需 return；不用 ExposedMembers 跨文件传函数
+- [ ] **GP 同端跨文件通信用 LuaEvents** — 接收端 `LuaEvents.X.Add(fn)`（文件加载期注册），触发端 `LuaEvents.X(params)`；表格按引用传递，handler 回写、调用方无需 return；不用 ExposedMembers 跨文件传函数。端内跨上下文只有 `LuaEvents` → `reference/context-matrix.md`
+- [ ] **跨上下文调用函数一律不可达** — 端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
 - [ ] **PlayerOperations only during player's turn** — UI side constraint
 - [ ] **Function arguments are simple types** — number, string (not tables)
 
@@ -134,7 +146,7 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 | Crash on nil | Missing nil check | Add `if pPlayer ~= nil then` |
 | Data lost on save | Not using SetProperty | Use `Game:SetProperty()` for persistence |
 | Multiplayer desync | `math.random()` | Use `Game.GetRandNum(n)` |
-| UI can't read data | Not exposed | Use `PROPERTY` 直接读 / Core 共享读取函数（禁止跨端 `ExposedMembers`） |
+| UI can't read data | Not exposed | Use `PROPERTY` 直接读 / Core 共享读取函数（禁止跨端 `ExposedMembers`；端内跨上下文只有 `LuaEvents`，其余不可达 → `reference/context-matrix.md`） |
 | Wrong player data | Using `GetLocalPlayer()` in Gameplay | Use event parameters or `PlayerManager` |
 
 ### Database Mistakes

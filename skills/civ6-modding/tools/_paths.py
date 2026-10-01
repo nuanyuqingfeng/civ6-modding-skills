@@ -130,6 +130,44 @@ def require(key: str) -> str:
     return p
 
 
+def mods_root() -> str | None:
+    """Mods 加载根目录（解析结果；解析不到返回 None）。"""
+    return get("mods", must_exist=False)
+
+
+def _norm(path: str) -> str:
+    return os.path.normcase(os.path.abspath(path)).rstrip("\\/")
+
+
+def is_under(path: str, root: str | None) -> bool:
+    """path 是否位于 root 之下（含两者相等）；大小写不敏感。"""
+    if not path or not root:
+        return False
+    p, r = _norm(path), _norm(root)
+    return p == r or p.startswith(r + os.sep)
+
+
+def assert_source_tree(path: str, what: str = "源工程目录") -> None:
+    """断言 path 不在 Mods 加载树内，命中即 SystemExit(2)（调用方须在写盘前调用）。
+
+    游戏递归扫描 Mods 目录，工程目录一旦落在其中，构建产物 <ModName>.modinfo 会被当成
+    第二个 mod 收录，同一 GUID 出现两条记录（「额外内容」界面出现两份同名 mod）。
+    """
+    root = mods_root()
+    if not is_under(path, root):
+        return
+    print(
+        "FAIL %s 位于 Mods 加载树内，拒绝执行：\n"
+        "   工程：%s\n"
+        "   Mods：%s\n"
+        "游戏递归扫描 Mods 目录，工程里的构建产物会被当成第二个 mod 收录，\n"
+        "同一 GUID 出现两条记录。把工程放到 ModBuddy 源工程根再部署：\n"
+        '   python "%s" "<源工程根>\\<ModName>" --name <ModName> --deploy'
+        % (what, path, root, os.path.join(SKILL_DIR, "tools", "new_project.py")),
+        file=sys.stderr)
+    raise SystemExit(2)
+
+
 def summary() -> str:
     rows = []
     for k in DEFAULTS:

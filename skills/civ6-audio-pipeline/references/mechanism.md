@@ -27,6 +27,7 @@
    `    <Content Include="Platforms\Windows\Audio\x.wem">` + `      <SubType>Content</SubType>`（反斜杠）。
    实证先例：本地某领袖 mod 源工程 .civ6proj（CDATA 单行 UpdateAudio + Content 条目）。
    > 背景：给**既有 mod 首次加音频**时，P1 源工程与 P2 运行目录往往都没有音频注册——两边都要写（`register_to_mod.py` 默认双写）；该做法与"防止重建丢失"无关。
+   > ⚠ 已有条目的 `.modinfo` / `.civ6proj`（以及 `Platforms/Windows/Audio/xxx_Banks.ini`）属改写：命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。首次注册时新建的 `.bnk` / `.wem` 属可再生二进制资产，由脚本直写。
 
 ## 4. Wwise 工程直改（免 GUI）要点
 

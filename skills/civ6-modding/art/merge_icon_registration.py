@@ -24,10 +24,14 @@ make_atlas.py / convert_art.ps1 只会产出 <atlas>_registration.xml **片段**
 退出码 0 = 成功（含"无需改动"）。
 """
 import argparse
+import os
 import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import finish, write_project_file  # noqa: E402
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -41,10 +45,6 @@ def read_text_keep(path):
     raw = Path(path).read_bytes()
     bom = raw[:3] == b"\xef\xbb\xbf"
     return raw.decode("utf-8-sig"), bom
-
-
-def write_text_keep(path, text, bom):
-    Path(path).write_bytes((b"\xef\xbb\xbf" if bom else b"") + text.encode("utf-8"))
 
 
 def detect_eol(text):
@@ -149,24 +149,29 @@ def main():
 
     changed = []
     if new_atlas or new_def:
-        write_text_keep(icons, text, bom)
-        changed.append(icons)
+        result = write_project_file(icons, (b"\xef\xbb\xbf" if bom else b"") + text.encode("utf-8"), root)
+        changed.append((icons, result))
     if new_xlp and xlp_text is not None:
         xe = detect_eol(xlp_text)
         block = "".join(
             f"\t\t<Element>{xe}\t\t\t<m_EntryID text=\"{n}\"/>{xe}"
             f"\t\t\t<m_ObjectName text=\"{n}\"/>{xe}\t\t</Element>{xe}" for n in new_xlp)
         xlp_text = xlp_text.replace("\t</m_Entries>", block + "\t</m_Entries>", 1)
-        write_text_keep(xlp, xlp_text, xlp_bom)
-        changed.append(xlp)
+        result = write_project_file(xlp, (b"\xef\xbb\xbf" if xlp_bom else b"") + xlp_text.encode("utf-8"), root)
+        changed.append((xlp, result))
 
     if not changed:
         print("\n无需改动（全部已存在）")
     else:
-        for c in changed:
-            print(f"  已写入 {c}")
+        for path, result in changed:
+            if result == "STAGED":
+                print(f"  改写结果已到 workspace/gen/：{path}")
+            elif result == "SAME":
+                print(f"  无需改动：{path}")
+            else:
+                print(f"  已写入 {path}")
     print("提示：改完跑 art/verify_icon_atlas.py <projectRoot> 复核")
-    return 0
+    return finish()
 
 
 if __name__ == "__main__":

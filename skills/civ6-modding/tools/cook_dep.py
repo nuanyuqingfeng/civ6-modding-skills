@@ -54,6 +54,7 @@ if hasattr(sys.stdout, "reconfigure"):
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "art"))
+import _paths  # noqa: E402
 
 
 def find_cooker() -> str | None:
@@ -61,16 +62,12 @@ def find_cooker() -> str | None:
     env = os.environ.get("CIV6_COOKER")
     if env and os.path.isfile(env):
         return env
-    try:
-        import _paths
-        sdk = _paths.get("sdk")          # <SDK> 根
-        if sdk:
-            p = os.path.join(sdk, "AssetModTools", "Cooker",
-                             "Civ6AssetCooker_FinalRelease.exe")
-            if os.path.isfile(p):
-                return p
-    except Exception:
-        pass
+    sdk = _paths.get("sdk")              # <SDK> 根
+    if sdk:
+        p = os.path.join(sdk, "AssetModTools", "Cooker",
+                         "Civ6AssetCooker_FinalRelease.exe")
+        if os.path.isfile(p):
+            return p
     # 常见硬编码兜底（与 skill local_paths 的 P5 一致）
     p = (r"F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK"
          r"\AssetModTools\Cooker\Civ6AssetCooker_FinalRelease.exe")
@@ -91,6 +88,7 @@ def generate(proj: str, art_xml: str, out_dir: str, platform: str) -> tuple[bool
     if not os.path.isfile(cfg):
         return False, "找不到 cooker 配置：%s" % cfg
 
+    # 目录按需创建：cooker 会自己写产物，预建只会留下空目录
     os.makedirs(out_dir, exist_ok=True)
     cmd = [cooker, "--absolute_paths", "--no_mt",
            "--mode", "Dependency", "--platform", platform,
@@ -132,6 +130,7 @@ def main() -> int:
     if not os.path.isdir(proj):
         print("ERROR: 工程目录不存在：%s" % proj, file=sys.stderr)
         return 2
+    _paths.assert_source_tree(proj, "工程目录")
     mod_name = os.path.basename(proj.rstrip("\\/"))
     art_xml = os.path.join(proj, mod_name + ".Art.xml")
     if not os.path.isfile(art_xml):

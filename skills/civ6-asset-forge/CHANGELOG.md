@@ -1,5 +1,135 @@
 # CHANGELOG — civ6-asset-forge
 
+## 2026-10-01 · 新增类别⑨ 领袖头像：ICON_LEADER_* 素材整备管线
+
+**来源**：作者需求「优化领袖头像的导入流程」。
+
+### 内容
+
+- 新增 `reference/leader-avatar.md`（类别⑨ 全部规则：三分判定 / 锚点采集 / 定标 / 圆缘贴合 /
+  出圈三规则 / 验证与边界）与 `scripts/prepare_leader_avatar.py`
+  （判定 + 定标合成 + 底图换色；锚点 JSON 由 AI 视觉定位提供；exit 2 = 满幅/缺锚点）。
+- 底图真源 `assets/TEMPLATE_leader_avatar_base.png`（256 画布 ⌀234.6 暗青蓝渐变盘，作者提供；
+  径向拟合 R=117.3）。
+- SKILL.md：description 增 ⑧⑨ 枚举与触发词；§一/§二/§三/§七/§八 接线类别⑨；
+  §1.0 增「底图换色」显式豁免（仅底图层：色相→主色相、S 钳制 0.05~0.28、明度逐像素保留）。
+- 定标要点：脸中心 = 双眼中点与唇中点的中点（x 居中）；底边 = 下巴-肩线中点（落圆底）；
+  顶隙 g = (肩线−下巴)/4（头冠点到圆缘上沿，头冠 = 脸部中心竖直线上的视觉定位点）；
+  s = 盘径 ÷ (底边 − 头冠 + g)；圆缘贴合（艺术层 ∩ 底图 alpha）；
+  出圈三规则（上半区连通域、深度上限 1.18R、画布圆软边界 ⌀−4px，AA 收尾）。
+- 工具名录已刷新（22 脚本）。
+
+### 已知物理边界
+
+高耸头饰（高于头冠）受画布上缘物理限制，超出部分沿画布缘软裁；需完整保留时由作者在
+「减小顶隙 g」与「缩小脸占比」间定夺，脚本不做主（Dengdeng 鼠耳即此类）。
+
+## 2026-09-28 · 类别④ 灯光链必须随工程自带（**实机实测**）
+
+**来源**：停云纸片人在外交场景渲染成零星色块；补齐本地灯光链并重新 cook 后正常显示。
+
+### 问题
+
+artdef 的 Lightrig 槽是一个真实被解析的引用：写成 `ART_DEFAULT_LIGHT` 后，该条目要到官方
+`Leader_LightRigs.xlp`（包名 `leaders/light_rigs`）里解析；工程内没有本地同名包时，
+`.dep` 里 `LeaderLighting` 库的 `PackageDependencies` 为空，领袖场景取不到灯光。
+
+### 改动
+
+| 文件 | 改动 |
+|---|---|
+| `SKILL.md` §五bis | 「不生成任何灯光资产」改为「灯光链随工程自带，三处齐备」；写明实测症状与成因 |
+| `SKILL.md` 类别表 / §6.1 / §6.2 第 1 条 / §七 校验表 | 类别④ 的产出与校验项补灯光链；`LightRigs/`、`EnvironmentLights/` 回到「构建时自动扫描」清单 |
+| `SKILL.md` §八 与脚本表 | `templates/` 清单与 `gen_leader_2d.py` 说明去掉「不含灯光链」 |
+| `reference/leader-2d.md` §一 / §三 / §3.6(1) / §四 命名表 / §五 清单 / §四 接线步骤 | Lightrig 槽改为 `{LEADER}_LightRig`；补三件套的命名、规格、`.Art.xml` 与 `.civ6proj` 两处接线；删去「不生成灯光资产」与迁移到 `ART_DEFAULT_LIGHT` 的步骤 |
+| `templates/Leaders.artdef` | Lightrig 槽 `ART_DEFAULT_LIGHT` 改为 `{LEADER}_LightRig` |
+| `templates/LEAD_ABBR_Name_LightRig.lrg`（新增） | 灯光绑定模板，`m_ClassName=LeaderEnvironment` |
+| `templates/LEAD_ABBR_Name_Environment.env`（新增） | 环境光模板，三盏方向灯，强度 1.55 / 1.5 / 0.446472 |
+| `templates/Leader_Environment.dds`（新增） | Hojo 通用环境光贴图，128×128 RGBA8 单 mip，393,344 字节，MD5 `100A9AF5C487BDF8D1BD84AFF854F1A6` |
+| `templates/Leader_LightRigs.xlp`（新增） | `m_ClassName=LeaderLighting`，包名 `leaders/light_rigs`，按领袖块复制 |
+| `scripts/gen_leader_2d.py` | 模板表补 `.lrg` / `.env` / `.dds` / `Leader_LightRigs.xlp`；新增通用贴图复制循环；文件头结论改写；收尾提示补两处工程接线 |
+
+### 验证
+
+生成器在空工程里实跑，12 个产物全部产出：artdef 的 Lightrig 槽为
+`LEADER_XIANZHOU_TINGYUN_LightRig`，`Leader_LightRigs.xlp` 条目正确，
+环境光 dds 的 MD5 与模板、Ragunna、本工程源工程四处一致。
+
+## 2026-09-28 · 全类别补执行顺序与收敛判据（**流程优先，调研默认禁止**）
+
+**来源**：用户指出本 skill 在实作中被当成背景材料来阅读理解，导致每个任务都先展开大量调研；并要求「按照流程走完为优先，除非遇到素材无法认定或者缺失才询问用户，在用户明确要求之前，一定不可以做任何调研」。
+
+### 改动
+
+| 文件 | 改动 |
+|---|---|
+| `SKILL.md` §〇（新增） | 四步执行顺序（路由 → 执行 → 校验 → 交付）；**收敛条件 = 校验器退出码**；顺序内的读取白名单，白名单之外的读取须先说明用途并取得许可 |
+| `SKILL.md` §三 | 由「开始任何任务前必须先询问」改为「**询问的唯一条件**」：素材无法认定（候选多于一份 / 来源路径不明），或素材缺失、规格不满足。素材认定以工程 `AGENTS.md`「美术与音频资产」表的「来源」列为准；反推源文件、比对候选、按像素差寻找匹配一律不出现 |
+| `SKILL.md` §五ter（新增） | **改动面由动词决定**：「重新生成图片」只重出图片与 `.tex`/`.dds`；「重新导入并 cook」再加构建；「显示异常」按排查条目逐条走；上次未结案的问题不随新任务展开；执行受阻就地停下报错误原文 |
+| `SKILL.md` §七 | 新增第 0 步「先跑本类只读校验器拿基线」；明确 `[warn]`/`[info]` 不构成失败项、不需要处理、不写进交付说明 |
+| `reference/leader-2d.md` §一 / §2.5 | 删去「层级 1／2／3」三段式（自行读图分析、检查本机工具、调用子代理）；入口收敛为 `process_leader_png.py` 一条命令；只保留三类停下询问的情形；补记 texconv 子进程管道被环境拒绝时就地停下 |
+| `reference/governor-art.md` | 「强制约定」补素材认定与询问条件，指向 `SKILL.md` §〇 / §三 / §七 |
+| `reference/frontend-portrait.md` §3b.6 | 标题与首句改指向 `SKILL.md` §三，明确素材路径已知且存在时不提问 |
+
+### 未改动
+
+类别②⑤⑥ 的 reference 与全部 `scripts/` 一字未动。它们的入口、规格与校验脚本维持原样；本次只统一执行顺序、询问条件与收敛判据。
+
+## 2026-09-28 · 类别⑦ 补 1:2.85 竖条分支（**仅 FrontEnd**）
+
+**来源**：用户指出「图片素材为 1:2.85 的竖直长条时，应该作为背景，并把前景置空为 `''`」，
+而 skill 里当时没有这条分支；并明确「LoadingInfo 不受这个 FrontEnd 的效果管辖」。
+
+### 问题
+
+`classify()` 只看 alpha 透明率，不看尺寸：
+
+| 素材 | 长宽比 | 透明% | 不透明% | 旧行为 |
+|---|---|---|---|---|
+| 竖版背景（实心） | 1:2.849 | 0.1 | 99.9 | ② 满幅图（碰巧对） |
+| 竖版背景（柔和边缘） | 1:2.849 | 0.7 | 29.6 | **⛔ 中间地带，白问用户一轮** |
+
+`LeaderBG` 控件是 328×935（1:2.8506）且 `StretchMode="None"`，
+长宽比落在这个比例上的素材按尺寸就该进 placard 背景位；只看透明率会把它漏进中间地带。
+
+### ★ 作用范围：只在 FrontEnd（环境 A）
+
+1:2.85 竖条这条规则管的是**选人 placard**（`Players.Portrait` / `Players.PortraitBackground`，Config 库）。
+**加载界面（环境 B）不受它管辖**：`LoadingInfo.ForegroundImage` 是另一条独立通道
+（Gameplay 库、`LoadScreen.lua` 消费），照旧取 `LEADER_<KEY>_NEUTRAL`。
+竖条本身是背景，顶替不了加载界面的前景——那份前景仍需单独一张立绘抠图。
+
+### 改动（`scripts/prepare_frontend_portrait.py`）
+
+| 改动 | 说明 |
+|---|---|
+| 新增 `is_placard_shape()` + `PLACARD_RATIO` / `PLACARD_RATIO_TOL` | 长宽比 1:2.85 ±3% 即判为 placard 形，**只看尺寸、不看 alpha** |
+| `classify()` 增第 2 条判据 | 判据次序：透明 ≥40% → **placard 形** → 透明 ≤5% 且不透明 ≥90% → 中间地带。**透明率优先**，高瘦人物抠图（同为 1:2.85、透明 81.6%）仍按抠图处理 |
+| `acquire_bgs()` 增 `strip_src` 参数 | 素材本身即 1:2.85 竖条时，直接 cover 到 328×935 采用，产出 `LEADER_<KEY>_PLACARD_BACKGROUND`；不再因"placard 缺竖版源"报 exit 3。**只影响 placard 背景这一项** |
+| placard 形分支只置 `Players.Portrait` | ``''`` 只写给 FrontEnd 那列；`loading_fg` 保持 `LEADER_<KEY>_NEUTRAL`，且**不拿竖条去顶替**加载界面前景 |
+| `PLACARD_BG_PATTERNS` 增 `LEADER_%s_PLACARD_BACKGROUND` | 二次执行走"① 工程既有"分支，幂等 |
+| 计划输出标注判定依据与作用范围 | 仅当**尺寸**这条规则真正决定了结果时才标"1:2.85 竖条 = placard 形"；并显式打印"该规则只在 FrontEnd 触发，加载界面不受管辖" |
+
+### 验证（隔离工程，真实竖版背景素材）
+
+| 用例 | 结果 |
+|---|---|
+| 竖版背景实心（透明 0.1%） | ② 满幅图 → `Players.Portrait = ''` + placard 背景 cover 328×935 |
+| 竖版背景柔边（透明 0.7%） | **由中间地带改为** placard 形，不再 exit 3 |
+| 高瘦人物抠图 1:2.85（透明 81.6%） | ① 人物抠图（透明率优先，未被尺寸抢走） |
+| 方形人物抠图（透明 47.6%） | ① 人物抠图（回归无变化） |
+| 横版载入背景（透明 0%） | ② 满幅图（回归无变化） |
+| placard 形分支的 `LoadingInfo.ForegroundImage` | 保持 `LEADER_<KEY>_NEUTRAL`，未被置空 |
+| `--write --confirmed` 落盘 | 产出 `LEADER_PROBE_PLACARD_BACKGROUND` 328×935，DDS 实测尺寸一致 |
+| 二次执行 | 走"① 工程既有竖版"，幂等 |
+
+### 文档同步
+
+`reference/frontend-portrait.md`：§3b.1 分类表改为"先透明率、后尺寸"四行 + 实测对照表，
+并加 ★ 段写明**只在 FrontEnd 触发、加载界面不受管辖**；§3b.2 空串写法补适用范围；
+§3b.3 placard 降级顺序补"素材本身即 1:2.85 竖条"一档并注明只作用于 placard；
+§3b.4 命名备注；§3b.6 会停下询问的情形与 §四 判定树同步。
+
 ## 2026-09-19(4) · 换行归一化（skill 仓库全 LF）+ 根因修复
 
 **来源**：用户裁决 —— 编码/换行归一化属安全改动，倾向"彻底做一次"，

@@ -12,8 +12,7 @@
       -> LeaderSuffix = CARTETHYIA_QYQXP      （去掉 LEADER_ 前缀后的完整剩余部分）
 
 `LeaderSuffix` **原样保留** LeaderType 自带的一切后缀 —— 它们是**结果**，不是**规则**。
-历史上本脚本曾把某个作者的专用缩写写死进推导式，导致所有工程的产物都被强行加上该后缀；
-现已移除。SQL 里没有该后缀的领袖，生成的命名里也就不会有。
+SQL 里没有的后缀，生成的命名里也就不会有。
 
 用法:
   python gen_leader_2d.py --project <工程路径> --leader-types "LEADER_A_QYQXP,LEADER_B"
@@ -31,27 +30,31 @@
   2. fgx/wig 通用平面模型需另行复制，本脚本不做。
   3. 素材未提供时 .tex 的 SourceFilePath 指向占位路径，需导入素材后更新。
 
-## 为什么不生成 LightRigs / EnvironmentLights（2026-09-24 实测）
+## 灯光链随注册文件一并生成（2026-09-28 实机实测）
 
-材质类 `Leader_Matte` 的 cook 参数槽**只有 `BaseColor` + `Opacity`**（Civ6.cfg 的
-MaterialClass 定义），对比 `Leader_Skin` 的 8 个 PBR 槽。**.env 的 `m_Intensity`/光源方向只喂
-PBR/IBL 通道，matte 类没有任何消费者** —— 整条灯光链（env/lrg/环境光 dds）对成品零贡献：
+artdef 的 Lightrig 槽是一个真实被解析的引用；工程内没有本地 `leaders/light_rigs` 包时，
+纸片人在外交场景渲染成**零星色块**。因此本脚本生成：
 
-- 6 个 .env 是原版 Hojo 的精确 0.5 倍（3.1/3.0/0.892943 → 1.55/1.5/0.446472），
-  这半档是历史上为压 `Leader` 类的过曝做的补救；材质类迁到 matte 后已无用。
-- 工程自证：env 改于 09-23 22:54，材质修复于 09-24 01:28 —— 判定"亮度合格"那次 env 一字未动。
-- 原版**也用共享灯光**：`Leaders.artdef` 的 `Leader_DEFAULT` / `LEADER_BARBARIAN`
-  都指向 `ART_DEFAULT_LIGHT`（在官方 `Leader_LightRigs.xlp` 里映射到 `Gorgo_LightRig`）。
+- `LightRigs/{Name}_LightRig.lrg`、`EnvironmentLights/{Name}_Environment.env`（结构照抄模板）
+- `EnvironmentLights/{Name}_Environment.dds`（Hojo 通用资产，跨工程逐字节一致）
+- `XLPs/Leader_LightRigs.xlp`（`m_ClassName=LeaderLighting`，包名 `leaders/light_rigs`）
 
-因此 artdef 的 Lightrig 槽一律写 `ART_DEFAULT_LIGHT` + 官方 `Leader_LightRigs.xlp`，
-**不再自带任何 .lrg / .env / 环境光 dds / Leader_LightRigs.xlp**（每领袖省 ~385 KB）。
+artdef 的 Lightrig 槽写 `{LEADER}_LightRig`。工程侧还有两处接线，脚本不代做：
+`.Art.xml` 的 `LeaderLighting` 库 `relativePackagePaths` 补 `leaders/light_rigs`；
+`.civ6proj` 的 `<Content>` 补 `XLPs/Leader_LightRigs.xlp`。
 """
 import argparse
 import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file, finish  # noqa: E402
+
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates')
+
+# 守卫返回值 → 控制台动词（既有的按原样保留，改写结果落在 <工程>/workspace/gen）
+_RESULT_VERB = {'NEW': '生成', 'SAME': '未变', 'OVERWRITE': '覆盖', 'STAGED': '入位 gen'}
 
 # 单文件模板 -> 目标子目录。（模板文件名与输出文件名一律不含作者后缀）
 SINGLE_FILE_TEMPLATES = [
@@ -61,12 +64,21 @@ SINGLE_FILE_TEMPLATES = [
     ('LEADER_NAME_TEXTURE.tex', 'Textures', 'LEADER_{suffix_upper}_TEXTURE.tex'),
     ('LEADER_NAME_OPACITY.tex', 'Textures', 'LEADER_{suffix_upper}_OPACITY.tex'),
     ('LEAD_ABBR_Name.ast', 'Assets', 'LEAD_{abbr}_{name}.ast'),
+    # 灯光链：artdef 的 Lightrig 槽按名字解析，缺本地包时纸片人渲染成零星色块
+    ('LEAD_ABBR_Name_LightRig.lrg', 'LightRigs', '{name}_LightRig.lrg'),
+    ('LEAD_ABBR_Name_Environment.env', 'EnvironmentLights', '{name}_Environment.env'),
+]
+
+# 通用环境光贴图：跨工程逐字节一致（Hojo 通用资产），逐领袖复制改名
+GENERIC_TEXTURE_TEMPLATES = [
+    ('Leader_Environment.dds', 'EnvironmentLights', '{name}_Environment.dds'),
 ]
 
 # 聚合模板 -> 目标子目录
 AGGREGATE_TEMPLATES = [
     ('leader_myciv.xlp', 'XLPs', 'leader_{pack}.xlp'),
     ('Leaders.artdef', 'ArtDefs', 'Leaders.artdef'),
+    ('Leader_LightRigs.xlp', 'XLPs', 'Leader_LightRigs.xlp'),
 ]
 
 
@@ -237,10 +249,22 @@ def main():
             out_name = out_fmt.format(abbr=abbr, name=display_case(suffix, display),
                                       suffix=suffix, suffix_upper=suffix.upper(), pack=pack)
             out_path = os.path.join(project, subdir, out_name)
-            os.makedirs(os.path.dirname(out_path), exist_ok=True)
-            with open(out_path, 'w', encoding='utf-8', newline='') as f:
-                f.write(out_text)
-            print('  生成 %s\\%s' % (subdir, out_name))
+            result = write_project_file(out_path, out_text, project)
+            print('  %s %s\\%s' % (_RESULT_VERB[result], subdir, out_name))
+
+    # 通用环境光贴图（逐领袖复制改名，内容跨工程一致）
+    for tpl_name, subdir, out_fmt in GENERIC_TEXTURE_TEMPLATES:
+        tpl_path = os.path.join(TEMPLATE_DIR, tpl_name)
+        if not os.path.exists(tpl_path):
+            raise SystemExit('错误: 模板缺失 %s' % tpl_path)
+        with open(tpl_path, 'rb') as f:
+            tpl_bytes = f.read()
+        for suffix, fx, display in entries:
+            out_name = out_fmt.format(abbr=abbr, name=display_case(suffix, display),
+                                      suffix=suffix, suffix_upper=suffix.upper(), pack=pack)
+            out_path = os.path.join(project, subdir, out_name)
+            result = write_project_file(out_path, tpl_bytes, project)
+            print('  %s %s\\%s' % (_RESULT_VERB[result], subdir, out_name))
 
     # 聚合文件
     for tpl_name, subdir, out_fmt in AGGREGATE_TEMPLATES:
@@ -252,14 +276,17 @@ def main():
         out_text = fill_aggregate(tpl, entries, abbr, pack)
         out_name = out_fmt.format(pack=pack)
         out_path = os.path.join(project, subdir, out_name)
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        with open(out_path, 'w', encoding='utf-8', newline='') as f:
-            f.write(out_text)
-        print('  生成 %s\\%s' % (subdir, out_name))
+        result = write_project_file(out_path, out_text, project)
+        print('  %s %s\\%s' % (_RESULT_VERB[result], subdir, out_name))
 
-    print('\n完成。注意: fgx/wig 通用平面模型需另行复制（环境光链已废弃，见文件头说明）；'
-          '立绘 png 可用 process_leader_png.py 生成 TEXTURE/OPACITY。')
+    print('\n完成。注意: fgx/wig 通用平面模型需另行复制；'
+          '立绘 png 可用 process_leader_png.py 生成 TEXTURE/OPACITY。\n'
+          '灯光链已随注册文件一并生成（LightRigs / EnvironmentLights / Leader_LightRigs.xlp），'
+          'artdef 的 Lightrig 槽指向 {LEADER}_LightRig；'
+          '还需在 .Art.xml 的 LeaderLighting 库补 leaders/light_rigs，'
+          '并把 XLPs/Leader_LightRigs.xlp 加进 .civ6proj 的 Content 清单。')
+    return finish()
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

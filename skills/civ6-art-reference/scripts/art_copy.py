@@ -26,8 +26,11 @@
     需要精细区分变体时克隆后手改。
   - 音频参数（XrefStop/Xref3DName）若含原条目名会被同步替换为新条目名。
 """
-import json, os, sys, gzip, argparse
+import json, os, sys, gzip, glob, argparse
 import xml.etree.ElementTree as ET
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file, finish
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_INDEX = os.path.join(HERE, '..', 'assets', 'art_index.json.gz')
@@ -149,6 +152,18 @@ def serialize(el):
         out.append('\t\t\t' + line if line.strip() else line)
     return '\n'.join(out)
 
+def project_root_of(path):
+    """从目标文件向上找到含 .civ6proj 的工程根"""
+    d = os.path.dirname(os.path.abspath(path))
+    while True:
+        if glob.glob(os.path.join(d, '*.civ6proj')):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            sys.exit(f"目标文件不在任何工程之内（向上未找到 .civ6proj）: {path}")
+        d = parent
+
+
 def file_skeleton(template, collection):
     return f'''<?xml version="1.0" encoding="UTF-8" ?>
 <AssetObjects..ArtDefSet>
@@ -205,7 +220,7 @@ def insert_into_file(path, entry_el, template, collection, dry_run=False):
         import re as _re
         if _re.search(r'<m_Name text="%s"\s*/>' % _re.escape(entry_el.find('m_Name').get('text')), raw):
             print(f"WARN: 条目已存在于目标文件，跳过: {entry_el.find('m_Name').get('text')}")
-            return
+            return 'SAME'
         # 插到第一个根集合的闭合 </Element> 之前
         i = raw.find(marker)
         if i < 0:
@@ -219,11 +234,12 @@ def insert_into_file(path, entry_el, template, collection, dry_run=False):
         i = new.find(marker)
         close = new.find('</Element>', i)
         new = new[:close].rstrip() + '\n' + snippet + '\n\t\t' + new[close:]
+    result = 'DRY'
     if not dry_run:
-        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-        with open(path, 'w', encoding='utf-8', newline='\n') as f:
-            f.write(new)
+        # 既有文件内容有变化时，改写结果由守卫入位 <工程>/workspace/gen
+        result = write_project_file(path, new.encode('utf-8'), project_root_of(path))
     print(f"written: {path} (+{entry_el.find('m_Name').get('text')})" if not dry_run else f"[dry-run] {path} (+{entry_el.find('m_Name').get('text')})")
+    return result
 
 def main():
     ap = argparse.ArgumentParser()
@@ -263,6 +279,7 @@ def main():
     else:
         print('--- 条目 XML ---')
         print(serialize(el))
+    return finish()
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

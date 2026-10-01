@@ -28,6 +28,7 @@ process_leader_png.py — Civ6 2D 领袖立绘 PNG -> TEXTURE/OPACITY 1024x1024 
 """
 import argparse
 import codecs
+import io
 import locale
 import os
 import re
@@ -40,6 +41,9 @@ try:
     from PIL import Image
 except ImportError:
     Image = None
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import write_project_file, finish  # noqa: E402
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 TEMPLATE_DIR = SCRIPT_DIR.parent / "templates"
@@ -87,16 +91,15 @@ def _xml_encoding_name(codec_name):
     return codec_name.upper()
 
 
-def _write_tex(path, content):
-    """按系统 ANSI 代码页写出 .tex；装不下的字符用 XML 字符引用转义。"""
+def _write_tex(path, content, project):
+    """按系统 ANSI 代码页编码 .tex 后交给工程写入守卫；装不下的字符用 XML 字符引用转义。"""
     enc = _ansi_codec_name()
     xml_enc = _xml_encoding_name(enc)
     content = content.replace(
         '<?xml version="1.0" encoding="UTF-8" ?>',
         '<?xml version="1.0" encoding="%s" ?>' % xml_enc,
     )
-    with open(path, "w", encoding=enc, errors="xmlcharrefreplace", newline="\n") as f:
-        f.write(content)
+    write_project_file(path, content.encode(enc, errors="xmlcharrefreplace"), project)
     return enc
 
 
@@ -301,10 +304,18 @@ def main():
     img = Image.open(args.input).convert("RGBA")
     texture, opacity = build_texture_opacity(img, args.size, args.alpha_threshold, args.alpha_floor, crop_box)
 
-    texture.save(texture_png, "PNG")
-    opacity.save(opacity_png, "PNG")
-    print("  生成 %s" % texture_png)
-    print("  生成 %s" % opacity_png)
+    artifacts = [(texture_png, texture), (opacity_png, opacity)]
+    if args.tex_dds:
+        # PNG 不是 .tex 的源，但它是工程内的产物；直写既有 PNG 属改写，交给守卫判定
+        for path, im in artifacts:
+            buf = io.BytesIO()
+            im.save(buf, "PNG")
+            write_project_file(path, buf.getvalue(), project)
+    else:
+        for path, im in artifacts:
+            im.save(path, "PNG")
+    for path, _im in artifacts:
+        print("  生成 %s" % path)
 
     # 校验尺寸
     t_check = Image.open(texture_png)
@@ -322,8 +333,8 @@ def main():
     tex_opacity = render_tex(TEX_TEMPLATE_OPACITY, opacity_stem, opacity_png)
     tex_texture_path = os.path.join(output_dir, texture_stem + ".tex")
     tex_opacity_path = os.path.join(output_dir, opacity_stem + ".tex")
-    enc1 = _write_tex(tex_texture_path, tex_texture)
-    enc2 = _write_tex(tex_opacity_path, tex_opacity)
+    enc1 = _write_tex(tex_texture_path, tex_texture, project)
+    enc2 = _write_tex(tex_opacity_path, tex_opacity, project)
     print("  生成 %s (编码 %s)" % (tex_texture_path, enc1))
     print("  生成 %s (编码 %s)" % (tex_opacity_path, enc2))
 
@@ -344,11 +355,15 @@ def main():
         print("  2) 允许调用其他有图片处理能力的模型/工具；")
         print("  3) 本次只生成 PNG 和 .tex，DDS 稍后由 art-pipeline 补充。")
     else:
-        run_texconv(texconv, texture_png, output_dir, "R8G8B8A8_UNORM")
-        run_texconv(texconv, opacity_png, output_dir, "R8_UNORM")
+        for src, fmt in ((texture_png, "R8G8B8A8_UNORM"), (opacity_png, "R8_UNORM")):
+            if run_texconv(texconv, src, output_dir, fmt):
+                dds = os.path.splitext(src)[0] + ".dds"
+                with open(dds, "rb") as fh:
+                    write_project_file(dds, fh.read(), project)
 
     print("\n完成。一步到位输出目录: %s" % output_dir)
+    return finish()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

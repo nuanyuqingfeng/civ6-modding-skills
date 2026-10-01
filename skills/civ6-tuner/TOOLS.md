@@ -43,7 +43,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 | `sd_cpp` | 本地生图（stable-diffusion.cpp + FLUX 权重） |
 | `imagemagick` | ImageMagick（图标阈值 / 裁边） |
 | `luac` | Lua 5.1 语法检查 |
-| `ws_root` | 上传临时工作区根（`%TEMP%\civ6-ws`） |
+| `ws_root` | 上传临时工作区根；`content/` 用 junction 指向 Mods 副本（见 `release/scripts/make_workspace.ps1`） |
 | `steam_logs` | Steam 日志目录（反查工坊条目 ID） |
 
 > 完整路径表与各键本机取值见 `civ6-modding/tools/README.md` 第 2 节。
@@ -67,7 +67,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 
 静态校验（`rgn_validate` / `api.sqlite`）回答"文档说这条 API 是什么"，
 本 skill 回答"**运行时它到底是什么行为**" —— 凡是接口行为、参数语义、PROPERTY 读写时机、
-跨端可见性这类问题，别靠推断，直接实测。
+跨端可见性这类问题，别靠推断，直接实测；实测出的通道口径统一记进 `civ6-modding/reference/context-matrix.md`（端内跨上下文只有 `LuaEvents`，其余不可达）。
 
 ### 边界
 
