@@ -9,9 +9,12 @@
 
 | 工具 | 干什么 | 用法 |
 |---|---|---|
+| `scripts/game_input.py` | 向文明6游戏窗口投递按键，不抢焦点、不影响其它窗口。 | `python game_input.py esc            # 向游戏窗口投递一次 ESC<br>python game_input.py key 0x1B       # 同上，任意虚拟键码` |
+| `scripts/gamectl.py` | gamectl.py —— 文明6 对局生命周期控制（全部原语 2026-10-02/03 实机验证）。 | `gamectl.py —— 文明6 对局生命周期控制（全部原语 2026-10-02/03 实机验证）。` |
 | `scripts/tuner_exec.py` | civ6-tuner：通过 FireTuner 调试接口在运行中的文明6对局内执行 Lua。 | `python tuner_exec.py {check\|exec\|ports\|logs} [...]（exec 子命令执行 Lua；需游戏内开启 Tuner 且关闭 FireTuner GUI）` |
+| `scripts/tuner_node.js` | FireTuner 线协议客户端（Python 不可用时的等价入口）。 | `node tuner_node.js check<br>node tuner_node.js exec --context gamecore\|ingame [--state 名字\|索引] --code <Lua>` |
 
-共 1 个脚本。
+共 4 个脚本。
 
 ## 第三方依赖
 

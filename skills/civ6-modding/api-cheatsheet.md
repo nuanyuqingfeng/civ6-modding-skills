@@ -32,6 +32,8 @@
 | `GetProperty` | `(key: string) -> value` |
 | `SetProperty` | `(key: string, value)` |
 
+> `SetDamage` / `ChangeDamage` 只写入伤害数值，不触发单位死亡结算；伤害达到致死量时须另行调用 `UnitManager.Kill`。
+
 ## Plot
 
 | 方法 | 签名 |

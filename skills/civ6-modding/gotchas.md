@@ -280,6 +280,13 @@
     - **UI 层的 LoadOrder 要晚于 `ImportFiles`**（实测 `ImportFiles` 600000 → `AddUserInterfaces`+`Context=InGame` 610002）。
     - ⚠ **跨 mod 同 LoadOrder 的执行次序无保证**。`999999` 被 6 个工程同时占用；**新增同名 tag / 同 ModifierId 前必须自查是否与他人撞值**。
     - 写平衡补丁时必须压过主工程**最终覆盖层**，详见 `balance-patch.md` §三。
+    - ★ **modinfo 加载动作的变更只在游戏进程完全重启后才生效**（2026-10-03 实测）：新增/删除/移动 `<File>`、改 `LoadOrder` / `Priority` / `<Criteria>` 后，读档（`Network.LoadGame`）与 `RestartGame` **都不会重新解析 modinfo**——必须完全退出游戏再重进。排查「分片 / 注册不生效」时先确认是否重启过进程，再怀疑匹配机制本身。
+    - ★ **`include("前缀_", true)` 通配分片的完整机制**（2026-10-03 实测，8 轮进程级实验）：
+      - 匹配池 = **`<ImportFiles>` 动作**注册的文件（分片必须放 `ImportFiles/` 并同时进该动作与顶层 `<Files>` 清单，缺一不加载）。分片放 `Scripts/` 走 `AddGameplayScripts` 会被加载成**独立 context（独立 _ENV）**，与宿主全局双向不可见——补丁分片放错这里等于静默失效。
+      - ImportFiles 分片在**调用 include 的宿主 context 同一 VM** 内展开（日志 context 前缀 = 宿主名）：新增全局、新增函数、覆盖宿主已定义的全局变量与函数，**GP 与 UI 两侧同样生效**（实测覆盖 `PROJECT_HURRY_PCT` 20→99 宿主可见；两侧新函数均可调）。
+      - 同前缀多分片的展开顺序：**`<File Priority="N">` 数值大者先**（两条路径均实测生效）；未写 Priority 按文件名字母序（AddGameplayScripts 路径实测，条目排列顺序翻转无效）；**modinfo 条目排列顺序本身无影响**；动作级 `LoadOrder` 不参与族内定序，只分隔动作批次。
+      - **`Priority` 可为负数**（实测 `Priority="-10"` 正常解析加载，按数值参与"大者先"排序，无特殊处理）。
+      - **UI 实时热重载**（tuner/调试连接下实测）：`AddUserInterfaces` 注册的 UI 主 lua 变更后数秒内引擎自动 Reload 该 context（重读主文件并重跑其 include 链，`LoadGameViewStateDone` 不重放）；每个 context 只监听自己的主文件。GP 与 SQL 无此机制——文件内部内容变更一律读档重载生效（SQL 文案实测读档后 `Locale.Lookup` 即更新）。
 
 45. **`<Criteria>` 除了单个 `ModInUse`，还支持 `any="1"` 与 `inverse="1"` 组合**
     ```xml
@@ -315,6 +322,25 @@
     ```
     另一条路：补丁侧 `Game.SetProperty("X_BALANCED", 1)`，主 mod 读 `Game.GetProperty` —— 见 `balance-patch.md` §五。
     第三条路（**不需要对方配合**）：遍历 `GameInfo.Leaders()` 等表探测对方领袖/条目是否存在；SQL 侧等价物是 `WHERE EXISTS (SELECT 1 FROM …)`。
+
+74. **FrontEnd 动作禁止挂 `GameCoreInUse` 门控 —— FrontEnd 下检测不到 XP1/XP2，恒不成立，动作静默跳过**（2026-10 实测事故）
+    `GameCoreInUse` 检测的是 **InGame 的 GameCore 配置**；FrontEnd 环境（主菜单 / 选人界面）下
+    检测不到 XP1/XP2 包体是否开启，判据**恒不成立** → 挂了它的 FrontEnd 动作整段**静默跳过**（不报错）。
+    典型受害者：`Players` / `PlayerItems` 的 `UpdateDatabase` → **选人界面看不到领袖**。
+    InGame 侧动作一切正常、对局内毫无异样，问题只在 FrontEnd 现形，极难定位。
+
+    实测事故（2026-10-02，Ragunna_Montelli）：`MNT_Data_Config`（`Config_MNT.sql`，两位领袖的
+    `Players` 行）同时挂 `MainMod` + `Expansion2`（`<GameCoreInUse>Expansion2</GameCoreInUse>`），
+    FrontEnd 从未加载，选人界面无此二领袖；去掉 FrontEnd 侧门控并完全重启客户端后恢复。
+
+    正确做法：
+    - **FrontEnd 动作只挂 `ModInUse`**（依赖 mod 门控）；XP1/XP2 需求交给 `AssociationData` 的
+      `<Dependency type="Dlc">` 硬依赖兜底——缺包时 mod 整体不激活，Mods 界面如实报缺失；
+    - `GameCoreInUse` 门控**只用于 InGame 动作**；
+    - 两侧各注册一次的 `UpdateText`（领袖名等选人界面文本）同样逐侧检查门控——FrontEnd 侧挂错一样静默失效；
+      `RuleSetInUse` 等其余判据在 FrontEnd 的行为未实测，勿依赖。
+
+    > 条目编号接在全文档末尾（§N 是跨文档引用键，避免 §47 起全体重号），主题归属本节。
 
 ---
 

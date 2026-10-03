@@ -147,3 +147,11 @@ node "<skills>/civ6-modding/scripts/rgn_validate_runner.mjs" <工程目录> '*.s
 - 改库后按 `CALIBRATION_LOG_2026-08.md` 的流程复验：`PRAGMA integrity_check` + `audit_schema_drift.py`。
 - 若你要**自行重建**官方快照（例如游戏大版本更新后）：用官方 XML/SQL 全量导入，
   再跑 `python database/scripts/audit_schema_drift.py` 对齐 schema（有漂移 exit 1）。
+- ★ **快照里的 Mode/Scenario 行不等于标准规则集可用**（2026-10-02 事故）：`DynamicModifiers`
+  泛型 `MODIFIER_PLAYER_ALLOW_PROJECT` 行源自 Ethiopia 秘密结社 MODE 文件（条件加载），
+  标准规则集实库无此注册行；照抄它会使 modifier 不实例化、`UnlocksFromEffect` 项目
+  在生产菜单不可见（拉古那莫塔里扩展实测，已补入 `dlc_dependency` 第 13 行标注）。
+  **效果类型选用规则：风云变幻包体自带则用风云变幻的注册行；没有则按永乐三件套
+  （Types KIND_MODIFIER + DynamicModifiers + Modifiers）自注册专属类型**
+  （先例 `RulersOfChina_Modifiers.xml` 的 `_CHINA`、主包 `_RGN`、莫塔里 `_MNT`）。
+  选用任何 modifier 类型前，先查 `dlc_dependency` 是否有标注，或用 tuner 直查实库。

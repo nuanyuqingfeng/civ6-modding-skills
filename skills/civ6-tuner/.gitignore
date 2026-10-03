@@ -5,3 +5,6 @@ __pycache__/
 # ---- MacOS / 编辑器噪声 ----
 .DS_Store
 Thumbs.db
+
+# ---- Windows 组件缓存误写（裸 %SystemDrive% 目录）----
+%SystemDrive%/

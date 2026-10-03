@@ -3,6 +3,8 @@
 -- 用法：python tuner_exec.py exec --context ingame --file snippets\end_turn.lua
 -- 注意：若存在未处理的回合阻塞项（单位未下指令/弹窗），
 --       游戏可能弹提示而不真正结束——属正常表现，处理后重发即可。
+--       本片段只发请求不做轮询；要「发请求+轮询回合推进+可选强推」直接用
+--       `python gamectl.py end-turn [--force] [--timeout N]`。
 
 -- ==== CONFIG ====
 local PID = Game.GetLocalPlayer()
