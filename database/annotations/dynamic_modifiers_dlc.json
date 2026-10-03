@@ -3,7 +3,7 @@
   "generatedAt": "2026-09-10",
   "purpose": "Skill-only annotation migrated out of the official DynamicModifiers table.",
   "warning": "IsDlcDependency is NOT an official column of DynamicModifiers. The official table has exactly 3 columns: ModifierType, CollectionType, EffectType. Never emit IsDlcDependency in mod SQL.",
-  "semantics": "Curated list (12 rows) of ModifierTypes defined in a Mode/Scenario DLC file. These may silently fail when the corresponding DLC/mode is absent, so a mod that references them should self-register an equivalent ModifierType.",
+  "semantics": "Curated list (13 rows) of ModifierTypes defined in a Mode/Scenario DLC file. These may silently fail when the corresponding DLC/mode is absent, so a mod that references them should self-register an equivalent ModifierType.",
   "derivedFullSetNote": "A mechanical derivation from source_index.row_source yields 27 Mode/Scenario rows; this curated list is a subset and must not be regenerated mechanically.",
   "entries": [
     {
@@ -113,6 +113,16 @@
       "source": "PiratesScenario",
       "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\PiratesScenario\\Data\\PiratesScenario_Leaders.xml",
       "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型"
+    },
+    {
+      "modifierType": "MODIFIER_PLAYER_ALLOW_PROJECT",
+      "collectionType": "COLLECTION_OWNER",
+      "effectType": "EFFECT_ADD_PLAYER_PROJECT_AVAILABILITY",
+      "isDlcDependency": 1,
+      "source": "Ethiopia",
+      "firstFile": "F:\\Steam\\steamapps\\common\\Sid Meier's Civilization VI\\DLC\\Ethiopia\\Data\\Ethiopia_SecretSocieties_MODE.xml",
+      "note": "Mode/Scenario DLC 定义；缺对应 DLC/模式时静默失效，应自注册同 Effect+Collection 的新类型（2026-10-02 莫塔里扩展实测补录）"
     }
-  ]
+  ],
+  "updatedAt": "2026-10-02"
 }

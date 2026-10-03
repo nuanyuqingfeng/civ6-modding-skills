@@ -71,6 +71,8 @@ leader-only 时 `Leaders.InheritFrom` 常指向该文明的原版领袖（或 `L
 ★ **环境归属**：`Players` 属 **Config 库** → 写进 `FrontEndActions → UpdateDatabase`；
 而加载界面的 `LoadingInfo`（`ForegroundImage` / `BackgroundImage`）属 **Gameplay 库** →
 写进 `InGameActions → UpdateDatabase`。写错段会 `no such table`。
+FrontEnd 动作的门控只挂 `ModInUse`，**勿挂 `GameCoreInUse`**——FrontEnd 下恒不成立，
+动作静默跳过，症状就是选人界面看不到领袖（`gotchas.md` §74）。
 三套环境（选人 / 加载界面 / 外交）对照见 `civ6-asset-forge/reference/frontend-portrait.md` §〇。
 
 ## 文本：必须走 `UpdateText`

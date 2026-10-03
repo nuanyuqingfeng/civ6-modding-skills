@@ -27,6 +27,11 @@ languages:
   - zh
 ---
 
+> ☁ **云端总仓库（合一 monorepo，单 main 分支）**：`https://github.com/nuanyuqingfeng/civ6-modding-skills`
+> —— 全部 skill 以 `skills/<skill名>/` 子目录共存于总仓库 **main**；本地镜像工作区 `~/.agents/skills-monorepo/`。
+> **上传流程**：① `cd ~/.agents/skills-monorepo && git pull`；② 逐个导出有改动的 skill：`git -C ~/.agents/skills/<skill名> archive HEAD | tar -x -C ~/.agents/skills-monorepo/skills/<skill名>`；③ `git add -A && git commit -m "sync: <说明>" && git push`。网络间歇失败时多重试，或给 git 挂本地代理（Clash 混合端口 `git -c http.proxy=http://127.0.0.1:7897 ...`）。
+> **上传判据**：用户明示「上传 / 推送云端」时，无视改动归属统一处理全部有改动的 skill；推送前先 `git ls-remote origin` 检测云端可达且与上述地址匹配，不匹配即停下报告，不得换址推送。
+
 > 🧰 **工具先查名录（硬性）**：要写脚本做某件事之前，先看本 skill 的 [`TOOLS.md`](TOOLS.md)
 > —— 本 skill 全部脚本的用途 / 用法 / 路径清单，外加本机**路径收纳**表。
 > **有能用的就改它，不要重建。** 新增或改名脚本后，跑一次

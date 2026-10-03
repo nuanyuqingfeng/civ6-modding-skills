@@ -69,6 +69,8 @@ These pieces of vocabulary are identical between `.modinfo` and `.civ6proj` (onl
 > **`LoadOrder = -1` 出现在 8/11 个工程**，且 4 个独立总督工程都把它用于 `Governors` 数据 → 事实约定：*被其他内容引用的定义类数据要早加载*。
 > 完整观测阶梯表、`600000` 段社区约定、以及「跨 mod 同 LoadOrder 次序无保证」的警告见 **`gotchas.md` §44**。
 > 写**平衡补丁**时的专项规则（必须压过主工程最终覆盖层，否则数值被静默回滚）见 **`balance-patch.md` §三**。
+>
+> ★ **改完加载动作（`<File>` 增删 / `LoadOrder` / `Priority` / `<Criteria>`）必须完全退出游戏再重进才会生效**——读档与 `RestartGame` 都不会重新解析 modinfo（2026-10-03 实测，详见 `gotchas.md` §44）。
 
 **分层实践**（推荐骨架，来自真实工程）：
 
@@ -188,6 +190,10 @@ All actions support attaching criteria for conditional loading. `inverse="1"` in
 negates the check (criterion passes when the listed mod is **NOT** in use). `inverse` is a `.civ6proj`
 CDATA feature; in hand-written `.modinfo` you must pre-define a separate "X_Disabled" criteria.
 
+> ⚠ **`GameCoreInUse` 在 FrontEnd 恒不成立**：它检测的是 InGame 的 GameCore 配置，FrontEnd
+> 环境下检测不到 XP1/XP2 是否开启，挂了它的 FrontEnd 动作整段静默跳过（症状：选人界面看不到领袖）。
+> FrontEnd 动作只挂 `ModInUse`，扩展包需求走 `AssociationData` 的 Dlc 硬依赖 → 详见 `gotchas.md` §74。
+
 ---
 
 ## Format 1 — `.civ6proj` (ModBuddy project file)
@@ -280,7 +286,7 @@ MSBuild-style XML. Mod metadata + actions + criteria + file/folder tree for the 
     <LeaderPlayable>Players:Expansion2_Players::LEADER_MY_LEADER</LeaderPlayable>
     <RuleSetInUse>RULESET_EXPANSION_2</RuleSetInUse>
   </Criteria>
-  <Criteria id="Expansion2"><GameCoreInUse>Expansion2</GameCoreInUse></Criteria>
+  <Criteria id="Expansion2"><GameCoreInUse>Expansion2</GameCoreInUse></Criteria><!-- ⚠ 只可用于 InGame 动作；FrontEnd 恒不成立（gotchas.md §74） -->
   <Criteria id="HD"><ModInUse>521b8777-0977-4859-a5ee-3e411a732e5c</ModInUse></Criteria>
   <Criteria id="NoOtherMod">
     <ModInUse inverse="1">66685738-4d78-4c73-874a-055e5d24d86a</ModInUse>

@@ -68400,7 +68400,8 @@
           "[作用] 增减单位的伤害值",
           "正值增加伤害（减少生命），负值减少伤害（治疗）",
           "直接修改单位状态，无返回值",
-          "[核验] 2026-09-08 FireTuner 实测：GP=function、UI=nil；范围=仅GP；与文档 availability=GamePlay 一致"
+          "[核验] 2026-09-08 FireTuner 实测：GP=function、UI=nil；范围=仅GP；与文档 availability=GamePlay 一致",
+          "[实测] 2026-10-03 游戏内实测：本调用只写入伤害数值，不触发单位死亡结算，数值达到致死量时单位仍存活；需要击杀时须另行调用 UnitManager.Kill。致死判定按各自语义：ChangeDamage 用 当前伤害+增量 >= GetMaxDamage()，SetDamage 用 目标值 >= GetMaxDamage()"
         ],
         "signature": "ChangeDamage(amount: number)",
         "functionB": "",
@@ -72660,7 +72661,8 @@
           "[作用] 设置单位的当前伤害值，直接指定伤害数值",
           "伤害值不会超过 GetMaxDamage() 返回的最大伤害",
           "常用于创建单位后设置初始伤害状态",
-          "[核验] 2026-09-08 FireTuner 实测：GP=function、UI=nil；范围=仅GP；与文档 availability=GamePlay 一致"
+          "[核验] 2026-09-08 FireTuner 实测：GP=function、UI=nil；范围=仅GP；与文档 availability=GamePlay 一致",
+          "[实测] 2026-10-03 游戏内实测：本调用只写入伤害数值，不触发单位死亡结算，数值达到致死量时单位仍存活；需要击杀时须另行调用 UnitManager.Kill。致死判定按各自语义：ChangeDamage 用 当前伤害+增量 >= GetMaxDamage()，SetDamage 用 目标值 >= GetMaxDamage()"
         ],
         "signature": "SetDamage(amount: number)",
         "functionB": "",
