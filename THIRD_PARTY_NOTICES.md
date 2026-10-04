@@ -10,4 +10,33 @@
 - `search_impl.py` 本体是家族自有实现（思路借鉴自 ModTools `db/ability_search.py`，未拷贝其代码）；
   2026-09-28 仅并入上述两个算法模块与 technology/civic 类别补齐。
 - 家族其他成员的第三方来源登记在各自仓库：`civ6-art-unpack/THIRD_PARTY_NOTICES.md`（千川白浪移交包 / ModTools art-unpack）、
-  `civ6-html-ui/`（自带 MIT LICENSE，Copyright (c) 2026 Siqi）、`civ6-landmarks/`（文档改写自 ModTools 知识库，MIT）。
+  `civ6-html-ui/`（自带 MIT LICENSE，Copyright (c) 2026 Siqi）、`civ6-landmarks/THIRD_PARTY_NOTICES.md`（文档改写自 ModTools 知识库）。
+
+## ModTools 5.4 上游与许可全文（MIT）
+
+- 上游仓库：<https://github.com/SiQi-1/ModTools5.4>（MIT，Copyright (c) 2026 Siqi）；
+- 上表所列代码复制与知识改写均出自该仓库。MIT 要求版权声明与本许可声明随"实质性部分"一并保留，故随分发附带原文如下。
+
+```
+MIT License
+
+Copyright (c) 2026 Siqi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
