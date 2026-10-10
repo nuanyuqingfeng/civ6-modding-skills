@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""monorepo 同步：本地各 skill 仓库 → 云端总仓库 skills/<名>/ 子目录，不建本地镜像工作区。
+"""monorepo 同步：本地各 skill 仓库 → 云端总仓库 skills/<名>/ 子目录。
 
 流程：
   ① 临时克隆总仓库到 %TEMP%/civ6-mono；

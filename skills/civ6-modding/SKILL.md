@@ -28,7 +28,7 @@ languages:
 ---
 
 > ☁ **云端总仓库（合一 monorepo，单 main 分支）**：`https://github.com/nuanyuqingfeng/civ6-modding-skills`
-> —— 全部 skill 以 `skills/<skill名>/` 子目录共存于总仓库 **main**；本地不保留镜像工作区。
+> —— 全部 skill 以 `skills/<skill名>/` 子目录共存于总仓库 **main**。
 > **上传流程**：一条命令 `python "<skills>/civ6-modding/tools/sync_monorepo.py"` —— 脚本临时克隆总仓库到 `%TEMP%\civ6-mono`，逐个比对本地 skill 的 HEAD 树与云端 `skills/<名>/` 子树，只重新导出有差异的那些（`git rm --cached` → `git read-tree --prefix` → `git checkout-index`，整棵子树替换，本地删掉的文件随之消失；不用 `tar`，Windows bsdtar 解不开仓库里的中文路径），提交、推送、核对云端 ref 后删除临时目录。`--dry-run` 只建提交并保留临时目录，`--keep` 推送后保留，完整口径见该脚本 docstring。网络间歇失败时重试，直连失败自动改走 Clash 混合端口 `127.0.0.1:7897`。
 > **上传判据**：用户明示「上传 / 推送云端」时，无视改动归属统一处理全部有改动的 skill；推送前先 `git ls-remote origin` 检测云端可达且与上述地址匹配，不匹配即停下报告，不得换址推送。
 
