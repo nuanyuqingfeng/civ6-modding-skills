@@ -6,5 +6,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# ---- 一次性探针工作区（SKILL.md：可复用探针进 snippets/，一次性探针进 workspace/tmp/）----
+workspace/
+
 # ---- Windows 组件缓存误写（裸 %SystemDrive% 目录）----
 %SystemDrive%/
