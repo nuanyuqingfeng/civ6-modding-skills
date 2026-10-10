@@ -1,0 +1,6 @@
+{
+  "_comment": "docstring/argparse 抽不出人话的少数脚本在这里覆盖；覆盖值参与生成，重跑不会丢。键 = 相对 skill 根的路径。",
+  "scripts/tuner_exec.py": {
+    "usage": "python tuner_exec.py {check|exec|ports|logs} [...]（exec 子命令执行 Lua；需游戏内开启 Tuner 且关闭 FireTuner GUI）"
+  }
+}

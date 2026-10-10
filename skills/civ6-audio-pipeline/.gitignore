@@ -1,0 +1,14 @@
+# ---- Python / 运行缓存 ----
+__pycache__/
+*.pyc
+
+# ---- MacOS / 编辑器噪声 ----
+.DS_Store
+Thumbs.db
+# ---- 本机私有 / 运行状态（分享时不携带）----
+local_paths.json
+state/id_registry.json
+
+# ---- 第三方教程 / 模板（上游无 LICENSE，不随本仓库分发；首次使用跑 scripts/ensure_template.py 获取）----
+assets/tutorial11/
+assets/template_slim/

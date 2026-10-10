@@ -5,6 +5,3 @@ __pycache__/
 # ---- MacOS / 编辑器噪声 ----
 .DS_Store
 Thumbs.db
-
-# ---- 本地个人环境文件 ----
-local_paths.json

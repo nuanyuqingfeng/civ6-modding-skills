@@ -1,0 +1,15 @@
+{
+  "_comment": "docstring/argparse 抽不出人话的少数脚本在这里覆盖；覆盖值参与生成，重跑不会丢。键 = 相对 skill 根的路径。",
+  "scripts/audio_normalize.py": {
+    "usage": "python audio_normalize.py <文件或目录...> [--category voice|quote|bgm|sfx] [--era ancient|later] [--mode absolute|relative|shortterm] [--i <目标LUFS>] [--out DIR] [--filelist F]"
+  },
+  "scripts/leader_timeline.py": {
+    "usage": "python leader_timeline.py patch <ast路径|目录> --media <语音wav目录|文件...> [--pad 0.5] [--map 槽位关键字=事件名 ...] [--dry]（另一子命令：check <ast路径|目录>）"
+  },
+  "scripts/music_wire.py": {
+    "usage": "python music_wire.py {fade|exitcustom|weights} [...]（fade <wav>；exitcustom <工程目录>；weights <工程目录> --civ-prefix X）"
+  },
+  "scripts/wwise_shortid.py": {
+    "usage": "（库：被其它脚本 import，无独立 CLI）"
+  }
+}

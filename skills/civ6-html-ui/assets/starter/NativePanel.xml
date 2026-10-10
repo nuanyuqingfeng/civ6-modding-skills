@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Register LOC_DEMO_* through LocalizedText/UpdateText; optional ModTools path: .CIV custom_entries. -->
+<Context Name="DemoNativePanel" Hidden="1">
+  <Box Size="parent,parent" Color="0,0,0,160" ConsumeMouse="1" />
+  <Container ID="Panel" Size="640,400" Anchor="C,C" ConsumeMouse="1">
+    <Image Texture="UI_DEMO_PANEL" Size="640,400" Anchor="L,T" />
+    <Label ID="Title" String="LOC_DEMO_TITLE" Style="FontNormal22" Anchor="L,T" Offset="28,26" />
+    <Button ID="CloseButton" Style="CloseButtonSmall" Anchor="R,T" Offset="24,24" />
+    <ScrollPanel ID="DescriptionScroll" Style="ScrollPanelWithRightBar" Size="280,180" Anchor="L,T" Offset="28,100" Vertical="1">
+      <Label ID="Description" String="LOC_DEMO_DESCRIPTION" Style="FontNormal16" WrapWidth="260" Anchor="L,T" />
+    </ScrollPanel>
+    <Button ID="CardButton" Size="256,160" Anchor="L,T" Offset="336,100">
+      <Box Size="256,160" Color="17,30,41,255" />
+      <Label ID="CardTitle" String="LOC_DEMO_CARD_TITLE" Style="FontNormal18" Anchor="L,T" Offset="32,32" WrapWidth="192" />
+      <Label ID="CardDescription" String="LOC_DEMO_CARD_DESCRIPTION" Style="FontNormal14" Anchor="L,T" Offset="32,64" WrapWidth="192" />
+      <Image ID="Selection" Texture="UI_DEMO_SELECTED" Size="256,160" Anchor="L,T" Hidden="1" ConsumeMouse="0" />
+    </Button>
+    <Label ID="Status" Style="FontNormal14" Anchor="L,T" Offset="28,314" WrapWidth="280" />
+    <Button ID="ConfirmButton" Size="256,48" Anchor="L,T" Offset="336,320"
+            Texture="UI_DEMO_BUTTON" StateOffsetIncrement="0,48" States="4">
+      <Label String="LOC_DEMO_CONFIRM" Style="FontNormal16" Anchor="C,C" />
+    </Button>
+  </Container>
+</Context>

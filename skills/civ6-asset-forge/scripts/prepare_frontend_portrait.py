@@ -1,0 +1,687 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与接线**
+
+配套 `reference/frontend-portrait.md`（类别⑦）。
+
+## 〇、总规则（`SKILL.md` §1.0）
+
+本工具**只做既有工具能胜任的简单操作**：**裁剪**（含等比缩放、居中）、
+**通道透明度**（读 alpha、阈值）、**描边**，以及复制/改名/格式转换。
+**不做**任何"把图改好"的处理（重绘、修补、重着色、调色、生成式补图、迭代调参）。
+
+- 素材不满足要求 → **停下询问用户**（不自行尝试）。
+- **两段式执行**：先出**计划**（默认，不写盘）→ 用户确认 → 再 `--write --confirmed`。
+- 不覆盖工程已有贴图。
+
+## 一、像素构成分类
+
+分析 alpha 通道，把素材分成三类（判据在 `Ragunna_Pack` 6 位领袖 × 3 类素材上实测可复现）：
+
+判据**先透明率、后尺寸**：
+
+| 次序 | 类别 | 判据 | 处理 |
+|---|---|---|---|
+| 1 | **① 人物抠图** | 透明像素 ≥ `--subject-min-transp`（默认 40%） | 取 alpha 外接框 → 主体缩到高 882 → 贴到 1080×1080 画布（水平居中、**底边贴齐**、顶部留空 198）→ `LEADER_<KEY>_NEUTRAL` |
+| 2 | **② 满幅图（placard 形）** | 长宽比 1:2.85 ±3%（控件 328×935 的比例） | **素材本身作 placard 背景；`Players.Portrait` 置显式空串**（★ 见下） |
+| 3 | **② 满幅图** | 透明 ≤ `--bleed-max-transp`（默认 5%）且不透明 ≥90% | **空白前景（显式空串）+ 铺满背景** → `LEADER_<KEY>_BACKGROUND` |
+| 4 | **③ 中间地带** | 其余 | **停下问用户**（exit 3），用 `--force-subject` / `--force-bleed` 表明裁决 |
+
+实测参考（`Ragunna_Pack`）：人物抠图透明率 60~74%、满幅图 ~0%。
+
+尺寸这条判据补的缺口：柔边竖版背景透明率 0.7%、不透明 29.6%，只看透明率会落进中间地带；
+按 1:2.85 判定即为 placard 背景。透明率仍优先——高瘦人物抠图同为 1:2.85、透明 81.6%，仍按抠图处理。
+
+★ **1:2.85 竖条这条规则只在 FrontEnd（环境 A）触发。** 它管的是选人 placard
+（`Players.Portrait` / `Players.PortraitBackground`，Config 库）。**加载界面（环境 B）不受它管辖**：
+`LoadingInfo.ForegroundImage` 是另一条独立通道（Gameplay 库、`LoadScreen.lua` 消费），
+照旧取 `LEADER_<KEY>_NEUTRAL`。竖条本身是背景，顶替不了加载界面的前景。
+
+## 二、分支②「空白前景」的正确写法（极易写错）
+
+`PlayerSetupLogic.lua:807-829` 是 `if info.Portrait then ... else ... end`：
+
+| SQL 取值 | Lua 值 | 行为 |
+|---|---|---|
+| 贴图名 | 非空串 | 直接用 |
+| `''`（空串） | `""` —— **Lua 里 truthy** | `SetTexture("")` → **真空白，且短路回退** ✔ 本分支要的就是这个 |
+| `NULL` | `nil`（falsy） | 走回退 → `<LeaderType>_NEUTRAL`（mod 通常没有 → 空白**且不报错**） |
+
+→ **分支②必须写显式空串 `''`，不能写 NULL**。
+
+## 三、背景获取顺序（分支① 需要背景时，严格降级）
+
+1. **工程约定文件**：`PORTRAIT_<KEY>_BACKGROUND` → `LEADER_<KEY>_PLACARD_BACKGROUND`
+   → `IMG_LEADER_<KEY>_DIPLOMACY_BACKGROUND` → `IMG_LOADING_BACKGROUND_<KEY>`
+   → `LEADER_<KEY>_BACKGROUND`
+2. **`--bg-dir`**：目录内文件名含领袖名片段（模糊匹配）
+3. **色系回退**：用 `pick_vanilla_background` 的调色板，以**人物抠图的加权圆平均色相**为参考挑官方背景；
+   **仅当 Δh ≤ 60°** 才自动采用（否则判"不相似"，停下问用户）
+4. 都失败 → 报缺失，**不静默编造**
+
+## 四、命名（以官方为准；不动工程既有文件）
+
+| 产物 | 命名 | 说明 |
+|---|---|---|
+| 前景 | `LEADER_<KEY>_NEUTRAL` | 官方约定（选人 placard 与加载界面**共用**）；1080×1080，主体高 882、顶部留空 198 |
+| 加载界面背景 | `LEADER_<KEY>_BACKGROUND` | 官方约定；**高 ≥960**（960 是基准、非上限） |
+| placard 竖版背景 | `LEADER_<KEY>_PLACARD_BACKGROUND` | 官方无此物（官方直接拿 1920×960 去凑），故取官方前缀 + 语义后缀；素材本身就是 1:2.85 竖条时按此名产出 |
+
+> 本工程既有的 `PORTRAIT_*` / `IMG_LOADING_*` **不做重构**（仅被当作"①工程约定文件"读取）。
+
+## 用法
+
+    # ① 分类 + 预演（不写盘）—— 先看它被判成哪类、会产出什么
+    python prepare_frontend_portrait.py --project <工程根> --leader LEADER_X_QYQXP \
+        --image <素材.png>
+
+    # ② 落盘
+    python prepare_frontend_portrait.py --project <工程根> --leader LEADER_X_QYQXP \
+        --image <素材.png> --write
+
+    # ③ 中间地带由用户裁决后强制指定
+    ... --force-subject --write      # 或 --force-bleed
+
+    # ④ 批量（目录内文件名需含领袖名片段）
+    python prepare_frontend_portrait.py --project <工程根> --image-dir <目录> --write
+
+退出码：0 成功 / 1 错误 / **2 告警** / **3 需用户裁决**（分类中间地带 或 背景不相似）。
+"""
+from __future__ import annotations
+
+import argparse
+import glob
+import os
+import re
+import sys
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+from _projwrite import write_project_file, finish    # noqa: E402
+
+_SKILLS = os.path.dirname(os.path.dirname(_HERE))
+sys.path.insert(0, os.path.join(_SKILLS, "civ6-modding", "art"))
+
+try:
+    from dds_io import read_dds, dds_header_bytes     # noqa: E402
+    from PIL import Image                              # noqa: E402
+except ImportError as e:                               # pragma: no cover
+    print("需要 Pillow，且需能找到 civ6-modding/art/dds_io.py：%s" % e)
+    raise SystemExit(1)
+
+# 同目录兄弟脚本复用（不重复实现：bbox/定宽工艺、调色板/挑选、XLP 别名）
+from gen_suk_portrait import (                         # noqa: E402
+    alpha_bbox, load_any, _match_in_dir, tex_text, ALPHA_THR,
+)
+from pick_vanilla_background import (                  # noqa: E402
+    image_stats, rank, load_palette, insert_alias, xlp_path,
+    luminance, hue_distance, DEFAULT_PACKS,
+)
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+# placard 竖版背景控件尺寸（reference/frontend-portrait.md §1.3 推导）
+PLACARD_BG = (328, 935)
+# 控件长宽比 935/328 ≈ 2.8506。素材本身就是这个比例的竖条时，它按尺寸就该落在 placard 背景位，
+# 与 alpha 构成无关：柔和边缘的背景图透明率常常只有零点几，会落进透明率判据的中间地带。
+PLACARD_RATIO = PLACARD_BG[1] / float(PLACARD_BG[0])
+PLACARD_RATIO_TOL = 0.03          # 相对容差 ±3%
+# 加载界面背景**基准**高（官方基线 1920×960；960 是基准不是上限）
+LOADING_BASE_H = 960
+LOADING_TARGET = (1920, 1080)     # 本项目实测良好的档位（16:9 零裁切）
+# 原版 FrontEnd 前景（环境 A/B 共用）：1080×1080 方画布，主体等比缩到高 882，
+# 水平居中、底边贴齐画布下缘 → 顶部留空 198 px（画布高的 18.3%）。实机验证见 reference/frontend-portrait.md §1.4
+FG_CANVAS = 1080
+FG_SUBJECT_H = 882
+FG_TOP = FG_CANVAS - FG_SUBJECT_H          # 198
+
+EXIT_OK, EXIT_ERR, EXIT_WARN, EXIT_ASK = 0, 1, 2, 3
+
+
+class NeedsDecision(Exception):
+    """需要用户裁决才能继续（§1.0 总规则：不自行尝试复杂处理）。"""
+
+
+# ---------------------------------------------------------------- 分类
+
+def is_placard_shape(size):
+    """素材是否就是 placard 竖版背景的尺寸形（1:2.85 的竖直长条）。
+
+    控件 LeaderBG 是 328×935（1:2.8506）且 StretchMode="None"。素材长宽比落在这个比例上时，
+    它按尺寸就该进 PortraitBackground 位；这条判据只看尺寸，不看 alpha ——
+    柔和边缘或带少量透明的竖版背景图透明率可能只有零点几，用透明率分不出来。
+    """
+    w, h = size
+    if not w or not h:
+        return False
+    return abs(h / float(w) - PLACARD_RATIO) <= PLACARD_RATIO * PLACARD_RATIO_TOL
+
+
+def classify(img, subject_min_transp=40.0, bleed_max_transp=5.0):
+    """→ (kind, stats)。kind ∈ {'subject','bleed','middle'}。
+
+    判据（透明率优先，其次尺寸）：
+      - 透明像素（alpha<=5）占比 ≥ subject_min_transp → 'subject'（人物抠图）
+        这一条放最前：高瘦的人物抠图同样可能是 1:2.85，透明率说它是抠图就按抠图办。
+      - 长宽比命中 placard 形（1:2.85 ±3%）→ 'bleed'（竖版背景：空白前景 + 铺满背景）
+      - 透明占比 ≤ bleed_max_transp 且不透明（alpha>=250）占比 ≥ 90 → 'bleed'（满幅图）
+      - 其余 → 'middle'（需用户裁决）
+    """
+    w, h = img.size
+    a = img.getchannel("A")
+    hist = a.histogram()
+    total = float(w * h)
+    transp = sum(hist[:6]) / total * 100.0
+    opaque = sum(hist[250:]) / total * 100.0
+    bb = a.getbbox()
+    touches = 0
+    if bb:
+        touches = sum([bb[0] <= 1, bb[1] <= 1, bb[2] >= w - 1, bb[3] >= h - 1])
+    st = dict(size=(w, h), transp=round(transp, 1), opaque=round(opaque, 1),
+              bbox=bb, touches=touches, placard_shape=is_placard_shape((w, h)))
+    if transp >= subject_min_transp:
+        return "subject", st
+    if st["placard_shape"]:
+        return "bleed", st
+    if transp <= bleed_max_transp and opaque >= 90.0:
+        return "bleed", st
+    return "middle", st
+
+
+# ---------------------------------------------------------------- 背景获取
+
+PROJ_BG_PATTERNS = (
+    "PORTRAIT_%s_BACKGROUND",           # 本工程既有竖版（328×935）
+    "IMG_LEADER_%s_DIPLOMACY_BACKGROUND",
+    "IMG_LOADING_BACKGROUND_%s",
+    "LEADER_%s_BACKGROUND",
+)
+
+
+def find_project_bg(textures_dir, key):
+    """① 工程约定文件（返回 (贴图名, 路径) 或 (None,None)）。"""
+    for pat in PROJ_BG_PATTERNS:
+        nm = pat % key
+        for ext in (".dds", ".tex"):
+            fp = os.path.join(textures_dir, nm + ext)
+            if os.path.isfile(fp):
+                return nm, fp
+    return None, None
+
+
+def official_bg_for_hue(ref_img, packs=DEFAULT_PACKS, max_dh=60.0):
+    """③ 色系回退：→ (候选 dict 或 None, 是否相似)。
+
+    以 ref_img 的加权圆平均色相为参考，挑官方背景；Δh > max_dh 判为不相似。
+    """
+    try:
+        palette = load_palette()
+    except Exception as e:
+        print("WARN 调色板不可用：%s" % e, file=sys.stderr)
+        return None, False
+    ref = image_stats_of(ref_img)
+    rows = rank(palette, ref, tuple(packs), 1)
+    if not rows:
+        return None, False
+    top = rows[0]
+    return top, bool(top["d_hue"] is not None and top["d_hue"] <= max_dh)
+
+
+def image_stats_of(img):
+    """直接对内存图像算 image_stats（避免落盘）。"""
+    tmp = img.convert("RGBA")
+    # 复用 pick_vanilla_background.image_stats 的算法，但走内存
+    import math
+    import cmath
+    import colorsys
+    im = tmp.convert("RGB")
+    im.thumbnail((96, 96), Image.LANCZOS)
+    px = list(im.getdata())
+    n = len(px)
+    acc = 0j
+    wsum = 0.0
+    for (r, g, b) in px:
+        hh, ss, vv = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+        wgt = ss * vv
+        if wgt < 0.02:
+            continue
+        acc += wgt * cmath.exp(1j * math.radians(hh * 360.0))
+        wsum += wgt
+    hue = (math.degrees(cmath.phase(acc)) % 360.0) if wsum > 0 else 0.0
+    return {"hue": round(hue, 1),
+            "mean": [sum(p[0] for p in px) // n,
+                     sum(p[1] for p in px) // n,
+                     sum(p[2] for p in px) // n]}
+
+
+# ---------------------------------------------------------------- 处理
+
+def make_loading_bg(img):
+    """加载界面背景：**只做等比缩放 + 居中裁剪**（§1.0 总规则允许的操作）。
+
+    目标 1920×1080；源图高必须 ≥960（基准）。
+    **若源图不够宽**（缩放后宽 < 1920），纯裁剪/缩放无法铺满 —— 不补边、不合成，
+    直接抛 `NeedsDecision` 交用户（补边属"把图改好"，超出本 skill 范围）。
+    """
+    w, h = img.size
+    tw, th = LOADING_TARGET
+    if h < LOADING_BASE_H:
+        raise NeedsDecision(
+            "源图高 %d < 基准 %d：加载界面背景高度不足会有两侧裁剪风险。"
+            "请提供高度 ≥%d 的素材（或明确授权如何处理）。"
+            % (h, LOADING_BASE_H, LOADING_BASE_H))
+    scale = th / float(h)
+    nw = max(1, int(round(w * scale)))
+    if nw < tw:
+        raise NeedsDecision(
+            "源图 %dx%d 按高缩放到 %d 后宽仅 %d < 目标宽 %d：纯裁剪/缩放无法铺满，"
+            "补边属「把图改好」超出本 skill 范围。请提供更宽的素材，或指定处理方式。"
+            % (w, h, th, nw, tw))
+    x0 = (nw - tw) // 2
+    return inter_crop(img, scale, x0, th, tw), dict(mode="crop", src="%dx%d" % (w, h), crop_x=x0)
+
+
+def inter_crop(img, scale, x0, th, tw):
+    nw = max(1, int(round(img.size[0] * scale)))
+    inter = img.resize((nw, th), Image.LANCZOS)
+    return inter.crop((x0, 0, x0 + tw, th))
+
+
+def make_placard_bg(src_img):
+    """placard 竖版背景：**只做等比缩放 + 居中裁剪**得到 328×935（§1.0 总规则允许）。"""
+    tw, th = PLACARD_BG
+    w, h = src_img.size
+    scale = max(tw / float(w), th / float(h))
+    nw = max(1, int(round(w * scale)))
+    nh = max(1, int(round(h * scale)))
+    inter = src_img.resize((nw, nh), Image.LANCZOS)
+    x0 = (nw - tw) // 2
+    return inter.crop((x0, 0, x0 + tw, th)), dict(scale=round(scale, 3))
+
+
+def make_frontend_fg(src):
+    """原版 FrontEnd 前景：取 alpha 外接框 → 主体等比缩到高 882 →
+    贴到 1080×1080 画布（水平居中、底边贴齐画布下缘、顶部留空 198 px）。
+    """
+    bb = alpha_bbox(src, ALPHA_THR)
+    if bb is None:
+        raise ValueError("立绘完全透明，无法定内容框")
+    subj = src.crop(bb)
+    w, h = subj.size
+    nw = max(1, int(round(w * FG_SUBJECT_H / float(h))))
+    x = (FG_CANVAS - nw) // 2
+    out = Image.new("RGBA", (FG_CANVAS, FG_CANVAS), (0, 0, 0, 0))
+    out.paste(subj.resize((nw, FG_SUBJECT_H), Image.LANCZOS), (x, FG_TOP))
+    return out, dict(content_w=nw, canvas_w=FG_CANVAS, left=x,
+                     right=FG_CANVAS - nw - x, clipped=0)
+
+
+def emit(files, root, name, img, check, report=None):
+    """写 dds + tex（.tex 为 LF）。**已存在的贴图不覆盖** → 交用户裁决。"""
+    dds = os.path.join(files["textures"], name + ".dds")
+    if os.path.isfile(dds):
+        raise NeedsDecision(
+            "目标贴图 %s 已存在 —— 本 skill 不覆盖已有素材（除非用户明确授权）。"
+            "请改名、移走旧图，或明确指示覆盖。" % os.path.basename(dds))
+    if not check:
+        write_project_file(dds, dds_header_bytes(img.size[0], img.size[1]) + img.tobytes(), root)
+        write_project_file(os.path.join(files["textures"], name + ".tex"),
+                           tex_text(name, img.size[0], img.size[1]), root)
+
+
+# ---------------------------------------------------------------- 主流程
+
+def find_project_root_civ6proj(root):
+    hits = glob.glob(os.path.join(root, "*.civ6proj"))
+    return hits[0] if hits else None
+
+
+def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, wiring):
+    key = lt[len("LEADER_"):] if lt.startswith("LEADER_") else lt
+    textures_dir = os.path.join(root, "Textures")
+    img = load_any(image_path)
+    kind, st = classify(img, args.subject_min_transp, args.bleed_max_transp)
+    if forced:
+        kind = forced
+    report.append("  %s ← %s" % (lt, os.path.basename(image_path)))
+    # 只有当"尺寸"这条规则真正决定了结果时才标注它（透明率本可判满幅图时不标）
+    by_size = (st["placard_shape"] and kind == "bleed"
+               and not (st["transp"] <= args.bleed_max_transp and st["opaque"] >= 90.0))
+    shape = ("（1:%.2f 竖条 = placard 形，按尺寸判定）" % (st["size"][1] / float(st["size"][0]))
+             if by_size else "")
+    report.append("     尺寸 %dx%d · 透明 %s%% · 不透明 %s%% · 触边 %d → **%s**%s"
+                  % (st["size"][0], st["size"][1], st["transp"], st["opaque"],
+                     st["touches"],
+                     {"subject": "人物抠图", "bleed": "满幅图",
+                      "middle": "中间地带(需裁决)"}[kind], shape))
+
+    if kind == "middle":
+        report.append("     ⛔ 像素构成落在中间地带（透明 %s%%），**需用户裁决**："
+                      % st["transp"])
+        report.append("        是人物抠图（有透明背景、主体孤立）？→ 加 --force-subject")
+        report.append("        是满幅画面（无透明、铺满画布）？→ 加 --force-bleed")
+        return EXIT_ASK
+
+    fg_name = "LEADER_%s_NEUTRAL" % key
+    # placard 与 loading 的背景**来源不同、尺寸不同**，必须分开取：
+    #   placard 要竖版 328×935；loading 要 ≥960 高（同一张竖版会因 935<960 被裁）
+    placard_bg, loading_bg = acquire_bgs(root, textures_dir, key, img, bg_dir,
+                                         packs, args, report, check,
+                                         strip_src=(img if (st["placard_shape"]
+                                                            and kind == "bleed") else None))
+
+    if kind == "subject":
+        # ① 人物抠图：定内容框 → 高 882 → 贴 1080×1080 画布（居中、底边贴齐）
+        out, meta = make_frontend_fg(img)
+        report.append("     前景 → %s（%dx%d，主体宽 %d，顶部留空 %d）"
+                      % (fg_name, out.size[0], out.size[1], meta["content_w"],
+                         FG_TOP))
+        emit({"textures": textures_dir}, root, fg_name, out, check)
+        portrait = fg_name
+        loading_fg = fg_name
+    elif st["placard_shape"]:
+        # ② placard 形竖条：**这条规则只在 FrontEnd（环境 A）触发**。
+        #   1:2.85 竖条按尺寸就是 placard 背景，placard 那时不该再叠前景 → Players.Portrait 写显式空串。
+        #   加载界面（环境 B，LoadingInfo）是另一条独立通道，**不受本规则管辖**：它的前景照旧
+        #   取 LEADER_<KEY>_NEUTRAL。竖条本身是背景，不能拿来顶替那张前景，所以这里不产出前景 ——
+        #   加载界面的前景仍需另一张立绘抠图（本轮没给就按惯例名留着，交用户补）。
+        report.append("     前景 → Players.Portrait = '' （**显式空串**：Lua 空串 truthy → 真空白"
+                      "且短路回退；写 NULL 会回退到不存在的 _NEUTRAL）")
+        report.append("     ⚠ 1:2.85 竖条这条规则**只在 FrontEnd（环境 A）触发**；"
+                      "加载界面（LoadingInfo）不受它管辖，前景仍按惯例取 %s" % fg_name)
+        if not os.path.isfile(os.path.join(textures_dir, fg_name + ".dds")):
+            report.append("        该前景贴图当前不在工程里 → 加载界面另有需要时请单独提供立绘抠图")
+        portrait = "''"
+        loading_fg = fg_name
+    else:
+        # ② 满幅图：空白前景（显式空串！）
+        report.append("     前景 → '' （**显式空串**：Lua 空串 truthy → 真空白且短路回退；"
+                      "写 NULL 会回退到不存在的 _NEUTRAL）")
+        portrait = "''"
+        loading_fg = "''"
+
+    if placard_bg is None:
+        report.append("     ⛔ placard 背景未定 → **需用户裁决**（--pick / --bg-dir）")
+        return EXIT_ASK
+    if loading_bg is None and loading_fg != "''":
+        report.append("     ⚠ 加载界面背景缺失 → 该领袖加载界面会回退到 "
+                      "LEADER_%s_BACKGROUND（不存在则空白+DataError）" % key)
+
+    wiring[lt] = dict(portrait=portrait, placard_bg=placard_bg,
+                      loading_fg=loading_fg,
+                      loading_bg=loading_bg or ("LEADER_%s_BACKGROUND" % key))
+    report.append("     接线：Players.Portrait = %s" % portrait)
+    report.append("           Players.PortraitBackground = %s" % placard_bg)
+    report.append("           LoadingInfo.ForegroundImage = %s" % loading_fg)
+    report.append("           LoadingInfo.BackgroundImage = %s" % wiring[lt]["loading_bg"])
+    return EXIT_OK
+
+
+def _xlp_index(root):
+    """→ (所有 EntryID 集合, 别名 dict[EntryID→ObjectName])。"""
+    ids, alias = set(), {}
+    for xp in glob.glob(os.path.join(root, "XLPs", "*.xlp")):
+        try:
+            t = open(xp, encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        for m in re.finditer(
+                r'<m_EntryID text="([^"]*)"\s*/>\s*<m_ObjectName text="([^"]*)"\s*/>', t):
+            ids.add(m.group(1))
+            if m.group(1) != m.group(2):
+                alias[m.group(1)] = m.group(2)
+    return ids, alias
+
+
+def _ensure_alias(root, xlp_name, entry_id, object_name, check, report):
+    """在工程 XLP 里**幂等**登记别名 EntryID → ObjectName（官方命名 + 引用官方贴图）。
+
+    → True 表示 entry_id 可解析（已存在或已写入/将写入）。
+    """
+    xp = xlp_path(root, xlp_name)
+    if not xp:
+        report.append("     ⚠ 工程 XLPs/ 下找不到 %s → 别名 %s 未登记（需手工补）"
+                      % (xlp_name, entry_id))
+        return False
+    try:
+        st = insert_alias(xp, entry_id, object_name, write=not check, project=root)
+    except SystemExit as e:
+        report.append("     ⚠ 登记别名失败：%s" % e)
+        return False
+    if st == "exists":
+        state = "已存在"
+    elif check:
+        state = "将写入"
+    elif st == "staged":
+        state = "改写入位 workspace/gen"
+    else:
+        state = "已写入"
+    report.append("     XLP %s：%s → %s（%s）"
+                  % (os.path.basename(xp), entry_id, object_name, state))
+    return True
+
+
+# placard 竖版背景：先认工程既有形态（PORTRAIT_*，本类不重构），再认本脚本新产的官方命名
+PLACARD_BG_PATTERNS = ("PORTRAIT_%s_BACKGROUND",
+                       "LEADER_%s_PLACARD_BACKGROUND")
+# 加载界面背景（宽幅，高 ≥960）
+LOADING_BG_PATTERNS = ("IMG_LOADING_BACKGROUND_%s",
+                       "LEADER_%s_BACKGROUND",
+                       "IMG_LEADER_%s_DIPLOMACY_BACKGROUND")
+
+
+def _find_by_patterns(textures_dir, key, patterns):
+    for pat in patterns:
+        nm = pat % key
+        for ext in (".dds", ".tex"):
+            fp = os.path.join(textures_dir, nm + ext)
+            if os.path.isfile(fp):
+                return nm, fp
+    return None, None
+
+
+def acquire_bgs(root, textures_dir, key, ref_img, bg_dir, packs, args, report, check,
+                strip_src=None):
+    """取两种背景 → (placard_bg, loading_bg)。两个目标**各自独立**取源。
+
+    两者尺寸要求不同，**不能共用一个源**：
+      placard : 竖版 328×935
+      loading : 宽幅，高 ≥960
+
+    降级顺序：
+      loading : ① 工程 IMG_LOADING_* / LEADER_*_BACKGROUND → ② --bg-dir（**高 ≥960 才可用**）
+                → ③ --pick → ④ 色系回退 → ⑤ 缺失
+      placard : ① 工程 PORTRAIT_* 竖版 → ② 素材本身即 1:2.85 竖条
+                → ③ --bg-dir（能裁出 328×935 即用）→ ④ 停下询问
+
+    strip_src：当次传入的素材本身长宽比就是 1:2.85 时由调用方给出。
+    此时它按尺寸就是 placard 背景，直接 cover 到 328×935 采用。
+    """
+    p_nm, _ = _find_by_patterns(textures_dir, key, PLACARD_BG_PATTERNS)
+    l_nm, l_fp = _find_by_patterns(textures_dir, key, LOADING_BG_PATTERNS)
+
+    # --bg-dir 里可能同时匹配到多张（竖版/宽幅），逐个按尺寸归位
+    bg_candidates = []
+    if bg_dir:
+        for fn in sorted(os.listdir(bg_dir)) if os.path.isdir(bg_dir) else []:
+            if fn.lower().endswith((".png", ".jpg", ".jpeg", ".dds")) and key.lower() in fn.lower():
+                bg_candidates.append(os.path.join(bg_dir, fn))
+    bg_for_placard = None
+    bg_for_loading = None
+    for c in bg_candidates:
+        try:
+            im = load_any(c)
+        except Exception:
+            continue
+        w, h = im.size
+        if bg_for_loading is None and h >= LOADING_BASE_H:
+            bg_for_loading = (c, im)
+        if bg_for_placard is None and h >= PLACARD_BG[1] and w >= PLACARD_BG[0]:
+            bg_for_placard = (c, im)
+
+    if l_nm:
+        report.append("     加载界面背景 ← ① 工程既有：%s" % l_nm)
+    elif bg_for_loading:
+        c, im = bg_for_loading
+        out, meta = make_loading_bg(im)
+        l_nm = "LEADER_%s_BACKGROUND" % key
+        emit({"textures": textures_dir}, root, l_nm, out, check)
+        report.append("     加载界面背景 ← ② --bg-dir：%s → %s（%dx%d，%s）"
+                      % (os.path.basename(c), l_nm, out.size[0], out.size[1], meta["mode"]))
+    elif args.pick:
+        l_nm = "LEADER_%s_BACKGROUND" % key
+        report.append("     加载界面背景 ← 手动 --pick：%s（写官方命名别名）" % args.pick)
+        _ensure_alias(root, "Shell_Loading.xlp", l_nm, args.pick, check, report)
+    elif not args.no_color_fallback:
+        top, similar = official_bg_for_hue(ref_img, packs, args.max_dh)
+        if top and similar:
+            l_nm = "LEADER_%s_BACKGROUND" % key
+            report.append("     加载界面背景 ← ③ 色系回退：官方 %s（hue %.1f，Δh %.1f°，"
+                          "score %.4f）→ 写官方命名别名 %s"
+                          % (top["name"], top["hue"], top["d_hue"], top["score"], l_nm))
+            _ensure_alias(root, "Shell_Loading.xlp", l_nm, top["name"], check, report)
+        elif top:
+            report.append("     ⛔ 加载界面背景色系回退失败：最佳 %s 的 Δh=%.1f° > %.0f°"
+                          "（判为**不相似**）→ **需用户裁决**（--pick 指定）"
+                          % (top["name"], top["d_hue"], args.max_dh))
+            return p_nm, None
+    if p_nm:
+        report.append("     placard 背景 ← ① 工程既有竖版：%s" % p_nm)
+    elif strip_src is not None:
+        # 素材本身就是 1:2.85 竖条 —— 它按尺寸就是 placard 背景，无需再找别的源。
+        pb, pm = make_placard_bg(strip_src)
+        p_nm = "LEADER_%s_PLACARD_BACKGROUND" % key
+        emit({"textures": textures_dir}, root, p_nm, pb, check)
+        report.append("     placard 背景 ← ② 素材本身即 1:2.85 竖条：%s → %s（%dx%d，cover %s×）"
+                      % (os.path.basename(args.image), p_nm, pb.size[0], pb.size[1], pm["scale"]))
+    elif bg_for_placard:
+        c, im = bg_for_placard
+        pb, pm = make_placard_bg(im)
+        p_nm = "LEADER_%s_PLACARD_BACKGROUND" % key
+        emit({"textures": textures_dir}, root, p_nm, pb, check)
+        report.append("     placard 背景 ← ③ --bg-dir：%s → %s（%dx%d，cover %s×）"
+                      % (os.path.basename(c), p_nm, pb.size[0], pb.size[1], pm["scale"]))
+    else:
+        # 既无竖版素材、也无可用宽幅源 → **停下询问用户**。
+        # 不自行决定"拿横版去凑 placard"（StretchMode=None + 328×935 只会显示左上角一块），
+        # 也不自行补边/重绘 —— 那属"把图改好"，超出本 skill 范围（§1.0）。
+        raise NeedsDecision(
+            "placard 竖版背景缺失：工程无 PORTRAIT_<KEY>_BACKGROUND，也没有可裁成 "
+            "328×935 的宽幅源。请提供一张 328×935（或更大等比）的竖版背景 "
+            "（用 --bg-dir <目录>），或明确指示用什么替代。")
+    return p_nm, l_nm
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description="原版 FrontEnd 前景/背景一站式自动处理（分类 → 处理 → 找背景 → 接线）")
+    ap.add_argument("--project", required=True)
+    ap.add_argument("--leader", help="单个 LeaderType（如 LEADER_CARTETHYIA_QYQXP）")
+    ap.add_argument("--image", help="单个素材（PNG/JPG/DDS）")
+    ap.add_argument("--image-dir", help="批量素材目录（文件名需含领袖名片段）")
+    ap.add_argument("--leaders", help="逗号分隔的 LeaderType 列表（配合 --image-dir）")
+    ap.add_argument("--bg-dir", help="背景素材目录（文件名含领袖名片段）")
+    ap.add_argument("--pick", help="手动指定官方背景名（跳过色系回退）")
+    ap.add_argument("--force-subject", action="store_true", help="强制按人物抠图处理")
+    ap.add_argument("--force-bleed", action="store_true", help="强制按满幅图处理")
+    ap.add_argument("--no-color-fallback", action="store_true", help="禁用色系回退")
+    ap.add_argument("--max-dh", type=float, default=60.0, help="色系回退最大色相距离（默认 60°）")
+    ap.add_argument("--allow-pack", default=",".join(DEFAULT_PACKS),
+                    help="色系回退允许的官方 pack（默认 Base,Expansion1,Expansion2）")
+    ap.add_argument("--subject-min-transp", type=float, default=40.0,
+                    help="判为人物抠图的透明占比下限（默认 40%%）")
+    ap.add_argument("--bleed-max-transp", type=float, default=5.0,
+                    help="判为满幅图的透明占比上限（默认 5%%）")
+    ap.add_argument("--write", action="store_true", help="实际写盘（**必须同时给 --confirmed**）")
+    ap.add_argument("--confirmed", action="store_true",
+                    help="用户已确认计划（§1.0 总规则：判断类操作一律先问后做）")
+    ap.add_argument("--json", action="store_true", help="以 JSON 输出")
+    a = ap.parse_args()
+
+    root = os.path.abspath(a.project)
+    if not os.path.isdir(root):
+        raise SystemExit("工程目录不存在：%s" % root)
+    if bool(a.force_subject) and bool(a.force_bleed):
+        raise SystemExit("--force-subject 与 --force-bleed 互斥")
+
+    forced = "subject" if a.force_subject else ("bleed" if a.force_bleed else None)
+    packs = tuple(x.strip() for x in a.allow_pack.split(",") if x.strip())
+
+    # 组装任务列表
+    tasks = []
+    if a.leader and a.image:
+        tasks.append((a.leader, a.image))
+    elif a.image_dir:
+        names = [x.strip() for x in (a.leaders or "").split(",") if x.strip()]
+        if not names:
+            # 从工程 SQL 探测
+            from gen_suk_portrait import find_project_files, detect_leaders
+            files = find_project_files(root)
+            names = sorted(detect_leaders(files))
+        for lt in names:
+            key = lt[len("LEADER_"):] if lt.startswith("LEADER_") else lt
+            m = _match_in_dir(a.image_dir, key)
+            if m:
+                tasks.append((lt, m))
+            else:
+                print("SKIP %s：%s 下找不到名字含 %s 的素材" % (lt, a.image_dir, key),
+                      file=sys.stderr)
+    else:
+        raise SystemExit("需要 --leader+--image 或 --image-dir")
+
+    if a.write and not a.confirmed:
+        print("拒绝执行：--write 必须与 --confirmed 同时使用。\n"
+              "  先跑一次不带 --write 的计划态，把计划交用户确认后再执行。", file=sys.stderr)
+        return EXIT_ASK
+    check = not a.write
+    print("MODE: %s" % ("PLAN (no write)" if check else "WRITE (confirmed)"))
+    print("project: %s" % root)
+    report = []
+    wiring = {}
+    worst = EXIT_OK
+    for lt, img in tasks:
+        if not re.match(r"^LEADER_[A-Z0-9_]+$", lt):
+            print("SKIP 非法 LeaderType：%s" % lt, file=sys.stderr)
+            continue
+        try:
+            rc = plan_one(root, lt, img, check, forced, a.bg_dir, packs, a, report, wiring)
+        except NeedsDecision as e:
+            report.append("     ⛔ **需用户裁决**：%s" % e)
+            rc = EXIT_ASK
+        worst = max(worst, rc)
+
+    print("\n".join(report))
+    if wiring:
+        print("\n=== 接线 SQL（FrontEnd 段：Players 属 Config 库）===")
+        for lt, w in wiring.items():
+            print("UPDATE Players SET Portrait = %s, PortraitBackground = '%s'"
+                  % ("''" if w["portrait"] == "''" else "'%s'" % w["portrait"],
+                     w["placard_bg"]))
+            print("  WHERE LeaderType = '%s';" % lt)
+        print("\n=== 接线 SQL（InGame 段：LoadingInfo 属 Gameplay 库）===")
+        for lt, w in wiring.items():
+            fg = "''" if w["loading_fg"] == "''" else "'%s'" % w["loading_fg"]
+            print("INSERT OR REPLACE INTO LoadingInfo "
+                  "(LeaderType, ForegroundImage, BackgroundImage)")
+            print("  VALUES ('%s', %s, '%s');" % (lt, fg, w["loading_bg"]))
+        print("\n⚠ 以上 SQL **不会自动写入工程**——接线落点由你/调用方决定"
+              "（本工程既有做法：FrontEnd 写 Config_RGN.sql，Ingame 写 Leaders_RGN.sql）。")
+    print("\n结论：%s" % {EXIT_OK: "全部可处理", EXIT_WARN: "有告警",
+                           EXIT_ASK: "**有需用户裁决项**（见上）",
+                           EXIT_ERR: "有错误"}[worst])
+    if check:
+        if worst == EXIT_ASK:
+            print("（**未写盘**。请先把以上计划交用户确认并解决 ⛔ 项。）")
+        else:
+            print("（**未写盘**。把以上计划交用户确认后，再加 --write --confirmed 执行。）")
+    return finish() if not check else worst
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

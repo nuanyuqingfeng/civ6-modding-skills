@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<AssetObjects..MaterialInstance>
+	<m_CookParams>
+		<m_Values>
+			<Element class="AssetObjects..ObjectValue">
+				<m_ObjectName text="{OPAC}"/>
+				<m_eObjectType>TEXTURE</m_eObjectType>
+				<m_ParamName text="Opacity"/>
+			</Element>
+			<Element class="AssetObjects..ObjectValue">
+				<m_ObjectName text="{TEX}"/>
+				<m_eObjectType>TEXTURE</m_eObjectType>
+				<m_ParamName text="BaseColor"/>
+			</Element>
+		</m_Values>
+	</m_CookParams>
+	<m_Version>
+		<major>3</major>
+		<minor>0</minor>
+		<build>176</build>
+		<revision>703</revision>
+	</m_Version>
+	<m_ClassName text="Leader_Matte"/>
+	<m_DataFiles/>
+	<m_Name text="{OBJ}_Material"/>
+	<m_Description text=""/>
+	<m_Tags>
+		<Element text="Leader_Matte"/>
+		<Element text="Leader"/>
+		<Element text="Matte"/>
+	</m_Tags>
+	<m_Groups/>
+</AssetObjects..MaterialInstance>

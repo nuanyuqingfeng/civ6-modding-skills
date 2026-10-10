@@ -1,0 +1,147 @@
+# -*- coding: utf-8 -*-
+"""
+leader_timeline.py -- 领袖 2D 行为资产(.ast)的语音时间线自动配置
+.ast 内 6 槽位: 01_FIRST_MEET / 02_DECLARE_WAR_FROM_HUMAN / 03_DECLARE_WAR_FROM_AI /
+                04_KUDOS / 05_WARNING / 06_DEFEAT
+每个槽位: m_FXName = 对应语音事件名(取自语音文件名主干), m_fDuration = 语音时长 + --pad
+用法:
+  patch <ast路径|目录> --media <语音wav目录|文件...> [--pad 0.5] [--map 槽位关键字=事件名 ...] [--dry]
+  check <ast路径|目录>
+写入: .ast 属工程文件, 改写经 _projwrite 守卫; 既有 .ast 内容有变化时结果写到
+      <工程>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具写入工程 (退出码 2 并打印清单)
+路由(由 agent 按 SKILL.md 执行):
+  ① 项目/工程内已有领袖 ast → 直接 patch
+  ② 没有 → 跳过并在报告中说明
+  ③ 任务本身要求新建 2D 领袖 → 引导 civ6-asset-forge（reference/leader-2d.md）生成后再 patch
+"""
+import os, re, sys, glob, json, argparse, subprocess
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _projwrite import workspace_gen, write_project_file, finish
+
+SLOTS = ['01_FIRST_MEET', '02_DECLARE_WAR_FROM_HUMAN', '03_DECLARE_WAR_FROM_AI',
+         '04_KUDOS', '05_WARNING', '06_DEFEAT']
+
+# 槽位名 ≠ 语音动作枚举名：外交状态叫 KUDOS/WARNING，语音事件习惯叫 KUDO_EXIT/WARNING_EXIT
+# （官方动作枚举全拼，见 civ6-asset-forge reference/leader-diplo-fallback.md 与拉古那/今汐先例）
+SLOT_EVENT_ALIAS = {'04_KUDOS': 'KUDO_EXIT', '05_WARNING': 'WARNING_EXIT'}
+
+def project_root_of(p):
+    """从 .ast 向上找到含 .civ6proj 的工程根"""
+    cur = os.path.dirname(os.path.abspath(p))
+    while True:
+        if glob.glob(os.path.join(cur, '*.civ6proj')):
+            return cur
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            raise SystemExit('未定位到工程根（向上未找到 .civ6proj）: ' + p)
+        cur = parent
+
+
+def find_ast(p):
+    if os.path.isfile(p) and p.lower().endswith('.ast'):
+        return [p]
+    if os.path.isdir(p):
+        hits = glob.glob(os.path.join(p, '**', '*.ast'), recursive=True)
+        if hits: return hits
+    return []
+
+def dur(f):
+    r = subprocess.run(['ffprobe', '-v', 'error', '-print_format', 'json', '-show_streams', f],
+                       capture_output=True, text=True, encoding='utf-8', errors='replace')
+    try:
+        st = json.loads(r.stdout or '{}')['streams'][0]
+        return float(st.get('duration') or 0)
+    except Exception:
+        return 0.0
+
+def collect_media(paths):
+    out = []
+    for p in paths:
+        if os.path.isdir(p):
+            out += sorted(glob.glob(os.path.join(p, '*.wav')))
+        elif os.path.isfile(p):
+            out.append(p)
+    return out
+
+def cmd_check(a):
+    hits = find_ast(a.path)
+    if not hits:
+        print('[CASE2] 未找到领袖 .ast —— 跳过时间线配置, 请在报告中说明')
+        return
+    for p in hits:
+        txt = open(p, encoding='utf-8-sig', errors='replace').read()
+        print('AST:', p)
+        for slot in SLOTS:
+            # 读时间线自身的 Duration（m_AnimationName 之后的那个），触发器内的 m_fDuration 恒为 0
+            m = re.search(r'<m_Name text="%s"/>(?:(?!</m_Timelines>).)*?<m_AnimationName text="[^"]*"\s*/>\s*<m_fDuration>([\d.]+)</m_fDuration>(?:(?!</m_Timelines>).)*?<m_FXName text="([^"]*)"' % slot, txt, re.S)
+            if m:
+                print('  %-26s FX=%-40s Dur=%.2fs' % (slot, m.group(2), float(m.group(1))))
+
+def cmd_patch(a):
+    hits = find_ast(a.path)
+    if not hits:
+        print('[CASE2] 未找到领袖 .ast —— 跳过时间线配置, 请在报告中说明')
+        sys.exit(0)
+    media = collect_media(a.media)
+    emap = dict(kv.split('=', 1) for kv in a.map) if a.map else {}
+    for p in hits:
+        txt = open(p, encoding='utf-8-sig', errors='replace').read()
+        orig = txt
+        print('AST:', p)
+        for slot in SLOTS:
+            ev = emap.get(slot)
+            d = None
+            # 媒体匹配永远先做：无 --map 时它同时给出事件名与时长；有 --map 时只借它的时长
+            # （槽位按本名与官方动作枚举别名两套关键词各试一次）
+            kws = [slot.split('_', 1)[1]]  # FIRST_MEET / DECLARE_WAR_FROM_HUMAN / ...
+            if slot in SLOT_EVENT_ALIAS:
+                kws.append(SLOT_EVENT_ALIAS[slot])
+            for kw in kws:
+                cand = [w for w in media if kw.lower() in os.path.basename(w).lower()]
+                if cand:
+                    w = cand[0]
+                    if ev is None:
+                        ev = os.path.splitext(os.path.basename(w))[0]
+                    d = dur(w)
+                    break
+            if ev is None:
+                print('  [SKIP] %-26s 无对应语音素材' % slot)
+                continue
+            d = d if d is not None else 0.0
+            new_dur = round(d + a.pad, 3)
+            m = re.search(r'(<m_Name text="%s"/>(?:(?!</m_Timelines>).)*?)</Element>' % slot, txt, re.S)
+            if not m:
+                print('  [MISS] %s 未在 ast 中找到' % slot); continue
+            blk = m.group(1)
+            blk2 = re.sub(r'(<m_FXName text=")[^"]*(")', r'\g<1>%s\g<2>' % ev, blk)
+            blk2 = re.sub(r'(<m_AnimationName text="[^"]*"\s*/>\s*<m_fDuration>)[\d.]+(</m_fDuration>)',
+                          r'\g<1>%.6f\g<2>' % new_dur, blk2, count=1)
+            txt = txt.replace(blk, blk2, 1)
+            print('  [OK] %-26s FX=%-40s Dur=%.2fs (语音 %.2fs + pad %.1fs)' % (slot, ev, new_dur, d, a.pad))
+        if txt != orig and not a.dry:
+            root = project_root_of(p)
+            result = write_project_file(p, txt.encode('utf-8'), root)
+            print('  [WRITE] 改写结果已入位 (%s), 待用文件编辑工具写入工程: %s'
+                  % (result, os.path.join(workspace_gen(root), os.path.relpath(p, root))))
+        elif a.dry:
+            print('  [DRY] 未写盘')
+
+def main():
+    ap = argparse.ArgumentParser()
+    sub = ap.add_subparsers(dest='cmd', required=True)
+    c = sub.add_parser('check'); c.add_argument('path')
+    p = sub.add_parser('patch'); p.add_argument('path')
+    p.add_argument('--media', nargs='+', required=True)
+    p.add_argument('--pad', type=float, default=0.5)
+    p.add_argument('--map', nargs='*', default=None, help='槽位=事件名 覆盖 (如 01_FIRST_MEET=X_FIRST_MEET_A)')
+    p.add_argument('--dry', action='store_true')
+    a = ap.parse_args()
+    if a.cmd == 'check':
+        cmd_check(a)
+    else:
+        cmd_patch(a)
+    return finish()
+
+if __name__ == '__main__':
+    sys.exit(main())

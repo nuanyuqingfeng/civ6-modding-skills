@@ -1,0 +1,658 @@
+{
+ "LEADER_BARBAROSSA_BACKGROUND": {
+  "height": 960,
+  "hue": 0.0,
+  "mean": [
+   42,
+   43,
+   40
+  ],
+  "median": [
+   38,
+   39,
+   36
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_CATHERINE_BACKGROUND": {
+  "height": 960,
+  "hue": 180.6,
+  "mean": [
+   1,
+   37,
+   37
+  ],
+  "median": [
+   2,
+   37,
+   37
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_CHANDRAGUPTA_BACKGROUND": {
+  "height": 960,
+  "hue": 0.0,
+  "mean": [
+   41,
+   42,
+   44
+  ],
+  "median": [
+   37,
+   38,
+   40
+  ],
+  "pack": "Expansion1",
+  "width": 1920
+ },
+ "LEADER_CIVROYALE_BACKGROUND": {
+  "height": 960,
+  "hue": 24.5,
+  "mean": [
+   56,
+   35,
+   21
+  ],
+  "median": [
+   54,
+   33,
+   19
+  ],
+  "pack": "CivRoyaleScenario",
+  "width": 1920
+ },
+ "LEADER_CLEOPATRA_BACKGROUND": {
+  "height": 960,
+  "hue": 331.7,
+  "mean": [
+   35,
+   19,
+   27
+  ],
+  "median": [
+   32,
+   18,
+   25
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_DEFAULT_BACKGROUND": {
+  "height": 960,
+  "hue": 29.3,
+  "mean": [
+   58,
+   41,
+   26
+  ],
+  "median": [
+   54,
+   38,
+   23
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_DIDO_BACKGROUND": {
+  "height": 960,
+  "hue": 221.5,
+  "mean": [
+   28,
+   37,
+   59
+  ],
+  "median": [
+   26,
+   35,
+   57
+  ],
+  "pack": "Expansion2",
+  "width": 1920
+ },
+ "LEADER_ELEANOR_ENGLAND_BACKGROUND": {
+  "height": 960,
+  "hue": 7.9,
+  "mean": [
+   73,
+   19,
+   11
+  ],
+  "median": [
+   71,
+   17,
+   10
+  ],
+  "pack": "Expansion2",
+  "width": 1920
+ },
+ "LEADER_ELEANOR_FRANCE_BACKGROUND": {
+  "height": 960,
+  "hue": 7.0,
+  "mean": [
+   73,
+   18,
+   11
+  ],
+  "median": [
+   72,
+   16,
+   10
+  ],
+  "pack": "Expansion2",
+  "width": 1920
+ },
+ "LEADER_GANDHI_BACKGROUND": {
+  "height": 960,
+  "hue": 28.6,
+  "mean": [
+   67,
+   35,
+   6
+  ],
+  "median": [
+   66,
+   32,
+   1
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_GENGHIS_KHAN_BACKGROUND": {
+  "height": 960,
+  "hue": 26.7,
+  "mean": [
+   61,
+   41,
+   25
+  ],
+  "median": [
+   57,
+   37,
+   21
+  ],
+  "pack": "Expansion1",
+  "width": 1920
+ },
+ "LEADER_GILGAMESH_BACKGROUND": {
+  "height": 960,
+  "hue": 37.9,
+  "mean": [
+   62,
+   46,
+   18
+  ],
+  "median": [
+   58,
+   44,
+   18
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_GORGO_BACKGROUND": {
+  "height": 960,
+  "hue": 0.1,
+  "mean": [
+   51,
+   9,
+   8
+  ],
+  "median": [
+   50,
+   8,
+   8
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_HARDRADA_BACKGROUND": {
+  "height": 960,
+  "hue": 196.9,
+  "mean": [
+   13,
+   36,
+   45
+  ],
+  "median": [
+   10,
+   33,
+   42
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_HOJO_BACKGROUND": {
+  "height": 960,
+  "hue": 222.3,
+  "mean": [
+   28,
+   37,
+   58
+  ],
+  "median": [
+   27,
+   35,
+   55
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_KRISTINA_BACKGROUND": {
+  "height": 960,
+  "hue": 222.5,
+  "mean": [
+   28,
+   37,
+   59
+  ],
+  "median": [
+   26,
+   34,
+   57
+  ],
+  "pack": "Expansion2",
+  "width": 1920
+ },
+ "LEADER_KUPE_BACKGROUND": {
+  "height": 960,
+  "hue": 6.2,
+  "mean": [
+   74,
+   18,
+   11
+  ],
+  "median": [
+   74,
+   17,
+   11
+  ],
+  "pack": "Expansion2",
+  "width": 1920
+ },
+ "LEADER_LAURIER_BACKGROUND": {
+  "height": 960,
+  "hue": 6.9,
+  "mean": [
+   74,
+   18,
+   11
+  ],
+  "median": [
+   72,
+   16,
+   10
+  ],
+  "pack": "Expansion2",
+  "width": 1920
+ },
+ "LEADER_LAUTARO_BACKGROUND": {
+  "height": 960,
+  "hue": 25.4,
+  "mean": [
+   46,
+   30,
+   17
+  ],
+  "median": [
+   42,
+   26,
+   13
+  ],
+  "pack": "Expansion1",
+  "width": 1920
+ },
+ "LEADER_MANSA_MUSA_BACKGROUND": {
+  "height": 960,
+  "hue": 43.5,
+  "mean": [
+   46,
+   36,
+   10
+  ],
+  "median": [
+   43,
+   34,
+   10
+  ],
+  "pack": "Expansion2",
+  "width": 1920
+ },
+ "LEADER_MATTHIAS_CORVINUS_BACKGROUND": {
+  "height": 960,
+  "hue": 93.3,
+  "mean": [
+   28,
+   45,
+   15
+  ],
+  "median": [
+   27,
+   42,
+   14
+  ],
+  "pack": "Expansion2",
+  "width": 1920
+ },
+ "LEADER_MONTEZUMA_BACKGROUND": {
+  "height": 960,
+  "hue": 173.3,
+  "mean": [
+   1,
+   38,
+   34
+  ],
+  "median": [
+   2,
+   38,
+   33
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_MVEMBA_BACKGROUND": {
+  "height": 960,
+  "hue": 42.8,
+  "mean": [
+   51,
+   42,
+   17
+  ],
+  "median": [
+   48,
+   38,
+   13
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_PACHACUTI_BACKGROUND": {
+  "height": 960,
+  "hue": 33.4,
+  "mean": [
+   52,
+   34,
+   11
+  ],
+  "median": [
+   50,
+   31,
+   10
+  ],
+  "pack": "Expansion2",
+  "width": 1920
+ },
+ "LEADER_PEDRO_BACKGROUND": {
+  "height": 960,
+  "hue": 248.6,
+  "mean": [
+   37,
+   35,
+   49
+  ],
+  "median": [
+   35,
+   33,
+   47
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_PERICLES_BACKGROUND": {
+  "height": 960,
+  "hue": 29.3,
+  "mean": [
+   58,
+   41,
+   26
+  ],
+  "median": [
+   54,
+   38,
+   23
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_PETER_GREAT_BACKGROUND": {
+  "height": 960,
+  "hue": 40.0,
+  "mean": [
+   48,
+   42,
+   30
+  ],
+  "median": [
+   44,
+   38,
+   26
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_PHILLIP_II_BACKGROUND": {
+  "height": 960,
+  "hue": 28.5,
+  "mean": [
+   62,
+   37,
+   13
+  ],
+  "median": [
+   61,
+   33,
+   7
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_POUNDMAKER_BACKGROUND": {
+  "height": 960,
+  "hue": 225.3,
+  "mean": [
+   26,
+   34,
+   60
+  ],
+  "median": [
+   23,
+   32,
+   57
+  ],
+  "pack": "Expansion1",
+  "width": 1920
+ },
+ "LEADER_QIN_BACKGROUND": {
+  "height": 960,
+  "hue": 52.5,
+  "mean": [
+   39,
+   35,
+   6
+  ],
+  "median": [
+   38,
+   33,
+   6
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_ROBERT_THE_BRUCE_BACKGROUND": {
+  "height": 960,
+  "hue": 103.8,
+  "mean": [
+   24,
+   50,
+   15
+  ],
+  "median": [
+   20,
+   47,
+   10
+  ],
+  "pack": "Expansion1",
+  "width": 1920
+ },
+ "LEADER_SALADIN_BACKGROUND": {
+  "height": 960,
+  "hue": 62.5,
+  "mean": [
+   40,
+   41,
+   21
+  ],
+  "median": [
+   38,
+   39,
+   20
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_SEONDEOK_BACKGROUND": {
+  "height": 960,
+  "hue": 225.8,
+  "mean": [
+   28,
+   33,
+   49
+  ],
+  "median": [
+   24,
+   29,
+   46
+  ],
+  "pack": "Expansion1",
+  "width": 1920
+ },
+ "LEADER_SHAKA_BACKGROUND": {
+  "height": 960,
+  "hue": 39.3,
+  "mean": [
+   60,
+   46,
+   20
+  ],
+  "median": [
+   57,
+   42,
+   15
+  ],
+  "pack": "Expansion1",
+  "width": 1920
+ },
+ "LEADER_SULEIMAN_BACKGROUND": {
+  "height": 960,
+  "hue": 76.6,
+  "mean": [
+   34,
+   43,
+   10
+  ],
+  "median": [
+   32,
+   40,
+   10
+  ],
+  "pack": "Expansion2",
+  "width": 1920
+ },
+ "LEADER_TAMAR_BACKGROUND": {
+  "height": 960,
+  "hue": 226.2,
+  "mean": [
+   29,
+   32,
+   42
+  ],
+  "median": [
+   27,
+   30,
+   40
+  ],
+  "pack": "Expansion1",
+  "width": 1920
+ },
+ "LEADER_TOMYRIS_BACKGROUND": {
+  "height": 960,
+  "hue": 79.1,
+  "mean": [
+   38,
+   43,
+   28
+  ],
+  "median": [
+   36,
+   40,
+   26
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_TRAJAN_BACKGROUND": {
+  "height": 960,
+  "hue": 0.0,
+  "mean": [
+   34,
+   33,
+   33
+  ],
+  "median": [
+   31,
+   31,
+   30
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_T_ROOSEVELT_BACKGROUND": {
+  "height": 960,
+  "hue": 29.3,
+  "mean": [
+   58,
+   41,
+   26
+  ],
+  "median": [
+   54,
+   38,
+   23
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_VICTORIA_BACKGROUND": {
+  "height": 960,
+  "hue": 338.7,
+  "mean": [
+   52,
+   21,
+   32
+  ],
+  "median": [
+   48,
+   19,
+   29
+  ],
+  "pack": "Base",
+  "width": 1920
+ },
+ "LEADER_WILHELMINA_BACKGROUND": {
+  "height": 960,
+  "hue": 82.9,
+  "mean": [
+   54,
+   57,
+   51
+  ],
+  "median": [
+   50,
+   53,
+   47
+  ],
+  "pack": "Expansion1",
+  "width": 1920
+ }
+}

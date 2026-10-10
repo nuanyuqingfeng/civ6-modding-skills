@@ -1,0 +1,262 @@
+{
+ "_note": "官方总督身份色（取自 XP1_Governors32 8x1 图集实测中位数）。仅用于参照与色相区间校验，不作为强制配色。",
+ "official_governors_32px": {
+  "Defender": {
+   "atlas_index": 0,
+   "mean_rgb": [
+    70,
+    59,
+    52
+   ],
+   "bright_rgb": [
+    169,
+    156,
+    137
+   ],
+   "dark_rgb": [
+    15,
+    8,
+    6
+   ]
+  },
+  "Cardinal": {
+   "atlas_index": 1,
+   "mean_rgb": [
+    69,
+    55,
+    38
+   ],
+   "bright_rgb": [
+    227,
+    150,
+    100
+   ],
+   "dark_rgb": [
+    40,
+    32,
+    21
+   ]
+  },
+  "Builder": {
+   "atlas_index": 2,
+   "mean_rgb": [
+    78,
+    51,
+    39
+   ],
+   "bright_rgb": [
+    214,
+    146,
+    119
+   ],
+   "dark_rgb": [
+    22,
+    12,
+    8
+   ]
+  },
+  "Ambassador": {
+   "atlas_index": 3,
+   "mean_rgb": [
+    60,
+    55,
+    41
+   ],
+   "bright_rgb": [
+    174,
+    174,
+    166
+   ],
+   "dark_rgb": [
+    20,
+    13,
+    6
+   ]
+  },
+  "ResourceManager": {
+   "atlas_index": 4,
+   "mean_rgb": [
+    57,
+    51,
+    36
+   ],
+   "bright_rgb": [
+    194,
+    126,
+    106
+   ],
+   "dark_rgb": [
+    23,
+    12,
+    10
+   ]
+  },
+  "Merchant": {
+   "atlas_index": 5,
+   "mean_rgb": [
+    74,
+    52,
+    36
+   ],
+   "bright_rgb": [
+    204,
+    107,
+    87
+   ],
+   "dark_rgb": [
+    38,
+    15,
+    11
+   ]
+  },
+  "Educator": {
+   "atlas_index": 6,
+   "mean_rgb": [
+    78,
+    64,
+    46
+   ],
+   "bright_rgb": [
+    177,
+    172,
+    153
+   ],
+   "dark_rgb": [
+    32,
+    21,
+    11
+   ]
+  }
+ },
+ "promotion_badge_24px": {
+  "_note": "八格公共徽章：暖橄榄-古铜。上亮下暗垂直渐变。",
+  "rim_highlight_rgb": [
+   238,
+   234,
+   206
+  ],
+  "body_rgb": [
+   192,
+   188,
+   160
+  ],
+  "median_rgb": [
+   138,
+   134,
+   107
+  ],
+  "shade_rgb": [
+   105,
+   101,
+   73
+  ],
+  "glyph_rgb": [
+   73,
+   69,
+   41
+  ],
+  "hue_deg": 51.0,
+  "octagon_rowspans_y3_20": [
+   [
+    8,
+    15
+   ],
+   [
+    7,
+    16
+   ],
+   [
+    6,
+    17
+   ],
+   [
+    5,
+    18
+   ],
+   [
+    4,
+    19
+   ],
+   [
+    3,
+    20
+   ],
+   [
+    3,
+    20
+   ],
+   [
+    3,
+    20
+   ],
+   [
+    3,
+    20
+   ],
+   [
+    3,
+    20
+   ],
+   [
+    3,
+    20
+   ],
+   [
+    3,
+    20
+   ],
+   [
+    3,
+    20
+   ],
+   [
+    3,
+    20
+   ],
+   [
+    4,
+    19
+   ],
+   [
+    5,
+    18
+   ],
+   [
+    6,
+    17
+   ],
+   [
+    7,
+    16
+   ],
+   [
+    8,
+    15
+   ]
+  ],
+  "canvas": 24,
+  "content_y": [
+   3,
+   20
+  ],
+  "max_width": 18,
+  "flat_rows": [
+   8,
+   15
+  ]
+ },
+ "tone_lock_defaults": {
+  "_note": "徽章结构固定，只允许色相/饱和度被头像驱动；亮度曲线锁死为原版，保证与原版并置不突兀。",
+  "structural_lock": {
+   "shape": true,
+   "gradient_curve": true,
+   "rim_width_px_24": 1,
+   "glyph_darkness_pct": 18
+  },
+  "driven_by_avatar": {
+   "hue": "dominant_hue_weighted",
+   "saturation": "0.55..1.15x_avatar",
+   "lightness": "canonical_curve"
+  }
+ }
+}

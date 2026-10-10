@@ -1,0 +1,37 @@
+[
+  {
+    "tag": "LOC_DEMO_TITLE",
+    "text": "原生面板标题",
+    "group": "界面示例"
+  },
+  {
+    "tag": "LOC_DEMO_DESCRIPTION",
+    "text": "这是通过 LOC 提供的原生滚动正文。",
+    "group": "界面示例"
+  },
+  {
+    "tag": "LOC_DEMO_CARD_TITLE",
+    "text": "可选择的卡片",
+    "group": "界面示例"
+  },
+  {
+    "tag": "LOC_DEMO_CARD_DESCRIPTION",
+    "text": "选择边框独立于文字。",
+    "group": "界面示例"
+  },
+  {
+    "tag": "LOC_DEMO_CONFIRM",
+    "text": "确认选择",
+    "group": "界面示例"
+  },
+  {
+    "tag": "LOC_DEMO_SELECTED",
+    "text": "已选中 1 项",
+    "group": "界面示例"
+  },
+  {
+    "tag": "LOC_DEMO_SELECT_HINT",
+    "text": "请选择一项",
+    "group": "界面示例"
+  }
+]
