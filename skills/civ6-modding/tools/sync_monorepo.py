@@ -7,8 +7,9 @@
      → git rm --cached → git read-tree --prefix=skills/<名>/ → git checkout-index -f -a。
      整棵子树替换，本地删掉的文件随之消失。不用 tar 导出：Windows bsdtar 解不开仓库里的
      中文路径（实测 database/api-verification-2026-09-08/ 下 7 个 CSV 报 Invalid empty pathname）；
-  ③ 提交、推送（直连失败自动改走 Clash 混合端口 127.0.0.1:7897）；
-  ④ 核对云端 main 与本地提交一致、逐 skill 核对子树树，删除临时目录。
+  ③ 用 tools/monorepo_README.md 覆盖仓库根 README.md（总仓库首页的真源在本地）；
+  ④ 提交、推送（直连失败自动改走 Clash 混合端口 127.0.0.1:7897）；
+  ⑤ 核对云端 main 与本地提交一致、逐 skill 核对子树树、README 与源文件一致，删除临时目录。
 
 用法：
     python sync_monorepo.py                        # 同步全部有改动的 skill
@@ -27,11 +28,21 @@ import shutil
 import subprocess
 import sys
 
-SKILLS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SKILLS_ROOT = os.path.dirname(SKILL_DIR)
 CLOUD_URL = "https://github.com/nuanyuqingfeng/civ6-modding-skills.git"
 PROXY = "http://127.0.0.1:7897"
 WORK = os.path.join(os.environ.get("TEMP") or r"C:\Windows\Temp", "civ6-mono")
+README_SRC = os.path.join(SKILL_DIR, "tools", "monorepo_README.md")
 GIT_FALLBACK = [r"E:\SoftWares\Git\cmd\git.exe", r"C:\Program Files\Git\cmd\git.exe"]
+
+
+def rmtree_force(path):
+    """删目录树；git 克隆出来的 pack 文件带只读属性，Windows 上直接删会被拒绝访问。"""
+    def onexc(func, p, exc):
+        os.chmod(p, 0o700)
+        func(p)
+    shutil.rmtree(path, onexc=onexc)
 
 
 def git_exe():
@@ -117,9 +128,19 @@ def main():
     print("临时目录：%s" % WORK)
 
     if os.path.isdir(WORK):
-        shutil.rmtree(WORK)
+        rmtree_force(WORK)
     net(["clone", "--quiet", "--depth", "1", a.url, WORK], what="克隆总仓库")
     base = git(["-C", WORK, "rev-parse", "HEAD"]).stdout.strip()
+
+    readme_want = None
+    readme_changed = False
+    if os.path.isfile(README_SRC):
+        readme_want = open(README_SRC, encoding="utf-8").read()
+        dst = os.path.join(WORK, "README.md")
+        have = open(dst, encoding="utf-8").read() if os.path.isfile(dst) else None
+        readme_changed = have != readme_want
+    else:
+        print("WARN 找不到 %s，本次不动仓库根 README.md" % README_SRC)
 
     changed = []
     for n in skills:
@@ -133,19 +154,30 @@ def main():
             continue
         git(["-C", WORK, "fetch", "--no-tags", src, "main:refs/sync/%s" % n])
         git(["-C", WORK, "rm", "-r", "--cached", "--quiet", "--ignore-unmatch", "skills/%s" % n])
-        shutil.rmtree(os.path.join(WORK, "skills", n), ignore_errors=True)
+        sub = os.path.join(WORK, "skills", n)
+        if os.path.isdir(sub):
+            rmtree_force(sub)
         git(["-C", WORK, "read-tree", "--prefix=skills/%s/" % n, "refs/sync/%s" % n])
         changed.append(n)
         print("  %-24s %s -> %s" % (n, (have or "云端新增")[:8], want[:8]))
 
-    if not changed:
+    if not changed and not readme_changed:
         print("云端已是最新，无需提交。")
         if not a.keep:
-            shutil.rmtree(WORK, ignore_errors=True)
+            rmtree_force(WORK)
         return 0
 
     git(["-C", WORK, "checkout-index", "-f", "-a"])
-    msg = a.message or ("sync: " + "、".join(changed))
+    parts = list(changed)
+    if readme_changed:
+        # 必须放在 checkout-index 之后：它按索引重写整棵工作树，先写的 README 会被
+        # 盖回旧内容，随后的 git add 暂存的就是旧版（实测提交被 README 核对挡下）。
+        with open(os.path.join(WORK, "README.md"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(readme_want)
+        git(["-C", WORK, "add", "README.md"])
+        parts.append("README.md")
+        print("  README.md 由 tools/monorepo_README.md 更新")
+    msg = a.message or ("sync: " + "、".join(parts))
     git(["-C", WORK, "commit", "-q", "-m", msg])
     head = git(["-C", WORK, "rev-parse", "HEAD"]).stdout.strip()
     print("提交 %s  %s" % (head[:8], msg))
@@ -154,6 +186,13 @@ def main():
     if bad:
         raise SystemExit("FAIL 提交内子树与本地 HEAD 不一致：%s" % "、".join(bad))
     print("子树核对：%d 个 skill 全部与本地 HEAD 树一致" % len(skills))
+
+    if os.path.isfile(README_SRC):
+        committed = git(["-C", WORK, "show", "HEAD:README.md"]).stdout
+        want = open(README_SRC, encoding="utf-8").read()
+        if committed.replace("\r\n", "\n").strip("\n") != want.replace("\r\n", "\n").strip("\n"):
+            raise SystemExit("FAIL 提交内 README.md 与 tools/monorepo_README.md 不一致")
+        print("README 核对：与 tools/monorepo_README.md 一致")
 
     if a.dry_run:
         print("--dry-run：未推送，临时目录保留在 %s" % WORK)
@@ -171,7 +210,7 @@ def main():
         raise SystemExit("FAIL 推送后云端 main = %s，本地提交 = %s" % (after_head[:8], head[:8]))
     print("云端 main = %s（与本地提交一致）" % after_head)
     if not a.keep:
-        shutil.rmtree(WORK, ignore_errors=True)
+        rmtree_force(WORK)
         print("临时目录已删除。")
     return 0
 
