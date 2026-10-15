@@ -6,8 +6,12 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# ---- 一次性探针工作区（SKILL.md：可复用探针进 snippets/，一次性探针进 workspace/tmp/）----
-workspace/
+# ---- 探针工作区（SKILL.md：可复用探针进 snippets/，一次性探针进 workspace/tmp/）----
+# 纳管口径：全部脚本纳入版本跟踪，故 workspace/tmp 下的 .lua 探针一并跟踪；workspace 其余内容仍忽略。
+workspace/*
+!workspace/tmp/
+workspace/tmp/*
+!workspace/tmp/*.lua
 
 # ---- Windows 组件缓存误写（裸 %SystemDrive% 目录）----
 %SystemDrive%/
