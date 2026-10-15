@@ -23,6 +23,10 @@ r"""cook_dep.py — 从 <ModName>.Art.xml 生成 <ModName>.dep（AssetObjects..G
   · `Clutter.artdef` 的 `relativeArtDefPaths` 会被 cooker 有意丢弃（日志有明示）——
     `.dep` ↔ `.Art.xml` 对比时该条差异**不算缺陷**。
 
+`.dep` 是**独立可分发载荷**：装载侧只读 `.modinfo` 的 `<UpdateArt><File>`，与源工程是否
+保留 `.Art.xml` 无关。官方 `DLC\ScoutCat` 就是这种形态（无 Art.xml / 无 xlp，只有产物），
+详见 `civ6-art-reference/reference/cook-layer.md` §1.6。
+
 ## 用法
 
     # 生成到 workspace/tmp/dep（默认），然后自行复制

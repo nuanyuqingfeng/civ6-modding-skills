@@ -41,6 +41,9 @@ Portrait, PortraitBackground, PlayerColor, HumanPlayable, SortIndex
      领袖经 `CivilizationLeaders` 挂该文明即继承；
    - `物品-TRAIT-领袖`：主表 `TraitType` → `LeaderTraits` 直接挂在领袖身上
      （多领袖共享的通用特色单位也走这条）。
+   - 主表 `TraitType` 必须指向衍生 trait（如 `TRAIT_CIVILIZATION_X_IMPROVEMENT`），
+     文明/领袖能力主体的主 trait 禁止作为特色物品的 `TraitType`；衍生 trait 的
+     `Traits.Name / Description` 一律 `NULL`。
 3. **链路在 InGame（gameplay）库成立**——`CivilizationTraits` / `LeaderTraits` 都是
    gameplay 表；Config 侧的 `PlayerItems` 行只是前端展示，写错不报错，
    后果是选人界面出现不该出现的条目（或指向悬空）。
@@ -52,6 +55,24 @@ Modifier 实现，属于能力效果，不属于特色物品）、纯修饰符�
 `TraitType=TRAIT_CIVILIZATION_JINZHOU_*` → `CivilizationTraits`；阿漂（漂泊者通用单位）
 走 `TraitType=TRAIT_ROVER_QYQXP` → `LeaderTraits`。同一文明的多领袖各自维护一份
 `PlayerItems` 行集，共享套装重复列出属正常做法。
+
+## 命名规则：领袖变量必须带项目级后缀
+
+`LEADER_*` 与 `AGENDA_*`、领袖专属 `TRAIT_*` 的末尾段必须带项目级后缀（如 _SNZ），
+防止与其他 mod 的领袖 Type 冲突；领袖的 tag（人名、加载语、百科、外交语音槽位）完整继承该后缀。
+
+| 示例 | 说明 |
+|---|---|
+| `LEADER_RGN_Y` | 领袖 Type |
+| `LOC_LEADER_RGN_Y_NAME` | 领袖名 tag（选人界面 `Players.LeaderName`） |
+| `LOC_LOADING_INFO_LEADER_RGN_Y` | 加载界面领袖语 |
+| `LOC_PEDIA_LEADERS_PAGE_LEADER_RGN_Y_QUOTE` | 领袖百科名言 |
+| `LOC_DIPLO_FIRST_MEET_LEADER_RGN_Y_ANY` | 外交语音槽位 |
+| `AGENDA_RGN_Z` / `LOC_AGENDA_RGN_Z_NAME` | 议程 Type 与其 tag |
+
+- 项目另有领袖/文明变量后缀约定的，以本项目 **AGENTS.md** 为准。
+- AI **不参与**领袖 Type 本身的格式纠正（见 AGENTS.md「用户自拟命名空间」）；只保证定义-引用闭合。
+- 同文明多领袖共享一个文明后缀，各领袖后缀各自独立（如 `LEADER_RGN_Y` 与 `LEADER_RGN_Z`）。
 
 ## 「挂新文明」vs「leader-only 挂已有文明」
 
@@ -75,6 +96,9 @@ leader-only 时 `Leaders.InheritFrom` 常指向该文明的原版领袖（或 `L
   **mod 领袖通常没有这两个回退名 → 控件空白且前端不报错**（最常见的静默失败）。
   自建写 `PORTRAIT_<KEY>_BACKGROUND`（竖版 328×935，控件尺寸），
   或别名复用原版 `LEADER_<别的领袖>_BACKGROUND`（见下）。
+  ★ **素材本身即 1:2.85 竖条**（placard 形，与 `LeaderBG` 控件 328×935 同比）时，
+  `Portrait` 写**显式空串 `''`**（空白前景 + 铺满背景）；此规则**只管环境 A**，
+  加载界面（B）的 `ForegroundImage` 不受影响，仍取 `LEADER_<KEY>_NEUTRAL`。
   ★ **完整规格（含 328×935 推导、加载界面、色调近似选型）见
   `civ6-asset-forge/reference/frontend-portrait.md`。**
 - **第三方 2D 选人界面适配（可选分支）**（如 Sukritact's Civ Selection Screen）：
@@ -104,17 +128,90 @@ FrontEnd 动作的门控只挂 `ModInUse`，**勿挂 `GameCoreInUse`**——Fron
 同文明：`.modinfo` 的 `<LocalizedText>` 只管 mod 列表界面，**游戏内文本必须经
 `UpdateText` 加载 `Text/*.sql`**（详见 `gotchas.md`「本地化文本通道」）。
 
-常见 tag（`LOC_LEADER_<ID>_NAME` 等由你和生成器按同一规则推导，保持一致即可）：
+文本 tag 一律由完整领袖变量名 `LEADER_<ID>`（含项目级后缀）推导，派生 tag 必须继承完整变量名，不得截断为裸名。
+
+**语音 7 条**（quote 经 `LeaderQuotes.QuoteAudio` 配语音；六条外交语音由 `Speech.bnk` 事件判定）：
 
 ```
-LOC_LEADER_<ID>_NAME            领袖名
-LOC_LEADER_<ID>_QUOTE           首次见面名言（配 LeaderQuotes.Quote）
-LOC_LOADING_INFO_<ID>           载入界面信息
-LOC_TRAIT_<ID>_ABILITY_NAME     能力名（配 Players.LeaderAbilityName）
-LOC_TRAIT_<ID>_ABILITY_DESCRIPTION
+LOC_PEDIA_LEADERS_PAGE_LEADER_<ID>_QUOTE          加载界面名言（配 LeaderQuotes.Quote）
+LOC_DIPLO_FIRST_MEET_LEADER_<ID>_ANY               初次见面
+LOC_DIPLO_DECLARE_WAR_FROM_HUMAN_LEADER_<ID>_ANY   人类玩家宣战
+LOC_DIPLO_DECLARE_WAR_FROM_AI_LEADER_<ID>_ANY      AI 宣战
+LOC_DIPLO_KUDO_EXIT_LEADER_<ID>_ANY                议程正面回应
+LOC_DIPLO_WARNING_EXIT_LEADER_<ID>_ANY             警告后告别
+LOC_DIPLO_DEFEAT_FROM_AI_LEADER_<ID>_ANY           战败台词
+```
+
+**必填文本**（`LOC_TRAIT_<ID>_*` 这类 tag 归 `Text_Config_*` 文件；`LOC_LOADING_INFO_LEADER_<ID>` 是开幕颂词，写 100 字上下的完整长句，禁止只写称号）：
+
+```
+LOC_LEADER_<ID>_NAME                      领袖名
+LOC_LEADER_<ID>_DESCRIPTION               称号（写 Text_Config）
+LOC_TRAIT_<ID>_NAME                       能力名
+LOC_TRAIT_<ID>_DESCRIPTION                能力说明（写 Text_Config，配 Players.LeaderAbilityDescription）
+LOC_LOADING_INFO_LEADER_<ID>              开幕颂词
+LOC_AGENDA_<ID>_NAME / DESCRIPTION        议程名与可见描述
+```
+
+★ **两端独立**：FrontEnd 与 InGame 是两套独立的 LocalizedText 环境，`<UpdateText>` 只对它注册的那一端生效。`Text_Config_*` 的 tag 被哪一端引用，就在哪一端注册；两端都引用时必须两端各注册一次。引用闭合按端分别核对，InGame 侧跑 `rgn_validate`，FrontEnd 侧对照 `DebugConfiguration.sqlite` 检查 `Players`/`PlayerItems`，不能让某一端的结果覆盖另一端。
+
+**无语音外交文本**（可选补齐，按黑海岸标准；tag 后缀统一为 `_LEADER_<ID>_ANY`）：
+
+```
+LOC_DIPLO_FIRST_MEET_VISIT_RECIPIENT_LEADER_<ID>_ANY
+LOC_DIPLO_FIRST_MEET_NO_MANS_INFO_EXCHANGE_LEADER_<ID>_ANY
+LOC_DIPLO_FIRST_MEET_NEAR_INITIATOR_POSITIVE_LEADER_<ID>_ANY
+LOC_DIPLO_GREETING_LEADER_<ID>_ANY
+LOC_DIPLO_DECLARE_FRIEND_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_ACCEPT_DECLARE_FRIEND_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_REJECT_DECLARE_FRIEND_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_ACCEPT_DECLARE_FRIEND_FROM_HUMAN_LEADER_<ID>_ANY
+LOC_DIPLO_REJECT_DECLARE_FRIEND_FROM_HUMAN_LEADER_<ID>_ANY
+LOC_DIPLO_DELEGATION_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_ACCEPT_DELEGATION_FROM_HUMAN_LEADER_<ID>_ANY
+LOC_DIPLO_REJECT_DELEGATION_FROM_HUMAN_LEADER_<ID>_ANY
+LOC_DIPLO_OPEN_BORDERS_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_ACCEPT_OPEN_BORDERS_FROM_HUMAN_LEADER_<ID>_ANY
+LOC_DIPLO_REJECT_OPEN_BORDERS_FROM_HUMAN_LEADER_<ID>_ANY
+LOC_DIPLO_MAKE_ALLIANCE_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_ACCEPT_MAKE_ALLIANCE_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_MAKE_PEACE_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_MAKE_PEACE_AI_ACCEPT_DEAL_LEADER_<ID>_ANY
+LOC_DIPLO_MAKE_PEACE_AI_REFUSE_DEAL_LEADER_<ID>_ANY
+LOC_DIPLO_ACCEPT_MAKE_DEAL_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_REJECT_MAKE_DEAL_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_DENOUNCE_FROM_HUMAN_LEADER_<ID>_ANY
+LOC_DIPLO_DENOUNCE_FROM_AI_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_TOO_MANY_TROOPS_NEAR_ME_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_TOO_MANY_TROOPS_NEAR_ME_AI_RESPONSE_POSITIVE_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_TOO_MANY_TROOPS_NEAR_ME_AI_RESPONSE_NEGATIVE_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_STOP_SPYING_ON_ME_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_STOP_SPYING_ON_ME_AI_RESPONSE_POSITIVE_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_STOP_SPYING_ON_ME_AI_RESPONSE_NEGATIVE_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_STOP_DIGGING_UP_ARTIFACTS_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_STOP_DIGGING_UP_ARTIFACTS_AI_RESPONSE_POSITIVE_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_STOP_DIGGING_UP_ARTIFACTS_AI_RESPONSE_NEGATIVE_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_STOP_CONVERTING_MY_CITIES_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_STOP_CONVERTING_MY_CITIES_AI_RESPONSE_POSITIVE_LEADER_<ID>_ANY
+LOC_DIPLO_WARNING_STOP_CONVERTING_MY_CITIES_AI_RESPONSE_NEGATIVE_LEADER_<ID>_ANY
+```
+
+不补上表之外的 no-voice 外交 tag，尤其不生成 `LOC_DIPLO_DEFEAT_FROM_HUMAN_*`（六个外交槽位无此语音）。
+
+**禁止生成的 tag**：
+
+```
+LOC_DIPLO_QUOTE_*                        原版 0 条，quote 只走 LOC_PEDIA_LEADERS_PAGE_LEADER_<ID>_QUOTE
+LOC_DIPLO_ATTACKED_*                     原版 0 条
+LOC_DIPLO_DEFEAT_FROM_HUMAN_*           无语音槽位
+LOC_TRAIT_AGENDA_<ID>_*                  衍生 trait 不生成 NAME/DESCRIPTION（Traits 两列 NULL）
+LOC_AGENDA_<ID>_DESCRIPTION_HIDDEN       原版 0 条
 ```
 
 `LocalizedText` 实列：`Language, Tag, Text, Gender, Plurality`。
+
+所有衍生 trait（特色物品专用、议程）的 `Traits.Name / Description` 都必须是 `NULL`，
+也只有主 trait 才生成 `LOC_TRAIT_*_NAME` / `LOC_TRAIT_*_DESCRIPTION`。
 
 ## 代码/配置怎么写
 
@@ -162,4 +259,3 @@ python scripts/check_proj_content.py                  # Content 清单双向闭�
 - `Leaders.InheritFrom` 的官方取值域、`SceneLayers` 的写法：本文只给出列名，
   **未核实**取值含义与合法范围。
 - `SameSexPercentage` 的取值范围：**未核实**。
-- 载入语 tag 的精确拼法（`LOC_LOADING_INFO_<ID>`）：**未核实**，建议照原版同文明领袖抄。

@@ -11,11 +11,14 @@
 
 | 脚本 | 查什么 | 用法 | 退出码 |
 |---|---|---|---|
-| `rgn_validate_runner.mjs` | **引用完整性**：悬空 ModifierId / Type / RequirementSetId …（实跑模式会真实执行项目 SQL 再查库比对） | `node rgn_validate_runner.mjs <目录> [模式=*.sql] [checkNaming=true] [--base <库>] [--static]` | 0 无悬空 / 1 有 |
+| `rgn_validate_runner.mjs` | **引用完整性 + Modifier 单复数/作用域**：悬空 ModifierId / Type / RequirementSetId …；`--scope-check` 只查 git diff 命中的改动，并从 `DynamicModifiers` 回查官方/项目既有自建类型 | `node rgn_validate_runner.mjs <目录> [模式=*.sql] [checkNaming=true] [--base <库>] [--static] [--scope-check]` | 0 无异常 / 1 有 |
 | `check_sql_exec.py` | **可执行性**：非法转义、字符错位导致「整条 INSERT 报废」 | `python check_sql_exec.py [--root <工程>] [--base <库>]` | 0 / 1 |
 | `check_sql_antipatterns.py` | **语义反模式**：语法合法但恒假/恒错 —— `LIKE ('%A%' OR '%B%')`、`WHERE … = NULL` | `python check_sql_antipatterns.py <工程根目录> [--esc]` | 0 / 1 |
 | `check_types_kinds.py` | `INSERT INTO Types` 的 `Kind` 是否是引擎合法枚举（复现 `Invalid Reference on Types.Kind`） | `python check_types_kinds.py [--root <工程>] [--db <库>] [--dirs Data,Mod_Adaptation]` | 0 / 1 |
 | `check_proj_content.py` | `.civ6proj` 的 `<Content Include>` 与磁盘是否**双向闭合**（悬空清单项 / 漏登记） | `python check_proj_content.py <工程根目录>` | 0 / 1 |
+| `check_proj_layout.py` | **`.civ6proj` 动作块排版**：CDATA 块是否「一元素一行、每层 +2 空格、闭标签与开标签同缩进」；拆行时吞掉闭标签会在此处先报，早于 XML 解析失败 | `python check_proj_layout.py <工程根目录或 .civ6proj> [--max-width 120]` | 0 / 1 |
+| `check_text_refs.py` | **文本引用双向闭合**：`[ICON_x]` 正向解析、`{LOC_x}` 文本往回的悬空、`Text/*Config*.sql` 的孤儿 tag | `python check_text_refs.py <工程根目录> [--base <DebugLocalization.sqlite>] [--file <文本文件>]` | 0 无问题 / 1 有 |
+| `check_adjacency_text.py` | **相邻加成本地化**：工程内 `Adjacency_YieldChanges.Description` 指向的文本必须含 `[ICON_*]` 与 `{1_num}` | `python check_adjacency_text.py <工程根目录> [--base <DebugLocalization.sqlite>]` | 0 合规 / 1 有 |
 | `check_lua_registration.py` | **`.lua` 有没有有效加载路径**（按「UI 上下文 / include 扩展件 / GP 脚本」三角色判定；角色判定实现在 `_lua_roles.py`，与本目录 `check_lua_context.py` 共用同一份） | `python check_lua_registration.py <工程根目录>` | 0 / 1 |
 | `check_lua_context.py` | **Lua 跨上下文体检**：UI 侧 `GameEvents` / UI 侧 `SetProperty` / UI 侧 `ReportingEvents` / 跨端注册触发 `LuaEvents` / 调用不在 include 闭包内的全局函数 / `ExposedMembers` 使用点。口径真源 `../reference/context-matrix.md` | `python check_lua_context.py <工程根目录>` | 0 / 1 |
 | `check_doc_anchors.py` | **跨上下文文档指针一致性**：结论行是否都带 `context-matrix.md` 指针、指针行是否带排他结论 | `python check_doc_anchors.py [--skills <skills 根>]` | 0 / 1 |
@@ -62,18 +65,20 @@ check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR �
      一查运行时库，缺口一目了然（见 gotchas §52）。
 
 ① python check_sql_exec.py --root <工程>          # SQL 能否执行
-② node   rgn_validate_runner.mjs <工程>/Data      # 引用闭合吗
+② node   rgn_validate_runner.mjs <工程>/Data --scope-check   # 引用闭合吗 + 本次改动的 Modifier 单复数/作用域对吗
 ③ python check_types_kinds.py --root <工程>       # Kind 合法吗
 ④ python check_sql_antipatterns.py <工程>         # 语法合法但恒假吗
-⑤ python check_proj_content.py <工程>             # 打包清单闭合吗
-⑥ python check_lua_registration.py <工程>         # 每个 .lua 都有有效加载路径吗
-⑦ python check_lua_context.py <工程>              # 跨上下文写法可达吗（口径真源 reference/context-matrix.md）
-⑧ （动过贴图时）
+⑤ python check_text_refs.py <工程>               # 文本引用双向闭合（图标/LOC/配置孤儿）
+⑥ python check_adjacency_text.py <工程>          # 相邻加成 Description 含图标与 {1_num}
+⑦ python check_proj_content.py <工程>            # 打包清单闭合吗
+⑧ python check_lua_registration.py <工程>         # 每个 .lua 都有有效加载路径吗
+⑨ python check_lua_context.py <工程>              # 跨上下文写法可达吗（口径真源 reference/context-matrix.md）
+⑩ （动过贴图时）
    python check_pantry.py --root <工程>           # pantry 卫生
    python clear_ae_cache.py --mod <工程名>        # 清 AE 缓存，再开 AssetEditor 看日志有无 CRASH
 ```
 
-> **为什么 ⓿ 要排在第一位**：①–⑥ 都是**静态**检查 —— 它们能证明"源文件没写错"，
+> **为什么 ⓿ 要排在第一位**：①–⑧ 都是**静态**检查 —— 它们能证明"源文件没写错"，
 > 但证明不了"引擎执行后真的如你所愿"。凡是依赖 `INSERT…SELECT`、`WITH RECURSIVE`、
 > `'前缀' || 列` 动态拼接、`LIKE` 过滤的生成式 SQL，**只有运行时库能给出裁决**。
 > 数据库文件在每次进对局时重写；用只读方式（`file:…?mode=ro`）打开，不要锁库。

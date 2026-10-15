@@ -67,6 +67,72 @@ def bank_media(bank_dir, bank):
             print('  [WARN] xml 引用的流式文件缺失:', n)
     return base, wems
 
+def bank_referenced_ids(audio_dir):
+    """目录内全部 bank xml 引用的媒体 ID 合并集合。
+
+    重建 bank 会让流式媒体 ID 重新分配, 旧 wem 随即成为孤儿; 以"当前 bank xml
+    引用"为唯一真源判定孤儿, 不误删别的 bank 的 wem。跳过 SoundbanksInfo.xml
+    (工程级汇总, 不属于任何单个 bank)。
+    """
+    ids = set()
+    for xml in sorted(glob.glob(os.path.join(audio_dir, '*.xml'))):
+        if os.path.basename(xml).lower() == 'soundbanksinfo.xml':
+            continue
+        try:
+            txt = open(xml, encoding='utf-8', errors='replace').read()
+        except OSError:
+            continue
+        ids |= set(re.findall(r'<File Id="(\d+)"', txt))
+    return ids
+
+def clean_orphan_wem(audio_dir, keep_ids):
+    """删除 audio_dir 下不再被任何 bank xml 引用的 <数字>.wem。
+
+    只匹配纯数字命名的 .wem, 其余文件一概不碰。返回被删文件名列表。
+    """
+    removed = []
+    if not os.path.isdir(audio_dir):
+        return removed
+    for fn in sorted(os.listdir(audio_dir)):
+        if not re.fullmatch(r'\d+\.wem', fn):
+            continue
+        if fn[:-4] in keep_ids:
+            continue
+        os.remove(os.path.join(audio_dir, fn))
+        removed.append(fn)
+    return removed
+
+def prune_wem_entries(txt, keep_ids, style):
+    """剔除清单里指向 <数字>.wem 且该 ID 已不被任何 bank xml 引用的条目。
+
+    style='content' 处理 .civ6proj 的三行 <Content> 块; style='file' 处理
+    .modinfo 的单行 <File>。keep_ids 为 None 时原样返回。
+    """
+    if keep_ids is None:
+        return txt
+    if style == 'content':
+        pat = re.compile(r'[ \t]*<Content Include="Platforms\\Windows\\Audio\\(\d+)\.wem">\r?\n'
+                         r'[ \t]*<SubType>Content</SubType>\r?\n[ \t]*</Content>\r?\n?')
+    else:
+        pat = re.compile(r'[ \t]*<File>Platforms/Windows/Audio/(\d+)\.wem</File>\r?\n?')
+    return pat.sub(lambda m: m.group(0) if m.group(1) in keep_ids else '', txt)
+
+def prune_audio_dir(audio_dir, dry):
+    """清理媒体 ID 漂移后的孤儿 wem, 返回当前被 bank xml 引用的 ID 集合。"""
+    keep = bank_referenced_ids(audio_dir)
+    if not os.path.isdir(audio_dir):
+        return keep
+    orphans = [fn for fn in sorted(os.listdir(audio_dir))
+               if re.fullmatch(r'\d+\.wem', fn) and fn[:-4] not in keep]
+    if dry:
+        if orphans:
+            print('  [PRUNE] %s: 孤儿 wem %d 个 (dry-run 未删)' % (audio_dir, len(orphans)))
+    else:
+        removed = clean_orphan_wem(audio_dir, keep)
+        if removed:
+            print('  [PRUNE] %s: 删除孤儿 wem %d 个' % (audio_dir, len(removed)))
+    return keep
+
 def find_mod(name):
     """返回 dict(modinfo=路径 or None, civ6proj=路径 or None, srcdir=源工程目录 or None, rtdir=运行目录 or None)"""
     out = dict(modinfo=None, civ6proj=None, srcdir=None, rtdir=None)
@@ -199,9 +265,11 @@ def cmd_verify(modinfo, audio_id=None, audio_dir=None):
         print('   -', p)
     return 0 if ok else 1
 
-def patch_modinfo(modinfo, bank, audio_id, section, files, dry):
+def patch_modinfo(modinfo, bank, audio_id, section, files, dry, keep_ids=None, root=None):
     rt_audio = os.path.join(os.path.dirname(modinfo), 'Platforms', 'Windows', 'Audio')
-    root = project_root(rt_audio)
+    # 运行目录(modinfo)可能不在任何含 .civ6proj 的工程树内(如游戏 Mods 目录),
+    # 此时以调用方给定的工程根为准(用于 workspace/gen 落位与写入守卫)。
+    root = root or project_root(rt_audio)
     ini_name = os.path.basename(write_ini(rt_audio, bank, section, root)) if not dry else os.path.basename(choose_ini(rt_audio, bank))
     # 约束: 所有物理文件(含 ini)都要进 Files; ini 额外在 UpdateAudio 注册
     all_files = list(files) + [os.path.join(rt_audio, ini_name)]
@@ -237,6 +305,7 @@ def patch_modinfo(modinfo, bank, audio_id, section, files, dry):
                 txt = txt[:ls] + add + txt[ls:]
     else:
         print('  [MODINFO] 无 <Files> 节 (散装 mod 可省), 跳过 Files')
+    txt = prune_wem_entries(txt, keep_ids, 'file')
     if dry:
         print('  [DRY] modinfo 将写入(若与原文不同):', modinfo)
         return
@@ -303,9 +372,16 @@ def cmd_verify_civ6proj(civ6proj, audio_id=None, audio_dir=None):
         print('   -', p)
     return 0 if ok else 1
 
-def patch_civ6proj(civ6proj, srcdir, bank, audio_id, section, files, dry):
+def patch_civ6proj(civ6proj, srcdir, bank, audio_id, section, files, dry, prune=False):
     root = project_root(civ6proj)
     audio_dir = os.path.join(srcdir, 'Platforms', 'Windows', 'Audio')
+    # 先拷产物(可再生二进制资产), 让随后的孤儿判定读到最新的 bank xml
+    if not dry:
+        for f in files:
+            fn = os.path.basename(f)
+            with open(f, 'rb') as src:
+                write_project_file(os.path.join(audio_dir, fn), src.read(), root)
+    keep_ids = prune_audio_dir(audio_dir, dry) if prune else None
     ini_name = os.path.basename(choose_ini(audio_dir, bank))
     if not dry:
         write_ini(audio_dir, bank, section, root)
@@ -335,6 +411,7 @@ def patch_civ6proj(civ6proj, srcdir, bank, audio_id, section, files, dry):
             idx = next(k for k, l in enumerate(lines) if '<Content Include="' in l)
         lines.insert(idx, add.rstrip('\r\n'))
         txt = '\n'.join(lines)
+    txt = prune_wem_entries(txt, keep_ids, 'content')
     if dry:
         print('  [DRY] civ6proj 将写入(若与原文不同):', civ6proj)
         return
@@ -345,11 +422,6 @@ def patch_civ6proj(civ6proj, srcdir, bank, audio_id, section, files, dry):
         print('  [CIV6PROJ] 注册完成 + XML 回验通过 (%s): %s' % (result, civ6proj))
     else:
         print('  [CIV6PROJ] 已入位, 但 XML 回验警告: workspace/gen 的副本与预期文本不同')
-    # 拷贝产物到源工程（Platforms/ 之下的再生资产, 由守卫判 OVERWRITE 直写）
-    for f in files:
-        fn = os.path.basename(f)
-        with open(f, 'rb') as src:
-            write_project_file(os.path.join(audio_dir, fn), src.read(), root)
     print('  [CIV6PROJ] 产物已拷入源工程:', audio_dir)
 
 def main():
@@ -363,6 +435,9 @@ def main():
     ap.add_argument('--civ6proj', default=None)
     ap.add_argument('--project-root', default=None, help='mod 工程根（运行目录的 modinfo 不在工程内时必填）')
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--prune', action='store_true',
+                    help='清理媒体 ID 重建后的孤儿: 删除音频目录内不被任何 bank xml 引用的 '
+                         '<ID>.wem, 并同步剔除 .civ6proj Content / .modinfo Files 里的对应条目')
     ap.add_argument('--verify', action='store_true', help='仅语义校验既有 modinfo (UpdateAudio 只指向 ini)')
     a = ap.parse_args()
     if a.verify:
@@ -390,7 +465,8 @@ def main():
     if a.mod:
         mi = glob.glob(os.path.join(a.mod, '*.modinfo'))
         targets.append(dict(modinfo=mi[0] if mi else None, rtdir=a.mod,
-                            civ6proj=a.civ6proj, srcdir=None,
+                            civ6proj=a.civ6proj,
+                            srcdir=os.path.dirname(a.civ6proj) if a.civ6proj else None,
                             root=a.project_root or (os.path.dirname(mi[0]) if mi else a.mod)))
     else:
         t = find_mod(a.find)
@@ -414,11 +490,13 @@ def main():
                     with open(f, 'rb') as src:
                         write_project_file(os.path.join(ad, os.path.basename(f)), src.read(), t['root'])
             print('  [COPY] 运行目录 %s <- %d 个文件' % (ad, len(files)))
-            patch_modinfo(t['modinfo'], a.bank, audio_id, a.section, files, a.dry_run)
+            keep = prune_audio_dir(ad, a.dry_run) if a.prune else None
+            patch_modinfo(t['modinfo'], a.bank, audio_id, a.section, files, a.dry_run,
+                          keep_ids=keep, root=t['root'])
         # 源工程
         if t['civ6proj']:
             patch_civ6proj(t['civ6proj'], t['srcdir'], a.bank, audio_id, a.section,
-                           files, a.dry_run)
+                           files, a.dry_run, prune=a.prune)
     print('[REG] 完成%s' % (' (dry-run 未写盘)' if a.dry_run else ''))
     return finish()
 

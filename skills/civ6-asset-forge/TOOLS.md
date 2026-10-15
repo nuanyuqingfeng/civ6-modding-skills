@@ -9,6 +9,7 @@
 
 | 工具 | 干什么 | 用法 |
 |---|---|---|
+| `scripts/_artxml_ensure.py` | Art.xml 增量接线：调用 civ6-modding/art/gen_modartxml.py 的 --ensure 系列。 | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/_projwrite.py` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/apply_moment_template.py` | apply_moment_template.py — 历史时刻插画：把源图套上官方形状模板 | `python apply_moment_template.py (--input <源图> \| --input-dir <目录>) [--template N \| --auto] [--out <目录>] [--dds] [--list]` |
 | `scripts/build_district_icon.py` | build_district_icon.py — 文明6 区域图标合成：官方 PSD 模板底图 + 白色图案素材 | `python build_district_icon.py --input <图案.png> --outdir <目录> [--preview]<br>python build_district_icon.py --input <png> --outdir out --districts "Theater,Holy Site"` |
@@ -34,7 +35,7 @@
 | `scripts/verify_moment.py` | verify_moment.py — 历史时刻插画与接线的只读校验器 | `python verify_moment.py --project <工程根><br>python verify_moment.py --project <工程根> --coverage-min 75 --coverage-max 99` |
 | `scripts/verify_suk_portrait.py` | verify_suk_portrait.py — Suk 选人界面适配素材与接线的只读校验器 | `python verify_suk_portrait.py --project <工程根><br>python verify_suk_portrait.py --project <工程根> --namespace SUK_UI` |
 
-共 24 个脚本。
+共 25 个脚本。
 
 ## 第三方依赖（非标准库）
 

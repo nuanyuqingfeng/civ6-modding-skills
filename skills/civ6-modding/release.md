@@ -104,7 +104,10 @@
 7. **大文件上传失败先等待再重试**：间隔 1–2 分钟；连续失败先检查网络/代理节点。
 
 8. **workspace 必须建在 `%TEMP%\civ6-ws\<ModName>`**：
-   - 工作区根固定为 `$env:TEMP\civ6-ws`（本机实例如 `%USERPROFILE%\AppData\Local\Temp\civ6-ws\<ModName>`）
+   - 工作区根由 `tools/_paths.py --tool ws_root` 解析（本机取值见 `local_paths.json`，如
+     `C:\Users\<用户>\AppData\Local\Temp\civ6-ws`；未配置时退回 `$env:TEMP\civ6-ws`）。
+     建区（`make_workspace.ps1`）与清理（`cleanup.ps1`）**同源解析**，脚本内再把 8.3 短名
+     统一归一成长名 —— 两侧写法不一致曾致清理端守卫①误拒（2026-09-24、2026-10-12 两次实测）
    - **不要**用 `%TEMP%\Civ6WorkshopUploader` 做工作区根——那是上传工具本身的源码/构建目录
    - **禁止**把 workspace 建在 git 仓库内（如 ModBuddy 工程目录 `D:\documents\Firaxis ModBuddy\Civilization VI\...`）——数百 MB 的 mod 内容会污染 `git status`（untracked 大量 sql/xml/lua/artdef）
    - 旧位置 `D:\documents\Civ6WorkshopUploader` 需完整文件权限才能写入；DSH 沙箱为 "never" 审批策略时不可用，仅当策略为 "ask" 且已授权时才使用
@@ -120,7 +123,7 @@
 
 9. **上传成功并验证通过后，自动删除临时 workspace**：
    - 仅当 Steam API 确认 `hcontent_file` 已变化（真成功，非 `No content change detected` 假成功）后，删除 `%TEMP%\civ6-ws\<ModName>`
-   - 用 `release\scripts\cleanup.ps1 -Workspace $ws` 执行（内置路径安全校验，只允许删 `$env:TEMP\civ6-ws\` 之下）
+   - 用 `release\scripts\cleanup.ps1 -Workspace $ws` 执行（内置路径安全校验，只允许删工作区根 `ws_root` 之下）
    - **绝不动** Mods 源目录（`D:\documents\My Games\Sid Meier's Civilization VI\Mods\<ModName>`，本体所在）和旧位置 `D:\documents\Civ6WorkshopUploader`
    - 上传失败或无变化（假成功）时**保留** workspace，便于排查
 
@@ -141,6 +144,10 @@
     - **清理安全**：实测 `Remove-Item -Recurse` 作用在**含 junction 的父目录**上时，PS 5.1 与
       PS 7.6 都只删链接本身、**绝不递归进目标**（目标目录原封不动）。`cleanup.ps1` 在此之上
       另加三重守卫（见该脚本头注释）。
+      ★ 但**单独摘链不能用 `Remove-Item`**：PS 5.1 对「目标在另一卷」的目录 junction 会抛
+      `NullReferenceException`（工作区在 C:、Mods 在 D: 正是跨卷），链接不删、脚本随后的
+      catch 直接 `exit 1`，工作区留在盘上。守卫③因此改用
+      `[System.IO.Directory]::Delete($p, $false)`（与 `cmd /c rmdir` 等效；2026-10-12 实测）。
     - **重建工作区**：`release/scripts/make_workspace.ps1` 已把这套流程（建链 → workshop.json →
       mod_id.txt → validate）固化成一个幂等脚本，**它是本节的执行端**：
 
@@ -414,12 +421,12 @@ Pop-Location
 | validate/upload 报"未识别命令或参数"（workspace 路径含空格如 `Civilization VI`） | Start-Process -ArgumentList 会把路径按空格拆开 | 直接用 `& $tool validate -w $ws` / `& $tool upload -w $ws`（pwsh 原生引号处理） |
 | `There is no 'content' directory inside the workspace!` | 直接把 Mods 目录当工作区传给了 `-w`（上传器只认 `<ws>\content`，不会自己去 Mods 里找） | 用 `make_workspace.ps1` 建工作区；`content` 应为指向 Mods 副本的 junction |
 | 上传后线上仍是旧内容，但工作区看着是新的 | `content/` 是**物理复制**且复制后 Mods 又改过（版本漂移） | 改用 junction（Hard Rules ⑩）；已漂移的工作区直接删掉重建 |
-| `cleanup.ps1` 报 `拒绝删除：… 不在临时工作区根 …` | 工作区建在了 `$env:TEMP\civ6-ws\` 之外（DSH 会话的 `$env:TEMP` 每会话独立，跨会话路径必然不匹配） | 别删它，重新用 `make_workspace.ps1` 在本会话 TEMP 下建一个 |
+| `cleanup.ps1` 报 `拒绝删除：… 不在临时工作区根 …` | ① 2026-10-12 之前：`$env:TEMP` 是 8.3 短名（`C:\Users\ADMINI~1\…`）而建区脚本用长名路径，同一目录两种写法——**已在脚本内归一，不再复发**；② 工作区确实在工作区根之外（DSH 会话的 `$env:TEMP` 每会话独立，跨会话路径必然不匹配） | ① 无需处理，升级脚本即可；② 别删它，重新用 `make_workspace.ps1` 在本会话 TEMP 下建一个 |
 
 ## Machine-Specific Defaults
 
 - 上传工具：`D:\documents\Civ6WorkshopUploader\tool\Civ6WorkshopUploader.exe`
-- 工作区根：`%TEMP%\civ6-ws`（= `$env:TEMP\civ6-ws`；旧位置 `D:\documents\Civ6WorkshopUploader` 仅在有完整文件权限时使用）
+- 工作区根：`ws_root`（`local_paths.json` 键；本机 `C:\Users\Administrator\AppData\Local\Temp\civ6-ws`，缺省 `$env:TEMP\civ6-ws`；旧位置 `D:\documents\Civ6WorkshopUploader` 仅在有完整文件权限时使用）
 - Steam 日志：`F:\Steam\logs\workshop_log.txt`
 - 已确认作品：
   - Changli：`3578690887`
@@ -437,7 +444,7 @@ Pop-Location
 | `release/scripts/validate.ps1` | 上传前 validate（`-Workspace <ws>`） |
 | `release/scripts/upload.ps1` | 上传/更新（`-Workspace <ws> [-TimeoutSeconds 1800]`，日志默认写 `<tool目录>\logs`） |
 | `release/scripts/verify.ps1` | 上传后 Steam API 验证（`-ItemId <id>`，比对 `time_updated` / `hcontent_file`） |
-| `release/scripts/cleanup.ps1` | 真成功后删临时 workspace（`-Workspace <ws>`；三重守卫：仅在 `$env:TEMP\civ6-ws\` 之下 + 工作区自身非链接 + 先摘内部链接再递归删） |
+| `release/scripts/cleanup.ps1` | 真成功后删临时 workspace（`-Workspace <ws>`；三重守卫：仅在工作区根（`ws_root`）之下 + 工作区自身非链接 + 先摘内部链接（`Directory.Delete`）再递归删） |
 | `release/scripts/find_item_id.ps1` | 从 Steam 日志反查工坊条目 ID（`-ModName <名>`） |
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） |
 | `release/scripts/clash_proxy.py` | 测各节点延迟并自动选择最佳节点（`--url <工坊链接>`） |

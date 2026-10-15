@@ -186,8 +186,10 @@
 |---|---|---|
 | **mod metadata** —— `Properties` 里的 `Name` / `Teaser` / `Description`（+ `Authors`） | `.civ6proj` 的 `<LocalizedTextData>` → `.modinfo` 的 `<LocalizedText>` | **仅"选择 mod / 额外内容"界面** |
 | **游戏内文本** —— 任何被 Lua `Locale.Lookup` 取用、或被 data 列（`Name`/`Description`/…）引用的 LOC | `<UpdateText>` 动作 + `Text/*.sql`（或 XML） | 游戏内（InGame） |
-| 配置界面文本 | FrontEnd 的 `<UpdateText>` | 仅 FrontEnd |
+| 配置界面文本（仅被 `Players`/`PlayerItems` 等 FrontEnd 表引用） | FrontEnd 的 `<UpdateText>` | 仅 FrontEnd |
+| 两端共用文本（如 `Text_Config_*` 同时被 `Players` 与 gameplay 数据列引用） | FrontEnd `<UpdateText>` + InGame `<UpdateText>` 各注册一次 | 两端各自生效 |
 
+★ **两端独立**：FrontEnd 与 InGame 是两套独立的 LocalizedText 环境，引用闭合必须按端分开校验。InGame 侧查 gameplay 数据引用（`rgn_validate`），FrontEnd 侧查 `Players`/`PlayerItems` 与 Config 文本（对照 `DebugConfiguration.sqlite`），任一端的校验结果都不能代替另一端。
 规定原文见 `project-setup.md`：`<LocalizedTextData>` 一栏注的是 "Mod metadata text (title/teaser/desc/authors)"；
 "**游戏文本** (LocalizedText) → **InGame 仅** → `UpdateText`"。
 

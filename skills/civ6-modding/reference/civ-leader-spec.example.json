@@ -8,7 +8,11 @@
     "adjective": "LOC_CIVILIZATION_RGN_X_ADJECTIVE",
     "description": "LOC_CIVILIZATION_RGN_X_DESCRIPTION",
     "starting_level": "CIVILIZATION_LEVEL_FULL_CIV",
-    "traits": ["TRAIT_RGN_X_ABILITY"],
+    "traits": [
+      {"type": "TRAIT_RGN_X_ABILITY", "main": true,
+       "name": "LOC_TRAIT_RGN_X_ABILITY_NAME",
+       "description": "LOC_TRAIT_RGN_X_ABILITY_DESCRIPTION"}
+    ],
     "cities": ["CityOne", "CityTwo"],
     "citizens": ["CitizenOne", { "name": "CitizenTwo", "female": 1, "modern": 1 }],
     "music_override": 1,
@@ -30,7 +34,11 @@
       "name": "LOC_LEADER_RGN_Y_NAME",
       "inherit_from": "LEADER_DEFAULT",
       "sex": "Male",
-      "traits": ["TRAIT_RGN_Y_ABILITY"],
+      "traits": [
+        {"type": "TRAIT_RGN_Y_ABILITY", "main": true,
+         "name": "LOC_TRAIT_RGN_Y_ABILITY_NAME",
+         "description": "LOC_TRAIT_RGN_Y_ABILITY_DESCRIPTION"}
+      ],
       "quote": "LOC_LEADER_RGN_Y_QUOTE",
       "capital": "CityOne",
       "icon": "ICON_LEADER_RGN_Y",

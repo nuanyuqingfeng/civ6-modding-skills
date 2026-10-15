@@ -515,6 +515,34 @@
 
 **结论**：固定不变的相邻加成优先用 `Adjacency_YieldChanges` 表；需要动态条件（如科技/人文解锁后才生效）时使用 Modifier 版本。
 
+### 相邻加成本地化文本铁律
+
+`Adjacency_YieldChanges.Description` 与三种相邻加成 Effect 的 `Description` 都指向 `LOC_` 文本键。该文本直接出现在游戏内相邻加成提示，必须按下列规则书写：
+
+1. 必须包含产出图标：`[ICON_Culture]` / `[ICON_Science]` 等。
+2. 必须用 `{1_num}` 承载实际加成数量，数值随 `YieldChange` 或运行时加成数量自适应。
+3. 数量相关名词在英文等有单复数的语言中用 `{1_Num : plural 1?单数; other?复数;}` 语法。
+4. 文案风格照抄原版 `Base/Assets/Text/en_US/Districts_Text.xml`，例如 `+{1_num} [ICON_Science] Science from the adjacent Mountain {1_Num : plural 1?tile; other?tiles;}.`。
+
+示例（自定义区域相邻冻土地块 +1 文化值）：
+
+```sql
+INSERT OR REPLACE INTO Adjacency_YieldChanges (ID, Description, YieldType, YieldChange, TilesRequired, OtherDistrictAdjacent, AdjacentTerrain)
+VALUES ('MY_DISTRICT_TUNDRA_CULTURE', 'LOC_MY_DISTRICT_TUNDRA_CULTURE', 'YIELD_CULTURE', 1, 1, 0, 'TERRAIN_TUNDRA');
+
+INSERT OR REPLACE INTO District_Adjacencies (DistrictType, YieldChangeId) VALUES
+('DISTRICT_MY_UNIQUE', 'MY_DISTRICT_TUNDRA_CULTURE');
+```
+
+```sql
+('en_US', 'LOC_MY_DISTRICT_TUNDRA_CULTURE', '+{1_num} [ICON_Culture] Culture from adjacent Tundra tiles.'),
+('zh_Hans_CN', 'LOC_MY_DISTRICT_TUNDRA_CULTURE', '+{1_num} [ICON_Culture] 文化值来自相邻冻土地块。');
+```
+
+> **占位符区分**：`Adjacency_YieldChanges.Description` 和相邻加成 Effect 的 `Description` 用 `{1_num}`；`ModifierStrings.Text`（Preview 上下文）用 `{1_Amount}`（见 `modifier-techniques.md` 技巧 3）。两者不要混用。
+
+新增自定义相邻加成后跑 `scripts/check_adjacency_text.py <工程根目录>` 校验文本。
+
 ### 参数细节
 
 - `Ignore` 参数：值为整数 `1`/`0`，**不是** `true`/`false`（Effects.csv 虽标注为 Boolean 类型，但 XML 实际使用整数值）

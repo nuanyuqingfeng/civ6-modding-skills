@@ -108,6 +108,54 @@ Art Pantry Path -  "...\SDK Assets\Civ6\pantry"
 3. 用到的每个 DLC 素材（资源/区域/建筑条目名）所属的包，**是否都在列表里**；
 4. 构建后 grep 日志 `Art Pantry Path` 那行，确认展开结果符合预期。
 
+### 1.6 `.dep` 是独立可分发载荷（官方 ScoutCat 形态）
+
+官方 DLC 里存在一种「**没有 `.Art.xml` 也能装载美术**」的分发形态，实体是
+`<游戏根>\DLC\ScoutCat\`（猫咪侦察兵），可作为理解 `.dep` 角色的参照：
+
+    ScoutCat/
+      ScoutCat.modinfo        945 B
+      ScoutCat.dep           1472 B
+      ArtDefs/Units.artdef  ArtDefs/Unit_Bins.artdef
+      Data/ScoutCat_Icons.xml
+      Platforms/Windows/BLPs/units/units.blp
+      Platforms/Windows/BLPs/UI/Icons.blp
+      Platforms/Windows/BLPs/SHARED_DATA/...
+
+目录内**没有** `.Art.xml`、没有 `.xlp`、没有 `.tex`。`.Art.xml` 只在源工程侧存在
+（cooker 的输入）；分发出去的 DLC 目录只保留 cooker 的产物。
+
+**加载路径**：`ScoutCat.modinfo` 只有 `<InGameActions>` 段（**没有** `<FrontEndActions>`），
+段内一条 `<UpdateArt><File>ScoutCat.dep</File></UpdateArt>`，`.dep` 同时登记进顶层 `<Files>`。
+加载侧只认这一条；包依赖由 `.dep` 自身声明，与源工程是否保留 `.Art.xml` 无关。
+
+**`.dep` 内部**（根标签 `AssetObjects..GameDependencyData`）：
+
+| 段 | ScoutCat 的值 |
+|---|---|
+| `<ID><name>` | `ScoutCat`（与文件名相同） |
+| `<ID><id>` | `62cbb036-f073-4df8-8952-a70bfdf4ba85` |
+| `<RequiredGameArtIDs>` | 自闭合，空 |
+| `<SystemDependencies>` | `Units`（artdef=`Units.artdef`+`Unit_Bins.artdef`，库 `Unit`）；`UI`（artdef 空，库 `UITexture`） |
+| `<LibraryDependencies>` | `Unit` → `units/units.blp`；`UITexture` → `UI/Icons.blp` |
+
+**`.dep` 的 `<ID><id>` 与 `.modinfo` 的 `Mod id` 不同源**：ScoutCat 的 `.dep` 写
+`62cbb036-…`，而 `.modinfo` 的 `Mod id` 是 `0c0c1169-…`。两者不必一致。
+
+**三条可迁移的结论**：
+
+1. `.dep` 与 `.Art.xml` 不是一一绑定的运行时依赖 —— 装载侧只读 `.modinfo` 的
+   `<UpdateArt><File>`，`.Art.xml` 只是 cooker 的输入。作者 mod 的两者同时存在，
+   是因为构建过程把源与产物放在同一棵树里；分发时只需产物。
+2. `.dep` 必须与 `.modinfo` 同处被加载的 mod 包内。官方 DLC 的安装目录就是 mod 包，
+   作者 mod 的对应物是 Mods 副本 —— 与「`.dep` / `.modinfo` 只落 Mods」同义。
+3. 单侧 `<UpdateArt>` 在官方是合法用法，条件是**目标环境没有美术需求**。ScoutCat 是
+   单位（侦察猫），没有前端素材，于是整体省略 `<FrontEndActions>` 段。
+   官方 35 份含 `<UpdateArt>` 的 `.modinfo` 里，29 份两侧齐备、5 份仅 FrontEnd、
+   1 份（ScoutCat）仅 InGame；`VikingsScenario` 有 `.dep` 但没有任何 `<UpdateArt>`。
+   **作者 mod 的口径是「段内有内容就必须在该侧挂 `<UpdateArt>`」**（见
+   `civ6-modding/project-setup.md` 的两侧归属表）；ScoutCat 属「该侧本就无内容」的那一类。
+
 ---
 
 ## 二、cook 产物 ≠ 源文件（归一化，务必分清）

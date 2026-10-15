@@ -15,6 +15,8 @@ sqlite3 $db "SELECT name, type FROM pragma_table_info('TableName') WHERE [notnul
 sqlite3 $db "SELECT name, dflt_value FROM pragma_table_info('TableName') WHERE [notnull]=1 AND dflt_value IS NOT NULL;"
 ```
 
+> **填表原则：注册条目只写实际需要的列；带默认值的列省略即取数据库默认值，不要把 0/1/NULL 等默认值逐列显式补全。** 需要确认表里哪些列必须手填时，用上面的 PRAGMA 速查模板查询。
+
 ## 目录
 
 | 表 | 行号 | 说明 |
@@ -451,6 +453,8 @@ Context 各值适用场景：
 | Name | LocalizedText | — | — | `LOC_TRAIT_*_NAME` |
 | Description | LocalizedText | — | — | `LOC_TRAIT_*_DESCRIPTION` |
 | InternalOnly | BOOLEAN | — | `0` | 内部使用，不对玩家显示 |
+
+> `Name` / `Description`：仅主 trait（文明/领袖能力主体）填写；衍生 trait（特色物品专用、议程）一律 `NULL`。
 
 ### Policies
 

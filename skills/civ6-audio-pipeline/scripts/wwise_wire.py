@@ -18,6 +18,7 @@ wwise_wire.py -- Wwise 工程直改工具 (Wwise 2015.x, Yuni 谱系工程实测
 """
 import os, re, sys, glob, uuid, random, shutil, subprocess
 import paths
+from bank_output import normalize_generated_eol
 
 WWCLI = paths.get('wwcli') or '<未配置 wwcli>'
 GUID_RE = r'\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}'
@@ -223,6 +224,10 @@ def do_generate(proj, banks):
     print('[GEN] 退出码:', r.returncode)
     od = os.path.join(proj, 'GeneratedSoundBanks', 'Windows')
     if os.path.isdir(od):
+        # WwiseCLI 侧车换行与工程口径相反(.txt 出 CRLF / .xml 出 LF), 生成后就地归一
+        n_eol = normalize_generated_eol(od)
+        if n_eol:
+            print('   [EOL] 侧车换行归一 %d 个 (.txt->LF / .xml->CRLF)' % n_eol)
         for f in sorted(os.listdir(od)):
             print('   ', f, os.path.getsize(os.path.join(od, f)))
     return r.returncode

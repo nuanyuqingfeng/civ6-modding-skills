@@ -18,7 +18,7 @@
 | `CityNames` | gameplay | `ID`, `CivilizationType`, `LeaderType`, `ContinentType`, `CityName`, `SortIndex` | 至少几座城 |
 | `CivilizationCitizenNames` | gameplay | `CivilizationType`, `CitizenName`, `Female`, `Modern` | 可选 |
 | `CivilizationInfo` | gameplay | `CivilizationType`, `Header`, `Caption`, `SortIndex` | 百科资料卡，可选 |
-| `CivilizationAudioTags` | gameplay | `CivilizationType`, `MusicOverride` | 可选；★ **`MusicOverride` 是 0/1 布尔，不是音乐 tag** |
+| `CivilizationAudioTags` | gameplay | `CivilizationType`, `MusicOverride` | 可选；★ **`MusicOverride` 是 0/1 布尔，不是音乐 tag**；与 `ArtDefs/Civilizations.artdef` 配对，判定与写法见 `reference/civ-metadata.md` §六 |
 | `StartBiasTerrains` | gameplay | `CivilizationType`, `TerrainType`, `Tier` | 出生偏好，可选 |
 | `Players` | **Config** | 18 列，见 `leader-authoring.md` | ★ 选人界面/设置界面靠它 |
 | `PlayerItems` | **Config** | `Domain`, `CivilizationType`, `LeaderType`, `Type`, `Name`, `Description`, `Icon`, `SortIndex` | 特色项列表（★ 准入规则见 `leader-authoring.md`「`PlayerItems` 准入规则」：只收有实质 TRAIT 链的区域/建筑/单位/改良设施，资源不入列） |
@@ -49,6 +49,52 @@ gameplay 库里另有按地形分的「知名地名」表，均为 **`Civilizati
 
 `StartBiasTerrains`（`Tier` 越小优先级越高）。同族还有按 Feature / River 等的变体，
 用 `PRAGMA table_info` 查实际存在的表，不要凭表名猜列。
+
+## Trait 写法总则
+
+一个文明主体只有一个主 trait：`Traits.Name / Description` 填 `LOC_*_NAME` 与
+`LOC_*_DESCRIPTION`，经 `CivilizationTraits` 挂到文明，能力 Modifier 全部经 `TraitModifiers`
+挂到主 trait。
+
+每个特色物品（区域、建筑、单位、改良设施）对应一个衍生 trait，ID 沿主 trait 追加
+`_DISTRICT` / `_BUILDING` / `_UNIT` / `_IMPROVEMENT`；`Traits.Name / Description` 一律写 `NULL`。
+它必须同时完成两条绑定：`CivilizationTraits`（或 `LeaderTraits`）挂到归属主体，
+物品主表（`Districts` / `Buildings` / `Units` / `Improvements`）的 `TraitType` 指向该衍生
+trait。特色物品主表的 `TraitType` 禁止指向主 trait。
+
+议程 trait 同属衍生 trait：`Traits.Name / Description` 写 `NULL`，可见文案只写在 `Agendas`。
+
+```sql
+INSERT OR REPLACE INTO Types (Type, Kind) VALUES ('TRAIT_CIVILIZATION_RGN_X', 'KIND_TRAIT');
+INSERT OR REPLACE INTO Traits (TraitType, Name, Description) VALUES
+('TRAIT_CIVILIZATION_RGN_X', 'LOC_TRAIT_CIVILIZATION_RGN_X_NAME', 'LOC_TRAIT_CIVILIZATION_RGN_X_DESCRIPTION');
+INSERT OR REPLACE INTO CivilizationTraits (CivilizationType, TraitType) VALUES
+('CIVILIZATION_RGN_X', 'TRAIT_CIVILIZATION_RGN_X');
+
+INSERT OR REPLACE INTO Types (Type, Kind) VALUES ('TRAIT_CIVILIZATION_RGN_X_IMPROVEMENT', 'KIND_TRAIT');
+INSERT OR REPLACE INTO Traits (TraitType, Name, Description) VALUES
+('TRAIT_CIVILIZATION_RGN_X_IMPROVEMENT', NULL, NULL);
+INSERT OR REPLACE INTO CivilizationTraits (CivilizationType, TraitType) VALUES
+('CIVILIZATION_RGN_X', 'TRAIT_CIVILIZATION_RGN_X_IMPROVEMENT');
+```
+
+`tools/civ_leader_data.py` 的规格条目用 `"main": true` 标记主 trait，衍生 trait 不填 Name/Description。
+
+## 命名规则：文明变量必须带项目级后缀
+
+`CIVILIZATION_*` 的末尾段必须带项目级后缀（如 _SNZ），防止与其他 mod 的文明 Type 冲突：
+文明 Type、文明 Trait、城市名 tag、百科 Caption tag 全部沿用同一后缀。
+
+| 示例 | 说明 |
+|---|---|
+| `CIVILIZATION_RGN_X` | 文明 Type（末尾段 `RGN_X` 是项目级后缀） |
+| `LOC_CIVILIZATION_RGN_X_NAME` | 文明名 tag，完整继承末尾段 |
+| `LOC_CITY_NAME_RGN_X_1` | 城市名 tag，同样继承 |
+| `LOC_CIVINFO_RGN_X_LOCATION` | 百科资料卡 Caption tag |
+
+- 项目另有领袖/文明变量后缀约定的，以本项目 **AGENTS.md** 为准（AGENTS.md 是项目私有约定的唯一真源）。
+- AI **不参与**文明 Type 本身的格式纠正（见 AGENTS.md「用户自拟命名空间」）；只保证定义-引用闭合、tag 继承完整。
+- 该后缀**不**写进本 skill 的模板或生成器默认值；生成脚本 `tools/civ_leader_data.py` 只按规格 JSON 的 `type` 字段原样拼接。
 
 ## 代码/配置怎么写
 
@@ -112,7 +158,8 @@ INSERT OR REPLACE INTO LocalizedText (Language, Tag, Text) VALUES
 |---|---|
 | 文明图标（22/30/32/36/44/45/48/50/64/80/128/200/256）、领袖图标 | **`civ6-asset-forge`** skill |
 | 3D 模型 / 引用原版美术素材 / ArtDef·XLP 链 | **`civ6-art-reference`** skill |
-| BGM、领袖语音（含 Wwise bank 与 `Audio` 库） | **`civ6-audio-pipeline`** skill |
+| BGM、领袖语音（含 Wwise bank 与 `Audio` 库） | **`civ6-audio-pipeline`** skill（Wwise 侧） |
+| 文明音乐的引擎侧接线（`CivilizationAudioTags` + `ArtDefs/Civilizations.artdef`） | `reference/civ-metadata.md` §六 |
 | 文明能力（Trait/Modifier）、UI、事件 | 本 skill：`modifiers-cheatsheet.md` / `gameplay-lua.md` / `ui-lua.md` |
 | 领袖（`Leaders` 表、议程、AI） | `leader-authoring.md` / `agenda-authoring.md` |
 | 发布上工坊 | `release.md` |

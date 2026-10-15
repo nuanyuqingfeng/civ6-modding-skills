@@ -89,7 +89,7 @@ languages:
 | 2D 领袖<br>`reference/leader-2d.md` | **可选扩展**：2D 领袖立绘纸片人（全套注册链）、1024×1024 TEXTURE/OPACITY；**必须步骤**：外交回退立绘 `FALLBACK_NEUTRAL_*`（见 `reference/leader-diplo-fallback.md`） | XLP 包 / `Leaders.artdef` / 几何 / 材质 / `.tex` / 行为资产 ast / **灯光链（LightRigs + EnvironmentLights + Leader_LightRigs.xlp）** | 不生成素材（用户未提供时只出注册文件）；不做 config（领袖互斥/同名，见项目 `DuplicateLeaders`）。**材质类必须是 `Leader_Matte`（平面类），误用 `Leader`（PBR 人物类）会导致纸片发灰+发糊，见 §3.5 与 `migrate_leader_matte.py`**；**灯光链必须随工程自带、artdef 的 Lightrig 槽指本工程灯光，缺本地 `leaders/light_rigs` 包会渲染成零星色块，见 §3.6**；**两个 `.tex` 必须最高品质（色度降采样会致发糊+色差），见 §3.6** |
 | **UI 领袖立绘 / 选人界面背景**<br>`reference/ui-leader-portrait.md` | **Sukritact's Civ Selection Screen** 选人界面的 2D 立绘（`Players.Portrait`）与背景（`Players.PortraitBackground`） | 每领袖 2 张 `_Suk` 贴图（立绘 = 峰值列对齐 `--peak-frac`（默认 0.70）、外交立绘保持原尺寸；背景 = 外交背景中心裁 1440×1080）+ `UPDATE Players` + XLP + `Criteria` 接线 | 不做 3D 纸片人注册链（→ 类别④）；不负责 Suk mod 本体分发；不处理加载界面（`IMG_LOADING_*` / `LoadingInfo`，另一条链） |
 | **历史时刻插画**<br>`reference/moment-illustration.md` | **`MomentIllustrations`** 的插画卡片（特色单位/区域/建筑/改良/总督的时刻图） | 每张 **456×332** 贴图（套 **18 张官方形状模板**之一）+ `UI_PrideMoments.xlp` 登记 + `MomentIllustrations` 行 | 不新增 `MomentIllustrationType`（属玩法侧表级改动）；不做 `Moments` 表（时刻本体）；不处理非历史时刻的其它 UI 图 |
-| **原版 FrontEnd 立绘 / 背景**<br>`reference/frontend-portrait.md` | **原版环境**下领袖的**前景（立绘）与背景**：FrontEnd 选人 placard（`Players`）+ 加载界面（`LoadingInfo`） | 前景（**1080×1080**，主体高 882、顶部留空 198，`LEADER_<X>_NEUTRAL` 约定）+ 背景（竖版 **328×935** 自建，或别名复用原版 `LEADER_<X>_BACKGROUND`）+ XLP 登记 + `Players`/`LoadingInfo` 行 | 不做外交场景（→ `civ6-modding/art-pipeline.md` §三.1）；不做 3D 纸片人（→ 类别④）；Suk 分支另见类别⑤ |
+| **原版 FrontEnd 立绘 / 背景**<br>`reference/frontend-portrait.md` | **原版环境**下领袖的**前景（立绘）与背景**：FrontEnd 选人 placard（`Players`）+ 加载界面（`LoadingInfo`） | 前景（**1080×1080**，主体高 882、顶部留空 198，`LEADER_<X>_NEUTRAL` 约定）+ 背景（竖版 **328×935** 自建，或别名复用原版 `LEADER_<X>_BACKGROUND`）+ XLP 登记 + `Players`/`LoadingInfo` 行；**素材本身即 1:2.85 竖条**时 `Players.Portrait` 写显式空串 `''`（placard 形，仅环境 A） | 不做外交场景（→ `civ6-modding/art-pipeline.md` §三.1）；不做 3D 纸片人（→ 类别④）；Suk 分支另见类别⑤ |
 | **区域图标**<br>`reference/district-icon.md` | 区域（District）图标母版：官方 PSD 模板底图 + 白色图案素材 → 256×256 六边形图标；**构图唯一来源**是 `build_district_icon.fit_pattern`，两引擎共用 | 每区域 1 张 256×256 PNG（区域主题色渐变图案 + 边框） | 不做 PNG→DDS 与 `IconTextureAtlases` 注册（审核通过后 → `civ6-modding/art-pipeline.md`）；不做城市横幅内的小尺寸切图 |
 | **资源图标**<br>`reference/resource-icon.md` | 资源（Resource）图标单元格：**已内置**的加成黄盘/奢侈紫盘底盘 + 纯图案素材 → 256×256 RGBA 单元格；**构图唯一来源**是 `build_resource_icon.place_pattern`（裁剪 → 等比缩放 → 居中 → 预乘重采样 → 输出空间等宽黑边），两引擎共用 | 每个资源 1 张 256×256 PNG（图案 + 黑边 + 类别底盘） | 不做 PNG→DDS 与 `IconTextureAtlases` 注册（审核通过后 → `civ6-modding/art-pipeline.md`）；不做无底盘的裸图案单元格；不重复加黑边（素材自带时用 `--no-stroke`） |
 | **领袖头像**<br>`reference/leader-avatar.md` | 领袖圆形头像 `ICON_LEADER_*` 素材整备：三分判定（合规直通/仅缩放/Icon 制作）+ 占比定标 + 底图换色 + 出圈 | 每素材 256 规范成品 + 300 等比版 + 换色底图 + 锚点证据图 + metrics（注册走 `leader_icon` 8 尺寸） | 不做注册链与 DDS（→ art-pipeline）；满幅复杂背景不承接抠图；不做 3D 纸片人与 FrontEnd 立绘；高耸头饰超画布物理空间时如实报告不自动缩小 |
@@ -109,6 +109,7 @@ languages:
      `LoadingInfo.BackgroundImage`（**1920×960**，走 `Shell_Loading.xlp`）。
    `FALLBACK_NEUTRAL_*` 属**类别④ 的 3D 回退**（`Leader_Fallback` 类），与类别⑦的 `LEADER_*_NEUTRAL` **不是同一批**。
    命名陷阱详见 `reference/ui-leader-portrait.md` §4.4；三环境对照见 `reference/frontend-portrait.md` §〇。
+   ★ **素材本身即 1:2.85 竖条**（placard 形，与 `LeaderBG` 控件 328×935 同比）时，`Players.Portrait` 写**显式空串 `''`**（空白前景 + 铺满背景）；此规则**只管环境 A**，加载界面（B）的 `LoadingInfo.ForegroundImage` 照旧取 `LEADER_<X>_NEUTRAL`。
 
 4. **Suk 是可选分支、原版 FrontEnd 是必需**：Suk 只在启用时改写 `Players` 两列；
    未启用 Suk 时走的是**类别⑦**那一套。**只做 Suk 会导致原版界面空白**（`Portrait` 留空 →
@@ -122,12 +123,12 @@ languages:
 | 用户说要做什么 | 类别 | 去哪 |
 |---------------|------|------|
 | 「总督素材」「governor icon」「就职图标」「晋升徽章」「总督立绘」「立绘抠边/边缘透明渐变」 | ① 总督 | `reference/governor-art.md`；脚本 `scripts/build_icon_set.py`、`scripts/edge_gradient.py`、`scripts/verify_badge.py` |
-| 「忠诚度图标」「忠诚度覆盖/压力」「战略视图忠诚度」「新增自定义宗教」「宗教压力图标」「宗教镜头覆盖」 | ② 忠诚度/宗教 | `reference/loyalty-icon.md`；脚本 `scripts/process_loyalty_icon.py`（`--kind loyalty` / `--kind religion`）、`scripts/gen_loyalty_art.py`、`scripts/gen_religion_art.py` |
+| 「文明图标」「文明徽记」「文明标志」「ICON_CIVILIZATION」「忠诚度图标」「忠诚度覆盖/压力」「战略视图忠诚度」「新增自定义宗教」「宗教压力图标」「宗教镜头覆盖」 | ② 忠诚度/宗教（文明图标任务默认补配套忠诚度/压力镜头图标） | `reference/loyalty-icon.md`；脚本 `scripts/process_loyalty_icon.py`（`--kind loyalty` / `--kind religion`）、`scripts/gen_loyalty_art.py`、`scripts/gen_religion_art.py` |
 | 「晋升图标」「promotion icon」「单位晋升」「白色图标合成」「盾形徽章」「五边形徽章」 | ③ 单位晋升<br>**（管线已废）** | 只查尺寸：`reference/promotion-icon-sizes.md`（**仅尺寸/格式规格，生成管线已废弃**）。**不要再照旧文档做图**；确需重做 → 走 `civ6-modding` 的 `art-pipeline.md` 通用图标管线 |
 | 「2D 领袖」「立绘纸片人」「领袖注册链」「领袖 XLP/artdef/几何/材质/灯光」「1024 TEXTURE/OPACITY」「领袖发灰/发糊/像蒙了滤镜」「纸片模糊/不够清晰」「领袖材质类」「纸片色差/边缘洇色」「LightRig/环境光要不要做」 | ④ 2D 领袖 | `reference/leader-2d.md`（**材质类铁律 §3.5 / 灯光与贴图品质铁律 §3.6**）；脚本 `scripts/gen_leader_2d.py`、`scripts/process_leader_png.py`、`scripts/migrate_leader_matte.py`（存量工程 `Leader`→`Leader_Matte` 体检/迁移） |
 | 「suk selection」「Sukritact」「Civ Selection Screen」「选人界面」「领袖选择界面」「PortraitBackground」「UILeaders.xlp」「UI 领袖立绘」「领袖选择背景」 | ⑤ UI 立绘/Suk | `reference/ui-leader-portrait.md`；脚本 `scripts/gen_suk_portrait.py`、`scripts/verify_suk_portrait.py` |
 | 「历史时刻」「历史时刻插画」「时代得分图」「historic moment」「MomentIllustrations」「Moment_」「PrideMoments」 | ⑥ 历史时刻 | `reference/moment-illustration.md`；脚本 `scripts/apply_moment_template.py`、`scripts/verify_moment.py` |
-| 「原版选人界面」「FrontEnd 立绘/背景」「加载界面背景」「LoadingInfo」「ForegroundImage」「Shell_Loading.xlp」「领袖前景」「借用原版背景」「给我一张图自动做领袖立绘/背景」 | ⑦ 原版 FrontEnd | `reference/frontend-portrait.md`；脚本 `scripts/prepare_frontend_portrait.py`（自动分类+处理）、`scripts/verify_frontend_portrait.py`（校验）、`scripts/pick_vanilla_background.py`（挑官方背景） |
+| 「原版选人界面」「FrontEnd 立绘/背景」「加载界面背景」「LoadingInfo」「ForegroundImage」「Shell_Loading.xlp」「领袖前景」「借用原版背景」「给我一张图自动做领袖立绘/背景」「竖版背景」「1:2.85 竖条」「placard 背景」 | ⑦ 原版 FrontEnd | `reference/frontend-portrait.md`；脚本 `scripts/prepare_frontend_portrait.py`（自动分类+处理）、`scripts/verify_frontend_portrait.py`（校验）、`scripts/pick_vanilla_background.py`（挑官方背景） |
 | 「区域图标」「district icon」「District_Icon」「区域图案」「区域底图」 | ⑧ 区域图标 | **先做入口判定**（快速检查素材：已含六边形边框等官方区域图标显著特征的成品图**不进入**本流程——本流程只接受纯图案素材，六边形底图与边框由官方模板提供）；判定通过 → **默认跑 `scripts/ps_place_district.py`（PS 自动化，效果最好；导入前先用 `build_district_icon.pattern_canvas` 按落位框完成构图）**，exit 4（本机无 Photoshop）时询问用户改走模拟引擎 `scripts/build_district_icon.py` 还是安装 PS，不静默降级；规格见 `reference/district-icon.md` |
 | 「领袖头像」「leader avatar」「ICON_LEADER」「头像底图」「头像换色」 | ⑨ 领袖头像 | `reference/leader-avatar.md`；脚本 `scripts/prepare_leader_avatar.py`（判定+占比定标合成+底图换色；锚点 JSON 由 AI 视觉定位提供；`--passthrough` 直通） |
 | 「资源图标」「resource icon」「ICON_RESOURCE」「加成图标」「奢侈图标」「资源底盘」「黄盘」「紫盘」 | ⑩ 资源图标 | **先做入口判定**（快速检查素材：已含黄盘/紫盘/圆环等底盘特征的成品图**不进入**本流程——本流程只接受纯图案素材，底盘由本 skill 内置）；判定通过 → **默认跑 `scripts/ps_place_resource.py`（PS 自动化，效果最好；导入前先用 `build_resource_icon.place_pattern` 按落位框完成构图）**，exit 4（PS 自动化通道不可用：缺 pywin32 模块，或 `Photoshop.Application` 连不上）时询问用户改走无 PS 引擎 `scripts/build_resource_icon.py` 还是补齐缺口后重跑，不静默降级；规格见 `reference/resource-icon.md` |
@@ -135,7 +136,7 @@ languages:
 
 **路由判定三条**：
 
-1. 先判**对象**：总督 / 文明忠诚度 / 宗教 / 单位晋升 / 领袖（3D 纸片人）/ 领袖（原版 FrontEnd 立绘·背景）/ 领袖（Suk UI 立绘）/ 历史时刻 / 区域图标 / 领袖（圆形头像）/ 资源——"宗教"并入类别②（与忠诚度同一套引擎机制，仅命名映射与 artdef 目标集合不同）；"历史时刻"独立成类（走 `MomentIllustrations` 数据表 + `UI/PrideMoments` 贴图包，机制与其它四类都不同）。
+1. 先判**对象**：总督 / 文明图标（`ICON_CIVILIZATION_*`，默认含配套忠诚度/压力镜头）/ 文明忠诚度 / 宗教 / 单位晋升 / 领袖（3D 纸片人）/ 领袖（原版 FrontEnd 立绘·背景）/ 领袖（Suk UI 立绘）/ 历史时刻 / 区域图标 / 领袖（圆形头像）/ 资源——"宗教"并入类别②（与忠诚度同一套引擎机制，仅命名映射与 artdef 目标集合不同）；"历史时刻"独立成类（走 `MomentIllustrations` 数据表 + `UI/PrideMoments` 贴图包，机制与其它四类都不同）。
 2. 再判**产出层级**：只要 PNG 素材（合成层）还是连注册链（注册层）一起做。**注册层逻辑各类共用**（第六节），差别只在声明层文件名与目标集合。
 3. 素材与注册链**都要**时：先出 PNG 交用户审核，审核通过后才做 DDS/.tex 与注册链（第七节）。
 
@@ -335,9 +336,14 @@ leader XLP 全套；**未命中 → 纸片模型不生成**，但外交回退立
    （`.xlp` 属 cook 输入，`.artdef` 由构建产物 `.modinfo` 自动收进）；**真正必须的是第 3 条的 `.Art.xml`**。
    脚本会幂等补 Content 条目，属可选冗余；civ6proj 可能有多个 `ItemGroup`，统一插到最后一个 `</Content>` 之后。
    `.civ6proj` 属永不放行的工程文件：条目的新增结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程。
-3. **Art.xml 与 artdef/xlp 必须同步**：新增/修改 `XLPs\`、`ArtDefs\` 之后必须重新生成 `.Art.xml`——用
-   `python <civ6-modding skill>\art\gen_modartxml.py <projectRoot> --check`，人工确认差异后加 `--write`（脚本按工程实存文件重算 artConsumers / gameLibraries / requiredGameArtIDs，优于手工补引用）。
-   `--write` 在 `.Art.xml` 尚不存在时直写新建；已有且内容有变化时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，脚本会在退出码 2 时打印待写入清单。
+3. **Art.xml 与 artdef/xlp 必须同步**：**已有 Art.xml 一律走增量接线**——
+   `art\gen_modartxml.py <工程根> --ensure-consumer "<消费者>=<artdef>"`、
+   `--ensure-library "<库>=<包名>"`、`--ensure-required <包>`（可重复），只做加法、不删除不重排。
+   本 skill 的 `scripts/_artxml_ensure.py` 封装该内核，`gen_loyalty_art.py` / `gen_religion_art.py` /
+   `gen_leader_2d.py` 已直接调用；`landmark_tool.py` 调 `gen_modartxml.ensure()`。
+   工程**完全没有** Art.xml 时才走全量生成：`--write` 直写新建（工程无 ArtDefs/XLPs/Textures 时判定无美术工程并拒绝创建）。
+   `--check` 仍可用于与全量生成结果比对，差异需人工确认。
+   改写既有文件时结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，脚本在退出码 2 时打印待写入清单。
 4. **已存在的 artdef 不整体覆盖**：走脚本的幂等合并；脚本找不到锚点时必须报"请手动合并"，**不静默跳过**（防止覆盖工程里其他功能条目）。合并结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，脚本会在退出码 2 时打印待写入清单。
 5. **`.tex` 类别是硬约束**：类别与所绑 XLP 参数不匹配时，cooker 报
    `has class: 'X', but is bound to parameter: 'Y' which does not accept this class`，
@@ -471,3 +477,5 @@ civ6-asset-forge/
   本 skill 的管线、工作流与实测规格为整理人所作
 - texconv（PNG→DDS）来自 [microsoft/DirectXTex](https://github.com/microsoft/DirectXTex)（MIT，随包内置在 `civ6-modding/art/bin/`）
 - 致谢：优妮
+
+> 本文所有 `workspace/`、`<工程>/workspace/` 均指 `.civ6sln` 所在解决方案根下的 `workspace/`。

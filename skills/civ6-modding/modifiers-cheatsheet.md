@@ -108,6 +108,8 @@
 | `REQUIREMENT_COLLECTION_COUNT_ATLEAST` | CollectionType, Count | 集合计数 ≥ |
 | `REQUIREMENT_COLLECTION_COUNT_EQUALS` | CollectionType, Count | 集合计数 = |
 
+> `REQUIREMENT_REQUIREMENTSET_IS_MET` 性能花销大，非必要尽量少用；能用独立 ModifierId + RequirementSet 拆开时，把内层条件直接展开进各 RequirementSet。
+
 ## 常用 Collection 类型
 
 | CollectionType | 作用域 |
@@ -167,6 +169,8 @@ INSERT OR REPLACE INTO DynamicModifiers (ModifierType, EffectType, CollectionTyp
 | `REQUIREMENTSET_TEST_ALL` | 所有条件 AND |
 | `REQUIREMENTSET_TEST_ANY` | 任一条件 OR |
 | `REQUIREMENT_REQUIREMENTSET_IS_MET` | 子 ReqSet 满足 |
+
+> `REQUIREMENT_REQUIREMENTSET_IS_MET` 性能花销大，非必要尽量少用，优先拆成多组 ModifierId + RequirementSet。
 
 ## 关键绑定表
 

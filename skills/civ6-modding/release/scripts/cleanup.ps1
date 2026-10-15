@@ -1,5 +1,6 @@
 ﻿# Remove a temporary Civ6 workshop upload workspace after a VERIFIED successful upload.
-# Safety: only deletes paths strictly under $env:TEMP\civ6-ws\ (see $root below).
+# Safety: only deletes paths strictly under the workspace root $root (below) --
+# resolved the same way as make_workspace.ps1 (ws_root from _paths.py, fallback $env:TEMP\civ6-ws).
 # Never touches the Mods source dir or D:\documents\Civ6WorkshopUploader.
 #
 # content 通常是「指向 Mods 副本的 junction」（见 make_workspace.ps1），因此这里有三重守卫：
@@ -12,8 +13,30 @@ param(
     [Parameter(Mandatory=$true)][string]$Workspace
 )
 
-$root = (Join-Path $env:TEMP "civ6-ws").TrimEnd('\')
-$full = $Workspace.TrimEnd('\')
+# 8.3 短名归一：同一目录的短/长两种写法必须落到同一字符串，否则守卫①会把合法工作区误拒。
+# PS 5.1 与 7.6 实测 [IO.Path]::GetFullPath 都展开短名，路径存在与否都成立。
+function Get-CanonPath([string]$p) {
+    return [System.IO.Path]::GetFullPath($p).TrimEnd('\')
+}
+
+# 与 make_workspace.ps1 同源解析工作区根：先问 _paths.py（local_paths.json 的 ws_root），
+# 退回 $env:TEMP\civ6-ws。★ 不能只用 $env:TEMP —— 本机它是 8.3 短名
+# C:\Users\ADMINI~1\AppData\Local\Temp，而 make_workspace 建的是长名路径，文本不符会让
+# 守卫①误拒（2026-09-24 与 2026-10-12 两次实测）；local_paths.json 把 ws_root 挪到别的盘时，
+# 只有同源解析才认得出真正的根。
+function Get-WsRoot {
+    $py = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../../tools/_paths.py"))
+    if (Test-Path $py) {
+        try {
+            $v = & python $py --tool ws_root 2>$null
+            if ($LASTEXITCODE -eq 0 -and $v) { return $v.Trim() }
+        } catch { }
+    }
+    return (Join-Path $env:TEMP "civ6-ws")
+}
+
+$root = Get-CanonPath (Get-WsRoot)
+$full = Get-CanonPath $Workspace
 
 if (-not $full.StartsWith($root + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
     Write-Error "拒绝删除：$full 不在临时工作区根 $root\ 之下"
@@ -37,7 +60,11 @@ foreach ($l in $links) {
     try {
         # 子项枚举出的 FileSystemInfo 其 .Target 可能未填充，重新 Get-Item 取准确值
         $tgt = @((Get-Item $l.FullName -Force).Target) -join ', '
-        Remove-Item $l.FullName -Force        # 目录 junction 不带 -Recurse = 只摘链
+        # ★ 不用 Remove-Item：PS 5.1 对「目标在另一卷」的目录 junction 会抛
+        #   NullReferenceException（本工程工作区在 C:、Mods 在 D:，正是跨卷），
+        #   链接不删、外层 catch 随即 exit 1，工作区留在盘上。
+        #   Directory.Delete(path,false) 只摘链、不跟进目标（2026-10-12 实测）。
+        [System.IO.Directory]::Delete($l.FullName, $false)
         Write-Host "已摘除链接：$($l.FullName) -> $tgt"
     } catch {
         Write-Error "摘除链接失败，中止以免误删目标：$($l.FullName) —— $($_.Exception.Message)"

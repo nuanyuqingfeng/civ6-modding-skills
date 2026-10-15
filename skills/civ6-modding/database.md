@@ -65,6 +65,8 @@ All database XML wraps tables in `<GameInfo>`:
 | `Buildings` | Building definitions | 46 columns — includes `PrereqDistrict`, `Housing` |
 | `Buildings_XP2` | GS expansion columns | `RequiredPower`, `PreventsFloods` |
 | `Districts` | District definitions | 40 columns — includes `CostProgressionModel` |
+| `Adjacency_YieldChanges` | 区域/改良相邻加成规则 | PK: `ID`，来源列 `AdjacentTerrain` / `AdjacentImprovement` / `AdjacentDistrict` 等 |
+| `District_Adjacencies` | 区域 ↔ 相邻加成规则挂载 | `DistrictType` → `YieldChangeId` |
 | `Improvements` | Tile improvements | 49 columns — includes `Buildable`, `Domain` |
 | `Improvements_XP2` | GS expansion columns | `DisasterResistant`, `PreventsDrought` |
 | `Technologies` | Tech tree entries | `Cost`, `EraType`, `UITreeRow` |
@@ -87,6 +89,27 @@ All database XML wraps tables in `<GameInfo>`:
 | `PlayerColors` | Color definitions | `PrimaryColor`, `SecondaryColor`, `TextColor`, `Alt1/2/3PrimaryColor`, `Alt1/2/3SecondaryColor`（参考库取 `Color_Tables.xml` + `ColorManager.sql` 并集） |
 | `BaseGameText` | Localization | PK: `Tag`, also `Text` |
 | `IconDefinitions` | Icon atlas mapping | PK: `Name`, also `Atlas`, `Index` |
+
+## Adjacency_YieldChanges 与 District_Adjacencies
+
+区域相邻加成由两张表组成：`Adjacency_YieldChanges` 定义一条「来源 + 产出」规则，`District_Adjacencies` 把它挂到具体区域上。固定加成优先用这两张表；需要科技/人文等动态条件时才改用 `EFFECT_*_ADJACENCY` 系列 Modifier（见 `reference/modifiers-catalog/modifier-improvement-plot.md`）。
+
+`Adjacency_YieldChanges` 关键列：
+
+| 列 | 说明 |
+|---|---|
+| `ID` | 主键，工程内建议带项目缩写 |
+| `Description` | 必须指向 `LOC_` 文本键，游戏内相邻加成提示用；文本格式见下方文档 |
+| `YieldType` | `YIELD_*` |
+| `YieldChange` | 每个触发来源的产出量 |
+| `TilesRequired` | 默认 `1`；`2` 表示每 2 个来源触发 1 次（半级加成） |
+| `OtherDistrictAdjacent` | `1` = 其它区域相邻计数，`0` = 关闭 |
+| `Self` | `1` = 区域自身作为来源（自相邻） |
+| 来源列 | `AdjacentTerrain` / `AdjacentFeature` / `AdjacentImprovement` / `AdjacentDistrict` / `AdjacentResource` 等，每行只填一个 |
+
+`District_Adjacencies` 只有两列：`DistrictType` 与 `YieldChangeId`。替换原版区域的特色区域不会自动继承原区域挂载，需要自行复制或逐条挂载。
+
+相邻加成 `Description` 的文本必须包含 `{1_num}` 动态数字与 `[ICON_产出]` 图标，写法规范与完整模板见 `reference/modifiers-catalog/modifier-improvement-plot.md` 的「相邻加成本地化文本铁律」和 `xml-templates.md` 的「自定义区域相邻加成模板」。
 
 ## Removing Data
 

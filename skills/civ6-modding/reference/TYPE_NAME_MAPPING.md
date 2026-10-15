@@ -145,6 +145,9 @@ Traits.TraitType
                             └── LocalizedText.Tag
 ```
 
+只有主 trait（文明/领袖能力主体）才有 `Traits.Name` / `Traits.Description` 的 LocalizedText 关联；
+衍生 trait（特色物品专用、议程）这两列一律 `NULL`，不产生 `LOC_*_NAME` / `_DESCRIPTION`。
+
 ### 查询示例
 
 ```sql

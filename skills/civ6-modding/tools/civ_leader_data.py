@@ -14,6 +14,8 @@ r"""civ_leader_data.py — 新文明 / 新领袖的**数据与文本机械推导
                               RandomCityNameDepth, StartingCivilizationLevelType, Ethnicity
   Leaders(8)                  LeaderType, Name, OperationList, IsBarbarianLeader,
                               InheritFrom, SceneLayers, Sex, SameSexPercentage
+  Types(2)                    Type, Kind
+  Traits(3)                   TraitType, Name, Description
   CivilizationTraits(2)       CivilizationType, TraitType
   LeaderTraits(2)             LeaderType, TraitType
   CivilizationLeaders(3)      LeaderType, CivilizationType, CapitalName
@@ -42,7 +44,7 @@ r"""civ_leader_data.py — 新文明 / 新领袖的**数据与文本机械推导
     python civ_leader_data.py <spec.json> --check                     # 只校验规格
 
 产出（写到工程内，需自行在 `.civ6proj` 注册；本工具会打印该注册什么）：
-    Data/CivLeader_<Slug>.sql     gameplay：Civilizations/Leaders/Traits/Leaders 关联/城市名…
+    Data/CivLeader_<Slug>.sql     gameplay：Civilizations/Leaders/Types+Traits/关联/城市名…
     Data/Config_<Slug>.sql        Config：Players + PlayerItems（选人界面与游戏设置）
     Text/Text_<Slug>.sql          8 语言 UpdateText（**游戏内文本必须走这条**）
 
@@ -145,6 +147,8 @@ def build(spec):
     text = spec.get("text") or {}
     if not civ.get("type"):
         problems.append("civilization.type 必填（如 CIVILIZATION_RGN_X）")
+    # `type` 末尾段应由 caller 按项目约定带项目级后缀（如 RGN_X），否则派生的 tag 会与
+    # 其他 mod 冲突；项目另有约定时以项目 AGENTS.md 为准，本脚本不自行改写 `type`。
     if not leaders:
         problems.append("leaders 至少一项")
     for i, ld in enumerate(leaders):
@@ -165,6 +169,41 @@ def build(spec):
         if tag not in text:
             problems.append("缺文本块：%s（%s）" % (tag, why))
 
+    trait_defs = {}
+
+    def trait_type_of(entry):
+        return entry if isinstance(entry, str) else entry.get("type")
+
+    def note_trait(entry, fallback_name, fallback_desc):
+        """统一 traits 条目：字符串按主 trait 处理，对象按 main 标记区分。"""
+        if isinstance(entry, str):
+            t = {"type": entry, "main": True,
+                 "name": fallback_name, "description": fallback_desc}
+        else:
+            if not entry.get("type"):
+                problems.append("trait 条目缺 type：%r" % (entry,))
+                return
+            t = {"type": entry["type"], "main": bool(entry.get("main")),
+                 "name": entry.get("name") or (fallback_name if entry.get("main") else None),
+                 "description": entry.get("description")
+                 or (fallback_desc if entry.get("main") else None)}
+        old = trait_defs.get(t["type"])
+        if old is not None and old["main"] != t["main"]:
+            problems.append("trait %s 同时出现主/衍生标记，规格不一致" % t["type"])
+        trait_defs.setdefault(t["type"], t)
+
+    for t in (civ.get("traits") or []):
+        note_trait(t, civ.get("ability_name"), civ.get("ability_description"))
+    for ld in leaders:
+        for t in (ld.get("traits") or []):
+            note_trait(t, ld.get("ability_name"), ld.get("ability_description"))
+    for tt, td in trait_defs.items():
+        if td["main"]:
+            if not td.get("name") or not td.get("description"):
+                problems.append("主 trait %s 必须提供 name/description（Traits.Name/Description）" % tt)
+            need(td.get("name"), "%s Traits.Name（主 trait）" % tt)
+            need(td.get("description"), "%s Traits.Description（主 trait）" % tt)
+
     civ_name = civ.get("name") or (("LOC_%s_NAME" % cid) if cid else None)
     civ_adj = civ.get("adjective")
     civ_desc = civ.get("description")
@@ -179,6 +218,10 @@ def build(spec):
     # ---- gameplay ----
     g = ["-- %s —— gameplay 数据（由 civ_leader_data.py 生成，勿手改）" % slug,
          "-- 列名来源：database/DebugGameplay.sqlite 实测", ""]
+    for tt, td in trait_defs.items():
+        g.append(ins("Types", ["Type", "Kind"], {"Type": tt, "Kind": "KIND_TRAIT"}))
+        g.append(ins("Traits", ["TraitType", "Name", "Description"],
+                     {"TraitType": tt, "Name": td.get("name"), "Description": td.get("description")}))
     if cid:
         g.append(ins("Civilizations",
                      ["CivilizationType", "Name", "Description", "Adjective",
@@ -190,7 +233,7 @@ def build(spec):
                       "Ethnicity": civ.get("ethnicity")}))
         for t in (civ.get("traits") or []):
             g.append(ins("CivilizationTraits", ["CivilizationType", "TraitType"],
-                         {"CivilizationType": cid, "TraitType": t}))
+                         {"CivilizationType": cid, "TraitType": trait_type_of(t)}))
         # ★ MusicOverride 是 **0/1 布尔标记**，不是音乐 tag 字符串！
         # 实测：官方 CivilizationAudioTags 全表 15 行、MusicOverride 取值只有 1；
         # 该列有 CHECK (MusicOverride IN (0,1))，写字符串会被库直接拒绝。
@@ -256,7 +299,7 @@ def build(spec):
                       "SameSexPercentage": ld.get("same_sex_percentage")}))
         for t in (ld.get("traits") or []):
             g.append(ins("LeaderTraits", ["LeaderType", "TraitType"],
-                         {"LeaderType": lt, "TraitType": t}))
+                         {"LeaderType": lt, "TraitType": trait_type_of(t)}))
         civ_link = ld.get("civilization") or cid
         if not civ_link:
             problems.append("%s 无法确定所属文明（leaders[].civilization 或 civilization.type）" % lt)

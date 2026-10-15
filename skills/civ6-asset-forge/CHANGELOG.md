@@ -1,5 +1,36 @@
 # CHANGELOG — civ6-asset-forge
 
+## 2026-10-11 · 1:2.85 竖条分支补进两处入口
+
+**来源**：Snezhnaya_Vodyanitsa 的前景列一度被填成 `LEADER_<KEY>_NEUTRAL`，而该工程素材本身即 1:2.85 竖条。
+
+### 修正
+
+| 文件 | 内容 |
+|---|---|
+| `SKILL.md` §一 类别⑦ 表格行 + 「四条最容易踩的混用」第 3 条 | 补「素材本身即 1:2.85 竖条 → `Players.Portrait` 写显式空串 `''`，只管环境 A」 |
+| `SKILL.md` §二 路由表类别⑦ 行 | 触发词补「竖版背景」「1:2.85 竖条」「placard 背景」 |
+| `civ6-modding/leader-authoring.md` `Portrait`/`PortraitBackground` 节 | 同一条规则 |
+
+判定逻辑与完整规格原本只在 `reference/frontend-portrait.md` §3b 与 `scripts/prepare_frontend_portrait.py` 内，写 `Players` 那行 SQL 时查的两个入口都没有它。
+
+## 2026-10-11 · 明确纸片 geo 头发参数与 ast GrainTexture
+
+**来源**：Snezhnaya_Vodyanitsa 领袖纸片模型显示异常，按可用工程对齐后补记本条。
+
+### 修正
+
+| 文件 | 内容 |
+|---|---|
+| `reference/leader-2d.md` §3.6(2) | 主体 geo 写全 7 个头发参数，`_Camera.geo` 保持 `<m_Values/>`（空） |
+| `reference/leader-2d.md` §3.6(3) | `GrainTexture` 条目必须保留（`m_ObjectName` 留空） |
+| `templates/LEAD_ABBR_Name.geo` | 补 7 个头发参数 |
+| `templates/LEAD_ABBR_Name.ast` | 补 `GrainTexture` 条目 |
+
+**依据**：本机 5 个可用纸片工程（`Ragunna_Pack` / `Black_Shores_Pack` / `Hethereau_Mint` /
+`Jinzhou_Changli` / `Jinzhou_Jinhsi`）与 §6.1 教程模板 `LEAD_FELI_JasperKitty.geo` 均带
+这 7 个参数与 `GrainTexture` 条目。
+
 ## 2026-10-10 · 新增类别⑩ 资源图标：加成黄盘 / 奢侈紫盘底盘 + 图案黑边 + 纯图案合成
 
 **来源**：Ragunna_Pack 资源图标重制——重建图集时把源图案直接导入，丢失了资源底盘

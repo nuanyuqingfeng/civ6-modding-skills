@@ -39,9 +39,10 @@ artdef 的 Lightrig 槽是一个真实被解析的引用；工程内没有本地
 - `EnvironmentLights/{Name}_Environment.dds`（Hojo 通用资产，跨工程逐字节一致）
 - `XLPs/Leader_LightRigs.xlp`（`m_ClassName=LeaderLighting`，包名 `leaders/light_rigs`）
 
-artdef 的 Lightrig 槽写 `{LEADER}_LightRig`。工程侧还有两处接线，脚本不代做：
-`.Art.xml` 的 `LeaderLighting` 库 `relativePackagePaths` 补 `leaders/light_rigs`；
-`.civ6proj` 的 `<Content>` 补 `XLPs/Leader_LightRigs.xlp`。
+artdef 的 Lightrig 槽写 `{LEADER}_LightRig`。工程侧还有两处接线：
+`.Art.xml` 的 `LeaderLighting` 库 `relativePackagePaths` 补 `leaders/light_rigs` —— 由本脚本
+自动调用 `gen_modartxml.py --ensure-library` 完成，改写结果入位 `<工程>/workspace/gen/`；
+`.civ6proj` 的 `<Content>` 补 `XLPs/Leader_LightRigs.xlp`（脚本只打印提示，不代做）。
 """
 import argparse
 import os
@@ -50,6 +51,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _projwrite import write_project_file, finish  # noqa: E402
+from _artxml_ensure import ensure as ensure_art_xml  # noqa: E402
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates')
 
@@ -282,15 +284,22 @@ def main():
     print('\n完成。注意: fgx/wig 通用平面模型需另行复制；'
           '立绘 png 可用 process_leader_png.py 生成 TEXTURE/OPACITY。\n'
           '灯光链已随注册文件一并生成（LightRigs / EnvironmentLights / Leader_LightRigs.xlp），'
-          'artdef 的 Lightrig 槽指向 {LEADER}_LightRig；'
-          '还需在 .Art.xml 的 LeaderLighting 库补 leaders/light_rigs，'
-          '并把 XLPs/Leader_LightRigs.xlp 加进 .civ6proj 的 Content 清单。')
+          'artdef 的 Lightrig 槽指向 {LEADER}_LightRig。')
+
+    # Art.xml 增量接线（交给内核，本脚本不接触 XML 结构）：LeaderLighting 库补 leaders/light_rigs
+    rc_art, art_out = ensure_art_xml(project, libraries=[('LeaderLighting', 'leaders/light_rigs')])
+    if rc_art not in (0, 2):
+        raise SystemExit('Art.xml 增量接线失败（退出码 %d）：\n%s' % (rc_art, art_out))
+    for line in art_out.strip().splitlines():
+        print('  ' + line)
+    print('  提示   XLPs/Leader_LightRigs.xlp 需加进 .civ6proj 的 Content 清单（脚本不代做）')
     if any('XXX' in line for line in [out_text]):
         print('⚠ ast 的 m_FXName 含 XXX 占位（{ABBR}_XXX_{动作}_A）。接线语音前必须替换为两段式事件名：'
               '{ABBR}=文明缩写（如 RGN/JINZ，与 --abbr 一致），{FX}=领袖名缩写（用 --leaders "Name:FX" 提供后即无需占位）；'
               '家族先例为 RGN_CTTH_FIRST_MEET_A / JINZ_JX_FIRST_MEET_A 形态，'
               'ABBR 不要填成领袖缩写。')
-    return finish()
+    rc = finish()
+    return 2 if rc_art == 2 else rc
 
 
 if __name__ == '__main__':

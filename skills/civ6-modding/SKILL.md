@@ -32,6 +32,26 @@ languages:
 > **上传流程**：一条命令 `python "<skills>/civ6-modding/tools/sync_monorepo.py"` —— 脚本临时克隆总仓库到 `%TEMP%\civ6-mono`，逐个比对本地 skill 的 HEAD 树与云端 `skills/<名>/` 子树，只重新导出有差异的那些（`git rm --cached` → `git read-tree --prefix` → `git checkout-index`，整棵子树替换，本地删掉的文件随之消失；不用 `tar`，Windows bsdtar 解不开仓库里的中文路径），提交、推送、核对云端 ref 后删除临时目录。`--dry-run` 只建提交并保留临时目录，`--keep` 推送后保留，完整口径见该脚本 docstring。网络间歇失败时重试，直连失败自动改走 Clash 混合端口 `127.0.0.1:7897`。
 > **上传判据**：用户明示「上传 / 推送云端」时，无视改动归属统一处理全部有改动的 skill；推送前先 `git ls-remote origin` 检测云端可达且与上述地址匹配，不匹配即停下报告，不得换址推送。
 
+> 🗂 **本地 git 仓库位置（提交前必读）**：每个 skill 目录**自身就是一个独立 git 仓库**，
+> 仓库根 = skill 目录（本机即 `C:\Users\Administrator\.agents\skills\civ6-modding`），
+> `.git` 是该目录下的**隐藏目录**。
+>
+> 两个常见的「找不到仓库」误判：
+>
+> | 现象 | 原因 | 正确做法 |
+> |---|---|---|
+> | 在工程目录或 `~/.agents/skills` 父目录执行 `git status` → `fatal: not a git repository` | 父目录不是仓库，skill 各自独立 | 用 `git -C <skill目录> …`，或先 `cd` 进 skill 目录 |
+> | `Get-Item <skill目录>\.git` → 找不到项 | `.git` 是隐藏目录，`Get-Item` 默认不返回隐藏项 | `Get-ChildItem <skill目录> -Force` 或 `Test-Path` 才看得见 |
+>
+> 提交本 skill 的改动：
+>
+> ```powershell
+> git -C "<skill目录>" add -A
+> git -C "<skill目录>" commit -m "<说明>"
+> ```
+>
+> 同一台机器上 8 个 civ6-* skill 各自都有 `.git`，互不隶属；改动哪个 skill 就在哪个目录提交。
+
 > 🧰 **工具先查名录（硬性）**：要写脚本做某件事之前，先看本 skill 的 [`TOOLS.md`](TOOLS.md)
 > —— 本 skill 全部脚本的用途 / 用法 / 路径清单，外加本机**路径收纳**表。
 > **有能用的就改它，不要重建。** 新增或改名脚本后，跑一次
@@ -133,9 +153,10 @@ Select-String -Path "<skills>\civ6-modding\*.md","<skills>\civ6-tuner\*.md","<sk
 |------|-------|
 | **从零新建工程**（"建一个新 mod / 新工程骨架"、要一个可构建的 `.civ6proj`） | → `python tools/new_project.py <源工程根>\<ModName> --name <ModName>`（生成 **两层布局**：工作区根放 `.civ6sln`、同名子目录放 `.civ6proj` + **按需创建的目录** + `.gitignore`/`.gitattributes` + **`workspace/_tools/build.py` 构建入口**；`--deploy` 建完直接部署到 Mods）；格式细节见 `project-setup.md`「两层目录布局」，**GUID 必须新生成**（工具内置全网查重）。★ **目标目录不得位于 Mods 加载目录内** —— 游戏递归扫描 Mods 全树，工程里的构建产物会被当成第二个 mod（同一 GUID 两条记录），命中即退出码 2 |
 | **"直接生成在 Mods 目录"**（用户只要一份游戏能加载的成品，不要工程） | → 两种情况：**工程已存在** → `python tools/modinfo_build.py <X.civ6proj> --deploy`（cook 美术 + 拷 Content + 写 modinfo + ArtDefs 同步，一条命令出成品）；**工程不存在** → `python tools/new_project.py <源工程根>\<ModName> --name <ModName> --deploy`。**不要**把工程目录取在 Mods 里 |
-| **新文明 / 新领袖的数据与文本** | → `civilization-authoring.md` / `leader-authoring.md`（表清单、LOC 推导、注册位置）；美术→`civ6-asset-forge`、3D 引用→`civ6-art-reference`、BGM/语音→`civ6-audio-pipeline` |
+| **新文明 / 新领袖的数据与文本** | → `civilization-authoring.md` / `leader-authoring.md`（表清单、LOC 推导、注册位置）；美术→`civ6-asset-forge`、3D 引用→`civ6-art-reference`、BGM/语音→`civ6-audio-pipeline`（Wwise 侧）；文明音乐的引擎侧接线判定（`CivilizationAudioTags` + `Civilizations.artdef`）→ `reference/civ-metadata.md` §六 |
 | **Config 文件改动**（增删改 `Players` / `PlayerItems` 行、选人界面物品清单与条目） | → `leader-authoring.md`「**`PlayerItems` 准入规则**」（哪些对象有资格进物品清单：限有实质 TRAIT 链的区域/建筑/单位/改良设施，资源不入列）+ `project-setup.md`「文件类型 → 注册位置对照表」（Config 文件挂 FrontEnd 仅） |
 | **领袖前景（立绘）/ 背景**（选人界面立绘、加载界面背景、`Players.Portrait/PortraitBackground`、`LoadingInfo`、借用原版背景） | → `civ6-asset-forge` skill 的 **`reference/frontend-portrait.md`**（三环境对照：选人 placard / 加载界面 / 外交；含 328×935 推导与色调近似选型）；Suk 分支另见其 `reference/ui-leader-portrait.md` |
+| **文明图标配套**（已做/正在做 `ICON_CIVILIZATION_*`，补忠诚度/压力镜头图标） | → `civ6-asset-forge` skill 的 **`reference/loyalty-icon.md`**（4 张 PNG + UILens 注册链；纯 2D 图集档位另走 `art-pipeline.md`） |
 | **UI panel** (XML + Lua) | → UI Routing ↓ |
 | **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节，图标规范化/占幅/边距规范查其第四节。★ 该管线改写既有 Icons XML / XLP / `Mod.Art.xml` 时结果落 `<工程>/workspace/gen/`，由 AI 用文件编辑工具写入工程，脚本退出码 2 打印待写入清单；`.tex` / `.dds` 属可再生资产，由脚本直接写入 |
 | **图标实机锯齿 / 边缘发硬 / 毛刺**（"游戏里图标不清晰"、"小尺寸档有锯齿"、接手他人图集想验中间档） | → `art-pipeline.md` **第 8.1 节「边缘质量门」**：`verify_icon_atlas.py --edge-qa` 体检 + `regen_atlas_tiers.py` 从母版重出（产物是 `.dds`，脚本直接覆盖，不必 AI 回写）。**注意结构校验查不出这类问题** |
@@ -144,7 +165,7 @@ Select-String -Path "<skills>\civ6-modding\*.md","<skills>\civ6-tuner\*.md","<sk
 | **Game data** (units, buildings, modifiers) | → Data Routing ↓ |
 | **总督（Governor）**（新增总督 / 晋升树 / 就职回合 / 立绘注册 / 名额扩容） | → `governor-authoring.md`（美术规格另见 `civ6-asset-forge` skill 的 `reference/governor-art.md`） |
 | **城邦（City-State）**（自定义城邦 / 选单不出现 / 宗主国加成 / 使者层级） | → `citystate-authoring.md` |
-| **文明周边数据收尾**（百科资料卡 `CivilizationInfo` / 城市名 `CityNames` / 市民名 `CivilizationCitizenNames` / 出生关联 `StartBias*` / BGM 开关 `CivilizationAudioTags` / 知名地名 `NamedMountains·NamedRivers` 等） | → **`reference/civ-metadata.md`**（各表 schema、取值域、写作要点、数量建议、最小检查清单） |
+| **文明周边数据收尾**（百科资料卡 `CivilizationInfo` / 城市名 `CityNames` / 市民名 `CivilizationCitizenNames` / 出生关联 `StartBias*` / 文明音乐（`CivilizationAudioTags` + `ArtDefs/Civilizations.artdef`）/ 知名地名 `NamedMountains·NamedRivers` 等） | → **`reference/civ-metadata.md`**（各表 schema、取值域、写作要点、数量建议、最小检查清单） |
 | **Asset Editor 字段名 / 调试查日志 / 枚举取值**（"AE 里那个框叫什么"、"Database.log 怎么看"、"Culture 有哪些值"、"忠诚度材质的字段名"） | → **`reference/editor-and-enums.md`**（AE 字段速查 / 调试三板斧 / `Cultures.artdef` 取值表 / 忠诚度 3D 链字段） |
 | **平衡补丁 / 差分覆盖**（改主工程数值、解挂载、覆盖文本的补丁 mod） | → `balance-patch.md` |
 | **换行 / EOL 归一化**（"CRLF 还是 LF"、行尾混了、`.gitattributes` 怎么写、接手他人工程先体检） | → `gotchas.md` **§68「换行分层铁律」**（唯一真源）+ `scripts/normalize_eol.py`（默认只报告；`--fix` 才写入 —— 工程内既有文件内容有变化时改写结果落 `<工程>/workspace/gen/`，由 AI 用文件编辑工具写入工程；`--repo-skill` 清理 skill 自身仓库仍直写） |
@@ -216,9 +237,10 @@ ADD tech/civic/policy   → database.md
 ADD resource/feature    → database.md
 REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "LoadOrder"（优先查 .civ6proj）
 ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
-                         批量插图标/查图标名悬空 → `python art/iconify_text.py <工程根> --audit`
+                         生成文本时按内置映射直接补 `[ICON_x]`（不需要等用户说明）→ `python art/iconify_text.py <工程根> --audit` / `--check` / `--write`
                          （`--write` 改写既有文本时结果落 `<工程>/workspace/gen/`，由 AI 用文件编辑工具写入工程；
                           退出码 2 时打印待写入清单）
+                         双向引用体检（图标正向 + `{LOC_x}` 反向 + 配置孤儿 tag）→ `python scripts/check_text_refs.py <工程根>`
                          DLC 文本查不到 → `python database/scripts/build_localization.py --report`
 ```
 
@@ -230,7 +252,10 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 1. **语言代码固定为**：`en_US` / `zh_Hans_CN` / `zh_Hant_HK` / `ja_JP` / `ko_KR` / `de_DE` / `es_ES` / `fr_FR`
    （与 `Text/*.sql` 的 `UpdateText` 动作语言段一致；`Config` 覆盖属预期加载语义）。
 2. **标记必须原样保留**：`[ICON_X]`、`[COLOR:...]`、`[ENDCOLOR]`、`[NEWLINE]`、`{LOC_TAG}`。
-   图标名写错**不会报错**，只是不显示——可用 `reference/sources/civ6-icon-tags.sql`（原版 5056 个标记全表）核对。
+   生成任何面向玩家的文本时，直接按 `art/iconify_text.py` 内置关键词映射补 `[ICON_x]`，不需要用户另行要求；
+   写完先 `--check` 预览、`--write` 落位 `workspace/gen` 后由 AI 写入工程。图标名写错**不会报错**，只是不显示——
+   用 `python art/iconify_text.py <工程根> --audit` 与 `python scripts/check_text_refs.py <工程根>` 双向核验
+   （后者同时查 `{LOC_x}` 文本往回的悬空与 `Text/*Config*.sql` 孤儿 tag）。
 3. **默认多语言合并进原 SQL**，不新增分语言文件；UTF-8 / CRLF / 注释 / 尾逗号保持原样。
 4. **先查原版有没有现成 tag**：`SELECT Text FROM LocalizedText WHERE Tag='LOC_X' AND Language='zh_Hans_CN'`
    （`database/DebugLocalization.sqlite`）——能复用就复用，文案还与官方逐字一致。
@@ -284,6 +309,8 @@ ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotat
 
 
 5. 写入后逐条复核：标签齐缺失（**按上方「语言分级制度」定的语种数**）、空值、标记漂移；改动量大时按 `validation.md` 的清单过一遍。
+6. 文本生成后必跑 `python scripts/check_text_refs.py <工程根>`：`[ICON_x]` 正向查图标定义、`{LOC_x}` 反向查本地化定义，
+   并报告 `Text/*Config*.sql` 中不被任何工程文件引用的孤儿 tag；有输出即先修复再交付。
 
 > 文本与图标/颜色的对照数据在本 skill 内：`database/DebugLocalization.sqlite`（官方文本 + 手工标注侧表
 > `SkillAnnotation_Colors` / `SkillAnnotation_Icons`）与 `reference/sources/` 的两份社区常量表。
@@ -437,6 +464,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 **确认清单：**
 - 列是否在表中？ → `PRAGMA table_info(TableName)`（DebugGameplay.sqlite）
 - NotNull 列是否都填了？ → 检查上一步输出中 `notnull=1` 且 `dflt_value=NULL` 的列
+- 有默认值的列是否真的需要改？ → 不需要就省略，保持数据库默认值；注册物品只写实际需要的列，不要为了让完整列清单齐全而把默认值逐列显式补一遍（逐列默认值查阅 `database/schema-annotated.md`）
 - ModifierType 存在吗？ → `SELECT * FROM Modifiers WHERE ModifierType LIKE '%X%'`
 - 参数签名对吗？ → `SELECT Name,Value FROM ModifierArguments WHERE ModifierId='X'`
 - `.civ6proj` / `.modinfo` 注册了吗？ → 优先查 .civ6proj 项目文件清单，否则 UpdateDatabase 或 AddGameplayScripts
@@ -606,7 +634,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 | 脚本 | 查什么 | 与谁的职责互补 |
 |------|--------|---------------|
 | `scripts/check_sql_exec.py` | **可执行性** —— 非法转义（`'…\'s…'`）导致**整条 INSERT 报废**；遇错即停，同文件后续语句块也全不执行 | ★ `rgn_validate` 查不到：语句没跑起来 = 数据没进库 = 引用不悬空 |
-| `scripts/rgn_validate_runner.mjs` | **引用完整性** —— 悬空 ID | 与上面互补 |
+| `scripts/rgn_validate_runner.mjs` | **引用完整性 + 本次改动 Modifier 单复数/作用域（--scope-check）** —— 悬空 ID / 单复数误用 | 与上面互补 |
 | `scripts/check_types_kinds.py` | `INSERT INTO Types` 的 `Kind` 是否引擎合法枚举 | 打包不报错、加载期才丢弃 |
 | `scripts/check_sql_antipatterns.py` | **语义反模式** —— 语法合法但恒假：`LIKE ('%A%' OR '%B%')`、`WHERE … = NULL` | ★ 前三个都抓不到：它跑得起来、引用也闭合，只是**意思错了** |
 | `scripts/check_proj_content.py` | `<Content Include>` ↔ 磁盘**双向闭合**（悬空清单项 / 漏登记） | 见 `gotchas.md` §3「打包 vs 加载」 |
@@ -625,7 +653,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 `scripts/rgn_validate_runner.mjs`：逻辑提取自 dsh-rgn-tools 插件源码，仅依赖 Node ≥22 内置 `node:sqlite`，任意终端可直接运行。默认**实跑模式**：把基础库快照到临时文件 → 真实执行项目 SQL（两遍：先跨文件 DDL 再其余语句，逐语句容错）→ 直接查库比对定义/引用全集，可识别 `INSERT INTO ... SELECT '字面量' || 列 ...` 动态拼接，并附带语法校验能力。
 
 ```bash
-node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模式=*.sql] [checkNaming=true] [--base <基础库路径>] [--static]
+node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模式=*.sql] [checkNaming=true] [--base <基础库路径>] [--static] [--scope-check]
 ```
 
 - 基础库默认 `<本skill目录>/database/DebugGameplay.sqlite`（相对脚本定位），`--base` 可覆盖；临时副本用后即删，原库只读不动
@@ -822,3 +850,5 @@ texconv（PNG→DDS）来自 [microsoft/DirectXTex](https://github.com/microsoft
 - 整理人：千与千寻瀑
 - 致谢：优妮、Hemmelfort、枫叶、夏凉凉凉、AWAW、糸七、千川白浪 等
 - 随包的素材/模板来自社区前人的整理与分享；本 skill 的管线、工作流与实测结论为整理人所作
+
+> 本文所有 `workspace/`、`<工程>/workspace/` 均指 `.civ6sln` 所在解决方案根下的 `workspace/`。

@@ -9,21 +9,24 @@
  * `--static` 回退 v1 纯文本解析路径。
  *
  * 用法: node rgn_validate_runner.mjs [目录=cwd] [文件模式=*.sql] [checkNaming=true] [--base <基础库>] [--static]
+ *        scope 用法增加 [--scope-check]：仅对 git diff 命中的 Modifier/TraitModifiers/UnitAbilityModifiers 行做单复数/作用域校验
  * 依赖: Node ≥ 22（内置 node:sqlite）
  */
 import { DatabaseSync } from 'node:sqlite'
+import { spawnSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
 
 // ─────────────────────────── CLI ───────────────────────────
 const argv = process.argv.slice(2)
-const flags = { base: null, staticMode: false }
+const flags = { base: null, staticMode: false, scopeCheck: false }
 const pos = []
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]
   if (a === '--base') flags.base = argv[++i] ?? null
   else if (a === '--static') flags.staticMode = true
+  else if (a === '--scope-check') flags.scopeCheck = true
   else pos.push(a)
 }
 const SCRIPT_DIR = import.meta.dirname
@@ -244,11 +247,74 @@ function locateInFiles(fileTexts, value) {
   return ''
 }
 
+function getGitRoot(cwd) {
+  const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf8' })
+  if (r.status !== 0) return null
+  const root = (r.stdout || '').trim()
+  return root || null
+}
+
+function parseUnifiedDiff(diffText) {
+  const changed = new Map()
+  let file = null
+  let newLine = 0
+  for (const raw of (diffText || '').split(/\r?\n/)) {
+    if (raw.startsWith('+++ ')) {
+      const p = raw.slice(4)
+      file = p.startsWith('b/') ? p.slice(2) : p
+      continue
+    }
+    const hunk = raw.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
+    if (hunk) { newLine = Number(hunk[1]); continue }
+    if (!file || newLine < 1) continue
+    if (raw.startsWith('+') && !raw.startsWith('+++')) {
+      let set = changed.get(file)
+      if (!set) { set = new Set(); changed.set(file, set) }
+      set.add(newLine)
+      newLine++
+    } else if (raw.startsWith('-')) {
+      // 删除行不占用新文件行号
+    } else if (raw.startsWith(' ')) {
+      newLine++
+    }
+  }
+  return changed
+}
+
+function getChangedLines(rootDir) {
+  const result = new Map()
+  const root = getGitRoot(rootDir)
+  if (!root) return result
+  const diff = spawnSync('git', ['diff', '--unified=0', 'HEAD'], { cwd: root, encoding: 'utf8' })
+  if (diff.status === 0) {
+    for (const [rel, lines] of parseUnifiedDiff(diff.stdout)) {
+      result.set(rel, lines)
+    }
+  }
+  const untracked = spawnSync('git', ['ls-files', '--others', '--exclude-standard', '-z'], { cwd: root, encoding: 'utf8' })
+  if (untracked.status === 0) {
+    for (const rel of (untracked.stdout || '').split('\0')) {
+      if (!rel) continue
+      const abs = path.resolve(root, rel)
+      let set = result.get(rel)
+      if (!set) { set = new Set(); result.set(rel, set) }
+      try {
+        const content = fs.readFileSync(abs, 'utf8')
+        const count = content.split(/\r?\n/).length
+        for (let i = 1; i <= count; i++) set.add(i)
+      } catch { /* 文件可能已被并发删除 */ }
+    }
+  }
+  return result
+}
+
+
 function runExecMode() {
   const L = []
   if (!fs.existsSync(dir)) return `目录不存在: ${dir}`
   const files = listSqlFiles(dir, pattern)
   if (!files.length) return `目录 ${dir} 下没有匹配 ${pattern} 的 SQL 文件`
+  const changedLines = flags.scopeCheck ? getChangedLines(dir) : new Map()
 
   const basePath = flags.base || DEFAULT_BASE
   const tmpPath = path.join(os.tmpdir(), `rgn_validate_work_${process.pid}_${Date.now()}.sqlite`)
@@ -436,6 +502,18 @@ function runExecMode() {
       L.push(...namingIssues.slice(0, 15))
       if (namingIssues.length > 15) L.push(`… 还有 ${namingIssues.length - 15} 条`)
     }
+    if (flags.scopeCheck) {
+      const scope = runScopeCheck(db, fileTexts, changedLines, dir, mat.ok ? basePath : null)
+      L.push('')
+      L.push(`── Modifier 单复数/作用域检查（--scope-check，改动 ${scope.checkedIds} 个 ModifierId，异常 ${scope.issues.length} 个）──`)
+      if (scope.issues.length) {
+        L.push(...scope.issues.slice(0, 20))
+        if (scope.issues.length > 20) L.push(`… 还有 ${scope.issues.length - 20} 条`)
+        process.exitCode = 1
+      } else {
+        L.push('✅ 未发现单复数/作用域异常')
+      }
+    }
     L.push('')
     L.push('说明: 实跑模式在基础库快照上执行项目 SQL 后查库比对；执行错误多为基础库缺少引擎专属表所致，已逐语句容错。')
     return L.join('\n')
@@ -460,6 +538,8 @@ function parseInserts(sql) {
     const rowRe = /\(((?:[^'()]|'(?:[^']|'')*')*)\)/g
     let rm
     const rows = []
+    const rowLines = []
+    const bodyOffset = m[0].indexOf(body)
     while ((rm = rowRe.exec(body)) !== null) {
       const inner = rm[1]
       const cells = []
@@ -471,11 +551,164 @@ function parseInserts(sql) {
         cells.push(c)
       }
       rows.push(cells)
+      rowLines.push(sql.slice(0, m.index + bodyOffset + rm.index).split('\n').length)
     }
-    if (rows.length) out.push({ table, cols, rows, line })
+    if (rows.length) out.push({ table, cols, rows, line, rowLines })
   }
   return out
 }
+
+// ─────────────────────── Modifier 单复数/作用域检查 ───────────────────────
+const SCOPE_CONTEXTS = {
+  TraitModifiers: 'trait',
+  UnitAbilityModifiers: 'ability',
+  BuildingModifiers: 'building',
+  DistrictModifiers: 'district',
+  PolicyModifiers: 'policy',
+  GameModifiers: 'game',
+  UnitPromotionModifiers: 'promotion',
+  GovernorPromotionSets: 'governor',
+}
+
+function isPluralPlayerCollection(collectionType) {
+  return typeof collectionType === 'string' && collectionType.startsWith('COLLECTION_PLAYER_')
+}
+
+function isSingleEntityCollection(collectionType) {
+  return collectionType === 'COLLECTION_OWNER' || collectionType === 'COLLECTION_UNIT' || collectionType === 'COLLECTION_CITY' || collectionType === 'COLLECTION_DISTRICT' || collectionType === 'COLLECTION_BUILDING'
+}
+
+function collectChangedScopeRows(fileTexts, changedLines, dir) {
+  const definitions = new Map()
+  const attachments = new Map()
+  const prefixRes = spawnSync('git', ['rev-parse', '--show-prefix'], { cwd: dir, encoding: 'utf8' })
+  const dirPrefix = prefixRes.status === 0 ? (prefixRes.stdout || '').trim().replace(/\\/g, '/') : ''
+  for (const ft of fileTexts) {
+    const key = dirPrefix ? (dirPrefix.endsWith('/') ? dirPrefix + ft.file : dirPrefix + '/' + ft.file) : ft.file
+    const changed = changedLines.get(key)
+    if (!changed) continue
+    for (const ins of parseInserts(ft.sql)) {
+      const idCol = ins.cols.indexOf('ModifierId')
+      if (idCol < 0) continue
+      for (let i = 0; i < ins.rows.length; i++) {
+        const rowLine = ins.rowLines?.[i] ?? ins.line
+        if (!changed.has(rowLine)) continue
+        const modifierId = ins.rows[i][idCol]?.trim()
+        if (!modifierId) continue
+        if (ins.table === 'Modifiers') {
+          const typeCol = ins.cols.indexOf('ModifierType')
+          if (typeCol >= 0 && !definitions.has(modifierId)) {
+            definitions.set(modifierId, { file: ft.file, line: rowLine, modifierType: ins.rows[i][typeCol]?.trim() })
+          }
+        } else {
+          const ctx = SCOPE_CONTEXTS[ins.table]
+          if (!ctx) continue
+          let byCtx = attachments.get(modifierId)
+          if (!byCtx) { byCtx = new Map(); attachments.set(modifierId, byCtx) }
+          if (!byCtx.has(ctx)) byCtx.set(ctx, { file: ft.file, line: rowLine })
+        }
+      }
+    }
+  }
+  return { definitions, attachments }
+}
+
+function getModifierType(db, modifierId) {
+  try {
+    return db.prepare('SELECT ModifierType FROM Modifiers WHERE ModifierId = ? LIMIT 1').get(modifierId)?.ModifierType ?? null
+  } catch { return null }
+}
+
+function getAttachContexts(db, modifierId) {
+  const contexts = new Set()
+  for (const [table, ctx] of Object.entries(SCOPE_CONTEXTS)) {
+    try {
+      const r = db.prepare(`SELECT 1 FROM "${table}" WHERE ModifierId = ? LIMIT 1`).get(modifierId)
+      if (r) contexts.add(ctx)
+    } catch { /* 基础库可能缺该表 */ }
+  }
+  return contexts
+}
+
+function getOfficialUsage(db, modifierType) {
+  const usage = { trait: 0, ability: 0 }
+  if (!db) return usage
+  try {
+    usage.trait = db.prepare('SELECT COUNT(*) AS n FROM TraitModifiers t JOIN Modifiers m ON m.ModifierId = t.ModifierId WHERE m.ModifierType = ?').get(modifierType)?.n ?? 0
+  } catch { /* 表缺失时视作 0 */ }
+  try {
+    usage.ability = db.prepare('SELECT COUNT(*) AS n FROM UnitAbilityModifiers u JOIN Modifiers m ON m.ModifierId = u.ModifierId WHERE m.ModifierType = ?').get(modifierType)?.n ?? 0
+  } catch { /* 表缺失时视作 0 */ }
+  return usage
+}
+
+function sharedPrefixScore(a, b) {
+  let n = 0
+  while (n < a.length && n < b.length && a[n] === b[n]) n++
+  return n
+}
+
+function pickSuggestion(usageDb, siblings, context, currentModifierType) {
+  const candidates = context === 'trait'
+    ? siblings.filter(s => isPluralPlayerCollection(s.CollectionType))
+    : siblings.filter(s => isSingleEntityCollection(s.CollectionType))
+  if (!candidates.length) return null
+  candidates.sort((a, b) => {
+    const ub = getOfficialUsage(usageDb, b.ModifierType)[context] ?? 0
+    const ua = getOfficialUsage(usageDb, a.ModifierType)[context] ?? 0
+    if (ub !== ua) return ub - ua
+    return sharedPrefixScore(b.ModifierType, currentModifierType) - sharedPrefixScore(a.ModifierType, currentModifierType)
+  })
+  return candidates[0]
+}
+
+function runScopeCheck(db, fileTexts, changedLines, dir, baseDbPath) {
+  const { definitions, attachments } = collectChangedScopeRows(fileTexts, changedLines, dir)
+  const ids = new Set([...definitions.keys(), ...attachments.keys()])
+  if (!ids.size) return { issues: [], checkedIds: 0 }
+  let usageDb = null
+  if (baseDbPath && fs.existsSync(baseDbPath)) {
+    try { usageDb = new DatabaseSync(baseDbPath, { readOnly: true }) } catch { usageDb = null }
+  }
+  const issues = []
+  try {
+    for (const modifierId of ids) {
+      const changedDef = definitions.get(modifierId)
+      const modifierType = changedDef?.modifierType ?? getModifierType(db, modifierId)
+      if (!modifierType) continue
+      let dyn = null
+      try { dyn = db.prepare('SELECT ModifierType, CollectionType, EffectType FROM DynamicModifiers WHERE ModifierType = ?').get(modifierType) } catch { dyn = null }
+      if (!dyn) continue
+      const contexts = new Set()
+      const byCtx = attachments.get(modifierId)
+      if (byCtx) for (const ctx of byCtx.keys()) contexts.add(ctx)
+      if (changedDef && contexts.size === 0) {
+        for (const ctx of getAttachContexts(db, modifierId)) contexts.add(ctx)
+      }
+      const officialUsage = getOfficialUsage(usageDb, modifierType)
+      const siblings = db.prepare('SELECT ModifierType, CollectionType FROM DynamicModifiers WHERE EffectType = ? AND ModifierType <> ?').all(dyn.EffectType, modifierType)
+      for (const ctx of contexts) {
+        let suggestion = null
+        if (ctx === 'trait' && !isPluralPlayerCollection(dyn.CollectionType)) {
+          suggestion = pickSuggestion(usageDb, siblings, 'trait', modifierType)
+        } else if (ctx === 'ability' && isPluralPlayerCollection(dyn.CollectionType)) {
+          suggestion = pickSuggestion(usageDb, siblings, 'ability', modifierType)
+        }
+        if (suggestion) {
+          const suggestionUsage = getOfficialUsage(usageDb, suggestion.ModifierType)[ctx] ?? 0
+          const shouldReport = officialUsage[ctx] < suggestionUsage || (officialUsage[ctx] === 0 && suggestionUsage === 0)
+          if (!shouldReport) continue
+          const src = byCtx?.get(ctx) ?? changedDef ?? { file: '', line: 0 }
+          issues.push(`${src.file}:${src.line} [${ctx}] ${modifierId} 使用 ${modifierType}（${dyn.CollectionType}），建议 ${suggestion.ModifierType}（${suggestion.CollectionType}）`)
+        }
+      }
+    }
+    return { issues, checkedIds: ids.size }
+  } finally {
+    try { usageDb?.close() } catch { /* ignore */ }
+  }
+}
+
 
 const baseCache = new Map()
 
@@ -662,6 +895,10 @@ function runStaticMode() {
 
   L.push('')
   L.push('说明: 静态模式仅解析 VALUES 字面量行；SELECT 拼接生成的定义请改用实跑模式（去掉 --static）。')
+  if (flags.scopeCheck) {
+    L.push('')
+    L.push('scope 检查只在实跑模式生效，请去掉 --static 后使用 --scope-check')
+  }
   return L.join('\n')
 }
 

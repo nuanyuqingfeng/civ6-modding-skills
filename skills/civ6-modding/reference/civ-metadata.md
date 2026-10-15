@@ -16,7 +16,7 @@
 | 城市名 | `CityNames` | 建城时按序取名 | 城市叫 `LOC_CITY_NAME_...` |
 | 市民名 | `CivilizationCitizenNames` | 城市人口姓名池 | 市民无名字 |
 | 出生关联 | `StartBiasTerrains` / `StartBiasResources` / `StartBiasFeatures` | 出生点偏好 | 出生点随机，不贴合文明设定 |
-| BGM 开关 | `CivilizationAudioTags` | 是否用 mod 自带 BGM 覆盖 artdef 音乐 | 无法让自定义 BGM 生效 |
+| 文明音乐 | `CivilizationAudioTags` + `ArtDefs/Civilizations.artdef` | BGM 覆盖开关 + 文明音乐引用（借位或覆盖） | 自定义 BGM 不生效 / 借不到原版音乐 |
 | 知名地名 | `NamedMountains`/`NamedRivers`/`NamedDeserts`/`NamedLakes`/`NamedSeas`/`NamedVolcanoes` + 各自 `*Civilizations` | 附近地形用你的命名 | 用原版默认地名 |
 
 > **注册环境**：`CivilizationInfo`/`CityNames`/`CivilizationCitizenNames`/`StartBias*` 属
@@ -131,7 +131,20 @@
 
 ---
 
-## 六、`CivilizationAudioTags` —— BGM 覆盖开关
+## 六、文明音乐：`CivilizationAudioTags` + `Civilizations.artdef`
+
+**先判定「这个新文明是否引入文明音乐」**（有自制 BGM 素材 → 是；没有 → 否）。
+两个判定结果各自要写的东西不同；`artdef` **两种情形都要建**：
+
+| 判定 | `CivilizationAudioTags` | `ArtDefs/Civilizations.artdef` |
+|---|---|---|
+| **是**（引入自制 BGM） | 写 `MusicOverride=1` | 建文明条目，`Audio` 子集合**留空** |
+| **否**（借用原版音乐） | **不写**（原版 90 个无自定义 BGM 的文明都不写） | 建文明条目，`Audio/Entry` 的 `XrefName` 填要借用的原版文明名 |
+
+> ★ 原版 `Civilizations.artdef` 里没有你的新文明，两种情形都缺不了这条引用：
+> 有 BGM 时它承载「覆盖」，没 BGM 时它承载「借位」。
+
+### 6.1 `CivilizationAudioTags` —— BGM 覆盖开关
 
 **列**：`CivilizationType` | `MusicOverride`（实测原版 **15 行**，`MusicOverride` 全为 `1`）
 
@@ -146,7 +159,75 @@
 - **只有 15 个原版文明有这一行**（America / Byzantium / China / Egypt / England /
   Germany / Japan / Kongo / Korea / Mali / Norway / Persia / Portugal / Rome / Vietnam
   ——即"有自定义 BGM 的那批"），其余 90 个文明**不写**。
-- → **只在有自定义 BGM 时写**；没有自定义音乐就**不要写**
+- **`MusicOverride` 是 0/1 布尔**，不是音乐 tag 字符串；写字符串会被库的 `CHECK` 直接拒绝（实测）。
+
+### 6.2 `ArtDefs/Civilizations.artdef` —— 文明音乐引用
+
+模板名 `Civilizations`、根集合 `Civilization`、条目名 = 文明 Type（与 `Civilizations.CivilizationType` 逐字一致）。
+`.artdef` 属资产类文本，**LF** 换行。骨架（这里写判定为「是」的情形，`Audio` 子集合留空）：
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<AssetObjects..ArtDefSet>
+	<m_Version>
+		<major>1</major>
+		<minor>0</minor>
+		<build>0</build>
+		<revision>0</revision>
+	</m_Version>
+	<m_TemplateName text="Civilizations"/>
+	<m_RootCollections>
+		<Element>
+			<m_CollectionName text="Civilization"/>
+			<m_ReplaceMergedCollectionElements>false</m_ReplaceMergedCollectionElements>
+			<Element>
+				<m_Fields>
+					<m_Values/>
+				</m_Fields>
+				<m_ChildCollections>
+					<Element>
+						<m_CollectionName text="Audio"/>
+						<m_ReplaceMergedCollectionElements>false</m_ReplaceMergedCollectionElements>
+					</Element>
+				</m_ChildCollections>
+				<m_Name text="CIVILIZATION_..."/>
+				<m_AppendMergedParameterCollections>false</m_AppendMergedParameterCollections>
+			</Element>
+		</Element>
+	</m_RootCollections>
+</AssetObjects..ArtDefSet>
+```
+
+判定为「否」（借用原版音乐）时，把骨架里 `Audio` 那个 `<Element>` 换成带 `Entry` 的形式：
+
+```xml
+<Element>
+	<m_CollectionName text="Audio"/>
+	<m_ReplaceMergedCollectionElements>false</m_ReplaceMergedCollectionElements>
+	<Element>
+		<m_Fields>
+			<m_Values>
+				<Element class="AssetObjects..StringValue">
+					<m_Value text="China"/>
+					<m_ParamName text="XrefName"/>
+				</Element>
+			</m_Values>
+		</m_Fields>
+		<m_ChildCollections/>
+		<m_Name text="Entry"/>
+		<m_AppendMergedParameterCollections>false</m_AppendMergedParameterCollections>
+	</Element>
+</Element>
+```
+
+- 原版 Base `Civilizations.artdef` 共 45 个条目，其中 20 个带 `XrefName`
+  （如 `CIVILIZATION_EGYPT` → `Greece`、`CIVILIZATION_SCYTHIA` → `Sumeria`），
+  值就是被借用文明的英文短名；其余 25 个（城邦/蛮族等）无该参数。
+- **建完必须同步 `*.Art.xml`**：`ArtDefs/` 出现 `Civilizations.artdef` 后，
+  `Audio` / `Civilizations` / `Cultures` / `Landmarks` / `WorldView_Translate` 五个消费者
+  都要补 `<Element text="Civilizations.artdef"/>`；重跑
+  `python "<skills>/civ6-modding/art/gen_modartxml.py" <工程根> --check` 复核，
+  差异只应剩下与该 artdef 无关的既有项。
 
 ---
 
@@ -206,7 +287,7 @@
 - [ ] `CivilizationCitizenNames` 40 条（四类各 10）
 - [ ] `StartBias*` 按设定填（`Tier` 1–5，越小越紧）
 - [ ] `Civilizations.Ethnicity` 填 5 选 1（影响单位头像）、`RandomCityNameDepth=10`
-- [ ] `CivilizationAudioTags` **仅在有自定义 BGM 时**填 `MusicOverride=1`
+- [ ] **文明音乐二选一已定**：有自制 BGM → `CivilizationAudioTags` 写 `MusicOverride=1`、`ArtDefs/Civilizations.artdef` 的 `Audio` 留空；无自制 BGM → 不写该表，artdef 的 `Audio/Entry/XrefName` 填被借用的原版文明名
 - [ ] 知名地名（XP2）若要，定义表 + 关联表齐全，且 `KIND_NAMED_*` 已在 `Types` 声明
 - [ ] **所有 `LOC_*` tag 在 8 语言 `Text/*.sql` 都有文案**（缺则显示原始 key）
 

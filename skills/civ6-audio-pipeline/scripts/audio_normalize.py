@@ -116,8 +116,10 @@ def linear_ok(m, target_i, tp, lra):
         mlra, mth = float(m['input_lra']), float(m['input_thresh'])
     except Exception:
         return False, '测量值缺失'
-    if mtp == 99 or mth == -70 or mlra == 0 or mi == 0:
-        return False, '哨兵测量值(tp=99/thresh=-70/lra=0/I=0) → ffmpeg 拒绝线性'
+    # ffmpeg 用 tp=99 / thresh=-70 / I=0 占位表示"测不出来"。LRA=0 既可能是占位，
+    # 也可能是真实测量(短促、均匀的语音段)，不能单独当作哨兵拒掉这类文件。
+    if mtp == 99 or mth == -70 or mi == 0:
+        return False, '哨兵测量值(tp=99/thresh=-70/I=0) → ffmpeg 拒绝线性'
     offset = target_i - mi
     offset_tp = mtp + offset
     if offset_tp > tp:
@@ -182,7 +184,7 @@ def apply_gain(src, gain_db, ac, dst):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('paths', nargs='*')
-    ap.add_argument('--category', choices=['voice', 'quote', 'bgm', 'sfx'], default='sfx')
+    ap.add_argument('--category', choices=['voice', 'quote', 'bgm', 'diplo', 'sfx'], default='sfx')
     ap.add_argument('--era', choices=['ancient', 'later'], default='ancient')
     ap.add_argument('--mode', choices=['absolute', 'relative', 'shortterm'], default='absolute')
     ap.add_argument('--retain', type=float, default=RETAIN_DEFAULT)
@@ -209,7 +211,7 @@ def main():
             a.paths += [ln.strip() for ln in fh if ln.strip()]
     key = a.category if a.category != 'bgm' else 'bgm_' + a.era
     base = a.i if a.i is not None else DEFAULTS.get(key)
-    ac = 1 if a.category == 'voice' else (2 if a.category == 'bgm' else None)
+    ac = 1 if a.category == 'voice' else (2 if a.category in ('bgm', 'diplo') else None)
     if a.out:
         os.makedirs(a.out, exist_ok=True)
     files = collect(a.paths)

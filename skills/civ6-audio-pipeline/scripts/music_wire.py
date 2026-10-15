@@ -129,8 +129,9 @@ def cmd_weights(a):
             if era == 'Ancient':
                 plan = {r: 50.0 for r in refs}
             elif kind == 'Leader':
-                plan = {r: 0.0 for r in refs}
-                if theme: plan[theme[0]] = 100.0
+                # 外交曲容器通常单曲：首项 100、其余 10。
+                plan = {r: 10.0 for r in refs}
+                plan[refs[0]] = 100.0
             else:
                 plan = {r: 0.0 for r in refs}
                 if theme: plan[theme[0]] = 50.0 if era == 'Medieval' else 60.0

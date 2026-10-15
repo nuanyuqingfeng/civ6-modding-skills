@@ -44,8 +44,12 @@ if str(_TOOLS_DIR) not in sys.path:
 _SCRIPTS_DIR = _TOOLS_DIR.parent / "scripts"
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
+_ART_DIR = _TOOLS_DIR.parent / "art"
+if str(_ART_DIR) not in sys.path:
+    sys.path.insert(0, str(_ART_DIR))
 
 from _projwrite import is_direct, write_project_file, finish  # noqa: E402
+import gen_modartxml  # noqa: E402  （Art.xml 增量接线内核，单一实现）
 from landmark_lib import (  # noqa: E402
     SDKIndex,
     LocalResourceIndex,
@@ -276,26 +280,31 @@ def install_bundle(manifest_path: Path, project: Path, *, force: bool = False, d
             info['status'] = f'条目有 {len(refs)} 个 Landmark Xref，结构异常，请人工检查'
         binding_report.append(info)
 
-    # Art.xml 要点（只报告，不写工程文件）
-    required_ids = data.get('required_game_art_ids', [])
-    art_hint = None
-    if required_ids:
-        ids = '\n'.join(f'    <Element id="{i["id"]}" name="{i["name"]}" />' for i in required_ids)
-        art_hint = (
-            '<Mod.Art.xml> 需要以下三项（幂等核对，缺哪项补哪项；可对照 gen_modartxml.py 产物结构）：\n'
-            '  ① gameLibraries 增加/确认：<Element><libraryName text="TileBase" /> ... landmarks/tilebases</Element>\n'
-            '  ② requiredGameArtIDs 增加：\n' + ids + '\n'
-            '  ③ artConsumers 增加 Landmarks 消费者：relativeArtDefPaths=Landmarks.artdef、libraryDependencies=TileBase'
-        )
+    # Art.xml 增量接线：交给内核（gen_modartxml.ensure），本脚本不接触 XML 结构。
+    # dry-run 只报告要点，不写盘。
+    required_pkgs = [i["name"] for i in data.get('required_game_art_ids', [])]
+    art_lines: list[str] = []
+    art_rc = 0
+    if dry_run:
+        art_lines.append('  dry-run：Art.xml 未改动；实跑时会补 Landmarks 消费者 + TileBase 库'
+                         + (' + requiredGameArtIDs ' + ",".join(required_pkgs) if required_pkgs else ''))
+    else:
+        art_rc, art_lines = gen_modartxml.ensure(
+            project,
+            consumers=[('Landmarks', 'Landmarks.artdef')],
+            libraries=[('TileBase', 'landmarks/tilebases')],
+            required=required_pkgs)
+        if art_rc == 1:
+            errors.extend(line.strip() for line in art_lines)
+            art_lines = [f'  失败   {line.strip()}' for line in art_lines]
     followups = [
         'ArtDefs/XLPs 不登记 .civ6proj（Civ6.targets 直接扫描磁盘）；跑 scripts/check_proj_content.py 核对工程既有清单闭合',
-        'Art.xml 三项核对/补齐（见 art_hint）',
         '整机 cook：python tools/cook_assets.py <工程根>；或本 bundle 隔离 cook：landmark_tool.py cook',
         '游戏内验收（外观 / 地块占用 / 与区域建筑差分的联动）',
     ]
     return {'ok': not errors, 'dry_run': dry_run, 'project': str(project),
             'written': written, 'merged': merged, 'bindings': binding_report,
-            'art_hint': art_hint,
+            'art_lines': art_lines,
             'followups': followups, 'errors': errors + warnings}
 
 

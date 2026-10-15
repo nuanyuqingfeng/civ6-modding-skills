@@ -597,3 +597,29 @@ Format: `Horizontal,Vertical`
 ### Stack 官方用法补充
 
 官方 Stack 间距属性为 `StackPadding`（数值，官方 85 文件使用）；生长方向取值：`Right`（水平向右，最常见）、`Down` / `Bottom`（垂直向下）、`Left`、`Top` / `Up`。PullDown 的 `StackData` 惯用 `StackGrowth="Bottom" Anchor="C,T"`。官方范例：`<Stack StackPadding="8" StackGrowth="Down" Anchor="L,C">`。
+
+---
+
+## Template 8: 自定义区域相邻加成（数据库模板）
+
+特色区域替换原版区域后不会自动继承原区域的相邻加成挂载。固定相邻加成按这张表关系写：
+
+```sql
+-- 1) 定义相邻加成来源
+INSERT OR REPLACE INTO Adjacency_YieldChanges (
+    ID, Description, YieldType, YieldChange, TilesRequired, OtherDistrictAdjacent,
+    AdjacentTerrain, AdjacentResource, AdjacentResourceClass, Self
+) VALUES
+('MY_DISTRICT_TUNDRA_CULTURE', 'LOC_MY_DISTRICT_TUNDRA_CULTURE', 'YIELD_CULTURE', 1, 1, 0, 'TERRAIN_TUNDRA', 0, 'NO_RESOURCECLASS', 0);
+
+-- 2) 挂载到自定义区域
+INSERT OR REPLACE INTO District_Adjacencies (DistrictType, YieldChangeId) VALUES
+('DISTRICT_MY_UNIQUE', 'MY_DISTRICT_TUNDRA_CULTURE');
+
+-- 3) 相邻加成文本（其余语言同构）
+INSERT OR REPLACE INTO LocalizedText (Language, Tag, Text) VALUES
+('en_US', 'LOC_MY_DISTRICT_TUNDRA_CULTURE', '+{1_num} [ICON_Culture] Culture from adjacent Tundra tiles.'),
+('zh_Hans_CN', 'LOC_MY_DISTRICT_TUNDRA_CULTURE', '+{1_num} [ICON_Culture] 文化值来自相邻冻土地块。');
+```
+
+要点：`Description` 文本必须含 `[ICON_*]` 与 `{1_num}`；英文数量名词用 `{1_Num : plural ...}`；写完后跑 `scripts/check_adjacency_text.py <工程根目录>`。

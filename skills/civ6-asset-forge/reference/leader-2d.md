@@ -252,12 +252,17 @@ python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <Civ6工程�
 > 存量工程迁移：补齐上述四类文件，artdef 的 Lightrig 槽改成各自的 `*_LightRig`，
 > `.Art.xml` 补 `leaders/light_rigs`，`.civ6proj` 补一条 Content。**改完必须重新 cook。**
 
-#### (2) 平面 geo 不带头发参数
+#### (2) 平面 geo 的头发参数
 
-`LEAD_ABBR_Name.geo` / `_Camera.geo` 的 `m_CookParams` 必须是 **`<m_Values/>`（空）** ——
-纸片人**没有头发**，不得带 3D 人物几何的头发参数（`HairThickness` / `HairColor` ×4 /
-`HairAccentMix` / `HairGlossPower`）；对照原版平面
-`Hojo_flatBackground_Placeholder.geo`（4 顶点 / 2 图元，与纸片同构），cook 参数**就是空的**。
+`LEAD_ABBR_Name.geo` 的 `m_CookParams` 写全 7 个头发参数：`HairThickness` `0.005`、
+`HairColor` 与 `HairColor_Secondary` `RGB(104,74,56)`、`HairColor_Accent` 与
+`HairColor_AccentSecondary` `RGB(255,255,255)`、`HairAccentMix` `0`、`HairGlossPower` `1`；
+`_Camera.geo` 的 `m_CookParams` 保持 **`<m_Values/>`（空）**。
+
+依据：本机 5 个可用纸片工程（`Ragunna_Pack` / `Black_Shores_Pack` / `Hethereau_Mint` /
+`Jinzhou_Changli` / `Jinzhou_Jinhsi`）与 §6.1 教程模板 `LEAD_FELI_JasperKitty.geo`
+都带这 7 个参数。原版 `Hojo_flatBackground_Placeholder.geo` 的 `m_Groups` 指向
+`Hojo_flatBackground_Placeholder_Material`，是背景板资产，其空参数不适用于领袖纸片。
 
 #### (3) 后处理参数：要么统一为已验证值，要么保持全 0
 
@@ -285,7 +290,8 @@ VelocityScale         0.000000
 > BloomStrength=0.05 / ExtraExposureRange=1.6`）让纸片**"太亮了反而失真"**，
 > 随后被全量回退到 0 —— 那套值是**3D 人物**的配置，不是纸片的。
 >
-> `GrainTexture` 是 `ObjectValue`（TEXTURE）槽，纸片人不需要，模板与工程均已移除。
+> `GrainTexture` 是 `ObjectValue`（TEXTURE）槽，`m_ObjectName` 留空，条目**必须保留**
+> （位于 `ExtraExposureRange` 与 `GrainStrength` 之间）。
 > **改后处理参数必须重新 cook 并实机确认**（属渲染表现改动）。
 
 #### (4) TEXTURE / OPACITY 的 cook 参数必须是最高品质

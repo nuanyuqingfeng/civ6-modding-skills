@@ -17,6 +17,7 @@
 
 ## 通用规则（所有模式适用）
 
+- 替换式特色条目（特色区域/建筑/单位）先复刻被替换原版对象的全部关联表，再叠加特色差异；区域清单见 [区域效果模式](pattern-district-effects.md)
 - Modifiers 列序：`(ModifierId, ModifierType, SubjectRequirementSetId, RunOnce, Permanent)`
 - Requirements 列序：`(RequirementId, RequirementType, Inverse)`
 - ModifierId 命名：`MODIFIER_SIQI_00XX_` 前缀，描述效果和条件

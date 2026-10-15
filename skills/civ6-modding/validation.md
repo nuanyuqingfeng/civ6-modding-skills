@@ -100,10 +100,12 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 - [ ] **`LoadOrder` set correctly** — `-100` for schema/removal, `0` for standard, `100` for scenario
 - [ ] **依赖顺序已显式安排** — 动作之间用 `LoadOrder`（移除/前置 `-100`）；**同一动作内部**用 `Priority`（**数值越大越先**）。注意**同 `Priority`（含都省略）按路径字母序执行**，声明序无效 —— 曾被此坑导致 `no such table`
       **什么算「明确需要先后加载」**（只有这两种才该写 `Priority`）：① 后者会**遍历/引用**前者写入的行（典型：Types → 遍历；建表 → `SELECT FROM` 该表）；② 运行时报错已**指向**加载顺序（`no such table: X` / 外键失败）。其余情况**不写** —— 动作划分总则见 `reference/action-splitting.md`
-- [ ] **双端注册齐备** — `Colors`/`PlayerColors`/`IconTextureAtlases`/`LocalizedText`/美术 `.dep` 必须在 **FrontEnd 与 InGame 各注册一个动作**（漏一端**静默失效、不报错**）
+- [ ] **双端注册齐备（所有 proj 加载动作统一管理）** — `Colors`/`PlayerColors`/`IconTextureAtlases`/`LocalizedText`/美术 `.dep` 等凡两端可被引用的内容，必须在 **FrontEnd 与 InGame 各注册一个动作**（漏一端**静默失效、不报错**）；引用闭合按端分别核对，InGame 查 `Data/` 与 `DebugGameplay.sqlite`，FrontEnd 查 `Config_*` 与 `DebugConfiguration.sqlite`，不能只跑一端
 - [ ] **动作划分复核** — 同类文件是否已**尽量合并**？只有 4 类「必须拆」与 2 类「可选拆」才该拆（详见 `reference/action-splitting.md` 决策树）
 - [ ] **Localization uses `<BaseGameText>`** — with `Tag` and `Text` columns
 - [ ] **Icon definitions use `<IconDefinitions>`** — with `Name`, `Atlas`, `Index`
+- [ ] **Text refs closed both ways** — every `[ICON_x]` / `{LOC_x}` resolves; config text has no orphan tags (`python scripts/check_text_refs.py <工程>`)
+- [ ] **Adjacency text format** — every custom `Adjacency_YieldChanges.Description` text resolves and contains `[ICON_*]` plus `{1_num}` (`python scripts/check_adjacency_text.py <工程>`)
 
 ## SetProperty Validation
 

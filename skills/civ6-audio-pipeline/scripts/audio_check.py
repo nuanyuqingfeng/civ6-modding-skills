@@ -10,7 +10,9 @@ audio_check.py -- Civ6 音频素材核验
   --fix  自动纠正容器问题(重采样48k/声道/pcm_s16le), 就地写+备份 .bak_check
   --lra-cap   归一化动态范围上限(默认 11, 与 audio_normalize.py --lra 同源)
   --pool-spread 同池短时响度极差告警阈值(默认 2.0 dB)
-目标响度(教程11章): 语音-21 / BGM远古-28 / BGM后世-25; sfx 仅报告不评判
+目标响度(教程11章): 语音-21 / BGM远古-28 / BGM后世-25 / 外交-25; sfx 仅报告不评判
+编译产物层级: --bank-hierarchy <bnk> [--voice-chain] 校验语音 Sound 是否挂在
+全局 Stop_Leader_Speech 的目标 ActorMixer (ShortID 854467727) 子树内 (见 mechanism.md §6.1a)
 
 为什么还要看 LRA 与短时响度(实证结论, 见 references/mechanism.md):
   * 只查积分 LUFS 是查不出泵浦的 —— 泵浦文件的积分响度完全达标。
@@ -34,7 +36,10 @@ CAL = json.load(open(os.path.join(HERE, '..', 'references', 'calibration.json'),
 TARGET_LUFS = {'voice': CAL['defaults']['voice'],
                'quote': CAL['defaults']['quote'],
                'bgm_ancient': CAL['defaults']['bgm_ancient'],
-               'bgm_later': CAL['defaults']['bgm_later']}
+               'bgm_later': CAL['defaults']['bgm_later'],
+               'diplo': CAL['defaults']['diplo']}
+from wwise_shortid import voice_chain_report
+
 SUSPECT_BGM_SEC = 60.0  # 未分类且 ≥60s → 疑似 BGM, 按 skill 规则需询问用户
 
 _RE_S = re.compile(r'\bS:\s*(-?\d+(?:\.\d+)?)')
@@ -174,10 +179,32 @@ def pool_report(rows, target, spread_thresh):
     if vl and max(vl) - min(vl) > 6.0:
         print('  [WARN] 动态范围离散: LRA 极差 %.2f LU —— 密实母带与宽动态曲目混播会明显不齐' % (max(vl) - min(vl)))
 
+def check_bank_hierarchy(bank_path, want_voice_chain):
+    """编译产物层级校验: 语音 Sound 必须是全局 Stop_Leader_Speech 的目标
+    ActorMixer (ShortID 854467727) 的后代, 否则引擎的全局停止落空 ——
+    表现为语音一句叠一句、永远停不下来。"""
+    data = open(bank_path, 'rb').read()
+    ok, rep = voice_chain_report(data)
+    print('[BANK] %s' % bank_path)
+    print('   Sound %d 个 | ActorMixer %d 个 | Sound 的父节点 %s'
+          % (rep['sounds'], rep['mixers'], rep['parents']))
+    for a, present in sorted(rep['anchors'].items()):
+        print('   语音链锚点 %s: %s' % (a, '在 bank 内' if present else '缺失'))
+    if rep['bad_parent']:
+        print('   [FAIL] %d 个 Sound 的父节点不是 bank 内的 ActorMixer: %s'
+              % (len(rep['bad_parent']), rep['bad_parent'][:6]))
+    if rep['not_under']:
+        print('   [FAIL] %d 个 Sound 不在 854467727 子树内 —— 全局 Stop_Leader_Speech 不会命中: %s'
+              % (len(rep['not_under']), rep['not_under'][:6]))
+    label = '语音停止路径成立' if want_voice_chain else '层级成立'
+    print('[BANK] %s' % ('PASS ' + label if ok else 'FAIL ' + label))
+    return 0 if ok else 1
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('paths', nargs='*')
-    ap.add_argument('--category', choices=['voice', 'quote', 'bgm', 'sfx'], default='sfx')
+    ap.add_argument('--category', choices=['voice', 'quote', 'bgm', 'diplo', 'sfx'], default='sfx')
     ap.add_argument('--era', choices=['ancient', 'later'], default='ancient')
     ap.add_argument('--fix', action='store_true')
     ap.add_argument('--filelist', default=None, help='每行一个路径的清单文件')
@@ -187,7 +214,13 @@ def main():
                     help='归一化动态范围上限(与 audio_normalize.py --lra 同源); 超过即点名')
     ap.add_argument('--pool-spread', type=float, default=2.0,
                     help='同池短时响度极差告警阈值(dB)')
+    ap.add_argument('--bank-hierarchy', default=None, metavar='BNK',
+                    help='校验编译产物 bank 的层级(语音 Sound 是否在 854467727 子树内)')
+    ap.add_argument('--voice-chain', action='store_true',
+                    help='与 --bank-hierarchy 同用: 断言语音停止路径成立')
     a = ap.parse_args()
+    if a.bank_hierarchy:
+        return check_bank_hierarchy(a.bank_hierarchy, a.voice_chain)
     if not (shutil.which('ffprobe') and shutil.which('ffmpeg')):
         raise SystemExit('[FAIL] 未找到 ffprobe/ffmpeg，请先安装 FFmpeg 并加入 PATH 后重试。')
     if a.filelist:
@@ -217,8 +250,8 @@ def main():
             issues.append('采样率=%d(需48000)' % p['rate'])
         if a.category == 'voice' and p['ch'] != 1:
             issues.append('声道=%d(语音需单声道)' % p['ch'])
-        if a.category == 'bgm' and p['ch'] != 2:
-            issues.append('声道=%d(BGM需立体声)' % p['ch'])
+        if a.category in ('bgm', 'diplo') and p['ch'] != 2:
+            issues.append('声道=%d(BGM/外交曲需立体声)' % p['ch'])
         M = measure(f)
         L, LRA, S50 = M['I'], M['LRA'], M['S_p50']
         lt = ('%.1f LUFS' % L) if L is not None else 'LUFS N/A'
@@ -278,4 +311,4 @@ def main():
         print('[CHECK] JSON -> %s' % a.json_path)
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

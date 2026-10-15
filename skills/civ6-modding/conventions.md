@@ -201,7 +201,8 @@ include("WorldTrackerItem_", true);  -- true = glob mode
 |---|---|
 | `CIVILIZATION_X` | `LOC_CIVILIZATION_X_NAME` / `_DESCRIPTION` / `_ADJECTIVE`；图标 `ICON_CIVILIZATION_X` |
 | `LEADER_X` | `LOC_LEADER_X_NAME` / `_QUOTE`；图标 `ICON_LEADER_X`；加载语 `LOC_LOADING_INFO_LEADER_X` |
-| `TRAIT_X`（文明/领袖能力） | `LOC_TRAIT_X_NAME` / `_DESCRIPTION` |
+| 主 `TRAIT_X`（文明/领袖能力主体） | `LOC_TRAIT_X_NAME` / `_DESCRIPTION` |
+| 衍生 `TRAIT_X_*`（特色物品）/ `TRAIT_AGENDA_*` | 不生成 tag（`Traits.Name / Description` 为 `NULL`） |
 | `BUILDING_X` / `DISTRICT_X` | `LOC_{Type}_NAME` / `_DESCRIPTION`；图标 `ICON_{Type}` |
 | `UNIT_X` | `LOC_UNIT_X_NAME` / `_DESCRIPTION` / `_CIVILOPEDIA`；图标 `ICON_UNIT_X`（55/64/80/256） |
 | `IMPROVEMENT_X` | `LOC_IMPROVEMENT_X_NAME` / `_DESCRIPTION`；图标 `ICON_IMPROVEMENT_X` |

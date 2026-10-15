@@ -66,7 +66,7 @@
 | **做原版环境领袖前景/背景（选人界面立绘、加载界面背景、LoadingInfo、借用原版背景）** | `civ6-asset-forge` → `reference/frontend-portrait.md` |
 | **适配 Sukritact 选人界面（suk selection / 领袖选择界面 2D 立绘+背景）** | `civ6-asset-forge` → `reference/ui-leader-portrait.md`（**可选分支**；原版那套见上一行） |
 | **做历史时刻插画（MomentIllustrations / 时代得分图 / Moment_*）** | `civ6-asset-forge` → `reference/moment-illustration.md` |
-| **做忠诚度 / 宗教压力图标** | `civ6-asset-forge` → `reference/loyalty-icon.md` |
+| **做忠诚度 / 宗教压力图标；已有文明图标补配套忠诚度/压力镜头图标** | `civ6-asset-forge` → `reference/loyalty-icon.md` |
 | **问单位晋升图标（promotion icon）尺寸 / 格式 / 注册** | `civ6-asset-forge` → `reference/promotion-icon-sizes.md`（**仅规格**；生成管线已作废） |
 | **做总督素材（徽章 / 头像小图标 / 立绘 / 边缘透明渐变）** | `civ6-asset-forge` → `reference/governor-art.md` |
 | **运行时验证 API 行为 / 复现脚本报错** | `civ6-tuner` |

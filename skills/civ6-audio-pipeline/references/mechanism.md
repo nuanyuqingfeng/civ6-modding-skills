@@ -38,6 +38,19 @@
 - ShortID 可预填任意唯一值（模板作者手调 id 先例）；媒体 ID 由转换器按路径哈希自动分配，缺省即可。
 - 生成：`WwiseCLI.exe <proj>.wproj -GenerateSoundBanks -Platform Windows -Bank <名>`；流式 wem 由 CopyStreamedFiles 后置步自动归位。
 
+### 4.1 交互音乐（IMH）对象（媒体替换式重建要点）
+
+- 段落块必备子块：`MusicSegment`(PropertyList: EndPosition) > `MusicTrack`(IsStreamingEnabled=True) > `AudioFileSource`
+  (`<Language>SFX</Language>` + `<AudioFile>名.wav</AudioFile>` + `<ConvertedFileIDList><File ID="…"/></ConvertedFileIDList>`)
+  + `MusicTransition`(Root) + `MusicTrackSequence` > `MusicClip`(EndTrimOffset/FadeIn/FadeOut) + `CueList`(Entry Cue / Exit Cue / **ExitCustom**)。
+  **以模板段为原型克隆**最稳：从零手写极易漏子块。
+- `<AudioSourceRef>` 引用**同段 `AudioFileSource` 的 GUID**（不是 ShortID）。
+- `ConvertedFileIDList/<File ID>` 决定生成产物 `<ID>.wem` 的文件名（写死即固定该 ID；缺省则由转换器分配）。ID 从注册表避让。
+- 播放列表容器：`GridFrequencyPreset=52` + 根播放项 `LoopCount=0`/`PlayMode`（Civ 轮播=3、Leader=1）+ 叶子项
+  `PlaylistItemType=1` + `Weight`（Real64，`<Value>` 不带 Platform 属性）+ `SegmentRef`。
+- 开关容器：`ArgumentList` 引 `Game_Location`(`{33A22C91-…}`)，`EntryList` 四个时代路径
+  `Ancient_Era / Medieval_Era / Industrial_era / Modern_Era`，各指到对应时代的播放列表/段落；跨容器复用段落必须**全独立 GUID 副本**。
+
 ## 5. 触发端三通道
 
 | 通道 | 写法 | 备注 |
@@ -64,7 +77,19 @@
 
 - 主题音乐建议按 4 个时代准备：远古 / 中古 / 工业 / 原子。
 - 外交背景音乐采用官方标准做法：**一个文明对应一首外交背景音乐**，由 `LeaderMusic_<Civ>` 容器与 `Play_Leader_Music_<Civ>` 事件承载。
+- **外交背景音乐响度**：目标 **-25 LUFS**（与后世 BGM 同档），靠**素材自身响度**达成，`LeaderMusic_<Civ>` 容器**不写 `Volume` 属性**。教程模板在容器上带 -8 dB 偏移，照抄会让外交界面比正常游玩明显偏轻（本地双先例实测外交曲 -25.0 LUFS 且容器无 Volume 属性）；`audio_normalize.py --category diplo` 与 `audio_check.py --category diplo` 即按此档。
 - 引擎只发送四个时代信号，文艺复兴没有独立信号，与中古同属 `MEDIEVAL_ERA`。
+- **引擎侧接线**：Wwise 侧交付后，新文明还须在 `CivilizationAudioTags` 与 `ArtDefs/Civilizations.artdef` 各写一处（有自制 BGM 写 `MusicOverride=1` + 空 `Audio`；无自制 BGM 不写该表 + `Audio/Entry/XrefName` 填借用的原版文明名），并同步 `*.Art.xml`——判定与写法见 `civ6-modding` skill 的 `reference/civ-metadata.md` §六。
+
+### 6.1a 领袖语音的停止路径（实证）
+
+- **全局停止是一条 ActorMixer 寻址的动作**：官方 `Speech.bnk` 内的 `Stop_Leader_Speech`（事件 ShortID **1239530600**）只含一条 `CAkActionStop`（`ulActionType 258 = Stop_E`），目标 `idExt` = **854467727**。游戏在结束领袖语音时播放这一个事件，引擎按该 ShortID 在 Actor-Mixer 树上找目标。
+- **语音 Sound 必须挂在该 ActorMixer 之下**，停止才会命中：正确层级为
+  `id88602518 > id854467727 > id424381547 > <Speech容器> > <Sound>`。
+  把语音 Sound 放进一个自建的扁平 SFX Folder（输出总线 Master Audio Bus）时，它不在 854467727 子树内，全局停止落空——**表现为语音一句叠一句、永远停不下来**。
+- **语音 bank 自身不含 Stop_ 事件**：权威先例 `Ragunna_Pack_Speech.bnk` 的 42 条事件全部是 Play，停止完全由上述全局动作承担。所以「照抄先例却删掉自己的 Stop_ 事件」不会修好停止——路由没动，症状照旧。
+- `id88602518` / `id854467727` 自带 `MaxSoundPerInstance=1` + `UseMaxSoundPerInstance=True`，新一句自动切掉上一句；二者是模板手调对象，**一个字节不碰**，只在其下增量挂入新的 Speech 容器（与模板自带的 `JasperKittySpeech` 同级）。
+- 该层级可用编译产物直接验收：`python scripts/audio_check.py --bank-hierarchy <bank.bnk> --voice-chain`。
 
 ### 6.2 轮播机制与权重机制（区分）
 
@@ -99,6 +124,7 @@
 - **UpdateAudio 语义污染（已修+防呆）**：早期 `register_to_mod.py` 的 Files 条目锚点误匹配 UpdateAudio 块内自带 `<File>...ini</File>` 行，把 wem/bnk 条目塞进 `<UpdateAudio>` 内部。XML 良构校验通过、但游戏读 bank 时发现指向非 ini → bank 不加载 → 按钮静音（其他游戏声音正常）。**特征**：`<UpdateAudio>` 内出现 `<File>*.wem</File>`。**防线**：脚本已锚定 `</Files>` 插入 + 写后语义校验（UpdateAudio 只指向 .ini）+ 独立 `--verify` 命令（每次交付前跑，期望 PASS）。
 - **媒体 ID 重建漂移**：重建 work unit 后流式媒体 ID 会重新分配，旧 wem 成孤儿。注册后必须清理运行目录中不被当前 bank xml 引用的 `\d+.wem`，并同步清理 modinfo Files 条目。
 - **事件名=前缀+基名+组合码**：组合式 bank 的 `--event-base` 必须与触发端拼接前缀一致（如 `Play_`+`<基名前缀>`+`<组合码>`），漏基名会导致事件对不上、静默无声。
+- **媒体 ID 重建后 `--prune` 的两遍顺序**：① 不带 `--prune` 拷媒体（`.bnk`/`.wem` 直写、侧车入位 `workspace/gen`）→ ② AI 落位侧车 → ③ 再带 `--prune` 清孤儿。`--prune` 以**磁盘上 bank xml 的引用**为孤儿判据，侧车未落位时会误判。
 
 ## 9. ShortID 规律与纯 Python 打包（历史经验）
 
@@ -108,7 +134,10 @@
 
 - Event ShortID = **FNV-1(32)** 对“小写 UTF-8 事件名”的哈希。
 - 例：某成品事件名 `XX_SS_FIRST_MEET_A -> 2650607710`（演示值），与对应成品 mod 完全一致（本机 8/8 抽样验证）。
-- 游戏触发时按事件名重新哈希，所以**领袖/音频事件必须用唯一前缀**：前缀不同 → 名字不同 → ID 不同 → 共存。
+- 游戏触发时按事件名重新哈希，**名字全局唯一即共存**。唯一标记要放在"引擎不会改写的那一段"：
+  引擎按类别前缀拼接名字（文明音乐事件 `<动作>_Music_<CIV 内部名去 CIVILIZATION_>`、领袖派生名 `LEADER_<X>_<后缀>`），
+  所以文明/领袖的内部名要自带作者码——**前缀剥离法**：剥离引擎前缀后剩下的主体仍全局唯一（唯一码是这种"自带"的做法，
+  不是某个固定字面量）。自定名（语音事件等）没有引擎前缀，整名唯一即可（先例 `<CIV>_<领袖>_<场景>_<字母>`）。见 SKILL.md §2。
 - 反之，两个领袖若同名，后加载者的 Event ID 会覆盖先加载者。
 
 ### 9.2 其余 ID 是随机数，不同内容必须全域唯一

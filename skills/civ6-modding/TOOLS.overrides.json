@@ -23,8 +23,8 @@
     "usage": "powershell -File make_workspace.ps1 -ModDir <Mods/<ModName>> [-ItemId <工坊ID>] [-WsRoot <根>] [-Force] [-SkipValidate]"
   },
   "release/scripts/cleanup.ps1": {
-    "purpose": "删除临时上传工作区（真上传成功并验证后才跑）。三重守卫：仅在 $env:TEMP\\civ6-ws\\ 之下 / 工作区自身非 reparse point / 先摘内部链接再递归删——content 是 junction 时 Mods 副本不受影响",
-    "usage": "powershell -File cleanup.ps1 -Workspace $env:TEMP\\civ6-ws\\<ModName>"
+    "purpose": "删除临时上传工作区（真上传成功并验证后才跑）。三重守卫：仅在工作区根之下（`ws_root`，与 make_workspace.ps1 同源解析；短/长名两种写法均已归一） / 工作区自身非 reparse point / 先摘内部链接再递归删——摘链用 `Directory.Delete`，不用 Remove-Item（PS 5.1 对跨卷 junction 会抛 NullReferenceException）；content 是 junction 时 Mods 副本不受影响",
+    "usage": "powershell -File cleanup.ps1 -Workspace <工作区路径>（长名或 8.3 短名均可）"
   },
   "release/scripts/build.ps1": {
     "purpose": "构建非 Trimmed 版 Civ6WorkshopUploader（勿用 PublishTrimmed，会卡 PreparingContent）",

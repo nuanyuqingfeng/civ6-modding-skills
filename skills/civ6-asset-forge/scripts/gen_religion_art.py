@@ -38,6 +38,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _projwrite import write_project_file, finish  # noqa: E402
+from _artxml_ensure import ensure as ensure_art_xml  # noqa: E402
 
 XML_DECL = '<?xml version="1.0" encoding="UTF-8" ?>\n'
 XLP_HEAD = """{xml}<AssetObjects..XLP>
@@ -746,39 +747,25 @@ def merge_strategicview_artdef(p: Path, religions: list[str], project: Path,
     results.extend(notes)
 
 
-def patch_art_xml(art_xml: Path, project: Path, results: list[str]) -> None:
-    """幂等补齐 consumer 与 library 接线（与忠诚度共用同一组 consumer/library）。"""
-    text, nl = read_preserve(art_xml)
-    orig = text
+def patch_art_xml(art_xml: Path, project: Path, results: list[str]) -> int:
+    """Art.xml 接线：交给 gen_modartxml.py 的 --ensure 增量内核，本脚本不接触 XML 结构。
 
-    def add_artdef(consumer: str, artdef: str) -> None:
-        nonlocal text
-        pat = re.compile(
-            r'(<consumerName text="' + re.escape(consumer) + r'"/>\s*<relativeArtDefPaths>)(.*?)(</relativeArtDefPaths>)',
-            re.DOTALL)
-        m = pat.search(text)
-        if not m:
-            results.append(f"  警告   Art.xml 中找不到 consumer {consumer}，请手动补 {artdef}")
-            return
-        if f'"{artdef}"' in m.group(2):
-            return
-        text = text[:m.end(1)] + f'\n\t\t\t\t<Element text="{artdef}"/>' + text[m.end(1):]
-
-    add_artdef("Overlay", "Overlay.artdef")
-    add_artdef("RangeArrows", "Overlay.artdef")
-    add_artdef("UILensAsset", "Overlay.artdef")
-    add_artdef("StrategicView_Properties", "StrategicView.artdef")
-    add_artdef("StrategicView_Sprite", "StrategicView.artdef")
-
-    m = re.search(r'(<libraryName text="UILensAsset"/>\s*<relativePackagePaths>)(.*?)(</relativePackagePaths>)', text, re.DOTALL)
-    if m and "UILensAssets" not in m.group(2):
-        text = text[:m.end(1)] + '\n\t\t\t\t<Element text="UILensAssets"/>' + text[m.end(1):]
-
-    if text != orig:
-        results.append(f"  {stage_project_file(art_xml, text, nl, project)}   {art_xml.name}"
-                       "（consumer/library 接线）")
-    else:
-        results.append(f"  未变   {art_xml.name}")
+    返回内核退出码：0 无需改动 / 2 改写结果已入位 <工程>/workspace/gen/。
+    """
+    rc, text = ensure_art_xml(
+        project,
+        consumers=[("Overlay", "Overlay.artdef"),
+                   ("RangeArrows", "Overlay.artdef"),
+                   ("UILensAsset", "Overlay.artdef"),
+                   ("StrategicView_Properties", "StrategicView.artdef"),
+                   ("StrategicView_Sprite", "StrategicView.artdef")],
+        libraries=[("UILensAsset", "UILensAssets")],
+    )
+    if rc not in (0, 2):
+        raise SystemExit("Art.xml 增量接线失败（退出码 %d）：\n%s" % (rc, text))
+    for line in text.strip().splitlines():
+        results.append("  " + line)
+    return rc
 
 
 def patch_civ6proj(civ6proj: Path, content_files: list[str], project: Path,
@@ -861,7 +848,7 @@ def main() -> None:
                 AST_COMMON.format(xml=XML_DECL, Kind=kind, r=r, **fields), project))
 
     # 4. Art.xml + civ6proj 注册（与忠诚度共用同一批 consumer/library/Content）
-    patch_art_xml(art_xml, project, results)
+    rc_art = patch_art_xml(art_xml, project, results)
     patch_civ6proj(civ6proj, [
         f"{xlp_dir.name}\\UILensModels.xlp",
         f"{xlp_dir.name}\\StrategicView_UILenses.xlp",
@@ -875,7 +862,8 @@ def main() -> None:
         print(f"  - Religion_Overlay_{r}.png → DDS + .tex 输出 Textures/（art-pipeline，role=loyalty_3d，512×512）")
         print(f"  - Religion_Pressure_{r}.png → DDS + .tex 输出 Textures/（role=loyalty_3d，128×128）")
         print(f"  - ReligionPressureIcon_{r}.png → DDS + .tex 输出 Textures/（role=loyalty_sv，128×128）")
-    return finish()
+    rc = finish()
+    return 2 if rc_art == 2 else rc
 
 
 if __name__ == "__main__":

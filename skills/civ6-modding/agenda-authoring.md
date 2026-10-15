@@ -100,6 +100,8 @@ SELECT Name, Value FROM RequirementArguments WHERE RequirementId='...';
 10. reqset 四表（自建时）
 11. `.civ6proj` → `<UpdateDatabase>` 加 `<File>Data/Xxx_RGN.sql</File>`
 
+★ 议程 trait 只做挂接：`Traits.Name / Description` 必须 `NULL`，议程显示名与描述只写在 `Agendas`。
+
 ## 六、文案规范
 
 对齐原版 `议程表(绝大部分).xlsx` 模板风格（**这就是原版 Agendas 描述的真实句式**）：

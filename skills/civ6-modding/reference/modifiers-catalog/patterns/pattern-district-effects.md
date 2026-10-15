@@ -33,6 +33,16 @@ INSERT INTO Districts (DistrictType, Name, Description, Cost, AdvisorType, Plund
 
 > 陷阱：区域**必须独立 TraitType**（`TRAIT_DISTRICT_xxx`）并填 Districts.TraitType 列——不能共用文明特质。
 
+### 替换式特色条目的全表复刻（硬性）
+
+创建特色区域、特色建筑、特色单位时，只要通过 `DistrictReplaces` / `BuildingReplaces` / `UnitReplaces` 替换原版对象，
+先在原版 `Base/Assets/Gameplay/Data/*.xml` 中按被替换 Type 全量检索其出现的每一张表，逐表复制全部行，
+只把 Type 键换成特色条目，数值原样保留；之后才叠加本次设计的特色差异。
+
+区域至少要覆盖：`Districts` 主表、`District_Adjacencies`、`District_CitizenYieldChanges`、`District_GreatPersonPoints`、
+`District_TradeRouteYields`、`DistrictModifiers` 与被替换区域挂载的其他 `District_*` 桥表；
+建筑和单位按同类原则覆盖 `Building_*` / `Unit_*` 关联表。
+
 ## 链路 2：区域挂载 Modifier（DistrictModifiers）
 
 ```sql
@@ -81,5 +91,6 @@ INSERT INTO ModifierArguments (ModifierId, Name, Value) VALUES
 
 - [ ] 区域有自己的 `TRAIT_DISTRICT_xxx` 并填入 Districts.TraitType
 - [ ] 取代官方区域时 DistrictReplaces 两列齐全
+- [ ] 替换式特色条目已先复刻被替换原版对象的全部关联表，再叠加特色差异
 - [ ] DistrictModifiers 挂载的 ModifierId 在 Modifiers 表有定义
 - [ ] 槽位替换参数：Added/Replaced/ReplacesAll 三件套

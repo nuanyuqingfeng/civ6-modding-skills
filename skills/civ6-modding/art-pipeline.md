@@ -55,9 +55,11 @@
      登记进去也不会被打进 UI 包。
      但 ⚠ **`UI_LeaderScenes.xlp` 不是这类反例**——它 `m_ClassName=UITexture`（官方 3 个共 174 条），
      外交分层贴图就登记在它里面（见下方「三.1」）。
-→ Mod.Art.xml：python <skill>\art\gen_modartxml.py <projectRoot> --check
-     （差异需人工确认后才 --write；注意 --check 报的差异可能是**本次改动之前就存在的**，
-      先看差异里有没有提到你这次新增的 XLP/artdef，没有就别顺手 --write）
+→ Mod.Art.xml：**增量接线用 `--ensure-consumer` / `--ensure-library` / `--ensure-required`**
+     `python <skill>\art\gen_modartxml.py <projectRoot> --ensure-consumer "Overlay=Overlay.artdef"`
+     只做加法，不删除、不重排、不改写既有条目；自闭合容器会自动展开成对形式。
+     全量核对仍用 `--check`（差异需人工确认后才 `--write`；注意 --check 报的差异可能是**本次改动之前
+     就存在的**，先看差异里有没有提到你这次新增的 XLP/artdef，没有就别顺手 --write）。
      ★ 工程内已有 Mod.Art.xml 且内容有变化时，改写结果落到 `<工程>/workspace/gen/` 的同一相对
        路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单
 → 校验：python <skill>\art\verify_icon_atlas.py <projectRoot> [--vanilla "<官方 Icons 目录>"]
@@ -578,10 +580,12 @@ XML 字符引用转义，文件仍是合法 XML。**不要手工把 `.tex` 另�
    项目 Icons XML 现状风格一致；
 3. XLP 引用的每个纹理都能在 `Textures\` 找到（无悬空引用）；
 4. `.civ6proj` 条目与磁盘一致（Project 文件同步规范）；
-5. 若本次新增/修改了 `XLPs\` 或 `ArtDefs\` 文件：`gen_modartxml.py <projectRoot> --check`
-   必跑，差异人工确认后才 `--write`（新增 XLP/Artdef 不重生成 Art.xml = 最常见的漏项）；
-   `--write` 改写既有 Mod.Art.xml 时，结果落到 `<工程>/workspace/gen/` 的同一相对路径，
-   由 AI 用文件编辑工具写入工程对应路径，脚本在退出码 2 时打印待写入清单；
+5. 若本次新增/修改了 `XLPs\` 或 `ArtDefs\` 文件：**先跑增量内核**
+   `gen_modartxml.py <projectRoot> --ensure-consumer "<consumer>=<artdef>"`（库用 `--ensure-library`，
+   依赖包用 `--ensure-required`）；确认工程整体仍自洽再跑 `--check` 全量核对，差异人工确认后才 `--write`
+   （新增 XLP/Artdef 不接线 = 最常见的漏项）。三条路径改写既有 Mod.Art.xml 时，结果都落到
+   `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，
+   脚本在退出码 2 时打印待写入清单；
 6. 未动用户未确认的任何素材文件；
 7. **各尺寸档的边缘抗锯齿质量合格**：`verify_icon_atlas.py <projectRoot> --edge-qa` 必须通过
    （见第 8.1 节）。这是唯一能抓出「结构全对、实机却是锯齿」的门。
@@ -783,7 +787,7 @@ python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png
 | `align_tex_format.py` | **`.tex` 格式对齐官方**：统一 UTF-8 / 补 `m_Groups` / 按类别修正 `bCompleteMipChain`；**只动格式不动值**，且不碰 `m_SourceFilePath`；`.tex` 属可再生资产直接覆盖 | 接手他人工程的 `.tex`、或发布前统一格式；见第 8.2 节 |
 | `apply_fow.py` | 生成迷雾「羊皮纸」FOW 变体 | 该类别原版有 `_FOW` 时（建筑/区域/资源有，项目没有） |
 | `gen_tex.py` | 按 DDS 头生成 `.tex`（GBK/ANSI 编码，别存 UTF-8）；新建直写，已有同名 `.tex` 时直接覆盖（可再生资产） | 一般不直接调，make_atlas/convert_art 会调 |
-| `gen_modartxml.py` | 生成/核对 `Mod.Art.xml`；改写既有文件时结果落到 `workspace/gen/`，由 AI 用文件编辑工具写入工程（退出码 2 打印待写入清单） | 新增或改了 XLP/Artdef 时 `--check` |
+| `gen_modartxml.py` | 生成/核对 `Mod.Art.xml`；`--ensure-*` 做增量接线（只加不删，自闭合容器自动展开，同名多 library 逐个处理）；工程完全没有 Art.xml 时可创建（无美术工程拒绝）；改写既有文件时结果落到 `workspace/gen/`，由 AI 用文件编辑工具写入工程（退出码 2 打印待写入清单） | 新增或改了 XLP/Artdef 时先 `--ensure-*`，再 `--check` |
 | `make_workshop_preview.py` | **工坊预览图生成**（Lanczos 逐级减半 + unsharp，默认 512×512）；**已达标成品直通不二次缩放**；`--qa` 出锐度/振铃指标 | 出/换工坊封面 `image.png`（第九·补节） |
 | `iconify_text.py` | **文本图标化**：按中文关键词给游戏文本插 `[ICON_x]`（幂等防重复、保编码换行），并用**官方图标全表 + 工程 Icons XML** 校验图标名；`--audit` 只查悬空图标名；`--write` 改写既有文本时结果落到 `workspace/gen/`，由 AI 用文件编辑工具写入工程（退出码 2 打印待写入清单） | 批量给文本加图标、或**排查「图标不显示」**（见第十·补节） |
 

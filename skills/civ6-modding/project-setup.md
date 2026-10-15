@@ -173,16 +173,17 @@ UnitPanel, MinimapPanel, DiplomacyRibbon, InGameTopOptionsMenu, WorldTracker, Wo
 
 ```xml
 <Criteria id="MyCriteria">
-    <ConfigurationValueMatches>
-        <Group>Game</Group>
-        <ConfigurationId>GAMEMODE_MY_MODE</ConfigurationId>
-        <Value>1</Value>
-    </ConfigurationValueMatches>
-    <ModInUse>A3F42CD4-...</ModInUse>
-    <ModInUse inverse="1">073b6367-...</ModInUse>   <!-- .civ6proj only -->
-    <RuleSetInUse>RULESET_EXPANSION_2</RuleSetInUse>
-    <GameCoreInUse>Expansion2</GameCoreInUse>
-    <LeaderPlayable>Players:Expansion2_Players::LEADER_MY_LEADER</LeaderPlayable>
+  <ConfigurationValueMatches>
+    <Group>Game</Group>
+    <ConfigurationId>GAMEMODE_MY_MODE</ConfigurationId>
+    <Value>1</Value>
+  </ConfigurationValueMatches>
+  <ModInUse>A3F42CD4-...</ModInUse>
+  <ModInUse inverse="1">073b6367-...</ModInUse>
+  <!-- inverse="1" 只在 .civ6proj CDATA 可用 -->
+  <RuleSetInUse>RULESET_EXPANSION_2</RuleSetInUse>
+  <GameCoreInUse>Expansion2</GameCoreInUse>
+  <LeaderPlayable>Players:Expansion2_Players::LEADER_MY_LEADER</LeaderPlayable>
 </Criteria>
 ```
 
@@ -223,8 +224,8 @@ MSBuild-style XML. Mod metadata + actions + criteria + file/folder tree for the 
     <AssemblyName>MyMod</AssemblyName>
     <RootNamespace>MyMod</RootNamespace>
 
-    <AssociationData><![CDATA[ ... ]]></AssociationData>
     <LocalizedTextData><![CDATA[ ... ]]></LocalizedTextData>
+    <AssociationData><![CDATA[ ... ]]></AssociationData>
     <ActionCriteriaData><![CDATA[ ... ]]></ActionCriteriaData>
     <FrontEndActionData><![CDATA[ ... ]]></FrontEndActionData>
     <InGameActionData><![CDATA[ ... ]]></InGameActionData>
@@ -243,6 +244,65 @@ MSBuild-style XML. Mod metadata + actions + criteria + file/folder tree for the 
 </Project>
 ```
 
+### 动作块排版规范（硬性）
+
+五个 CDATA 块一律**一层两空格、一元素一行**展开，禁止把动作、参数或文件名挤在同一行。
+规则只有一个目的：让「一次加载行为的起始符号与结束符号」「在什么前提下加载了哪些文件」
+在文本编辑器里直接可见。行数不设上限，可读性优先。
+
+机械校验：
+
+```powershell
+python "<skills>/civ6-modding/scripts/check_proj_layout.py" <工程根目录或 .civ6proj>
+```
+
+退出码 0 通过 / 1 有排版问题 / 2 参数或文件错误。**每次改动 `.civ6proj` 之后必须跑一次。**
+脚本只读，不提供 `--fix`。
+
+| 块 | 检查口径 |
+|---|---|
+| `<InGameActionData>` / `<FrontEndActionData>` / `<ActionCriteriaData>` | 全部规则 |
+| `<AssociationData>` / `<LocalizedTextData>` | 只查「一行一个元素」；其 +4 层级的自然排版不在本规范内 |
+
+六条规则：
+
+1. **一行只出现一个元素。** `</UpdateText><UpdateText …>` 这类拼接一律拆成两行。
+   手工拆行最常见的失误是把闭标签吞掉：只写出开标签，闭标签留在上一行被覆盖，
+   块结构当场断裂，要到整文件 XML 解析时才报错。
+2. **缩进每层加两个空格。** 闭标签与对应开标签同缩进，块闭标签与块开标签同缩进。
+3. **结构行宽 ≤ 120 字符**；单个完整叶子元素（`<Tag>文本</Tag>`）豁免，自然语言无法拆分。
+4. **块的两端独占一行**：首行 `<Tag><![CDATA[<Wrapper>`，末行 `</Wrapper>]]></Tag>`，
+   与 `<PropertyGroup>` 的其他子元素同缩进（本工程为四个空格）。块内注释独占一行。
+5. **参数与文件各自独占一行**：`<Properties>` 的 `<Context>` / `<LoadOrder>`、
+   `<ConfigurationValueMatches>` 的 `<ConfigurationId>` / `<Group>` / `<Value>`、
+   以及每个 `<File>` / `<Criteria>` / `<ModInUse>` 均逐行展开。
+6. **块顺序**：`<LocalizedTextData>` 置于五个 CDATA 块之首（紧跟 `<CompatibleVersions>`）——
+   它承载 `<Name>` / `<Teaser>` / `<Description>` 的本地化文本，与元数据相邻便于对照。
+   其余四块（`<AssociationData>` / `<ActionCriteriaData>` / `<FrontEndActionData>` / `<InGameActionData>`）
+   的相对顺序不影响构建：派生 `.modinfo` 的段落顺序由 `tools/modinfo_build.py` 固定为
+   Properties → Dependencies → ActionCriteria → FrontEndActions → InGameActions → LocalizedText → Files。
+
+```xml
+<!-- ✓ 合规 -->
+<InGameActionData><![CDATA[<InGameActions>
+  <UpdateDatabase id="RGN_Maritime_Adapt">
+    <Properties>
+      <LoadOrder>26000</LoadOrder>
+    </Properties>
+    <Criteria>Maritime</Criteria>
+    <File>Mod_Adaptation/Maritime/Maritime_Adapt_RGN.sql</File>
+  </UpdateDatabase>
+</InGameActions>]]></InGameActionData>
+```
+
+> **重排是纯空白改动**：除缩进与换行外不得改动任何字符。改完必须验证
+> ① 整文件 XML 良构；② 每个 CDATA 块与改动前**逐节点语义等价**；③ 用重排后的 proj 与
+> 重排前的 proj 各派生一次 `.modinfo`（`tools/modinfo_build.py`），两者应逐字节相同 ——
+> 派生结果相同即证明重排对构建零影响；④ `check_proj_content.py` 仍报闭合。
+
+> **改写通道**：脚本只读不写。工程文件的每一次改动都由 AI 用文件编辑工具完成
+> （铁律见 `../SKILL.md`「工程文件写入铁律」），故本规范不提供自动重排脚本。
+
 ### CDATA blocks — what each one carries
 
 | Block | Required | Carries | Auto-loaded? |
@@ -257,10 +317,8 @@ MSBuild-style XML. Mod metadata + actions + criteria + file/folder tree for the 
 
 ```xml
 <AssociationData><![CDATA[<Associations>
-  <Dependency type="Dlc" title="Expansion: Gathering Storm"
-              id="4873eb62-8ccc-4574-b784-dda455e74e68" />
-  <Reference type="Dlc" title="Expansion: Gathering Storm"
-              id="4873eb62-8ccc-4574-b784-dda455e74e68" />
+  <Dependency type="Dlc" title="Expansion: Gathering Storm" id="4873eb62-8ccc-4574-b784-dda455e74e68" />
+  <Reference type="Dlc" title="Expansion: Gathering Storm" id="4873eb62-8ccc-4574-b784-dda455e74e68" />
 </Associations>]]></AssociationData>
 ```
 
@@ -273,8 +331,14 @@ MSBuild-style XML. Mod metadata + actions + criteria + file/folder tree for the 
         <zh_Hans_CN>我的模组标题</zh_Hans_CN>
         <zh_Hant_HK>我的模組標題</zh_Hant_HK>
     </Text>
-    <Text id="LOC_MYMOD_MOD_TEASER"><en_US>Teaser</en_US><zh_Hans_CN>副标题</zh_Hans_CN></Text>
-    <Text id="LOC_MYMOD_MOD_DESCRIPTION"><en_US>Description.</en_US><zh_Hans_CN>描述。</zh_Hans_CN></Text>
+    <Text id="LOC_MYMOD_MOD_TEASER">
+        <en_US>Teaser</en_US>
+        <zh_Hans_CN>副标题</zh_Hans_CN>
+    </Text>
+    <Text id="LOC_MYMOD_MOD_DESCRIPTION">
+        <en_US>Description.</en_US>
+        <zh_Hans_CN>描述。</zh_Hans_CN>
+    </Text>
 </LocalizedText>]]></LocalizedTextData>
 ```
 
@@ -286,14 +350,21 @@ MSBuild-style XML. Mod metadata + actions + criteria + file/folder tree for the 
     <LeaderPlayable>Players:Expansion2_Players::LEADER_MY_LEADER</LeaderPlayable>
     <RuleSetInUse>RULESET_EXPANSION_2</RuleSetInUse>
   </Criteria>
-  <Criteria id="Expansion2"><GameCoreInUse>Expansion2</GameCoreInUse></Criteria><!-- ⚠ 只可用于 InGame 动作；FrontEnd 恒不成立（gotchas.md §74） -->
-  <Criteria id="HD"><ModInUse>521b8777-0977-4859-a5ee-3e411a732e5c</ModInUse></Criteria>
+  <Criteria id="Expansion2">
+    <GameCoreInUse>Expansion2</GameCoreInUse>
+  </Criteria>
+  <!-- ⚠ 只可用于 InGame 动作；FrontEnd 恒不成立（gotchas.md §74） -->
+  <Criteria id="HD">
+    <ModInUse>521b8777-0977-4859-a5ee-3e411a732e5c</ModInUse>
+  </Criteria>
   <Criteria id="NoOtherMod">
     <ModInUse inverse="1">66685738-4d78-4c73-874a-055e5d24d86a</ModInUse>
   </Criteria>
   <Criteria id="Monopolies_Mode">
     <ConfigurationValueMatches>
-      <ConfigurationId>GAMEMODE_MONOPOLIES</ConfigurationId><Group>Game</Group><Value>1</Value>
+      <ConfigurationId>GAMEMODE_MONOPOLIES</ConfigurationId>
+      <Group>Game</Group>
+      <Value>1</Value>
     </ConfigurationValueMatches>
   </Criteria>
 </ActionCriteria>]]></ActionCriteriaData>
@@ -304,35 +375,51 @@ MSBuild-style XML. Mod metadata + actions + criteria + file/folder tree for the 
 ```xml
 <InGameActionData><![CDATA[<InGameActions>
   <UpdateDatabase id="MyData">
-    <Properties><LoadOrder>200</LoadOrder></Properties>
+    <Properties>
+      <LoadOrder>200</LoadOrder>
+    </Properties>
     <Criteria>Expansion2</Criteria>
     <File>Data/Buildings_MyMod.sql</File>
     <File>Data/Civilization_MyMod.sql</File>
   </UpdateDatabase>
   <UpdateDatabase id="MyModifiers">
-    <Properties><LoadOrder>999999</LoadOrder></Properties>
+    <Properties>
+      <LoadOrder>999999</LoadOrder>
+    </Properties>
     <Criteria>Expansion2</Criteria>
     <File>Data/Modifiers_MyMod.sql</File>
   </UpdateDatabase>
   <UpdateText id="Text">
-    <Properties><LoadOrder>30000</LoadOrder></Properties>
+    <Properties>
+      <LoadOrder>30000</LoadOrder>
+    </Properties>
     <File>Text/Text_MyMod.xml</File>
   </UpdateText>
-  <UpdateColors id="Colors"><File>Data/Colors_MyMod.sql</File></UpdateColors>
-  <UpdateIcons id="Icons"><File>Data/Icons_MyMod.xml</File></UpdateIcons>
+  <UpdateColors id="Colors">
+    <File>Data/Colors_MyMod.sql</File>
+  </UpdateColors>
+  <UpdateIcons id="Icons">
+    <File>Data/Icons_MyMod.xml</File>
+  </UpdateIcons>
   <AddGameplayScripts id="Scripts">
-    <Properties><LoadOrder>600001</LoadOrder></Properties>
+    <Properties>
+      <LoadOrder>600001</LoadOrder>
+    </Properties>
     <File>Scripts/Lua_MyMod.lua</File>
   </AddGameplayScripts>
   <AddUserInterfaces id="MyUI">
-    <Properties><Context>InGame</Context></Properties>
+    <Properties>
+      <Context>InGame</Context>
+    </Properties>
     <File>UI/MyPanel.xml</File>
   </AddUserInterfaces>
   <ImportFiles id="Import">
     <File>UI/MyPanel.lua</File>
     <File>ImportFiles/CityBannerManager_MyMod.lua</File>
   </ImportFiles>
-  <UpdateArt id="Art"><File>(Mod Art Dependency File)</File></UpdateArt>
+  <UpdateArt id="Art">
+    <File>(Mod Art Dependency File)</File>
+  </UpdateArt>
 </InGameActions>]]></InGameActionData>
 ```
 
@@ -363,11 +450,21 @@ MSBuild-style XML. Mod metadata + actions + criteria + file/folder tree for the 
 
 ```xml
 <FrontEndActionData><![CDATA[<FrontEndActions>
-  <UpdateDatabase id="Config"><File>Data/Config_MyMod.sql</File></UpdateDatabase>
-  <UpdateIcons id="Icons_Config"><File>Data/Icons_MyMod.xml</File></UpdateIcons>
-  <UpdateColors id="Colors_Config"><File>Data/Colors_MyMod.sql</File></UpdateColors>
-  <UpdateText id="Text_Config"><File>Text/Text_Config_MyMod.sql</File></UpdateText>
-  <UpdateArt id="Art"><File>(Mod Art Dependency File)</File></UpdateArt>
+  <UpdateDatabase id="Config">
+    <File>Data/Config_MyMod.sql</File>
+  </UpdateDatabase>
+  <UpdateIcons id="Icons_Config">
+    <File>Data/Icons_MyMod.xml</File>
+  </UpdateIcons>
+  <UpdateColors id="Colors_Config">
+    <File>Data/Colors_MyMod.sql</File>
+  </UpdateColors>
+  <UpdateText id="Text_Config">
+    <File>Text/Text_Config_MyMod.sql</File>
+  </UpdateText>
+  <UpdateArt id="Art">
+    <File>(Mod Art Dependency File)</File>
+  </UpdateArt>
 </FrontEndActions>]]></FrontEndActionData>
 ```
 
@@ -505,7 +602,7 @@ Hand-friendly XML with a single `<Mod id="GUID" version="V">` root.
 | Criteria 反选 | Must pre-define `X_Disabled` criteria listing the mod | `<ModInUse inverse="1">GUID</ModInUse>` directly |
 | 文件清单 | `<Files><File>X</File>` | `<ItemGroup><Content Include="X"><SubType>Content</SubType></Content>` (IDE-only) |
 | 文件夹切片 | none | `<ItemGroup><Folder Include="Path"/></ItemGroup>` (IDE-only) |
-| Art | `<UpdateArt>` 引用 cooker 产出的 `.dep`；build via ModBuddy | 无任何条目——`.Art.xml` 不注册、不排除、不出现在 `.civ6proj`；**新增/修改 XLP/Artdef 后重跑** `art\gen_modartxml.py <projectRoot> --check`（见 art-pipeline.md） |
+| Art | `<UpdateArt>` 引用 cooker 产出的 `.dep`；build via ModBuddy | 无任何条目——`.Art.xml` 不注册、不排除、不出现在 `.civ6proj`；**新增/修改 XLP/Artdef 后重跑** `art\gen_modartxml.py <projectRoot> --check`；增量接线用 `--ensure-consumer` / `--ensure-library` / `--ensure-required`（见 art-pipeline.md）。两侧归属：**段内有内容的那一侧就必须挂 `<UpdateArt>`**（含 FrontEnd，前端同样按 `.dep` 加载图标与美术）；`.dep` 是独立可分发载荷，官方 `DLC\ScoutCat` 即「无 `.Art.xml` 只有产物」的形态，见 `civ6-art-reference/reference/cook-layer.md` §1.6 |
 | Build footer | none | `<Import Project="$(MSBuildLocalExtensionPath)Civ6.targets" />` (REQUIRED) |
 
 ---
@@ -642,10 +739,18 @@ ModBuddy 工程属性页有一个 **`Custom Properties`** 面板（`Civ6.Project
 
 ```xml
 <FrontEndActionData><![CDATA[<FrontEndActions>
-  <UpdateDatabase id="Config"><File>Data/Config_MyMod.sql</File></UpdateDatabase>
-  <UpdateColors id="Colors_Config"><File>Data/Colors_MyMod.sql</File></UpdateColors>
-  <UpdateIcons id="Icons_Config"><File>Data/Icons_MyMod.xml</File></UpdateIcons>
-  <UpdateText id="Text_Config"><File>Text/Text_Config_MyMod.sql</File></UpdateText>
+  <UpdateDatabase id="Config">
+    <File>Data/Config_MyMod.sql</File>
+  </UpdateDatabase>
+  <UpdateColors id="Colors_Config">
+    <File>Data/Colors_MyMod.sql</File>
+  </UpdateColors>
+  <UpdateIcons id="Icons_Config">
+    <File>Data/Icons_MyMod.xml</File>
+  </UpdateIcons>
+  <UpdateText id="Text_Config">
+    <File>Text/Text_Config_MyMod.sql</File>
+  </UpdateText>
   <UpdateArt id="Art" />
 </FrontEndActions>]]></FrontEndActionData>
 ```
@@ -655,7 +760,9 @@ ModBuddy 工程属性页有一个 **`Custom Properties`** 面板（`Civ6.Project
 ```xml
 <InGameActionData><![CDATA[<InGameActions>
   <AddUserInterfaces id="UI">
-    <Properties><Context>InGame</Context></Properties>
+    <Properties>
+      <Context>InGame</Context>
+    </Properties>
     <File>UI/MyPanel.xml</File>
   </AddUserInterfaces>
   <ImportFiles id="Import">
@@ -663,25 +770,35 @@ ModBuddy 工程属性页有一个 **`Custom Properties`** 面板（`Civ6.Project
     <File>UI/MyPanel.lua</File>
   </ImportFiles>
   <UpdateDatabase id="Types">
-    <Properties><LoadOrder>200</LoadOrder></Properties>
+    <Properties>
+      <LoadOrder>200</LoadOrder>
+    </Properties>
     <File>Data/Buildings_MyMod.sql</File>
     <File>Data/Civilization_MyMod.sql</File>
     <File>Data/Units_MyMod.sql</File>
     <!-- 其余类型文件，不含 Config/Colors/Icons -->
   </UpdateDatabase>
   <UpdateDatabase id="Modifiers">
-    <Properties><LoadOrder>600005</LoadOrder></Properties>
+    <Properties>
+      <LoadOrder>600005</LoadOrder>
+    </Properties>
     <File>Data/Modifiers_MyMod.sql</File>
   </UpdateDatabase>
   <UpdateText id="Text">
-    <Properties><LoadOrder>200</LoadOrder></Properties>
+    <Properties>
+      <LoadOrder>200</LoadOrder>
+    </Properties>
     <File>Text/Text_MyMod.sql</File>
   </UpdateText>
   <AddGameplayScripts id="Scripts">
     <File>Scripts/Lua_MyMod.lua</File>
   </AddGameplayScripts>
-  <UpdateIcons id="Icons"><File>Data/Icons_MyMod.xml</File></UpdateIcons>
-  <UpdateColors id="Colors"><File>Data/Colors_MyMod.sql</File></UpdateColors>
+  <UpdateIcons id="Icons">
+    <File>Data/Icons_MyMod.xml</File>
+  </UpdateIcons>
+  <UpdateColors id="Colors">
+    <File>Data/Colors_MyMod.sql</File>
+  </UpdateColors>
   <UpdateArt id="Art" />
 </InGameActions>]]></InGameActionData>
 ```

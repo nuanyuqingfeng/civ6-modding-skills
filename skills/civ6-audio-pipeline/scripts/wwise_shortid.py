@@ -69,6 +69,64 @@ def parse_bank(data: bytes):
 
 
 # ---------------------------------------------------------------------------
+# HIRC 父子关系：编译产物层级校验（语音停止路径）
+# ---------------------------------------------------------------------------
+# 字段偏移实测于四种 bank（教程瘦身模板 / Ragunna_Pack_Speech / Jinzhou_Danjin_Speech /
+# 本机成品 Speech）：CAkSound(type 2) 的 DirectParentID 在 body[25:29]，
+# CAkActorMixer(type 7) 在 body[11:15]。Sound 体长随编码器变化（46 字节起），
+# 但该偏移在内存与流式两种源上都成立。
+SOUND_PARENT_OFF = 25
+ACTORMIXER_PARENT_OFF = 11
+
+
+def hirc_parents(data: bytes):
+    """返回 (sounds, mixers)，各为 [(ulID, DirectParentID)]。"""
+    _, _, hirc, _ = parse_bank(data)
+    sounds, mixers = [], []
+    for typ, od in hirc:
+        if typ == 2 and len(od) >= SOUND_PARENT_OFF + 4:
+            sounds.append((struct.unpack('<I', od[:4])[0],
+                           struct.unpack('<I', od[SOUND_PARENT_OFF:SOUND_PARENT_OFF + 4])[0]))
+        elif typ == 7 and len(od) >= ACTORMIXER_PARENT_OFF + 4:
+            mixers.append((struct.unpack('<I', od[:4])[0],
+                           struct.unpack('<I', od[ACTORMIXER_PARENT_OFF:ACTORMIXER_PARENT_OFF + 4])[0]))
+    return sounds, mixers
+
+
+def voice_chain_report(data: bytes):
+    """校验语音 Sound 是否落在全局 Stop_Leader_Speech 的目标 ActorMixer 子树内。
+
+    游戏结束领袖语音时只播一个事件（官方 Speech.bnk 的 Stop_Leader_Speech，
+    事件 ShortID 1239530600），该事件只含一条 CAkActionStop，目标 ShortID 为
+    ANCHOR_2 (854467727)。引擎按该 ShortID 在 Actor-Mixer 树上定位，因此语音
+    Sound 必须是 ANCHOR_2 的后代，停止才会命中。返回 (ok, 报告 dict)。
+    """
+    sounds, mixers = hirc_parents(data)
+    parent_of = dict(mixers)
+    mixer_ids = set(parent_of)
+    bad_parent, not_under = [], []
+    for sid, pid in sounds:
+        if pid not in mixer_ids:
+            bad_parent.append((sid, pid))
+            continue
+        seen, cur, hit = set(), pid, False
+        while cur and cur not in seen:
+            if cur == ANCHOR_2:
+                hit = True
+                break
+            seen.add(cur)
+            cur = parent_of.get(cur, 0)
+        if not hit:
+            not_under.append((sid, pid))
+    ok = bool(sounds) and not bad_parent and not not_under
+    return ok, dict(sounds=len(sounds), mixers=len(mixers),
+                    parents=sorted({p for _, p in sounds}),
+                    anchors={str(a): (a in mixer_ids)
+                             for a in (ANCHOR_1, ANCHOR_2, ANCHOR_3)},
+                    bad_parent=bad_parent, not_under=not_under)
+
+
+# ---------------------------------------------------------------------------
 # 模板提取：从“已知可工作的语音银行”提取字节模板
 # ---------------------------------------------------------------------------
 class SpeechTemplates:

@@ -14,6 +14,7 @@
 | `scripts/audio_dedupe.py` | audio_dedupe.py -- 跨目录音频指纹查重: 同曲判定 -> 组内质量排序 -> 淘汰件备份隔离(默认只报告) | `python audio_dedupe.py <文件或目录...> [--auto 0.975 --env 0.985 --dur 0.99]` |
 | `scripts/audio_normalize.py` | audio_normalize.py -- Civ6 audio loudness normalization (ffmpeg loudnorm 2-pass, linear) | `python audio_normalize.py <文件或目录...> [--category voice\|quote\|bgm\|sfx] [--era ancient\|later] [--mode absolute\|relative\|shortterm] [--i <目标LUFS>] [--out DIR] [--filelist F]` |
 | `scripts/audio_pack.py` | audio_pack.py - ShortID 注册表 + 纯 Python bank 结构实验（历史独立打包器内化） | `python audio_pack.py scan<br>[实验] python audio_pack.py speechbank <wav目录> --out <Audio目录> [--bank 名] [--template 模板bnk]` |
+| `scripts/bank_output.py` | bank_output.py -- Wwise 生成产物 (GeneratedSoundBanks/Windows) 的落盘后处理 | `python bank_output.py --normalize-eol <GeneratedSoundBanks/Windows 目录>` |
 | `scripts/build_combination_bank.py` | build_combination_bank.py -- 组合式 bank 构建器（乐队/分层音频专用） | `python build_combination_bank.py --proj <工程目录> --bank <Bank名>       --stems a.wav b.wav c.wav d.wav --codes C,D,H,L [--prefix Play_] [--dry]` |
 | `scripts/ensure_template.py` | ensure_template.py -- 模板自适应保障 | `python ensure_template.py [--to <目录>] [--repo https://github.com/dwughjsd/Civ6_Modding_Textbook]` |
 | `scripts/leader_timeline.py` | leader_timeline.py -- 领袖 2D 行为资产(.ast)的语音时间线自动配置 | `python leader_timeline.py patch <ast路径\|目录> --media <语音wav目录\|文件...> [--pad 0.5] [--map 槽位关键字=事件名 ...] [--dry]（另一子命令：check <ast路径\|目录>）` |
@@ -27,7 +28,7 @@
 | `scripts/wwise_shortid.py` | wwise_shortid.py - WWise ShortID 核心规律 + 纯 Python bank 打包核心库。 | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/wwise_wire.py` | wwise_wire.py -- Wwise 工程直改工具 (Wwise 2015.x, Yuni 谱系工程实测) | `扫描   python wwise_wire.py <工程目录> --scan<br>接线   python wwise_wire.py <工程目录> --wire <BANK名> [--events-wu <名称>]` |
 
-共 17 个脚本。
+共 18 个脚本。
 
 ## 第三方依赖（非标准库）
 
@@ -85,6 +86,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 ③ 正式打包  Wwise Vorbis（scripts/new_bank_project.py / build_combination_bank.py）
 ④ 接线改名  scripts/music_wire.py / wwise_wire.py（用户 GUI 导入保存后的增量接线也走这里）
 ⑤ 注册      scripts/register_to_mod.py
+            重建 bank 后：先不带 --prune 拷媒体 → AI 落位侧车 → 再带 --prune 清孤儿（顺序见 SKILL.md §3 注）
 ```
 
 ### 边界

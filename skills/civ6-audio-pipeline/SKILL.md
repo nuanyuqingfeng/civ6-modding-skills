@@ -58,7 +58,7 @@ tags:
 | 类别 | Wwise 载体 | 全自动范围 | 必须人工(GUI)的步骤 |
 |---|---|---|---|
 | **sfx 普通音频**（UI音/单位音/环境音/台词单发） | 克隆模板→**新建独立 bank**（ActorMixer+Event+Bank 三个 work unit 直改） | 全流程：核验→均衡→导入→事件→生成→注册 | 无（触发端 Lua/DB 由后续接线需求决定） |
-| **voice 领袖语音** | 教程模板的 Speech 工作单元（语言夹本地化） | 核验→均衡(-21LUFS/单声道)→导入→事件改名与注册→生成→注册 | 教程 11 章：动画时间线 Sound 事件填写 + 动画 Duration 调整（素材编辑器 Timeline Editor） |
+| **voice 领袖语音** | 教程模板的 Speech 工作单元（语言夹本地化）；`new_bank_project.py --category voice` 把语音容器增量挂到模板手调链 `id88602518 > id854467727 > id424381547` 之下 | 核验→均衡(-21LUFS/单声道)→导入→挂链→事件(裸名)→生成→注册 | 教程 11 章：动画时间线 Sound 事件填写 + 动画 Duration 调整（素材编辑器 Timeline Editor） |
 | **bgm 文明音乐** | 教程模板的 Interactive Music（时代容器/权重） | 核验→均衡(-28/-25LUFS/立体声/流式)→媒体替换→事件→生成→注册 | 教程 11 章：交互音乐布局里 ExitCustom 自定义时间戳、时代选曲权重、主题音乐时代配置 |
 
 > BGM/voice 的"人工步骤"在 GUI 里做完并保存后，回到本管线继续（事件/bank/注册仍由脚本完成）。
@@ -70,8 +70,21 @@ tags:
 文明音乐（BGM）按教程分为三组：
 
 1. **轮播背景音乐**：正常游玩时随机/按权重轮播的背景音乐。
-2. **外交背景音乐**：进入领袖外交界面时播放；按官方做法，**一个文明对应一首外交背景音乐**（`LeaderMusic_<Civ>` / `Play_Leader_Music_<Civ>`）。
+2. **外交背景音乐**：进入领袖外交界面时播放；按官方做法，**一个文明对应一首外交背景音乐**（`LeaderMusic_<Civ>` / `Play_Leader_Music_<Civ>`）。如需按时代细分，也可在 `LeaderMusic_<Civ>` 下按 4 个时代各放一首（每时代容器 1 项）。
 3. **主题音乐**：每次载入游戏时先播放当前时代的主题曲；建议按 4 个时代准备（远古/中古/工业/原子）。
+
+### 引擎侧接线（新文明必做，在 Wwise 之外）
+
+Wwise 侧把 bank 与事件（`Play_Music_<Civ>` / `Play_Leader_Music_<Civ>` 等）生成并注册后，
+**引擎还认不到这些事件**——每个新文明都要在 DB 与 artdef 各写一处：
+
+| 是否引入文明音乐 | `CivilizationAudioTags` | `ArtDefs/Civilizations.artdef` |
+|---|---|---|
+| 有自制 BGM | 写 `MusicOverride=1` | 建文明条目，`Audio` 子集合留空 |
+| 无自制 BGM（借用原版） | **不写** | 建文明条目，`Audio/Entry/XrefName` 填借用的原版文明名 |
+
+→ 判定与两个文件的完整写法见 **`civ6-modding` skill 的 `reference/civ-metadata.md` §六**；
+artdef 建好后必须同步 `*.Art.xml` 的五个消费者，否则 cook 静默丢弃。
 
 ### BGM 素材分类引导（skill 触发时必须执行）
 
@@ -105,14 +118,38 @@ BGM 制作触发时必须主动引导分类：
   - Industrial / Atomic：本时代主题曲 60，其余曲目（含延续曲）各 10。
 - ⚠️ **共享禁忌**：同一 `MusicSegment` 严禁在多个容器下以相同 GUID 声明——Wwise 只承认第一个父级，其余容器引用该段的播放项会被**静默丢弃**（实机复核）。跨容器复用必须生成全独立 GUID 副本（segment/track/AudioFileSource/clip/cue 全新）。
 
+### 脚本化重建 IMH（媒体替换式）
+
+"媒体替换"不必在 GUI 里做：以**模板自身的 XML 块为原型**逐块替换（容器壳/段落/叶子播放项克隆后改名换 ID），
+schema 元素（`ConvertedFileIDList` / `ExitCustom` / `TransitionList` / `MusicTrackSequence` / `GridFrequencyPreset`）
+随克隆自动继承。**禁止从零拼 IMH**——手写段落极易漏 schema 元素，漏一项 Wwise 就可能整工程拒载。
+要点：
+
+- `<AudioSourceRef>` 必须引用本段 `AudioFileSource` 的 **GUID**（不是 ShortID）；
+- `ConvertedFileIDList/<File ID>` 就是生成产物 `<ID>.wem` 的文件名——写死即与工程自洽，ID 从 `state/id_registry.json` 避让分配；
+- 时代池按 §1.5 轮播机制排（"上一时代的一半"取确定性的前半 `[:（n+1)//2]`）；权重按 §1.5 权重机制写；
+- `LeaderMusic_<Civ>` 不写 `Volume`（§2.5）；外交背景音乐按 §1.5「一个文明一首」，Leader 容器每时代容器各 1 项、权重 100；
+- ExitCustom 停止点用 `music_wire.py fade` 的淡出算法从实测 WAV 求；
+- **容器内主题副本命名 `<CIV>_Theme_<Era>`**（本时代副本用本时代名、延续的上一时代副本用上一时代名），
+  `music_wire.py weights` 才能按 `theme`+时代关键字识别出主题并给 50/60。
+
 ## 2. 预命名规范（用户整理素材时约定，脚本按此路由）
 
 - 文件名 = 事件名主体（去扩展名），**只用 ASCII 字母数字下划线**。
+- **防重口径（前缀剥离法）**：名字 = `<引擎/类别前缀>_<主体>`，**唯一标记（作者/项目码）必须落在"主体"里**——
+  引擎会自行拼接/剥离类别前缀（文明音乐事件 = `<动作>_Music_<CIV 内部名去 CIVILIZATION_>`；领袖派生名 = `LEADER_<X>_<后缀>`），
+  主体自带唯一码即可"剥离前缀后仍全局唯一"；**唯一码是这种"自带"的做法，不是某个固定字面量**（本机现用 `_QYQXP` 只是作者码的取值）。
+  例：`CIVILIZATION_HETHEREAU_QYQXP` → `Play_Music_HETHEREAU_QYQXP`；`LEADER_MINT_QYQXP` → `MINT_QYQXP`。
+  这条只管**事件名**（引擎按名哈希寻址）；bank/容器/段落等对象名不参与引擎寻址（按 ID 解析），
+  命名只需满足本管线自己的识别约定（如 §1.5 的 `<CIV>_Theme_<Era>`）。
 - sfx：`<前缀>_SFX_<用途>_<序号>.wav` 或任意稳定名；事件自动生成 `Play_<名>` / `Stop_<名>` 成对。
-- voice：按教程惯例 `<前缀>_<场景>`（如 `FELI_JK_FIRST_MEET_A`）；同名事件改名由 `wwise_wire.py --rename-event` 批量完成。
+- voice：自定事件名按 `<CIV 码>_<领袖码>_<场景>_<字母>`（先例 `RGN_RCC_*` / `SNZ_VDYT_*` / `BS_CML_*`，本机 `HTR_MINT_*`）；
+  同名事件改名由 `wwise_wire.py --rename-event` 批量完成。
+  - **事件名即 `.ast` 的 `m_FXName`**（裸名，无 `Play_` 前缀），`.ast` 与 bank `IncludedEvents` 必须逐一对应（先例 `Ragunna_Pack` 即如此）。
+  - **不生成 `Stop_` 事件**：领袖语音的停止由引擎全局动作承担，见 `references/mechanism.md` §6.1a。
 - bgm（文明音乐）按三组命名：
   - 轮播背景音乐：`<CIV>_<时代>_Ambient<序号>.wav`（如 `Feline_Ancient_Ambient1`）；
-  - 外交背景音乐：`<CIV>_Diplo.wav`（一个文明一首，如 `RAGUNNA_Diplo.wav`）；
+  - 外交背景音乐：`<CIV>_Diplo.wav`（一个文明一首，如 `RAGUNNA_Diplo.wav`；按时代细分时用 `<CIV>_<时代>_Diplo.wav`）；
   - 主题音乐：`<CIV>_<时代>_Theme.wav`（如 `Feline_Medieval_Theme.wav`）。
   - 事件沿用模板 `Play_Music_<CIV>` / `Play_Leader_Music_<CIV>` 等既有命名。
 - **素材池阶段豁免**：查重/分区/响度整备阶段保留原始曲名（用户需辨认曲目）并输出 assignment 清单；进入 ③ 导入 Wwise 前才改上述规范名。
@@ -120,11 +157,16 @@ BGM 制作触发时必须主动引导分类：
 
 ## 2.5 响度策略（校准基准 + 组内相对均衡）
 
-- **绝对响度**：（`references/calibration.json`）：voice **-21** / quote **-23.5** / BGM 远古 **-28** / BGM 后世 **-25** / **sfx 普通音频默认 -27** LUFS（乐队多轨叠加实测确认，接近远古 BGM -28 且多轨并播整体更平衡）。已知替代风格：BS 系热母带（BGM ≈ -12，已入游戏验证），沿用该家族风格时用 `--i` 覆盖。
+- **绝对响度**：（`references/calibration.json`）：voice **-21** / quote **-23.5** / BGM 远古 **-28** / BGM 后世 **-25** / **外交界面音乐 diplo -25** / **sfx 普通音频默认 -27** LUFS（乐队多轨叠加实测确认，接近远古 BGM -28 且多轨并播整体更平衡）。已知替代风格：BS 系热母带（BGM ≈ -12，已入游戏验证），沿用该家族风格时用 `--i` 覆盖。
+- **外交界面音乐（diplo）**：与后世 BGM 同为 **-25 LUFS**，靠素材自身响度达成；`LeaderMusic_<Civ>` 容器**不写 `Volume` 属性**。教程模板在容器上带 -8 dB 偏移，照抄会让外交界面比正常游玩明显偏轻。`--category diplo` 即按此档（`audio_normalize.py` 输出立体声、`audio_check.py` 按 -25 判定）。
 - **数据来源（基准的出处）**：脚本读的生效值是 `references/calibration.json`；该文件的基准由 `references/calibration_raw.json`（原始响度实测记录）推导而来 —— 改基准或复核某个数值时两个文件对照着看。
 - **BGM 时代响度分配（2026-09 用户定案）**：`-28`/`-25` 按**素材所属时代**分，不按播放时代分——远古时代素材**全部 -28**（远古主题曲即贯穿全局的主题曲，后续时代容器复用时保持 -28，**无需另做 -25 副本**）；中世纪及之后时代的素材**全部 -25**（含各自主题曲）。轮播曲跨时代复用只体现在 Wwise 容器权重配置，不改变文件响度。
 - **⚠ 同一播放容器内严禁混排两档基准**：上一条是**文件层**的规则；而轮播机制（§1.5）会把**本时代素材 + 上一时代素材**塞进同一个时代容器，-28 与 -25 一旦同容器就是**逐曲跳 3 dB 台阶**（听感：忽大忽小）。定案：**同一容器（同一时代列表）内所有曲目必须落在同一基准上**——沿用 -28/-25 时代分配时，跨时代复用进同一容器的素材也要归到该容器的基准。验收靠 `audio_check.py` 的 `[POOL]` 段，它会直接点出"疑似双基准混排 + 两簇中心与间隔"（实机教训：某 BGM 包 97 首被判出 低簇 n=24 中心 -28.00 / 高簇 n=73 中心 -25.00 / 间隔 2.80 dB）。
 - **短时响度锚（`--mode shortterm`）**：轮播池（BGM 轮播组）**不要用纯积分 LUFS 对齐**。积分响度相等 ≠ 听感相等——实测同一批交付 BGM 积分极差仅 **3.10 dB** 时，中位短时响度 S_p50 极差高达 **7.60 dB**，`corr(LRA, S_p50−I) = -0.555`（动态越大的曲子，典型听感越低于它自己的积分值）。`--mode shortterm` 以 S_p50 为目标、用**恒定增益**（`volume=` 滤波器）对齐，结构上不可能产生泵浦，并自带真峰夹紧（不越 `--tp`）。
+- **模式选择判据（先量再选）**：`shortterm` 不是无条件更优——先量批内 `S_p50 − I` 的离散再定：
+  - 离散小（≤ ~2 dB）→ 用 **`absolute`**：积分全部落在目标值（`[POOL]` 无告警）、残余 S_p50 极差也低于阈值；
+  - 离散大（§2.5a 的 7.60 dB 案例）→ `shortterm` 是唯一能把听感拉平的手段（代价：积分极差变大，
+    `[POOL]` 会报"积分响度不齐"的 WARN，属预期取舍）。
 - **绝对响度与原始音量无关**：loudnorm 归一化 = 响度测量 + 增益补偿，最终 LUFS 与原始峰值/响度无关。原始差异只影响：① 原始过静提增益后可能触发限幅/底噪放大；② 已削波素材降增益也救不回失真。处理后音色与相对动态不变。
 - **相对响度**（`--mode relative`）：同批次同用途素材以**批内中位数为锚**，`target_i = 锚点 + retain×(原值−锚点)`，retain 默认 **0.10**（90% 矫正、保留 10% 偏差）——从高往低压但不强行平均，保留排序与动态。（15 轨批实测：散布 3.2dB → 残余 0.3dB）
 - **声道中间件（实测修复 3dB 偏差）**：`audio_normalize.py` 对“源声道数 ≠ 目标声道数”的素材（如 voice 收立体声录屏、bgm 收单声道源）会先自动生成目标声道 PCM 中间件，再对中间件做 loudnorm 测量与均衡，保证测量对象 = 最终输出对象。（旧流程成品整体低 3dB，脚本内已闭环，无需人工预降混。）
@@ -199,23 +241,28 @@ python $S/music_features.py <文件或目录...> [--out features.csv] [--cache D
 ```bash
 S=<skill目录>/scripts
 # ① 核验（格式/采样率/声道/时长/LUFS 体检表；--fix 自动转 48k/单双声道；--json 程序化验收）
-python $S/audio_check.py <素材路径...> --category sfx|voice|bgm [--era ancient|later] [--fix] \
+python $S/audio_check.py <素材路径...> --category sfx|voice|bgm|diplo [--era ancient|later] [--fix] \
     [--filelist F] [--jobs N] [--json PATH]
+# ①b 编译产物层级验收（语音 bank 必跑, 期望 PASS; 见 mechanism.md §6.1a）
+python $S/audio_check.py --bank-hierarchy <bank.bnk> --voice-chain
 # ② 响度均衡（absolute=校准基准；relative=组内 90% 矫正保留 10% 偏差；就地写+备份；--out 模式统一 .wav 后缀）
-python $S/audio_normalize.py <素材路径...> --category voice|quote|bgm|sfx [--era later] \
+python $S/audio_normalize.py <素材路径...> --category voice|quote|bgm|diplo|sfx [--era later] \
     [--mode absolute|relative] [--retain 0.10] [--i -23] [--out DIR] [--filelist F] [--jobs N]
 # ②a 仅保留有效部分：ShortID 注册表刷新（speechbank/plainbank 为实验，正式交付勿用）
 python $S/audio_pack.py scan
-# ③ 正式打包统一走 Wwise Vorbis：建 Wwise 工程并导入（sfx 全自动；voice/bgm 用 --template 指向用户已复制好的教程模板副本）
-python $S/new_bank_project.py --proj <新工程目录> --bank <名>_Bank --media <素材目录> [--template <模板工程>] [--generate]
+# ③ 正式打包统一走 Wwise Vorbis：建 Wwise 工程并导入
+#    sfx 全自动; voice 加 --category voice 挂模板语音链; bgm 用 --template 指向完整模板副本
+python $S/new_bank_project.py --proj <新工程目录> --bank <名>_Bank --media <素材目录> \
+    [--category sfx|voice] [--speech-name 名] [--template <模板工程>] [--generate]
 # ④ 接线/改名/生成（用户 GUI 导入保存后的增量接线也走这里）
 python $S/wwise_wire.py <工程目录> --scan
 python $S/wwise_wire.py <工程目录> --wire <bank名> --events-wu <Events工作单元名> [--only 子串] [--dry-run]
 python $S/wwise_wire.py <工程目录> --rename-event 旧名 新名
 python $S/wwise_wire.py <工程目录> --generate <bank名>
 # ⑤ 注册到 mod（自动定位 P1 源工程 .civ6proj / P2 运行目录 .modinfo，双向同步）
+#    重建 bank 后媒体 ID 会重排, 加 --prune 清孤儿 wem 并同步剔除两份清单的失效条目
 python $S/register_to_mod.py --bank-dir <工程>\GeneratedSoundBanks\Windows --bank <名>_Bank \
-    --find <mod名> [--section ingame|global|menu] [--dry-run]
+    --find <mod名> [--section ingame|global|menu] [--prune] [--dry-run]
 # ⑤b 注册后语义校验（每次注册/交付前必跑, 期望 PASS）
 python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 
@@ -224,6 +271,12 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 > ⑤ 改写既有 `.civ6proj` / `.modinfo` 时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对
 > 路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。`.bnk` / `.wem`
 > 属可再生二进制资产，仍由脚本直写。
+
+> ⚠ **媒体 ID 重建后 `--prune` 走两遍**：① 不带 `--prune` 跑一遍（`.bnk`/`.wem` 直写，侧车入位 `workspace/gen`）
+> → ② AI 落位侧车 → ③ 再带 `--prune` 跑一遍（清旧 wem 与两份清单的失效条目）。
+> 顺序不可颠倒：`--prune` 以**磁盘上 bank xml 的引用**为孤儿判据，侧车未落位时会误判。
+> P2 运行目录不在任何含 `.civ6proj` 的工程树内时，用
+> `--mod <P2目录> --civ6proj <P1 .civ6proj> --project-root <P2目录>` 让两侧都能落位。
 
 > **`.bak_*` 口径**：素材与母带类文件（Wwise 工程工作单元、音频素材）在就地写入前会留
 > 一份 `.bak_*` 副本：`audio_check.py --fix` → `.bak_check`、`audio_normalize.py` → `.bak_norm`、
@@ -239,18 +292,19 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 | `ncm_decrypt.py` | 网易云 ncm 解密→裸流（AES+RC4 变体密钥流，klen=128 布局变体兼容）；ffprobe 复核通过且显式 `--delete-source` 才删源；`--selftest` 往返自检 | anonymous5l/ncmdump 参考实现（taurusxin 复刻版）+ 本地 54/54 实证 |
 | `audio_dedupe.py` | 跨目录音频指纹查重：判同/疑似/人声伴奏守卫，质量排序，淘汰件备份隔离（默认只报告） | 本地双库查重实证（129 文件 / 32 对判同，已知歌曲对校准阈值） |
 | `music_features.py` | BPM/响度/动态/亮度/打击密度特征 + 唤醒度评分与四时代分位建议（CSV） | 本地 97 首 BGM 时代分区实证 |
-| `audio_check.py` | RIFF/PCM/48k/声道/LUFS 体检 + `--fix` 容器纠正；**LRA / S_p50 / 同池离散度 `[POOL]`（含"双基准混排"判定）**；`--lra-cap/--pool-spread`；`--filelist/--jobs/--json`；UTF-8 子进程解码/输出自适应 | 教程 11 章最佳实践 + 中文 Windows 实测修复 + 2026-09 泵浦/听感离散度事故（§2.5a） |
+| `audio_check.py` | RIFF/PCM/48k/声道/LUFS 体检 + `--fix` 容器纠正；**LRA / S_p50 / 同池离散度 `[POOL]`（含"双基准混排"判定）**；`--lra-cap/--pool-spread`；`--filelist/--jobs/--json`；**`--bank-hierarchy <bnk> [--voice-chain]` 编译产物层级验收**；UTF-8 子进程解码/输出自适应 | 教程 11 章最佳实践 + 中文 Windows 实测修复 + 2026-09 泵浦/听感离散度事故（§2.5a）+ 语音停止路径实证（§6.1a） |
 | `audio_normalize.py` | loudnorm 双遍响度均衡；**幂等闸 `--idem`、线性闸（预检拒写 + `normalization_type` 后验，拒写时退出码 2）、短时锚 `--mode shortterm`**；`--out` 统一 .wav 后缀；`--filelist/--jobs`；声道中间件自动对齐测量/输出 | 教程：语音-21、远古 BGM-28、后世-25 + 立体声语音实测修复 + `af_loudnorm.c init()` 线性判定 + 2026-09 重复归一事故（§2.5a） |
-| `new_bank_project.py` | 克隆模板→独立 bank 工程（导入+work unit 注入+可选生成） | 教程模板工程 + 本地实证 XML 模式 |
-| `wwise_wire.py` | scan/wire/rename/generate | 本地 mod 实战交付验证 |
-| `register_to_mod.py` | `.civ6proj`（CDATA UpdateAudio + Content 条目）与 `.modinfo`（UpdateAudio + Files）双注册 + Banks.ini；改写既有 `.civ6proj` / `.modinfo` 时结果入位 `workspace/gen/` 由 AI 写入工程；`--verify` 语义校验（UpdateAudio 只指向 ini） | 本地双案例（.civ6proj 与 .modinfo 各一）实证 |
+| `new_bank_project.py` | 克隆模板→独立 bank 工程（导入+work unit 注入+可选生成）；`--category voice` 把语音容器增量挂到模板手调链 `id88602518 > id854467727 > id424381547` 之下、事件用裸名且不生成 `Stop_`；生成后自动归一 Wwise 侧车换行 | 教程模板工程 + 本地实证 XML 模式 + 语音停止路径实证（§6.1a） |
+| `wwise_wire.py` | scan/wire/rename/generate；生成后自动归一 Wwise 侧车换行 | 本地 mod 实战交付验证 |
+| `register_to_mod.py` | `.civ6proj`（CDATA UpdateAudio + Content 条目）与 `.modinfo`（UpdateAudio + Files）双注册 + Banks.ini；**`--prune` 清理媒体 ID 重建后的孤儿：删音频目录内不被任何 bank xml 引用的 `<ID>.wem`，并同步剔除 `.civ6proj` Content / `.modinfo` Files 的失效条目**（重建后按 §3 注走两遍）；改写既有 `.civ6proj` / `.modinfo` 时结果入位 `workspace/gen/` 由 AI 写入工程；`--verify` 语义校验（UpdateAudio 只指向 ini）；双侧落位用 `--mod <P2> --civ6proj <P1 .civ6proj> --project-root <P2>` | 本地双案例（.civ6proj 与 .modinfo 各一）实证 + 媒体 ID 重建漂移实证 |
 | `build_combination_bank.py` | 组合式 bank：N 分轨 + 全组合 Play/Stop 多动作事件（引擎并轨，UI 零改动） | Wwise 多动作事件 schema |
-| `music_wire.py` | fade 淡出检测 / ExitCustom 自动落点 / 时代权重（教程规则） | 模板 MusicCue CueType=2 + Weight=Real64 实测 |
+| `music_wire.py` | fade 淡出检测 / ExitCustom 自动落点 / 时代权重（教程规则）；主题项按 `theme`+时代关键字识别（容器内主题副本命名为 `<CIV>_Theme_<Era>`）；外交曲容器单曲给 100 | 模板 MusicCue CueType=2 + Weight=Real64 实测 |
 | `leader_timeline.py` | 领袖 .ast 时间线：6 槽位 FXName + Duration=语音时长+pad（三案例路由）；改写既有 `.ast` 时结果入位 `workspace/gen/` 由 AI 写入工程 | civ6-asset-forge → reference/leader-2d.md 模板 ast 实测 schema |
 | `unregister_audio.py` | 移除音频注册（modinfo UpdateAudio/Files、civ6proj CDATA/Content）；改写既有 `.civ6proj` / `.modinfo` / `_Banks.ini` 时结果入位 `workspace/gen/` 由 AI 写入工程。`--purge-source --bank <名>` 另删源工程里该 bank 的产物（三件套 + 它 xml 引用的 wem）并清掉 ini 里该 bank 的行；未给 `--bank` 只列目录内容供确认 | 与 register 互逆 |
 | `ensure_template.py` | 模板缺失时询问用户并从教程仓库拉取，写 local_paths.json 自适应 | 致谢章节同源 |
-| `wwise_shortid.py` | WWise ShortID 核心库：FNV-1 事件哈希 / .bnk 解析 / 字节模板重建 / ID 注册表 / WAV→WEM 编码 | 内化自早期独立打包库（8/8 事件 ID 与成品一致实证）；ShortID 机制有效，编码部分不用于交付 |
+| `wwise_shortid.py` | WWise ShortID 核心库：FNV-1 事件哈希 / .bnk 解析 / 字节模板重建 / ID 注册表 / WAV→WEM 编码；**`hirc_parents()` / `voice_chain_report()` 解析 HIRC 父子关系，校验语音 Sound 是否在全局停止目标 ActorMixer 子树内** | 内化自早期独立打包库（8/8 事件 ID 与成品一致实证）+ 四份 bank 父子偏移实测；ShortID 机制有效，编码部分不用于交付 |
 | `audio_pack.py` | ShortID 注册表刷新（scan，有效）+ 实验性纯 Python bank（speechbank/plainbank，⚠️ ADPCM 已实证废弃，勿交付） | 内化自早期独立打包 CLI；正式交付走 Wwise Vorbis |
+| `bank_output.py` | **库** + 命令行：Wwise 生成产物换行后处理。WwiseCLI 的 `.txt` 出 CRLF、`.xml` 出 LF，与工程口径（`.txt` LF / `.xml` CRLF）相反，生成后调 `normalize_generated_eol()` 就地归一（幂等） | WwiseCLI 实际产物换行实测 |
 | `paths.py` | **库**（无独立子命令，被本 skill 其余脚本 `import`）：读 skill 根目录 `local_paths.json`，支持 `CIV6_*` 环境变量覆盖；直接运行 = 打印本机路径配置自查（各键缺失时会指出写哪、写什么） | 本 skill 自有的路径解析器（**不是** `civ6-modding/tools/_paths.py`） |
 
 ## 5. 注册产物基线（缺一不可）
@@ -270,6 +324,7 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 - **Lua（仅 UI 上下文）**：`UI.PlaySound('Play_X')`；**无 StopSound API，停止=播放 `Stop_X` 事件**（媒体协调器 MediaStop 模式：播放前 MediaStop→Play_→Stop_ 转换播放）；**PlaySound 不报错只代表 Lua 调用未抛错，不等于已发声**——无声排查按「事件已请求 → 银行已加载 → 总线/声音对象可用 → 实际发声」逐层确认（银行未加载时，运行银行表中该项为 0xffffffff）。
 - **数据库列直接填事件名**：`UnitCommands.Sound` / `UnitOperations.Sound` / `Buildings.QuoteAudio` / `TechnologyQuotes|CivicQuotes|LeaderQuotes|Features.QuoteAudio` / `GreatWorks.Audio`（引擎自动加 Play_ 前缀）/ `TurnSegments.Sound` / `RandomEvent_Presentation.Sound`。
 - **artdef**：Audio 集合（3D 位置音）+ 教程时间线 Sound 事件（领袖语音）。
+- **领袖语音的停止**：由引擎全局动作 `Stop_Leader_Speech`（官方 `Speech.bnk` 内，事件 ShortID 1239530600，单条 `CAkActionStop`，目标 ActorMixer **854467727**）承担，**mod 侧不写 `Stop_` 事件**。因此语音 Sound 必须挂在模板链 `id88602518 > id854467727 > id424381547` 之下，否则停止落空（症状：语音一句叠一句）。验收：`audio_check.py --bank-hierarchy <bank.bnk> --voice-chain`。详见 `references/mechanism.md` §6.1a。
 - 测试：civ6-tuner（FireTuner TCP:4318）执行 `UI.PlaySound('Play_X')`。
 
 ## 7. 已知边界
@@ -277,6 +332,8 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 - 交互音乐容器内部的素材不自动接线（由容器/switch 管理），`--scan` 会列出但需人工确认。
 - 语言本地化语音按 `语言/<同名bank>` 约定铺文件；语言列表见教程模板的 Speech 工作单元。
 - `.civ6proj` 的 Cooked 产物由 ModBuddy 构建生成，本管线只改源工程与运行目录，不模拟 ModBuddy 构建。
+  但 **`.ast`（领袖时间线）与 artdef 类改动必须 cook 才生效**（BLP 由 XLP 烘焙、`.dep` 由 ArtDef 轮写出）——
+  用 `civ6-modding/tools/cook_assets.py <工程根>`（无 GUI 重放 ModBuddy 的三分区 cook，含产物对账；复跑一次应 0 变化）。
 - **纯 Python ADPCM 打包已废弃**（原因与影响面见 §2.8）。
 - 纯 Python 路径不做多语言 per-language bank。
 

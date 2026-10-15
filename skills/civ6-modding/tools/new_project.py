@@ -292,13 +292,6 @@ def civ6proj(name, guid, pguid, title, teaser, desc, author, has_config, has_tex
     <AssemblyName>{name}</AssemblyName>
     <RootNamespace>{name}</RootNamespace>
 
-    <AssociationData><![CDATA[<Associations>
-  <Dependency type="Dlc" title="Expansion: Gathering Storm"
-              id="{gs}" />
-  <Reference type="Dlc" title="Expansion: Gathering Storm"
-              id="{gs}" />
-</Associations>]]></AssociationData>
-
     <LocalizedTextData><![CDATA[<LocalizedText>
     <Text id="{title_loc}">
         <en_US>{title}</en_US>
@@ -307,6 +300,13 @@ def civ6proj(name, guid, pguid, title, teaser, desc, author, has_config, has_tex
     <Text id="{teaser_loc}"><en_US>{teaser}</en_US><zh_Hans_CN>{teaser}</zh_Hans_CN></Text>
     <Text id="{desc_loc}"><en_US>{desc}</en_US><zh_Hans_CN>{desc}</zh_Hans_CN></Text>
 </LocalizedText>]]></LocalizedTextData>
+
+    <AssociationData><![CDATA[<Associations>
+  <Dependency type="Dlc" title="Expansion: Gathering Storm"
+              id="{gs}" />
+  <Reference type="Dlc" title="Expansion: Gathering Storm"
+              id="{gs}" />
+</Associations>]]></AssociationData>
 
     <ActionCriteriaData><![CDATA[<ActionCriteria>
   <Criteria id="Expansion2"><GameCoreInUse>Expansion2</GameCoreInUse></Criteria>

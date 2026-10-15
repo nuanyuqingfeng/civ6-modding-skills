@@ -48,6 +48,16 @@ Civ6 有**两个独立数据库**：Config（FrontEnd 用）与 Gameplay（InGam
 > - **两个不同文件**：SQL 类往往内容不同（Config 侧写 `Players/PlayerItems`，Gameplay 侧写 `Civilizations/Leaders`）→ **各写一个文件、各挂一个动作**。
 > 两种形态的共同点是：**动作必须有两个，且分属两个容器**。
 
+### 2.1.1 统一管理规则（所有 proj 加载动作适用）
+
+**两条铁律**：
+1. FrontEnd 与 InGame 是两个独立容器（独立数据库、独立 LocalizedText、独立资源清单），一个 `<FrontEndActions>` / `<InGameActions>` 里的加载动作只影响它所在的那一端。
+2. 一个文件或内容是否要两端各注册一次，唯一判据是「这一端有没有引用它」：任何被该端数据表、Lua、UI 或资源链引用的文件都必须在该端注册，两端都引用就两端各注册一次。
+
+适用范围覆盖 `.civ6proj` 里全部加载动作，包括但不限于 `UpdateDatabase`、`UpdateColors`、`UpdateIcons`、`UpdateText`、`UpdateArt`、`UpdateAudio`、`ImportFiles`、`AddGameplayScripts`、`AddUserInterfaces`。`UpdateDatabase` 按表归属走 Config 专属 / Gameplay 专属；`Colors` / `Icons` / `Text` / Art 这类内容相同、两端都显示的内容走「同一文件两端各列一次」。
+
+**校验规则**：每个动作组按端单独校验。InGame 侧用 `DebugGameplay.sqlite` 查 gameplay 引用，FrontEnd 侧用 `DebugConfiguration.sqlite` 查 `Players` / `PlayerItems` 与 Config 文本、配色、图标；任一端的校验结果都不能代表另一端。校验清单必须覆盖该端注册的全部加载动作及其对应文件，不能只查 `Data/` 或只查 `Text/`。
+
 ### 2.2 `criteria` 不一致
 
 `.civ6proj` 里 `criteria` 是**动作的子元素**，**一个动作可写多个 `<Criteria>`**（全部成立才加载 = 逻辑与），不支持 `;`/`,` 分隔。

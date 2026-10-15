@@ -401,6 +401,90 @@ def artdefs_match_source(root: str, out_root: str) -> list:
     return bad
 
 
+def art_xml_checks(root: str, art_xml: str, out_root: str, mod_name: str) -> tuple:
+    """Art.xml 专项校验，返回 (说明行, 失败项)。
+
+    ① 身份闭合：<id><name> 是 .dep 名的来源，与 ModName / 工程目录名 / .civ6proj stem 对齐
+    ② 副本闭合三元：<ModName>.dep ↔ .modinfo 的 <UpdateArt><File> ↔ 顶层 <Files>
+    ③ 前后端齐备（裁决 B）：.modinfo 里动作段有内容的那一侧必须挂 <UpdateArt>
+
+    第 ③ 条的依据：前端（选择 mod / 额外内容、图鉴、选人）同样按 .dep 加载图标与美术；
+    该侧有内容却不挂 <UpdateArt> 时，前端美术静默空白，游戏不报错。
+    """
+    lines: list = []
+    fails: list = []
+    root_el = load_art_spec(art_xml)
+    name_el = root_el.find("./id/name")
+    art_name = name_el.get("text") if name_el is not None else None
+    lines.append("<id><name> = %s（.dep 名取自此处）" % art_name)
+
+    # ① 身份闭合：Art.xml 名 ↔ ModName ↔ 工程目录名 / .civ6proj stem
+    dir_name = os.path.basename(root.rstrip("\\/"))
+    projs = glob_ci(root, "*.civ6proj")
+    stem = os.path.splitext(os.path.basename(projs[0]))[0] if len(projs) == 1 else None
+    if art_name != mod_name:
+        lines.append("  注意   <id><name> 与本次 cook 用的 ModName 不一致：%s vs %s"
+                     % (art_name, mod_name))
+    if stem and art_name and art_name != stem:
+        lines.append("  惯例   <id><name>（%s）与 .civ6proj 文件名（%s）不一致；"
+                     "不强制，但保持一致可避免 .dep 与 Mods 目录名分裂" % (art_name, stem))
+    if dir_name and art_name and art_name != dir_name:
+        lines.append("  惯例   工程目录名（%s）与 <id><name>（%s）不一致" % (dir_name, art_name))
+
+    # ② / ③ 副本侧：.dep 名与 .modinfo 的闭合
+    #   .modinfo 文件名取自工程名（ModBuddy 的 MSBuildProjectName），与 <id><name> 可能不同
+    #   （实测 BlackShores_Buling_Anke.modinfo ↔ Black_Shores_Buling_Anke.dep），故按后缀查找。
+    infos = glob_ci(out_root, "*.modinfo") if os.path.isdir(out_root) else []
+    if not infos:
+        lines.append("副本 .modinfo：未产出（尚未部署，跳过闭合三元与前后端齐备检查）")
+        return lines, fails
+    if len(infos) > 1:
+        lines.append("副本 .modinfo：%d 份（异常）" % len(infos))
+    modinfo_path = infos[0]
+    lines.append("副本 .modinfo：%s" % os.path.basename(modinfo_path))
+
+    try:
+        mroot = ET.fromstring(open(modinfo_path, encoding="utf-8-sig", errors="replace").read())
+    except ET.ParseError as error:
+        fails.append(".modinfo 不是良构 XML：%s" % error)
+        return lines, fails
+
+    # <UpdateArt> 下可能先有 <Criteria> 再是 <File>，正则按“紧邻 <File>”匹配会漏，
+    # 故一律用 ElementTree 取直接子元素（实测 BlackShores_Buling_Anke 因此被误判为缺失）。
+    arts = [f.text.strip() for el in mroot.iter("UpdateArt") for f in el.findall("File")
+            if (f.text or "").strip()]
+    if not arts:
+        fails.append(".modinfo 里没有任何 <UpdateArt>（美术与图标不会加载）")
+        lines.append("<UpdateArt>：缺失")
+    else:
+        lines.append("<UpdateArt><File> = %s" % ", ".join(dict.fromkeys(arts)))
+        declared = {(f.text or "").strip() for f in mroot.findall("./Files/File")}
+        for ref in dict.fromkeys(arts):
+            if not os.path.isfile(os.path.join(out_root, ref.replace("/", os.sep))):
+                fails.append("<UpdateArt> 指向 %s，但副本里没有该文件" % ref)
+            if ref != mod_name + ".dep":
+                fails.append("<UpdateArt> 指向 %s，<id><name> 派生应为 %s"
+                             % (ref, mod_name + ".dep"))
+            if ref not in declared:
+                fails.append(".modinfo 顶层 <Files> 未登记 %s（游戏报 did you forget to add it in <Files>?）"
+                             % ref)
+
+    # ③ 前后端齐备（裁决 B）：动作段有内容 → 该侧必须有 <UpdateArt>
+    for tag, side in (("FrontEndActions", "FrontEnd"), ("InGameActions", "InGame")):
+        section = mroot.find(tag)
+        if section is None:
+            lines.append("%s 段：不存在" % side)
+            continue
+        has_action = len(list(section)) > 0
+        has_art = section.find("UpdateArt") is not None
+        lines.append("%s 段：动作 %s / UpdateArt %s"
+                     % (side, "有" if has_action else "无", "有" if has_art else "无"))
+        if has_action and not has_art:
+            fails.append("%s 段有动作但缺少 <UpdateArt>；该侧有内容就必须加载全部所需（含 art）"
+                         % side)
+    return lines, fails
+
+
 def reconcile_art_xml(art_xml: str, inputs: dict) -> list:
     """与 .Art.xml 对账：实存的 artdef / XLP 包名是否都被声明。"""
     root = load_art_spec(art_xml)
@@ -514,13 +598,20 @@ def main() -> int:
     for line in rec:
         print("   %s" % line)
 
+    art_lines, art_fails = art_xml_checks(root, art_xml, out_root, mod_name)
+    print("Art.xml 专项：")
+    for line in art_lines:
+        print("   %s" % line)
+    for f in art_fails:
+        print("   FAIL %s" % f)
+
     if args.check:
         print()
         print("预计产物 %d 个（%s）" % (
             len(exp),
             "含 .dep 1 个" if any(c.mode == "ArtDef" for c in calls) else "纯 XLP 轮，不产 .dep"))
         print("CHECK 模式：未执行任何 cook，未写入任何文件。")
-        return 0
+        return 1 if art_fails else 0
 
     cook_cwd = os.path.join(root, "workspace", "tmp", "cook_cwd")
     logdir = os.path.join(cook_cwd, "logs")

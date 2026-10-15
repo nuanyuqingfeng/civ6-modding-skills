@@ -38,7 +38,7 @@
 | `release/scripts/build.ps1` | 构建非 Trimmed 版 Civ6WorkshopUploader（勿用 PublishTrimmed，会卡 PreparingContent） | `powershell -File build.ps1（内部 dotnet publish -c Release -r win-x64）` |
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） | `powershell -File clash_api.ps1 -Method GET -Path "/proxies" -OutFile resp.txt` |
 | `release/scripts/clash_proxy.py` | Clash Verge 代理节点测速与自动选优（上传工坊网络差时用） | `python clash_proxy.py [--url <工坊链接>] [--timeout 3000] [--max-workers 8]（测完自动选最优节点为 GLOBAL，无关闭开关）` |
-| `release/scripts/cleanup.ps1` | 删除临时上传工作区（真上传成功并验证后才跑）。三重守卫：仅在 $env:TEMP\civ6-ws\ 之下 / 工作区自身非 reparse point / 先摘内部链接再递归删——content 是 junction 时 Mods 副本不受影响 | `powershell -File cleanup.ps1 -Workspace $env:TEMP\civ6-ws\<ModName>` |
+| `release/scripts/cleanup.ps1` | 删除临时上传工作区（真上传成功并验证后才跑）。三重守卫：仅在工作区根之下（`ws_root`，与 make_workspace.ps1 同源解析；短/长名两种写法均已归一） / 工作区自身非 reparse point / 先摘内部链接再递归删——摘链用 `Directory.Delete`，不用 Remove-Item（PS 5.1 对跨卷 junction 会抛 NullReferenceException）；content 是 junction 时 Mods 副本不受影响 | `powershell -File cleanup.ps1 -Workspace <工作区路径>（长名或 8.3 短名均可）` |
 | `release/scripts/ensure_uploader.ps1` | ensure_uploader.ps1 —— 工坊上传器的"自适应保障"（与音频模板 ensure_template.py 同口径） | `powershell -File ensure_uploader.ps1                 # 只检查，缺就提示（exit 2）<br>powershell -File ensure_uploader.ps1 -Confirmed      # 允许联网 clone + 构建` |
 | `release/scripts/find_item_id.ps1` | 从本机 Steam 日志反查工坊条目 ID | `powershell -File find_item_id.ps1 -ModName <ModName>` |
 | `release/scripts/make_workspace.ps1` | 建工坊上传工作区（首选入口）：content 用 junction 指向 Mods 副本（不物理复制 751 MB）→ workshop.json → mod_id.txt → validate，幂等可重跑 | `powershell -File make_workspace.ps1 -ModDir <Mods/<ModName>> [-ItemId <工坊ID>] [-WsRoot <根>] [-Force] [-SkipValidate]` |
@@ -47,18 +47,22 @@
 | `release/scripts/verify.ps1` | 上传后经 Steam API 验证（比对 time_updated / hcontent_file，识别假成功） | `powershell -File verify.ps1 -ItemId <工坊条目ID>` |
 | `scripts/_lua_roles.py` | `.lua` 角色判定单一真源。 | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/_projwrite.py` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
+| `scripts/check_adjacency_text.py` | （无 docstring，待补） | `（见脚本 docstring）` |
 | `scripts/check_doc_anchors.py` | 跨上下文口径的文档指针一致性体检。 | `python check_doc_anchors.py [--skills <skills 根目录>]` |
 | `scripts/check_lua_context.py` | Lua 跨上下文体检 —— 找出「在另一个 Lua 上下文里根本调用不到」的写法。 | `python check_lua_context.py <工程根目录>` |
 | `scripts/check_lua_registration.py` | `.lua` 注册体检 —— 用「按角色判定」的规则找出真正不会被加载的脚本。 | `python check_lua_registration.py <工程根目录> [--modinfo <构建产物.modinfo>]` |
 | `scripts/check_pantry.py` | pantry 体检：`.tex` 位置 / 重名 / depot 库路径 / 非 ASCII / `.tex`↔`.dds` 配对 —— 开 AssetEditor / cook 前必跑。（注：其中 `m_SourceFilePath` 期望 `D:\desktop\<stem>.png` 这一条是**示例工程（作者 mod 工程）的约定**，不是 Civ6 通用规则；别的工程会命中 `[src-convention]` 告警，按你自己工程的约定判断即可。） | `python check_pantry.py --root <工程根> [--quiet]        # 注意：根目录只走 --root（不是位置参数），也没有贴图目录过滤选项` |
 | `scripts/check_proj_content.py` | 核对 .civ6proj 的 <Content Include> 清单与实际磁盘内容是否闭合。 | `python check_proj_content.py <工程根目录><br>python check_proj_content.py --root <工程根目录>     # 等价写法` |
+| `scripts/check_proj_layout.py` | 核对 .civ6proj 的 CDATA 动作块是否按「一元素一行」排版规范书写。 | `python check_proj_layout.py <工程根目录><br>python check_proj_layout.py <X.civ6proj>` |
 | `scripts/check_script_write_targets.py` | 工程文件写入体检：脚本只能新建工程文件，改写一律走 _projwrite 入位 workspace/gen。 | `python check_script_write_targets.py [--skills <skills 根目录>]` |
 | `scripts/check_sql_antipatterns.py` | SQL 语义反模式静态扫描 —— 抓「语法完全合法、但语义恒假/恒错」的写法。 | `python check_sql_antipatterns.py <工程根目录> [--glob *.sql]` |
 | `scripts/check_sql_exec.py` | 全工程 SQL 执行排查 —— 抓「整条语句报废」类错误（非法转义 / 字符错位）。 | `python check_sql_exec.py [--root <工程根目录>] [--base <基础库>]` |
+| `scripts/check_text_refs.py` | （无 docstring，待补） | `（见脚本 docstring）` |
 | `scripts/check_types_kinds.py` | Types.Kind 合法性检查 —— 复现游戏加载期的 `Invalid Reference on Types.Kind`。 | `python check_types_kinds.py [--root <工程根目录>] [--db <基础库>] [--dirs Data,Mod_Adaptation]` |
 | `scripts/clear_ae_cache.py` | 清除 AssetEditor 依赖缓存（可再生文件，按「备份规范」不备份、直接删）。 | `python clear_ae_cache.py [--mod <ModName>] [--dry-run]        # 动过贴图后必跑，否则 AssetEditor 结论是缓存假象` |
 | `scripts/normalize_eol.py` | 归一化文本文件换行：mod 工程按「原版分层铁律」，skill 仓库一律 LF（`--repo-skill`）。 | `python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）<br>python normalize_eol.py <工程目录> --fix           # 归一化（既有文件内容有变化时，改写结果落到 <工程>/workspace/gen/）` |
 | `scripts/rgn_validate_runner.mjs` | rgn_validate 离线执行器 v2 — 核心判定逻辑提取自 @dsh-external/dsh-rgn-tools 的 | `node rgn_validate_runner.mjs [目录=cwd] [文件模式=*.sql] [checkNaming=true] [--base <基础库>] [--static]` |
+| `scripts/test_rgn_scope_check.mjs` | rgn_validate --scope-check 回归测试：临时 git 仓库构造 baseline -> 误用改动 -> 恢复正确 | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/verify_trees.py` | Verify two directory trees are byte-identical (recursive SHA256 comparison). | `python verify_trees.py <dirA> <dirB>` |
 | `tools/_paths.py` | 本机 Civ6 关键路径解析（P1–P6），全 civ6-modding/tools 共用。 | `python _paths.py                          # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）
 python _paths.py --tool uploader            # 只打印某个外部工具的解析路径（供 shell 包装脚本调用）
@@ -79,7 +83,7 @@ python _paths.py --path mods                # 同上，取 P1-P6 路径键；未
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 66 个脚本。
+共 70 个脚本。
 
 ## 第三方依赖（非标准库）
 
