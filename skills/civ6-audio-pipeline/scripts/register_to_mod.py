@@ -390,7 +390,8 @@ def patch_civ6proj(civ6proj, srcdir, bank, audio_id, section, files, dry, prune=
     txt = raw.decode('utf-8-sig')
     nl = '\r\n' if '\r\n' in txt else '\n'
     if ('UpdateAudio id="%s"' % audio_id) not in txt:
-        ins = '\n      <UpdateAudio id="%s"><File>%s</File></UpdateAudio>' % (audio_id, rel_audio(ini_name))
+        ins = ('  <UpdateAudio id="%s">%s    <File>%s</File>%s  </UpdateAudio>%s'
+               % (audio_id, nl, rel_audio(ini_name), nl, nl))
         i = txt.find('</InGameActions>')
         assert i >= 0, 'civ6proj 缺 InGameActions CDATA'
         txt = txt[:i] + ins + txt[i:]
@@ -398,19 +399,18 @@ def patch_civ6proj(civ6proj, srcdir, bank, audio_id, section, files, dry, prune=
         print('  [CIV6PROJ] UpdateAudio 已存在, 跳过注入')
     need = [os.path.basename(f) for f in files
             if ('Include="Platforms\\Windows\\Audio\\%s"' % os.path.basename(f)) not in txt]
+    if ('Include="Platforms\\Windows\\Audio\\%s"' % ini_name) not in txt:
+        need.append(ini_name)
     if need:
-        items = []
-        for fn in need:
-            items += ['    <Content Include="Platforms\\Windows\\Audio\\%s">' % fn,
-                      '      <SubType>Content</SubType>',
-                      '    </Content>']
-        add = '\r\n'.join(items) + '\r\n'
-        lines = txt.split('\n')
+        add = ''.join('    <Content Include="Platforms\\Windows\\Audio\\%s">%s'
+                      '      <SubType>Content</SubType>%s'
+                      '    </Content>%s' % (fn, nl, nl, nl) for fn in need)
+        lines = txt.split(nl)
         idx = next((k for k, l in enumerate(lines) if '<Content Include="Platforms' in l), None)
         if idx is None:
             idx = next(k for k, l in enumerate(lines) if '<Content Include="' in l)
-        lines.insert(idx, add.rstrip('\r\n'))
-        txt = '\n'.join(lines)
+        lines.insert(idx, add.rstrip(nl))
+        txt = nl.join(lines)
     txt = prune_wem_entries(txt, keep_ids, 'content')
     if dry:
         print('  [DRY] civ6proj 将写入(若与原文不同):', civ6proj)
