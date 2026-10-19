@@ -23,7 +23,7 @@
 
 用法:
     python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）
-    python normalize_eol.py <工程目录> --fix           # 归一化（既有文件内容有变化时，改写结果落到 <工程>/workspace/gen/）
+    python normalize_eol.py <工程目录> --fix           # 归一化（既有文件内容有变化时，改写结果落到 <解决方案根>/workspace/gen/）
     python normalize_eol.py <工程目录> --fix --quiet
     python normalize_eol.py <工程目录> --only .lua,.xml
     python normalize_eol.py <工程目录> --exclude workspace,.git
@@ -119,7 +119,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="按原版换行分层铁律归一化文本文件")
     ap.add_argument("root", help="工程根目录")
     ap.add_argument("--fix", action="store_true",
-                    help="写入（默认只报告）：工程既有文件内容有变化时，改写结果落到 <工程>/workspace/gen/")
+                    help="写入（默认只报告）：工程既有文件内容有变化时，改写结果落到 <解决方案根>/workspace/gen/")
     ap.add_argument("--only", default=None,
                     help="只处理这些扩展名，逗号分隔（如 .lua,.xml）")
     ap.add_argument("--exclude", default=None,

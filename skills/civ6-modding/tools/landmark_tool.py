@@ -23,7 +23,7 @@
     python landmark_tool.py install  --bundle <manifest.json> --project <工程根> [--force] [--dry-run]
     python landmark_tool.py cook     --bundle <manifest.json> --sdk-assets X [--sdk <SDK 根>] --out <输出目录> [--project <工程根>]
 
-退出码：0 成功；1 结果含错误；2 用法/环境错误，或本次有改写被 guard 入位 workspace/gen。
+退出码：0 成功；1 结果含错误；2 用法/环境错误，或本次有改写被 guard 入位 <解决方案根>/workspace/gen。
 """
 from __future__ import annotations
 
@@ -203,7 +203,7 @@ def install_bundle(manifest_path: Path, project: Path, *, force: bool = False, d
         raise ValueError(f'工程目录不存在：{project}')
 
     def guarded(dest, text):
-        """既有文件有变化时由守卫入位 workspace/gen；返回值与 dest.write_text 相同。"""
+        """既有文件有变化时由守卫入位 <解决方案根>/workspace/gen；返回值与 dest.write_text 相同。"""
         write_project_file(str(dest), text.encode('utf-8'), str(project))
         return len(text)
 
@@ -318,7 +318,7 @@ def cook_bundle(manifest: Path, sdk_assets: Path, sdk: Path, output: Path, proje
     diagnosis. Each run uses a new directory, so old BLPs cannot fake success.
 
     --out 落在工程内时每份产物都交给守卫：工程里尚不存在的照常直写，既有文件有变化
-    则改写结果入位 workspace/gen。
+    则改写结果入位 <解决方案根>/workspace/gen。
     """
     report = verify_bundle(manifest, sdk_assets, project)
     if not report['ok']:

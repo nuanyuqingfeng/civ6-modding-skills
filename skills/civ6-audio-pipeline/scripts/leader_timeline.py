@@ -8,7 +8,7 @@ leader_timeline.py -- 领袖 2D 行为资产(.ast)的语音时间线自动配置
   patch <ast路径|目录> --media <语音wav目录|文件...> [--pad 0.5] [--map 槽位关键字=事件名 ...] [--dry]
   check <ast路径|目录>
 写入: .ast 属工程文件, 改写经 _projwrite 守卫; 既有 .ast 内容有变化时结果写到
-      <工程>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具写入工程 (退出码 2 并打印清单)
+      <解决方案根>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具写入工程 (退出码 2 并打印清单)
 路由(由 agent 按 SKILL.md 执行):
   ① 项目/工程内已有领袖 ast → 直接 patch
   ② 没有 → 跳过并在报告中说明

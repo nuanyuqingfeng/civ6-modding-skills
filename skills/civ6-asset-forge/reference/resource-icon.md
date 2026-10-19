@@ -183,7 +183,7 @@ python scripts/build_resource_icon.py --input <图案.png> --kind bonus|luxury [
 - 256 / 64 / FOW 三档在 BLP 内为未压缩：`Icons.blp` 由 33618944 B 增至 58166272 B。
 - 50 / 38 档与官方仍有差异：官方这两档的 `.dds` 自带 9 级 mip，本工程 cooker 在 `IsScalable=false` 下不打包，
   故这两档在 BLP 内无 mip；世界地图取图的是 256 档（`FindIconAtlas(iconName, 256)`）。
-- `gen_tex.py` 生成 `.tex` 时把 `m_CookParams` 写为空块；既有 `.tex` 内容有变化时改写结果落 `workspace/gen/`，
+- `gen_tex.py` 生成 `.tex` 时把 `m_CookParams` 写为空块；既有 `.tex` 内容有变化时改写结果落 `<解决方案根>/workspace/gen/`，
   不覆盖工程文件，照官方复刻的参数不会被静默清除。
 - **未经实机验证**：mip 链的收益按取样模型推算（本工程 64 档缩到 20px 时相邻 alpha 跳变 >200 的硬跳占比
   由 3.61% 降到 0.80%），实机效果待进游戏确认。

@@ -1,4 +1,4 @@
-# 工程文件写入守卫：新建直写，改写一律入位 workspace/gen
+# 工程文件写入守卫：新建直写，改写一律入位解决方案根 workspace/gen
 #
 # 铁律真源：civ6-modding/SKILL.md「工程文件写入铁律」。
 # 脚本可以新建工程文件；改写既有工程文件由 AI 用文件编辑工具完成。
@@ -10,13 +10,14 @@
 #   civ6-modding/art/_projwrite.py、civ6-modding/tools/_projwrite.py、
 #   civ6-modding/scripts/_projwrite.py、civ6-asset-forge/scripts/_projwrite.py、
 #   civ6-art-reference/scripts/_projwrite.py、civ6-audio-pipeline/scripts/_projwrite.py
+import glob
 import os
 
 STAGED = []
 
 DIRECT_EXTS = (".dds", ".tex", ".bnk", ".wem", ".wav")
 DIRECT_DIRS = ("Textures", "Platforms")
-# 这些扩展名即使落在 DIRECT_DIRS 之下也是文本，必须走 workspace/gen 交 AI 写入
+# 这些扩展名即使落在 DIRECT_DIRS 之下也是文本，必须走解决方案根 workspace/gen 交 AI 写入
 TEXT_EXTS = (".ini", ".xml", ".txt", ".sql", ".lua", ".json", ".xlp", ".artdef", ".ast", ".modinfo", ".civ6proj")
 
 
@@ -24,9 +25,21 @@ def _norm(path):
     return os.path.normcase(os.path.abspath(path))
 
 
+def solution_root(project_root):
+    """解决方案根：`.civ6sln` 所在的那一层。
+
+    ModBuddy 的两层布局里工程根是 `<解决方案根>/<ModName>/`，`.civ6sln` 在其上一层；
+    单层布局（`.civ6sln` 与 `.civ6proj` 同层）时就是工程根自身。
+    """
+    root = os.path.abspath(project_root)
+    if glob.glob(os.path.join(root, "*.civ6sln")):
+        return root
+    return os.path.dirname(root)
+
+
 def workspace_gen(project_root):
-    """改写结果的落点：<工程>/workspace/gen（已被 .gitignore 忽略）。"""
-    return os.path.join(os.path.abspath(project_root), "workspace", "gen")
+    """改写结果的落点：<解决方案根>/workspace/gen（工程核心文件夹之外，不入工程）。"""
+    return os.path.join(solution_root(project_root), "workspace", "gen")
 
 
 def is_direct(rel_path):
@@ -42,7 +55,7 @@ def write_project_file(target, data, project_root):
     """写入工程文件。
 
     返回 NEW（新建，已直写）、SAME（与既有一致，未动盘）、
-    OVERWRITE（可再生资产，已直写覆盖）、STAGED（改写结果落在 workspace/gen）。
+    OVERWRITE（可再生资产，已直写覆盖）、STAGED（改写结果落在解决方案根 workspace/gen）。
     """
     if isinstance(data, str):
         data = data.encode("utf-8")
@@ -76,8 +89,9 @@ def finish():
     if not STAGED:
         return 0
     print("")
-    print("以下工程文件已存在且内容有变化，改写结果已写到 workspace/gen/ 的同一相对路径下：")
-    for target, _ in STAGED:
+    print("以下工程文件已存在且内容有变化，改写结果已写到解决方案根 workspace/gen/ 的同一相对路径下：")
+    for target, out in STAGED:
         print("  %s" % target)
+        print("    -> %s" % out)
     print("请用文件编辑工具把改写结果写入上述工程文件。")
     return 2

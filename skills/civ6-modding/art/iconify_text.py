@@ -31,7 +31,7 @@ Civ6 文本里写 `[ICON_Science]` 会在游戏内渲染成图标。手工加很
     # 2) 预演：看会给哪些文本加什么图标（不写盘）
     python iconify_text.py <工程根> --check
 
-    # 3) 实际写入：新建直写；既有文本内容有变化时，改写结果落到 <工程>/workspace/gen/，
+    # 3) 实际写入：新建直写；既有文本内容有变化时，改写结果落到 <解决方案根>/workspace/gen/，
     #    由 AI 用文件编辑工具写入工程（退出码 2 并打印清单）
     python iconify_text.py <工程根> --write
 
@@ -533,7 +533,7 @@ def main() -> int:
             if not changed:
                 continue
             new_content = apply_entries(content, [e for e in entries if e["new"] != e["text"]])
-            # 写入走守卫：既有文本内容有变化时，改写结果入位 <工程>/workspace/gen。
+            # 写入走守卫：既有文本内容有变化时，改写结果入位 <解决方案根>/workspace/gen。
             # newline="" 防止 Windows 把已有 \r\n 变成 \r\r\n（原桌面版同款处理）
             write_project_file(p, new_content.encode(enc), args.root or os.path.dirname(p))
             written += 1

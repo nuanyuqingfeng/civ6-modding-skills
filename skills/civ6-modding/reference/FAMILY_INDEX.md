@@ -171,7 +171,7 @@ UTF-8 读写；不改编码/换行；PowerShell 先 `chcp 65001`；**查看中�
 ### 4.6 工程文件写入铁律（真源：`civ6-modding/SKILL.md`）
 
 **脚本可以新建工程文件，绝不允许改写工程文件。** 已有文件内容有变化时，脚本把结果写到
-`<工程>/workspace/gen/`，由 AI 用文件编辑工具写入工程。唯一例外是 `Textures/` 之下的贴图与
+`<解决方案根>/workspace/gen/`，由 AI 用文件编辑工具写入工程。唯一例外是 `Textures/` 之下的贴图与
 `.dds`/`.tex`/`.bnk`/`.wem`/`.wav` 这些可再生二进制资产（文件编辑工具写不出其字节）。
 
 实现通道是 `_projwrite.py`（六份逐字节相同的副本：`civ6-modding/art`、`civ6-modding/tools`、

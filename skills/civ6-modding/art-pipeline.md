@@ -46,7 +46,7 @@
             [--icons Data/Icons_RGN.xml] [--xlp XLPs/Icons.xlp] [--dry-run]
      它同时完成两件事：并入 IconTextureAtlases / IconDefinitions 行 + 给 XLP 补 UITexture 条目，
      并保留目标文件的 BOM / CRLF / 格式（只做行插入）；--dry-run 可先看将要插什么。
-     ★ 目标文件已存在且内容有变化时，改写结果落到 `<工程>/workspace/gen/` 的同一相对路径，
+     ★ 目标文件已存在且内容有变化时，改写结果落到 `<解决方案根>/workspace/gen/` 的同一相对路径，
        由 AI 用文件编辑工具写入工程对应路径；退出码 2 时打印待写入清单。
 → 注意 **新贴图必须登记进某个 `<m_ClassName text="UITexture"/>` 的 XLP**（本工程是 XLPs\Icons.xlp）。
      漏登记 = .dds 存在但不会被打进 UI/Icons 包，游戏里图标是空白。merge 工具会代劳。
@@ -60,7 +60,7 @@
      只做加法，不删除、不重排、不改写既有条目；自闭合容器会自动展开成对形式。
      全量核对仍用 `--check`（差异需人工确认后才 `--write`；注意 --check 报的差异可能是**本次改动之前
      就存在的**，先看差异里有没有提到你这次新增的 XLP/artdef，没有就别顺手 --write）。
-     ★ 工程内已有 Mod.Art.xml 且内容有变化时，改写结果落到 `<工程>/workspace/gen/` 的同一相对
+     ★ 工程内已有 Mod.Art.xml 且内容有变化时，改写结果落到 `<解决方案根>/workspace/gen/` 的同一相对
        路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单
 → 校验：python <skill>\art\verify_icon_atlas.py <projectRoot> [--vanilla "<官方 Icons 目录>"]
      （第八节「完成标准」的可执行版，交付前必跑，见第十节）
@@ -119,7 +119,7 @@ Python 3 + **Pillow**（`make_atlas.py` 组版）、**numpy + scipy**（`normali
 > 用于尚未迁移的旧工程；某工程报 `*_Suk` 贴图时，跑
 > `migrate_suk_namespace.py <工程根> --write` 一次性迁移（会同时改文件名、`.tex` 内部
 > 三字段、XLP 与 SQL 引用；`.tex` 直接覆盖，XLP 与 SQL 这类既有工程文件的内容有变化时，
-> 改写结果落到 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，
+> 改写结果落到 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，
 > 脚本在退出码 2 时打印待写入清单）。**全部工程迁移完成后，该常量与 `is_fallback()` 里的
 > 那次判断可一并删除。** 迁移后**必须重新 cook**（新名字＝新 BLP 条目）。
 
@@ -584,7 +584,7 @@ XML 字符引用转义，文件仍是合法 XML。**不要手工把 `.tex` 另�
    `gen_modartxml.py <projectRoot> --ensure-consumer "<consumer>=<artdef>"`（库用 `--ensure-library`，
    依赖包用 `--ensure-required`）；确认工程整体仍自洽再跑 `--check` 全量核对，差异人工确认后才 `--write`
    （新增 XLP/Artdef 不接线 = 最常见的漏项）。三条路径改写既有 Mod.Art.xml 时，结果都落到
-   `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，
+   `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，
    脚本在退出码 2 时打印待写入清单；
 6. 未动用户未确认的任何素材文件；
 7. **各尺寸档的边缘抗锯齿质量合格**：`verify_icon_atlas.py <projectRoot> --edge-qa` 必须通过
@@ -821,7 +821,7 @@ python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png
 > 377 个工程自定义图标名 + 36 个图集名。
 
 **批量加图标**用 `--check` 预演 → `--write` 写入。工程内既有文本文件的内容有变化时，改写结果
-落到 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在
+落到 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在
 退出码 2 时打印待写入清单。两个必须知道的实现要点：
 
 - **幂等**：关键词左侧若已是同名 `[ICON_x]`（允许夹空白、大小写不敏感）则跳过，重复跑不叠加；

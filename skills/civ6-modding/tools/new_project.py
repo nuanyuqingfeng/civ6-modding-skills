@@ -13,20 +13,20 @@ r"""new_project.py — 从零生成 Civ6 ModBuddy 工程骨架（`.civ6proj` + �
 ## 生成物（★ 两层布局，与 ModBuddy 一致）
 
 ```
-<目标目录>/                      ← 工作区根（.civ6sln 在这一层）
+<解决方案根>/                  ← .civ6sln 在这一层
 ├── <Name>.civ6sln             解决方案文件
-└── <Name>/                     ← 工程根（.civ6proj 在这一层）
-    ├── <Name>.civ6proj        骨架（5 个 CDATA 块 + ItemGroup 清单）
-    ├── .gitignore             「默认忽略一切、只放行源文件」白名单
-    ├── .gitattributes         换行分层铁律（资产类 LF、代码/配置类 CRLF）
-    ├── Data/<Name>_Data.sql   gameplay 数据库占位（UpdateDatabase）
-    ├── Data/Config_<Name>.sql 前端/配置占位（FrontEnd UpdateDatabase）
-    ├── Text/Text_<Name>.sql   游戏内文本占位（UpdateText）
-    └── workspace/             ★ 除 mod 成品以外的一切都放这里
-        ├── _tools/build.py    构建与校验入口（check/modinfo/stage/verify/deploy）
-        ├── gen/               派生产物（.modinfo、Mods 暂存副本）
-        ├── src/               设计文档、资料等源材料
-        └── tmp/               一次性中间产物
+├── <Name>/                    ← 工程核心文件夹（.civ6proj 在这一层）
+│   ├── <Name>.civ6proj        骨架（5 个 CDATA 块 + ItemGroup 清单）
+│   ├── .gitignore             「默认忽略一切、只放行源文件」白名单
+│   ├── .gitattributes         换行分层铁律（资产类 LF、代码/配置类 CRLF）
+│   ├── Data/<Name>_Data.sql   gameplay 数据库占位（UpdateDatabase）
+│   ├── Data/Config_<Name>.sql 前端/配置占位（FrontEnd UpdateDatabase）
+│   └── Text/Text_<Name>.sql   游戏内文本占位（UpdateText）
+└── workspace/                 ★ 中间产物一律落这里，不进工程核心文件夹
+    ├── _tools/build.py        构建与校验入口（check/modinfo/stage/verify/deploy）
+    ├── gen/                   派生产物（.modinfo、Mods 暂存副本、守卫入位的改写结果）
+    ├── src/                   设计文档、资料等源材料
+    └── tmp/                   一次性中间产物
 
 ```
 
@@ -34,10 +34,11 @@ r"""new_project.py — 从零生成 Civ6 ModBuddy 工程骨架（`.civ6proj` + �
 > 只建一层（把 .civ6proj 直接放目标目录）就没地方放 .civ6sln；多建几层（外层再套同名目录）
 > 则会让 `<源工程根>\<ModName>` 这条路径解析不到工程。**恰好两层，内层与 mod 同名。**
 
-> ★ **落盘边界**：工程根只放 mod 成品（Data/Text 里的 SQL·XML + .civ6proj 等）；构建产物
-> （.modinfo、Cooked/、Build/）不进工程根；其余一切（脚本、日志、文档、中间产物）都在
-> `workspace/`，它已被 .gitignore 忽略。日常迭代走 `build.py stage` + `verify`，产物全部
-> 落在 `workspace/gen/`，不碰游戏目录。
+> ★ **落盘边界**：工程核心文件夹（`<解决方案根>/<Name>/`）只放工程文件与处理后的成品素材
+> （Data/Text 里的 SQL·XML、.civ6proj、.gitattributes、美术源文件与成品贴图）；其余一切
+> （.modinfo、Cooked/、Build/、脚本、日志、文档、中间产物）都不进，全部落在解决方案根的
+> `workspace/`。日常迭代走 `build.py stage` + `verify`，产物全部落在
+> `workspace/gen/`，不碰游戏目录。
 
 > ★ **写入边界**：本工具只新建，绝不改写。目标工程目录已存在且非空即退出码 2，不写任何文件。
 
@@ -109,16 +110,13 @@ GITIGNORE = """# 默认忽略一切，只放行可管理的源文件
 !.gitignore
 !.gitattributes
 !*.civ6proj
-# .civ6sln 位于工作区根（工程根的上一层、仓库之外），不入库，故无白名单行
+# .civ6sln 与 workspace/ 位于解决方案根（工程核心文件夹的上一层、仓库之外），不入库
 !*.xlp
 !*.artdef
 !*.sql
 !*.xml
 !*.lua
 !*.md
-
-# 专用的 agent/素材工作区（中间产物、源素材，统一不入库）
-workspace/
 
 # 可再生的贴图（由脚本生成）
 *.tex
@@ -179,7 +177,7 @@ Global
 EndGlobal
 """
 
-# workspace/ 骨架：除 mod 成品以外的一切都落在这里（.gitignore 已忽略整个目录）
+# workspace/ 骨架：建在解决方案根，与工程核心文件夹并列（位于仓库白名单之外）
 WS_DIRS = ["_tools", "gen", "src", "tmp"]
 
 def w(path, text, eol):
@@ -419,10 +417,10 @@ def main() -> int:
 
     for d in dirs:
         os.makedirs(os.path.join(target, d), exist_ok=True)
-    # workspace/ 骨架：除 mod 成品以外的一切都落这里（.gitignore 已忽略整个目录）。
+    # workspace/ 骨架：落在解决方案根（.civ6sln 同层），不进工程核心文件夹。
     # 预建四个子目录，避免每个新工程都靠手搓 —— 手搓时最容易多套一层同名目录。
     for d in WS_DIRS:
-        os.makedirs(os.path.join(target, "workspace", d), exist_ok=True)
+        os.makedirs(os.path.join(root, "workspace", d), exist_ok=True)
 
     pguid = str(uuid.uuid4())
     w(proj, civ6proj(args.name, guid, pguid, display, args.teaser, args.description,
@@ -453,7 +451,7 @@ def main() -> int:
     # 位置推导），直接照搬即可，免得每个新工程各写一份、彼此分叉。
     tpl = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "workspace_build.py")
     if os.path.isfile(tpl):
-        w(os.path.join(target, "workspace", "_tools", "build.py"),
+        w(os.path.join(root, "workspace", "_tools", "build.py"),
           open(tpl, encoding="utf-8").read(), "lf")
     else:
         print("WARN 缺少模板 %s —— 未生成 workspace/_tools/build.py" % tpl)
@@ -462,7 +460,8 @@ def main() -> int:
     print("   解决方案   %s" % os.path.join(root, args.name + ".civ6sln"))
     print("   .civ6proj  %s" % os.path.basename(proj))
     print("   mod GUID   %s" % guid)
-    print("   workspace  %s" % ", ".join("workspace/" + d for d in WS_DIRS) + "（含 _tools/build.py）")
+    print("   workspace  %s" % os.path.join(root, "workspace")
+          + "（" + ", ".join(WS_DIRS) + "，含 _tools/build.py）")
     print("   目录       %s" % ", ".join(dirs))
 
     if not args.no_modinfo:
@@ -476,9 +475,9 @@ def main() -> int:
             return 1
     else:
         print("\n跳过 modinfo 派生（--no-modinfo）。手动跑：python %s %s" % ("modinfo_build.py", proj))
-        print("   （.modinfo 是构建产物，不进工程根；要留一份写进 workspace/gen/）")
+        print("   （.modinfo 是构建产物，不进工程核心文件夹；要留一份写进 workspace/gen/）")
 
-    print("\n下一步（在工程根 %s 下操作）：" % target)
+    print("\n下一步（工程核心文件夹 %s；workspace 在 %s）：" % (target, os.path.join(root, "workspace")))
     print("   1) 写 Data/Text 内容 → python workspace/_tools/build.py check")
     print("   2) 迭代：build.py stage + verify（产物落 workspace/gen/，不碰游戏目录）")
     print("   3) 进游戏：build.py deploy")

@@ -134,7 +134,7 @@ python art_copy.py Resources RESOURCE_OLIVES RESOURCE_OLIVES_RGN \
 ```
 
 克隆原版条目整棵子树 → 改名 → 换 XrefName → 追加进 mod artdef（自动建骨架/幂等跳重）。
-`--out` 指向的 artdef 尚不存在时脚本直写新建；工程里已有同名 artdef 且内容有变化时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+`--out` 指向的 artdef 尚不存在时脚本直写新建；工程里已有同名 artdef 且内容有变化时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
 
 **替换型建筑（取代原版建筑）走另一条链**：建筑模型由「所在区域」给出，且必须反查
 `DistrictReplaces`；完整步骤见 `reference/workflow.md` §④′，机制见 `reference/chain-map.md` §三.3：
@@ -145,7 +145,7 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
 
 `--district` 里的 **mod 侧区域不在索引里，必须显式给出**。
 
-`--buildings-out` / `--landmarks-out` 指向的文件尚不存在时脚本直写新建；工程里已有同名 artdef 且内容有变化时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+`--buildings-out` / `--landmarks-out` 指向的文件尚不存在时脚本直写新建；工程里已有同名 artdef 且内容有变化时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
 
 **两条铁律**：① 只能**新增**新标签子条目，绝不改名覆盖原版子条目；
 ② 必须把**所有**取代该区域的 District 都挂上（原版特色区域 + 本 mod 特色区域）。
@@ -173,7 +173,7 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
   `引用被清空`（`_MissingArt` / `text=""`，**真实缺陷**）。详见 `cook-layer.md` §2.2–2.4。
 - 替换型建筑附加校验：① **原有子条目零丢失**（读改写前后同区域内各子集合的子条目名集合，
   旧集合必须是新集合的子集）；② 所有取代该区域的 District 都已挂。
-  `art_copy_building.py` 自带第 ① 项自检，输出 `原有内容丢失 = 0` 才算过；改写既有 artdef 时，自检针对的是入位 `<工程>/workspace/gen/` 的那份结果。
+  `art_copy_building.py` 自带第 ① 项自检，输出 `原有内容丢失 = 0` 才算过；改写既有 artdef 时，自检针对的是入位 `<解决方案根>/workspace/gen/` 的那份结果。
 - **克隆单位条目前**：先按 `chain-map.md` §5.2 做 bin 可解析性体检（原版自身存在
   引用了不存在 bin 的成员类型，克隆过去会渲染残缺，典型表现是「只剩一个头」）。
 

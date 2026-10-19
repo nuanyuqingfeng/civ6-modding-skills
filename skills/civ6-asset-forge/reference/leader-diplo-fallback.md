@@ -47,7 +47,7 @@ Leader_Fallback 机制按外交状态换图，后者是完整 3D 纸片注册链
 |---|---|
 | 默认图资源名 | `FALLBACK_NEUTRAL_<领袖标识>`（领袖 Type 去掉 `LEADER_` 前缀） |
 | 差分状态资源名 | `FALLBACK_STATE_<状态>__LEADER_<领袖标识>`（双下划线分隔状态与领袖名） |
-| 导出尺寸 | 960×960；仅给 `path` 时等比居中适配画布，显式 `scale/offset/canvas` 按图片槽排版 |
+| 导出尺寸 | 方画布，边长 ≥960：实测 960×960（Snezhnaya / Xianzhou）、1024×1024（Jinzhou）、1316×1316（Ragunna / Black_Shores）三种都过；源图本身已是成品构图（顶部留余量、主体贴底）时按原尺寸直通，不缩放、不重新居中、不吃顶部余量；仅给 `path` 时等比居中适配画布，显式 `scale/offset/canvas` 按图片槽排版 |
 | 纹理类别 | `Leader_Fallback`（官方 3D 回退类；与类别⑤ UI 立绘的 `UserInterface` 不同类，不得混写） |
 | XLP / ArtDef | `LeaderFallbackImages.xlp`（官方实名，SDK `Civ6/DLC/Expansion1/pantry/XLPs/` 实测）/ `FallbackLeaders.artdef`（官方实名，SDK pantry 与游戏 `Base/ArtDefs` 实测）；文件名不加工程前缀 |
 | 透明度 | 保留 alpha；`FALLBACK_` 前缀在此为官方语义（本机制就是官方回退），与 SKILL.md 命名空间铁律（禁止第三方 UI 适配借用官方前缀）不冲突 |

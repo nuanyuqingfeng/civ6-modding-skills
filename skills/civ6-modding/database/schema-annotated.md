@@ -189,12 +189,14 @@ sqlite3 $db "SELECT name, dflt_value FROM pragma_table_info('TableName') WHERE [
 | CostProgressionModel | TEXT | — | `NO_COST_PROGRESSION` | `COST_PROGRESSION_NUM_UNDER_AVG_PLUS_TECH` / `COST_PROGRESSION_GAME_PROGRESS` |
 | CostProgressionParam1 | INTEGER | — | `0` | 成本递增参数 |
 | TraitType | TEXT | — | — | 文明专属区 TraitType |
-| Appeal | INTEGER | — | `0` | 魅力值 |
+| Appeal | INTEGER | — | `0` | 对周围 1 环单元格的魅力加成（正值提升、负值降低；本格不受影响）|
 | Housing | INTEGER | — | `0` | 住房 |
 | Entertainment | INTEGER | — | `0` | 娱乐 |
 | OnePerCity | BOOLEAN | — | `1` | 每城限一个 |
 | CitizenSlots | INTEGER | — | — | 公民槽位 |
 | AdvisorType | TEXT | — | — | `ADVISOR_CULTURE` 等 |
+
+> ★ 2026-10 核对（`DebugGameplay.sqlite`）：`Appeal` 描述该区域对**周围 1 环**单元格的魅力增减——圣地/剧院广场/娱乐中心/水渠/水坝/保护区等 `1`，军营/工业区/机场/航天中心等 `-1`；区域**本格**魅力不受该列影响。
 
 ---
 

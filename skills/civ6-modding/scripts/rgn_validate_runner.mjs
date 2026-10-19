@@ -502,6 +502,20 @@ function runExecMode() {
       L.push(...namingIssues.slice(0, 15))
       if (namingIssues.length > 15) L.push(`… 还有 ${namingIssues.length - 15} 条`)
     }
+    const itemCheck = playerItemsEligibilityViaConfig(mat.ok ? basePath : null, tmpPath, fileTexts)
+    if (itemCheck.skipped) {
+      L.push('')
+      L.push(`── FrontEnd 清单资格（PlayerItems 准入）── 跳过：${itemCheck.skipped}`)
+    } else if (itemCheck.issues.length) {
+      L.push('')
+      L.push(`── FrontEnd 清单资格（PlayerItems 准入，${itemCheck.issues.length} 条）──`)
+      L.push(...itemCheck.issues.slice(0, 20))
+      if (itemCheck.issues.length > 20) L.push(`… 还有 ${itemCheck.issues.length - 20} 条`)
+      process.exitCode = 1
+    } else {
+      L.push('')
+      L.push('✅ FrontEnd 清单资格：PlayerItems 无违规条目')
+    }
     if (flags.scopeCheck) {
       const scope = runScopeCheck(db, fileTexts, changedLines, dir, mat.ok ? basePath : null)
       L.push('')
@@ -520,6 +534,111 @@ function runExecMode() {
   } finally {
     try { db?.close() } catch { /* ignore */ }
     for (const p of [tmpPath, tmpPath + '-wal', tmpPath + '-shm']) {
+      try { fs.unlinkSync(p) } catch { /* ignore */ }
+    }
+  }
+}
+
+// ─────────────────── FrontEnd 清单资格（PlayerItems 准入规则） ───────────────────
+// leader-authoring.md「PlayerItems 准入规则」：只收有实质 TRAIT 链的区域/建筑/单位/改良设施。
+// 该违规不产生任何报错（Config 侧写错只是前端多一条条目），必须机械拦截。
+const PLAYER_ITEMS_TABLE = {
+  DISTRICT_: 'Districts', UNIT_: 'Units', BUILDING_: 'Buildings',
+  IMPROVEMENT_: 'Improvements', PROJECT_: 'Projects',
+}
+
+function playerItemsEligibility(db, fileTexts) {
+  const issues = []
+  let rows
+  try {
+    rows = db.prepare('SELECT Domain, CivilizationType, LeaderType, Type FROM PlayerItems').all()
+  } catch { return issues }
+  const colsCache = new Map()
+  const colsOf = t => {
+    if (!colsCache.has(t)) {
+      let c = null
+      try { c = db.prepare(`PRAGMA table_info("${t}")`).all().map(r => r.name) } catch { c = null }
+      colsCache.set(t, c)
+    }
+    return colsCache.get(t)
+  }
+  const leaderTraits = new Set()
+  const civTraits = new Set()
+  try { for (const r of db.prepare('SELECT LeaderType, TraitType FROM LeaderTraits').all()) leaderTraits.add(`${r.LeaderType}\u0000${r.TraitType}`) } catch { /* 表缺失 */ }
+  try { for (const r of db.prepare('SELECT CivilizationType, TraitType FROM CivilizationTraits').all()) civTraits.add(`${r.CivilizationType}\u0000${r.TraitType}`) } catch { /* 表缺失 */ }
+
+  for (const r of rows) {
+    const type = String(r.Type || '')
+    const prefix = Object.keys(PLAYER_ITEMS_TABLE).find(k => type.startsWith(k))
+    const at = locateInFiles(fileTexts, type) || locateInFiles(fileTexts, String(r.LeaderType || ''))
+    if (!prefix) {
+      issues.push(`${type} 不属于 Districts / Units / Buildings / Improvements 四类主体${at ? ' — ' + at : ''}`)
+      continue
+    }
+    const table = PLAYER_ITEMS_TABLE[prefix]
+    const cols = colsOf(table)
+    if (cols && !cols.includes('TraitType')) {
+      issues.push(`${type} 所属 ${table} 表无 TraitType 列，不具备 FrontEnd 资格${at ? ' — ' + at : ''}`)
+      continue
+    }
+    if (!cols) continue
+    let row = null
+    try { row = db.prepare(`SELECT TraitType FROM "${table}" WHERE "${table === 'Districts' ? 'DistrictType' : table === 'Units' ? 'UnitType' : table === 'Buildings' ? 'BuildingType' : table === 'Improvements' ? 'ImprovementType' : 'ProjectType'}" = ?`).get(type) } catch { row = null }
+    if (!row) continue
+    const trait = row.TraitType
+    if (!trait) {
+      issues.push(`${type} 的 TraitType 为空，无法成链${at ? ' — ' + at : ''}`)
+      continue
+    }
+    if (!leaderTraits.has(`${r.LeaderType}\u0000${trait}`) && !civTraits.has(`${r.CivilizationType}\u0000${trait}`)) {
+      issues.push(`${type} 的 TraitType=${trait} 未关联到 ${r.LeaderType} / ${r.CivilizationType}${at ? ' — ' + at : ''}`)
+    }
+  }
+  issues.sort()
+  return issues
+}
+
+// PlayerItems 在 Configuration 库，TraitType 与 LeaderTraits / CivilizationTraits 在 Gameplay 库。
+// 在 Config 库副本上清空 PlayerItems、重放项目 SQL，再把 Gameplay 快照的相关列复制进来做跨库查询，
+// 于是准入校验只看得到项目新增的行，官方 421 行不参与判定。
+const PLAYER_ITEMS_CROSS = {
+  Districts: ['DistrictType', 'TraitType'],
+  Units: ['UnitType', 'TraitType'],
+  Buildings: ['BuildingType', 'TraitType'],
+  Improvements: ['ImprovementType', 'TraitType'],
+  Projects: ['ProjectType'],
+  LeaderTraits: ['LeaderType', 'TraitType'],
+  CivilizationTraits: ['CivilizationType', 'TraitType'],
+}
+
+function playerItemsEligibilityViaConfig(basePath, gameplayDbPath, fileTexts) {
+  if (!basePath) return { issues: [], skipped: '基础库缺失，无法对照' }
+  const cfgPath = path.join(path.dirname(basePath), 'DebugConfiguration.sqlite')
+  if (!fs.existsSync(cfgPath)) return { issues: [], skipped: `同目录缺 ${path.basename(cfgPath)}` }
+  const tmp = path.join(os.tmpdir(), `rgn_validate_cfg_${process.pid}_${Date.now()}.sqlite`)
+  fs.copyFileSync(cfgPath, tmp)
+  let db = null
+  try {
+    db = new DatabaseSync(tmp, { enableDoubleQuotedStringLiterals: true })
+    db.exec('PRAGMA foreign_keys = OFF')
+    db.exec('DELETE FROM PlayerItems')
+    db.exec(`ATTACH DATABASE '${gameplayDbPath.replace(/'/g, "''")}' AS gp`)
+    for (const [t, cols] of Object.entries(PLAYER_ITEMS_CROSS)) {
+      db.exec(`DROP TABLE IF EXISTS main."${t}"`)
+      db.exec(`CREATE TABLE main."${t}" AS SELECT ${cols.map(c => `"${c}"`).join(', ')} FROM gp."${t}"`)
+    }
+    const stmts = []
+    for (const ft of fileTexts) for (const st of splitStatements(ft.sql)) stmts.push({ file: ft.file, ...st })
+    for (const st of stmts.filter(s => stmtHead(s.sql).startsWith('CREATE'))) {
+      try { db.exec(st.sql) } catch { /* 主流程已计入执行错误 */ }
+    }
+    for (const st of stmts.filter(s => !stmtHead(s.sql).startsWith('CREATE'))) {
+      try { db.exec(st.sql) } catch { /* Config 库不含 gameplay 表，属预期 */ }
+    }
+    return { issues: playerItemsEligibility(db, fileTexts), skipped: null }
+  } finally {
+    try { db?.close() } catch { /* ignore */ }
+    for (const p of [tmp, tmp + '-wal', tmp + '-shm']) {
       try { fs.unlinkSync(p) } catch { /* ignore */ }
     }
   }

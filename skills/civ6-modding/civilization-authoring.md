@@ -113,7 +113,7 @@ python tools/civ_leader_data.py reference/civ-leader-spec.example.json \
 - **`MusicOverride` 类型**：写字符串会被库的 `CHECK` 直接拒绝（实测）
 
 三个 `.sql` 目标文件不存在时脚本新建直写；任一已存在且内容有变化时，改写结果落到
-`<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时
+`<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时
 打印待写入清单。
 
 ## 文本：必须走 `UpdateText`

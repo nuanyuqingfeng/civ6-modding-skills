@@ -33,7 +33,7 @@ description: 使用已安装的文明6 SDK 官方几何体组合改良和区域�
 - 区域阶段只覆盖玩法可达的建筑组合；互斥建筑可共享槽位和资产，不为假设的异常授予枚举全部子集。区域各阶段的底板应与当前建筑组合匹配；可用 base_variants 替换临时庭院、铺装和绿化，为新增建筑让位。建筑差分由游戏建筑 Type 触发；只有 BaseVariants 的完整大楼会在空区域提前出现。
 - 优先使用官方已有骨骼锚点，保持附件偏移为零。需要自定义偏移时同时核对父模型、骨骼变换、缩放和坐标单位；不能直接把 Blender 中的原始 FGX 数值当成游戏坐标结论。
 - 单 Mod 的探索脚本、截图、日志留在工程工作区；通用工具、原创测试和技能才属于 skill 仓库。
-- **工程文件写入铁律**：脚本可以**新建**工程文件，绝不允许**改写**工程文件。`landmark_tool.py install` 遇到工程里已有的 `ArtDefs/*.artdef` 与 `XLPs/*.xlp` 时不做合并覆盖，改写结果落到 `workspace/gen/` 由 AI 用文件编辑工具写入；`compose` 写的是独立 `--out` 目录，`cook` 写的是临时目录与输出目录。真源见 `civ6-modding/SKILL.md` 的「工程文件写入铁律」。
+- **工程文件写入铁律**：脚本可以**新建**工程文件，绝不允许**改写**工程文件。`landmark_tool.py install` 遇到工程里已有的 `ArtDefs/*.artdef` 与 `XLPs/*.xlp` 时不做合并覆盖，改写结果落到 `<解决方案根>/workspace/gen/` 由 AI 用文件编辑工具写入；`compose` 写的是独立 `--out` 目录，`cook` 写的是临时目录与输出目录。真源见 `civ6-modding/SKILL.md` 的「工程文件写入铁律」。
 
 ## 最小闭环
 
@@ -48,10 +48,10 @@ python "<skills>/civ6-modding/tools/landmark_tool.py" cook --bundle "MyMod.landm
 ```
 
 `install` 落地文件并输出 Art.xml 三项核对点（ArtDefs/XLPs 不登记 .civ6proj，Civ6.targets 直接扫描磁盘）；
-工程里已有且内容有变化的 artdef / xlp，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，
+工程里已有且内容有变化的 artdef / xlp，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，
 由 AI 用文件编辑工具写入工程对应路径，脚本会在退出码 2 时打印待写入清单。
 `check_proj_content` 核对清单闭合；`cook` 只编译本资源链并保留日志，不部署 Mod，
-其 `--out` 落在工程之内时同样按本条处理：工程里尚不存在的产物直写，既有产物有变化则结果入位 `workspace/gen/`。
+其 `--out` 落在工程之内时同样按本条处理：工程里尚不存在的产物直写，既有产物有变化则结果入位 `<解决方案根>/workspace/gen/`。
 已有授权足够时继续完成，不在每一步重复索取批准。
 
 ## 验收分层

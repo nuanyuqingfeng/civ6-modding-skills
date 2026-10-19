@@ -88,7 +88,7 @@
 
 ### 2. 运行生成脚本
 
-注册文件已存在且内容有变化时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+注册文件已存在且内容有变化时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
 
 ```bash
 python "<skills>/civ6-asset-forge/scripts/gen_leader_2d.py" \
@@ -117,7 +117,7 @@ python "<skills>/civ6-asset-forge/scripts/gen_leader_2d.py" \
 | `LightRigs/` | `{Name}_LightRig.lrg` | 灯光绑定（`m_ClassName=LeaderEnvironment`），见 §3.6 |
 | `EnvironmentLights/` | `{Name}_Environment.env` + `{Name}_Environment.dds` | 环境光定义与贴图（Hojo 通用资产），见 §3.6 |
 
-> **收尾提醒**：`Assets/*.ast` 在已有工程里承载着外交语音时间轴，重跑生成器时它的改写结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+> **收尾提醒**：`Assets/*.ast` 在已有工程里承载着外交语音时间轴，重跑生成器时它的改写结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
 > 已有语音的工程写入之前先确认 `.ast` 的 `m_FXName` 与时长是否要保留。
 
 ### 2.5 立绘素材处理（可选）
@@ -132,7 +132,7 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
   --project "<工程根>" --tex-dds
 ```
 
-- 带 `--tex-dds` 时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径（`Textures/` 之下的资产属可再生资产，由脚本直接覆盖）；脚本会在退出码 2 时打印待写入清单。
+- 带 `--tex-dds` 时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径（`Textures/` 之下的资产属可再生资产，由脚本直接覆盖）；脚本会在退出码 2 时打印待写入清单。
 - 脚本按**短边居中裁剪**再缩放到 `1024×1024`，生成 `{LeaderType}_TEXTURE.png` / `{LeaderType}_OPACITY.png`；带 `--tex-dds` 时同步写 `.tex` 并按 `.tex` 的 `ePixelformat` 转换 DDS（TEXTURE → `R8G8B8A8_UNORM`，OPACITY → `R8_UNORM`，均带完整 mip 链）。
 - 需要别的裁剪框时才加 `--crop left,top,side`（原图坐标）。**是否加这个参数，由用户指定，不自行推演。**
 - `--project` + `--leader-name` 可用于从工程 SQL/XML 查找 LeaderType。
@@ -157,7 +157,7 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
   - 输出到项目 `<project>\Textures\`
   - 同步生成/更新 `.tex`，并将 `SourceFilePath` 指向项目内 PNG
   - 尝试调用 texconv 生成 DDS（TEXTURE：`R8G8B8A8_UNORM`；OPACITY：`R8_UNORM`）
-  - 已有 `.tex` 且内容有变化时，改写结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；`.dds` 由脚本直接覆盖
+  - 已有 `.tex` 且内容有变化时，改写结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；`.dds` 由脚本直接覆盖
 
 **生成规则：**
 - TEXTURE：1024×1024，保留透明背景（裁剪规则见「层级 1」）。
@@ -216,11 +216,11 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
 ```bash
 python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根>            # 预演
 python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根> --check    # 有待迁移项则 exit 2
-python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根> --write    # 迁移后的 .mtl 落 <工程>/workspace/gen/
+python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根> --write    # 迁移后的 .mtl 落 <解决方案根>/workspace/gen/
 python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <Civ6工程父目录> --all-siblings --write
 ```
 
-`--write` 时，命令跑完后迁移结果落在 `<工程>/workspace/gen/Materials/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+`--write` 时，命令跑完后迁移结果落在 `<解决方案根>/workspace/gen/Materials/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
 
 ★ 把 `workspace/gen/` 的材质写入工程后，**必须在 AssetEditor 重新 cook** 才生效（材质类属 cook 期数据）。
 
@@ -318,7 +318,7 @@ VelocityScale         0.000000
 - **Geometries/Materials/Textures/Assets/LightRigs/EnvironmentLights 不需注册**——构建时自动扫描编译进 `Platforms\Windows\BLPs\*.blp`
 - `*.Art.xml`：新增/修改 `XLPs\`、`ArtDefs\` 后**必须重新生成**——运行
   `python <civ6-modding skill>\art\gen_modartxml.py <projectRoot> --check`
-  （差异人工确认后加 `--write`；`.Art.xml` 尚不存在时直写新建，已有且内容有变化时改写结果落在 `<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本按项目实存文件重算
+  （差异人工确认后加 `--write`；`.Art.xml` 尚不存在时直写新建，已有且内容有变化时改写结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本按项目实存文件重算
   artConsumers/gameLibraries/requiredGameArtIDs，替代手工补 Leader/LeaderLighting 引用）
   ⚠ `LeaderLighting` 库的 `relativePackagePaths` 必须是 `leaders/light_rigs`；生成器不代写这一处，缺了则本地灯光包声明不出来。
 - **备份**：见 `SKILL.md`「不静默备份」节（四类共用，原条已上移）。

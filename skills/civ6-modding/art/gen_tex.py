@@ -5,7 +5,7 @@
 
 用法：python gen_tex.py [textures_dir] [assets_dir] [asset_map_json]
   不传参则使用脚本内默认路径。
-写入：新建 .tex 直写；既有 .tex 内容有变化时，改写结果落到 <工程>/workspace/gen/（铁律见 SKILL.md）。
+写入：新建 .tex 直写；既有 .tex 内容有变化时，改写结果落到 <解决方案根>/workspace/gen/（铁律见 SKILL.md）。
 零第三方依赖（纯标准库）：直接解析 DDS 头获取分辨率 / mip 层数 / 像素格式，
 不需要 texdiag。
 .assets 源文件使用「中文名-角色」友好名，通过 scripts/asset_map.json

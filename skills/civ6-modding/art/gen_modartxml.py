@@ -16,7 +16,7 @@ civ6/modart.pyc 的 buildModArtXml + civ6/modart_data.pyc 的静态表。
   6. requiredGameArtIDs 保留项目现有 *.Art.xml 的全部条目（不折叠成首条）；
      文件缺失时取 *.civ6proj 的 Guid 作 id、文件名作 name、默认 Civ6 作包。
   7. --ensure 系列为增量编辑：只做加法，不删除、不重排、不改写既有条目；
-     已有文件内容有变化时改写结果落 <工程>/workspace/gen/，由 AI 用文件编辑工具写入工程。
+     已有文件内容有变化时改写结果落 <解决方案根>/workspace/gen/，由 AI 用文件编辑工具写入工程。
 
 用法：
   python gen_modartxml.py <projectRoot>            # 生成结果打印到 stdout

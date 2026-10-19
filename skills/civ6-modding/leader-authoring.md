@@ -49,7 +49,12 @@ Portrait, PortraitBackground, PlayerColor, HumanPlayable, SortIndex
    后果是选人界面出现不该出现的条目（或指向悬空）。
 
 不符合的不入列：资源（`Resources` 表无 `TraitType` 列，无法成链——初始赠送资源靠
-Modifier 实现，属于能力效果，不属于特色物品）、纯修饰符产物、无主表行的抽象概念。
+Modifier 实现，属于能力效果，不属于特色物品）、**项目（`Projects` 表无 `TraitType` 列，同理无法成链，
+官方 421 行 `PlayerItems` 的 `KIND_PROJECT` 计数为 0）**、纯修饰符产物、无主表行的抽象概念。
+
+本规则已机械化为 `scripts/rgn_validate_runner.mjs` 的「FrontEnd 清单资格」一节：它在 Config 库副本上
+清空 `PlayerItems`、重放项目 SQL、把 Gameplay 快照的 `TraitType` / `LeaderTraits` / `CivilizationTraits`
+复制进来做跨库查询，逐行判定主体类型、`TraitType` 是否为空、是否关联到本行领袖或文明。违规时退出码 1。
 
 实测范例（今州文明包，链路逐件核验过）：眠龙庭 / 岁先知 / 黄岚建筑 / 早市改良走
 `TraitType=TRAIT_CIVILIZATION_JINZHOU_*` → `CivilizationTraits`；阿漂（漂泊者通用单位）
@@ -226,7 +231,7 @@ python tools/civ_leader_data.py reference/civ-leader-spec.example.json \
 并自检 LOC tag 闭包、8 语言齐缺、`Portrait` 未登记 XLP 告警。
 
 三个 `.sql` 目标文件不存在时脚本新建直写；任一已存在且内容有变化时，改写结果落到
-`<工程>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时
+`<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时
 打印待写入清单。
 
 `leaders[]` 里支持 `civilization` 字段指定挂靠文明；与本规格的 `civilization.type`

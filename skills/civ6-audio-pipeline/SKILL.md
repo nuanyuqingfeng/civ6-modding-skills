@@ -268,7 +268,7 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 
 ```
 
-> ⑤ 改写既有 `.civ6proj` / `.modinfo` 时，命令跑完后结果落在 `<工程>/workspace/gen/` 的同一相对
+> ⑤ 改写既有 `.civ6proj` / `.modinfo` 时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对
 > 路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。`.bnk` / `.wem`
 > 属可再生二进制资产，仍由脚本直写。
 
@@ -317,7 +317,7 @@ python $S/register_to_mod.py --verify --audio-id <id> --mod <mod目录>
 ```
 `.modinfo`：`<InGameActions>` 开标签后插入 `<UpdateAudio id="…"><File>Platforms/Windows/Audio/….ini</File></UpdateAudio>` + `<Files>` 补条目。
 `.civ6proj`：`InGameActionData` CDATA 内 `</InGameActions>` 前插单行 UpdateAudio（正斜杠）+ `<Content Include="Platforms\Windows\Audio\…"><SubType>Content</SubType></Content>` 条目。
-这两个文件都是既有工程文件，脚本的改写结果先落 `<工程>/workspace/gen/`，由 AI 用文件编辑工具写入。
+这两个文件都是既有工程文件，脚本的改写结果先落 `<解决方案根>/workspace/gen/`，由 AI 用文件编辑工具写入。
 
 ## 6. 触发端速查（注册完成后接线用）
 

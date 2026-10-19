@@ -40,7 +40,7 @@ Sukritact's Civ Selection Screen 的适配素材原先被命名为
 
 ## 改动面
 
-铁律：脚本只新建工程文件，改写一律走 `_projwrite` 守卫入位 `<工程>/workspace/gen/`。
+铁律：脚本只新建工程文件，改写一律走 `_projwrite` 守卫入位 `<解决方案根>/workspace/gen/`。
 
 1. `.dds` / `.tex` **新名文件的落点**：`workspace/gen/<相对路径>/<新名>`；
    工程里的原文件**不动**，改名由 AI 用文件编辑工具完成（先写入新名文件，再删原文件）；

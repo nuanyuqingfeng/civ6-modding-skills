@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""工程文件写入体检：脚本只能新建工程文件，改写一律走 _projwrite 入位 workspace/gen。
+"""工程文件写入体检：脚本只能新建工程文件，改写一律走 _projwrite 入位 <解决方案根>/workspace/gen。
 
 铁律真源：civ6-modding/SKILL.md「工程文件写入铁律」。
 

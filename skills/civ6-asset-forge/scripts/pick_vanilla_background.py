@@ -254,7 +254,7 @@ def alias_entry(entry_id: str, object_name: str, indent: str = "\t\t") -> str:
 
 
 def _current_source(xlp_file: str, project: str | None) -> str:
-    """上一次改写已入位 workspace/gen 时，接着那份继续追加。
+    """上一次改写已入位 <解决方案根>/workspace/gen 时，接着那份继续追加。
 
     同一轮里对同一个 XLP 追加多个别名时，第二次读取必须看到第一次的改写结果；
     工程里的原文件在人工写入之前始终是旧内容。
@@ -401,7 +401,7 @@ def main():
             staged = staged or st == "staged"
             print("    %s → %s : %s" % (eid, obj, st))
         if staged:
-            print("    改写结果已写到 workspace/gen/ 的同一相对路径下，"
+            print("    改写结果已写到 <解决方案根>/workspace/gen/ 的同一相对路径下，"
                   "请用文件编辑工具写入工程 %s" % target_xlp)
         if not a.write:
             print("\n（预演模式，未写盘；确认候选后加 --write）")

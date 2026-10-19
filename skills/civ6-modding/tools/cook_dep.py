@@ -29,7 +29,7 @@ r"""cook_dep.py — 从 <ModName>.Art.xml 生成 <ModName>.dep（AssetObjects..G
 
 ## 用法
 
-    # 生成到 workspace/tmp/dep（默认），然后自行复制
+    # 生成到 <解决方案根>/workspace/tmp/dep（默认），然后自行复制
     python cook_dep.py <工程根>
 
     # 生成并直接放到指定目录（如 Mods 副本）
@@ -82,6 +82,14 @@ def find_config(cooker: str) -> str:
     return os.path.join(os.path.dirname(cooker), "Civ6.cfg")
 
 
+def solution_root(project_root: str) -> str:
+    """`.civ6sln` 所在的那一层；单层布局（无 .civ6sln）时回落到工程根的上一层。"""
+    root = os.path.abspath(project_root)
+    if any(f.lower().endswith(".civ6sln") for f in os.listdir(root)):
+        return root
+    return os.path.dirname(root)
+
+
 def generate(proj: str, art_xml: str, out_dir: str, platform: str) -> tuple[bool, str]:
     """跑 cooker --mode Dependency，返回 (成功, 说明)。"""
     cooker = find_cooker()
@@ -125,7 +133,7 @@ def generate(proj: str, art_xml: str, out_dir: str, platform: str) -> tuple[bool
 def main() -> int:
     ap = argparse.ArgumentParser(description="生成 <ModName>.dep（从 .Art.xml，无需 ModBuddy GUI）")
     ap.add_argument("project", help="工程根目录（含 <ModName>.Art.xml）")
-    ap.add_argument("--out", default="", help=".dep 输出目录（默认 <工程>/workspace/tmp/dep）")
+    ap.add_argument("--out", default="", help=".dep 输出目录（默认 <解决方案根>/workspace/tmp/dep）")
     ap.add_argument("--platform", default="Windows", help="平台（默认 Windows）")
     ap.add_argument("--check", action="store_true", help="只报告现状，不 cook")
     a = ap.parse_args()
@@ -148,7 +156,7 @@ def main() -> int:
                   % (mod_name, cands or "无"), file=sys.stderr)
             return 2
 
-    out_dir = os.path.abspath(a.out) if a.out else os.path.join(proj, "workspace", "tmp", "dep")
+    out_dir = os.path.abspath(a.out) if a.out else os.path.join(solution_root(proj), "workspace", "tmp", "dep")
 
     def _latest_dep(d: str):
         if not os.path.isdir(d):

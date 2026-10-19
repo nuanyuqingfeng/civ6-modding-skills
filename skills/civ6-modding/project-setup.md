@@ -673,6 +673,12 @@ Hand-friendly XML with a single `<Mod id="GUID" version="V">` root.
    > —— 即 **Colors / Icons / Art**；Config 只需前端。
    > 实测反例：`FHB_Shuai` 漏了 InGame `UpdateColors`，表现为进游戏后玩家颜色不对。
 
+   **本表已机械化为 `scripts/check_dual_side_actions.py`**：解析两侧 CDATA 的动作集合，比对
+   `UpdateArt` / `UpdateColors` / `UpdateIcons` 是否成对；再解析两侧图标 XML，要求 FrontEnd 的
+   `(图集名, IconSize)` 全集被 InGame 覆盖、FrontEnd 的 `IconDefinitions` 被 InGame 覆盖、
+   `Data/*.sql` 引用到的本工程图标在 InGame 有定义、每档 `Filename` 在 `Textures/` 下有对应贴图。
+   违规时退出码 1。
+
 3. **文本用 UpdateText，不是 UpdateDatabase** — 即使 LocalizedText 以 SQL (`INSERT INTO LocalizedText`) 书写，也改用 `<UpdateText>` 动作。SQL 和 XML 格式均可。`Text_Config_*.sql` 仅 FrontEnd 需要，其余游戏文本 InGame 即可。
 
 4. **类型定义和 Modifiers / 遍历逻辑 分开注册** — 类型定义（建筑、单位、文明等）放一个动作（**早**加载），Modifiers 及一切**遍历型**逻辑放另一个动作（**晚**加载）。
@@ -727,7 +733,7 @@ ModBuddy 工程属性页有一个 **`Custom Properties`** 面板（`Civ6.Project
 1. **生成器脚本（推荐）**：读一份变量表，直接渲染出完整
    `Data/*.sql`、`Text/*.sql`、`.civ6proj`。本 skill 家族的
    `civ6-asset-forge/scripts/gen_leader_2d.py`、`gen_suk_portrait.py` 即此形态。
-   目标文件不存在时脚本新建直写；已存在且内容有变化时，改写结果落到 `<工程>/workspace/gen/` 的
+   目标文件不存在时脚本新建直写；已存在且内容有变化时，改写结果落到 `<解决方案根>/workspace/gen/` 的
    同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
 2. **SQL 拼接**：`INSERT ... SELECT 'PREFIX_' || ...`
    （注意本工程 AGENTS.md 对 `SELECT` 拼接样式另有约定）。
@@ -877,26 +883,29 @@ XML / SQL / Lua 同步时的条目格式：
 ### 两层目录布局（ModBuddy 固定处理方式）
 
 ```
-<工作区根>/                  ← .civ6sln 在这一层
+<解决方案根>/                ← .civ6sln 与 workspace/ 在这一层
 ├── <ModName>.civ6sln
-└── <ModName>/               ← 工程根，.civ6proj 在这一层
-    ├── Data/  Text/  ...    ← mod 成品
-    └── workspace/           ← 除 mod 成品以外的一切
+├── <ModName>/               ← 工程核心文件夹，.civ6proj 在这一层
+│   ├── Data/  Text/  ...    ← 工程文件与处理后的成品素材
+│   └── ...
+└── workspace/               ← 全部中间产物：_tools/ gen/ src/ tmp/
 ```
 
 **恰好两层，内层与 mod 同名。** 只建一层就没地方放 `.civ6sln`；多套一层同名目录会让
 `<源工程根>\<ModName>` 这条到处在用的路径解析不到工程。`tools/new_project.py` 按此布局生成：
-传入的 `<目录>` 是工作区根，工程建在 `<目录>\<Name>\`，解决方案放 `<目录>\<Name>.civ6sln`。
+传入的 `<目录>` 是解决方案根，工程核心文件夹建在 `<目录>\<Name>\`，解决方案放 `<目录>\<Name>.civ6sln`,
+工作区建在 `<目录>\workspace\`。
 
-**落盘边界（工程根只放 mod 成品）**：
+**落盘边界（工程核心文件夹只放工程文件与成品素材）**：
 
 | 位置 | 放什么 |
 |---|---|
-| **工程根** | `Data/` `Text/` 里的 XML·SQL·Lua、美术源素材、`*.Art.xml`、`*.civ6proj`、`.gitignore`、`.gitattributes`、`AGENTS.md` |
-| **`workspace/`**（.gitignore 已忽略） | 脚本（`_tools/`）、派生产物（`gen/`）、设计文档与资料（`src/`）、一次性中间产物（`tmp/`） |
+| **工程核心文件夹** | 工程文件 `*.civ6proj`、`*.Art.xml`、`.gitignore`、`.gitattributes`、`AGENTS.md`；mod 成品 `Data/` `Text/` `Scripts/` `UI/` `ImportFiles/`；处理后的成品素材 `Textures/` `XLPs/` `ArtDefs/` `Assets/` `Materials/` `Geometries/` `Animations/` |
+| **`<解决方案根>/workspace/`**（.gitignore 已忽略） | 脚本（`_tools/`）、派生产物（`gen/`）、设计文档与资料（`src/`）、一次性中间产物（`tmp/`） |
 
-`.modinfo`、`Cooked/`、`Build/` 属构建产物，**不进工程根**。日常迭代用 `workspace/_tools/build.py`
-的 `stage` + `verify`，产物全部落在 `workspace/gen/`，不碰游戏目录；确要进游戏时再 `deploy`。
+`.modinfo`、`Cooked/`、`Build/`、`*.log`、备份目录属构建产物与中间产物，**一律不进工程核心文件夹**。
+日常迭代用 `workspace/_tools/build.py` 的 `stage` + `verify`，产物全部落在 `workspace/gen/`，
+不碰游戏目录；确要进游戏时再 `deploy`。体检：`python scripts/check_project_hygiene.py <工程核心文件夹>`。
 
 ### 工程目录位置与两侧归属（硬性）
 
@@ -1000,7 +1009,7 @@ workspace/
 > `.gitattributes` 的完整论证与实测支撑见 `civ6-art-reference/reference/cook-layer.md §2.3.1`
 > 与 `gotchas.md` §68。加完规则后若出现大批"看似被改动"的文件，**先跑
 > `python scripts/normalize_eol.py <工程目录>` 看报告**（默认只报告），确认方向符合上表再写盘 ——
-> `--fix` 时工程内既有文件内容有变化的话，改写结果落到 `<工程>/workspace/gen/` 的同一相对路径，
+> `--fix` 时工程内既有文件内容有变化的话，改写结果落到 `<解决方案根>/workspace/gen/` 的同一相对路径，
 > 由 AI 用文件编辑工具写入工程对应路径，脚本在退出码 2 时打印待写入清单；
 > **不要用 `git add --renormalize .` 一把梭** —— 它会把被 `eol=lf` 覆盖的 Lua/SQL/XML 烘成 LF 写进索引。
 

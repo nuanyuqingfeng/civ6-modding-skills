@@ -15,6 +15,7 @@
 | `check_sql_exec.py` | **可执行性**：非法转义、字符错位导致「整条 INSERT 报废」 | `python check_sql_exec.py [--root <工程>] [--base <库>]` | 0 / 1 |
 | `check_sql_antipatterns.py` | **语义反模式**：语法合法但恒假/恒错 —— `LIKE ('%A%' OR '%B%')`、`WHERE … = NULL` | `python check_sql_antipatterns.py <工程根目录> [--esc]` | 0 / 1 |
 | `check_types_kinds.py` | `INSERT INTO Types` 的 `Kind` 是否是引擎合法枚举（复现 `Invalid Reference on Types.Kind`） | `python check_types_kinds.py [--root <工程>] [--db <库>] [--dirs Data,Mod_Adaptation]` | 0 / 1 |
+| `check_dual_side_actions.py` | **双端动作与图标注册闭合**：`FrontEndActions` / `InGameActions` 的 `UpdateArt` / `UpdateColors` / `UpdateIcons` 是否成对；FrontEnd 图集档位与 `IconDefinitions` 是否被 InGame 全覆盖；`Data/*.sql` 引用的 `ICON_*` 是否在 InGame 定义；图集 `Filename` 是否在 `Textures/` 有 `.dds` | `python check_dual_side_actions.py <工程根目录> [--quiet]` | 0 通过 / 1 有缺口 |
 | `check_proj_content.py` | `.civ6proj` 的 `<Content Include>` 与磁盘是否**双向闭合**（悬空清单项 / 漏登记） | `python check_proj_content.py <工程根目录>` | 0 / 1 |
 | `check_proj_layout.py` | **`.civ6proj` 动作块排版**：CDATA 块是否「一元素一行、每层 +2 空格、闭标签与开标签同缩进」；拆行时吞掉闭标签会在此处先报，早于 XML 解析失败 | `python check_proj_layout.py <工程根目录或 .civ6proj> [--max-width 120]` | 0 / 1 |
 | `check_text_refs.py` | **文本引用双向闭合**：`[ICON_x]` 正向解析、`{LOC_x}` 文本往回的悬空、`Text/*Config*.sql` 的孤儿 tag | `python check_text_refs.py <工程根目录> [--base <DebugLocalization.sqlite>] [--file <文本文件>]` | 0 无问题 / 1 有 |
@@ -25,6 +26,7 @@
 | `check_pantry.py` | **pantry 卫生**：`.tex` 是否只在 `Textures/`、`m_Name`/`m_RelativePath` 是否全工程唯一、有无 depot 库路径、非 ASCII 文件名、`.tex`↔`.dds` 配对 | `python check_pantry.py [--root <pantry>] [--quiet]` | 0 通过 / 1 有 error |
 | `verify_trees.py` | 两棵目录树是否**逐字节相同**（递归 SHA256）—— 源 ↔ Mods 副本一致性 | `python verify_trees.py <dirA> <dirB>` | 0 相同 / 1 不同 |
 | `check_script_write_targets.py` | **工程文件写入体检**：六份 `_projwrite.py` 副本是否逐字节相同；凡认识「工程」的脚本，写盘是否都走守卫（铁律见 `../SKILL.md`「工程文件写入铁律」） | `python check_script_write_targets.py [--skills <skills 根>]` | 0 通过 / 1 违规 |
+| `check_project_hygiene.py` | **工程核心文件夹卫生**：只允许工程文件与处理后的成品素材；`workspace/` `gen/` `tmp/` 备份目录、`Build/` `Cooked/` `.modinfo` `*.log` 一律报违规（真源 `../SKILL.md`「工程核心文件夹卫生」） | `python check_project_hygiene.py <工程核心文件夹><br>python check_project_hygiene.py <解决方案根> --solution` | 0 干净 / 1 有违规或未登记项 |
 
 ### 四个互补，缺一不可
 
@@ -65,15 +67,16 @@ check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR �
      一查运行时库，缺口一目了然（见 gotchas §52）。
 
 ① python check_sql_exec.py --root <工程>          # SQL 能否执行
-② node   rgn_validate_runner.mjs <工程>/Data --scope-check   # 引用闭合吗 + 本次改动的 Modifier 单复数/作用域对吗
+② node   rgn_validate_runner.mjs <工程>/Data --scope-check   # 引用闭合吗 + PlayerItems 准入合规吗 + 本次改动的 Modifier 单复数/作用域对吗
 ③ python check_types_kinds.py --root <工程>       # Kind 合法吗
 ④ python check_sql_antipatterns.py <工程>         # 语法合法但恒假吗
 ⑤ python check_text_refs.py <工程>               # 文本引用双向闭合（图标/LOC/配置孤儿）
 ⑥ python check_adjacency_text.py <工程>          # 相邻加成 Description 含图标与 {1_num}
 ⑦ python check_proj_content.py <工程>            # 打包清单闭合吗
-⑧ python check_lua_registration.py <工程>         # 每个 .lua 都有有效加载路径吗
-⑨ python check_lua_context.py <工程>              # 跨上下文写法可达吗（口径真源 reference/context-matrix.md）
-⑩ （动过贴图时）
+⑧ python check_dual_side_actions.py <工程>        # FrontEnd / InGame 两端动作与图标注册闭合吗
+⑨ python check_lua_registration.py <工程>         # 每个 .lua 都有有效加载路径吗
+⑩ python check_lua_context.py <工程>              # 跨上下文写法可达吗（口径真源 reference/context-matrix.md）
+⑪ （动过贴图时）
    python check_pantry.py --root <工程>           # pantry 卫生
    python clear_ae_cache.py --mod <工程名>        # 清 AE 缓存，再开 AssetEditor 看日志有无 CRASH
 ```

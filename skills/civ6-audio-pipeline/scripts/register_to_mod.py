@@ -4,7 +4,7 @@ register_to_mod.py -- bank 产物注册到 mod (P1 源工程 .civ6proj / P2 运�
 拷贝: bank 三件套(bnk/xml/txt) + bank xml 内引用的全部流式 wem -> Platforms/Windows/Audio
 写盘: <名>_Banks.ini (无BOM/CRLF) + modinfo(UpdateAudio+Files) + civ6proj(CDATA UpdateAudio + Content 条目)
       modinfo/civ6proj/ini 的写入全部经 _projwrite 守卫; 目标已存在且内容有变化时结果写到
-      <工程>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具写入工程 (退出码 2 并打印清单)
+      <解决方案根>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具写入工程 (退出码 2 并打印清单)
 用法:
   python register_to_mod.py --bank-dir <工程>\\GeneratedSoundBanks\\Windows --bank <Bank名> \
       (--find <mod名> | --mod <mod目录>) [--section ingame|global|menu] [--civ6proj <路径>] \
@@ -203,7 +203,7 @@ def write_ini(audio_dir, bank, section, root):
         print('  [INI] 已存在条目, 跳过:', ini)
         return ini
     b = b[:m.end(1)] + bank + '.bnk\r\n' + b[m.end(1):]
-    # 既有 ini 内容有变化时, 改写结果由守卫入位 <工程>/workspace/gen
+    # 既有 ini 内容有变化时, 改写结果由守卫入位 <解决方案根>/workspace/gen
     write_project_file(ini, b.encode('ascii'), root)
     return ini
 

@@ -30,7 +30,7 @@
 ## 用法
 
     python align_tex_format.py <projectRoot> --check     # 体检，只报告
-    python align_tex_format.py <projectRoot> --write     # 写出（新建直写；既有 .tex 改写结果落到 workspace/gen/）
+    python align_tex_format.py <projectRoot> --write     # 写出（新建直写；既有 .tex 改写结果落到 <解决方案根>/workspace/gen/）
     python align_tex_format.py <projectRoot> --write --only encoding,groups,complete
     python align_tex_format.py <projectRoot> --check --list
 
@@ -251,7 +251,7 @@ def main():
             # 官方约定：UTF-8 无 BOM + LF
             write_project_file(str(p), new.replace('\r\n', '\n').encode('utf-8'), args.projectRoot)
         print()
-        print(f'已写出 {len(todo)} 个 .tex（新建直写；既有文件改写结果落到 workspace/gen/）')
+        print(f'已写出 {len(todo)} 个 .tex（新建直写；既有文件改写结果落到 <解决方案根>/workspace/gen/）')
 
     print()
     if todo and not args.write:

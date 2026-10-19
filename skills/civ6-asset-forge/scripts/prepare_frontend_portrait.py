@@ -22,7 +22,7 @@ r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与
 
 | 次序 | 类别 | 判据 | 处理 |
 |---|---|---|---|
-| 1 | **① 人物抠图** | 透明像素 ≥ `--subject-min-transp`（默认 40%） | 取 alpha 外接框 → 主体缩到高 882 → 贴到 1080×1080 画布（水平居中、**底边贴齐**、顶部留空 198）→ `LEADER_<KEY>_NEUTRAL` |
+| 1 | **① 人物抠图** | 透明像素 ≥ `--subject-min-transp`（默认 40%） | 现有顶部留空占画布高 12%~38% 且主体贴底时**整幅等比缩放直通**，不改留空比例；留空过少或过多才按人物类型重排（成年男性 10%、成年女性 18%、少年少女 6%、幼儿 45%），主体等比缩到画布高减留空、水平居中、**底边贴齐** → `LEADER_<KEY>_NEUTRAL` |
 | 2 | **② 满幅图（placard 形）** | 长宽比 1:2.85 ±3%（控件 328×935 的比例） | **素材本身作 placard 背景；`Players.Portrait` 置显式空串**（★ 见下） |
 | 3 | **② 满幅图** | 透明 ≤ `--bleed-max-transp`（默认 5%）且不透明 ≥90% | **空白前景（显式空串）+ 铺满背景** → `LEADER_<KEY>_BACKGROUND` |
 | 4 | **③ 中间地带** | 其余 | **停下问用户**（exit 3），用 `--force-subject` / `--force-bleed` 表明裁决 |
@@ -63,7 +63,7 @@ r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与
 
 | 产物 | 命名 | 说明 |
 |---|---|---|
-| 前景 | `LEADER_<KEY>_NEUTRAL` | 官方约定（选人 placard 与加载界面**共用**）；1080×1080，主体高 882、顶部留空 198 |
+| 前景 | `LEADER_<KEY>_NEUTRAL` | 官方约定（选人 placard 与加载界面**共用**）；1080×1080，顶部留空按人物类型定、**底边恒贴齐** |
 | 加载界面背景 | `LEADER_<KEY>_BACKGROUND` | 官方约定；**高 ≥960**（960 是基准、非上限） |
 | placard 竖版背景 | `LEADER_<KEY>_PLACARD_BACKGROUND` | 官方无此物（官方直接拿 1920×960 去凑），故取官方前缀 + 语义后缀；素材本身就是 1:2.85 竖条时按此名产出 |
 
@@ -135,11 +135,37 @@ PLACARD_RATIO_TOL = 0.03          # 相对容差 ±3%
 # 加载界面背景**基准**高（官方基线 1920×960；960 是基准不是上限）
 LOADING_BASE_H = 960
 LOADING_TARGET = (1920, 1080)     # 本项目实测良好的档位（16:9 零裁切）
-# 原版 FrontEnd 前景（环境 A/B 共用）：1080×1080 方画布，主体等比缩到高 882，
-# 水平居中、底边贴齐画布下缘 → 顶部留空 198 px（画布高的 18.3%）。实机验证见 reference/frontend-portrait.md §1.4
+# 原版 FrontEnd 前景（环境 A/B 共用）：1080×1080 方画布，主体水平居中、**底边恒贴齐画布下缘**。
+# 顶部留空先看素材本身：已经留得合理的整幅等比缩放直通；只有留空过少或过多才按人物类型重排。
 FG_CANVAS = 1080
-FG_SUBJECT_H = 882
-FG_TOP = FG_CANVAS - FG_SUBJECT_H          # 198
+# 人物类型 → 顶部留空占画布高的比例。留空越少人物越大：成年男性最少、成年女性多一些、
+# 少年少女再少、幼儿近乎一半。
+FIGURE_GAP = {
+    "adult_male": 0.10,
+    "adult_female": 0.18,
+    "teen": 0.06,
+    "toddler": 0.45,
+}
+FIGURE_NAME = {
+    "adult_male": "成年男性",
+    "adult_female": "成年女性",
+    "teen": "少年少女",
+    "toddler": "幼儿",
+}
+# 人物类型用两条与裁切方式无关的度量判定，全身像与半身像同样适用：
+#   头宽占主体宽比 = 头宽 ÷ 主体宽，越接近幼儿越大；
+#   肩宽比 = 肩宽 ÷ 头宽，越接近成年男性越大。
+HEAD_FRAC_TODDLER = 0.45
+HEAD_FRAC_TEEN = 0.36
+SHOULDER_MALE = 2.35
+# 头部取主体顶部 14% 区段的最大行宽；肩部取主体高 16%~32% 区段的最大行宽
+HEAD_BAND = 0.14
+SHOULDER_BAND = (0.16, 0.32)
+# 现有顶部留空判为「合理」的宽松区间：落在画布高 12%~38% 且主体已贴底，就不二次排版
+GAP_OK_LO = 0.12
+GAP_OK_HI = 0.38
+# 主体底边落在画布下缘 2% 以内才算「已贴底」；下边距恒 0 是本类硬规格
+DIRECT_BOTTOM_TOL_FRAC = 0.02
 
 EXIT_OK, EXIT_ERR, EXIT_WARN, EXIT_ASK = 0, 1, 2, 3
 
@@ -163,10 +189,71 @@ def is_placard_shape(size):
     return abs(h / float(w) - PLACARD_RATIO) <= PLACARD_RATIO * PLACARD_RATIO_TOL
 
 
+def _band_width(alpha, y0, y1):
+    """取 alpha 在 [y0, y1) 行区间内实际占用的宽度（0 表示该区间没有可见像素）。"""
+    band = alpha.crop((0, y0, alpha.width, max(y0 + 1, y1)))
+    bb = band.point(lambda v: 255 if v > ALPHA_THR else 0).getbbox()
+    if bb is None:
+        return 0
+    return bb[2] - bb[0]
+
+
+def figure_kind(img, bb=None):
+    """按头宽占比与肩宽比判断画面主体属于哪类人物 → (类型, 度量)。
+
+    头宽占比 = 头宽 ÷ 主体宽，越接近幼儿越大；肩宽比 = 肩宽 ÷ 头宽，越接近成年男性越大。
+    头宽占比 ≥ HEAD_FRAC_TODDLER 判幼儿、≥ HEAD_FRAC_TEEN 判少年少女，其余为成人；
+    成人再按肩宽比分性别（≥ SHOULDER_MALE 判男）。
+    头宽取主体顶部 HEAD_BAND 行区间，肩宽取主体高 SHOULDER_BAND 行区间。
+    这两条度量都与画布裁切无关，全身像与半身像同样适用。
+    """
+    bb = bb if bb is not None else alpha_bbox(img, ALPHA_THR)
+    if bb is None:
+        raise ValueError("立绘完全透明，无法判断人物类型")
+    subj = img.crop(bb)
+    alpha = subj.getchannel("A")
+    w, h = subj.size
+    head_w = _band_width(alpha, 0, int(round(h * HEAD_BAND)))
+    if not head_w:
+        raise ValueError("主体顶部没有可见像素，无法判断人物类型")
+    head_frac = head_w / float(w)
+    m = dict(head_frac=round(head_frac, 3), head_w=head_w, subj_w=w)
+    if head_frac >= HEAD_FRAC_TODDLER:
+        return "toddler", m
+    if head_frac >= HEAD_FRAC_TEEN:
+        return "teen", m
+    y0 = int(round(h * SHOULDER_BAND[0]))
+    y1 = int(round(h * SHOULDER_BAND[1]))
+    shoulder_w = _band_width(alpha, y0, y1)
+    ratio = shoulder_w / float(head_w)
+    m.update(shoulder_w=shoulder_w, shoulder_ratio=round(ratio, 2))
+    return ("adult_male" if ratio >= SHOULDER_MALE else "adult_female"), m
+
+
+def is_direct(st, subject_min_transp=40.0):
+    """素材是否已自带合理顶部留空、且主体已贴底。
+
+    成立条件：有透明背景（是抠图）、主体底边落在画布下缘 2% 以内、且现有顶部留空占画布高
+    落在 GAP_OK_LO~GAP_OK_HI 区间内。判据宽松：只要留空量在合理范围内就整幅等比缩放直通，
+    不重新排版；只有留空过少（顶到画布上缘）或过多（人物缩成一小团）才按人物类型重排。
+    """
+    if st["transp"] < subject_min_transp:
+        return False
+    bb = st["bbox"]
+    if not bb or not st["figure"]:
+        return False
+    h = st["size"][1]
+    if (h - bb[3]) > h * DIRECT_BOTTOM_TOL_FRAC:
+        return False
+    frac = bb[1] / float(h)
+    return GAP_OK_LO <= frac <= GAP_OK_HI
+
+
 def classify(img, subject_min_transp=40.0, bleed_max_transp=5.0):
-    """→ (kind, stats)。kind ∈ {'subject','bleed','middle'}。
+    """→ (kind, stats)。kind ∈ {'direct','subject','bleed','middle'}。
 
     判据（透明率优先，其次尺寸）：
+      - 透明 ≥ subject_min_transp 且已是成品构图 → 'direct'（原尺寸直通，不重定标）
       - 透明像素（alpha<=5）占比 ≥ subject_min_transp → 'subject'（人物抠图）
         这一条放最前：高瘦的人物抠图同样可能是 1:2.85，透明率说它是抠图就按抠图办。
       - 长宽比命中 placard 形（1:2.85 ±3%）→ 'bleed'（竖版背景：空白前景 + 铺满背景）
@@ -179,14 +266,18 @@ def classify(img, subject_min_transp=40.0, bleed_max_transp=5.0):
     total = float(w * h)
     transp = sum(hist[:6]) / total * 100.0
     opaque = sum(hist[250:]) / total * 100.0
-    bb = a.getbbox()
+    # 用与 alpha_bbox 相同的阈值取外接框：getbbox() 把 alpha=1 的极淡边缘也算进来，
+    # 柔和边缘会把框撑到整幅画布，顶部留空随之归零，成品直通判据就永远不成立。
+    bb = a.point(lambda v: 255 if v > ALPHA_THR else 0).getbbox()
     touches = 0
     if bb:
         touches = sum([bb[0] <= 1, bb[1] <= 1, bb[2] >= w - 1, bb[3] >= h - 1])
     st = dict(size=(w, h), transp=round(transp, 1), opaque=round(opaque, 1),
-              bbox=bb, touches=touches, placard_shape=is_placard_shape((w, h)))
+              bbox=bb, touches=touches, placard_shape=is_placard_shape((w, h)),
+              figure=None, figure_metrics={})
     if transp >= subject_min_transp:
-        return "subject", st
+        st["figure"], st["figure_metrics"] = figure_kind(img, bb)
+        return ("direct" if is_direct(st, subject_min_transp) else "subject"), st
     if st["placard_shape"]:
         return "bleed", st
     if transp <= bleed_max_transp and opaque >= 90.0:
@@ -305,21 +396,67 @@ def make_placard_bg(src_img):
     return inter.crop((x0, 0, x0 + tw, th)), dict(scale=round(scale, 3))
 
 
-def make_frontend_fg(src):
-    """原版 FrontEnd 前景：取 alpha 外接框 → 主体等比缩到高 882 →
-    贴到 1080×1080 画布（水平居中、底边贴齐画布下缘、顶部留空 198 px）。
+def make_frontend_fg(src, figure=None):
+    """原版 FrontEnd 前景：取 alpha 外接框 → 主体等比缩到画布高减顶部留空 →
+    贴到 1080×1080 画布（水平居中、底边贴齐画布下缘）。
+
+    顶部留空由人物类型决定（FIGURE_GAP）：成年男性最少、成年女性多一些、少年少女再少、
+    幼儿近乎一半。底部恒不留空。
     """
     bb = alpha_bbox(src, ALPHA_THR)
     if bb is None:
         raise ValueError("立绘完全透明，无法定内容框")
+    metrics = {}
+    if figure is None:
+        figure, metrics = figure_kind(src, bb)
+    top = int(round(FG_CANVAS * FIGURE_GAP[figure]))
+    subj_h = FG_CANVAS - top
     subj = src.crop(bb)
     w, h = subj.size
-    nw = max(1, int(round(w * FG_SUBJECT_H / float(h))))
+    nw = max(1, int(round(w * subj_h / float(h))))
     x = (FG_CANVAS - nw) // 2
     out = Image.new("RGBA", (FG_CANVAS, FG_CANVAS), (0, 0, 0, 0))
-    out.paste(subj.resize((nw, FG_SUBJECT_H), Image.LANCZOS), (x, FG_TOP))
-    return out, dict(content_w=nw, canvas_w=FG_CANVAS, left=x,
-                     right=FG_CANVAS - nw - x, clipped=0)
+    out.paste(subj.resize((nw, subj_h), Image.LANCZOS), (x, top))
+    return out, dict(figure=figure, top=top, subject_h=subj_h, content_w=nw,
+                     canvas_w=FG_CANVAS, left=x, right=FG_CANVAS - nw - x,
+                     metrics=metrics)
+
+
+def make_direct(src):
+    """留空合理直通：整幅等比缩放套进 1080×1080 画布，构图原样保留。
+
+    素材本身已是「顶部留余量 + 主体贴底」的成品构图时，整幅缩放即可——
+    留空比例、主体位置、底边贴齐关系随整幅一起缩放，不重排版、不重新居中、不吃顶部余量。
+    非方图画布先补透明边成正方形（底边贴齐、水平居中），再整幅缩放，保持构图关系不变。
+    """
+    w, h = src.size
+    if w == h:
+        canvas = src
+        pad = (0, 0)
+    else:
+        side = max(w, h)
+        canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+        x = (side - w) // 2
+        y = side - h
+        canvas.paste(src, (x, y))
+        pad = (x, y)
+    scale = FG_CANVAS / float(canvas.size[0])
+    out = canvas.resize((FG_CANVAS, FG_CANVAS), Image.LANCZOS)
+    return out, dict(mode="direct", src="%dx%d" % (w, h), pad=pad,
+                     scale=round(scale, 4))
+
+
+def derive_bgs_from_one(src_img):
+    """同源派生：一张 16:9 源同时产出加载背景与 placard 竖版背景。
+
+    返回 (loading_img, placard_img, meta)。加载背景走 make_loading_bg（1920×1080 居中裁），
+    placard 走 make_placard_bg（cover 到 656×1870，即控件 328×935 的 2 倍，留缩放余量）。
+    """
+    loading, lm = make_loading_bg(src_img)
+    placard, pm = make_placard_bg(src_img)
+    if placard.size != (PLACARD_BG[0] * 2, PLACARD_BG[1] * 2):
+        placard = placard.resize((PLACARD_BG[0] * 2, PLACARD_BG[1] * 2), Image.LANCZOS)
+    return loading, placard, dict(loading=lm, placard=pm, src="%dx%d" % src_img.size)
 
 
 def emit(files, root, name, img, check, report=None):
@@ -358,7 +495,7 @@ def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, w
     report.append("     尺寸 %dx%d · 透明 %s%% · 不透明 %s%% · 触边 %d → **%s**%s"
                   % (st["size"][0], st["size"][1], st["transp"], st["opaque"],
                      st["touches"],
-                     {"subject": "人物抠图", "bleed": "满幅图",
+                     {"direct": "成品直通", "subject": "人物抠图", "bleed": "满幅图",
                       "middle": "中间地带(需裁决)"}[kind], shape))
 
     if kind == "middle":
@@ -366,6 +503,7 @@ def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, w
                       % st["transp"])
         report.append("        是人物抠图（有透明背景、主体孤立）？→ 加 --force-subject")
         report.append("        是满幅画面（无透明、铺满画布）？→ 加 --force-bleed")
+        report.append("        已是带顶部余量的成品立绘？→ 加 --force-direct")
         return EXIT_ASK
 
     fg_name = "LEADER_%s_NEUTRAL" % key
@@ -374,14 +512,39 @@ def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, w
     placard_bg, loading_bg = acquire_bgs(root, textures_dir, key, img, bg_dir,
                                          packs, args, report, check,
                                          strip_src=(img if (st["placard_shape"]
-                                                            and kind == "bleed") else None))
+                                                            and kind == "bleed") else None),
+                                         bg_file=args.bg)
 
-    if kind == "subject":
-        # ① 人物抠图：定内容框 → 高 882 → 贴 1080×1080 画布（居中、底边贴齐）
-        out, meta = make_frontend_fg(img)
-        report.append("     前景 → %s（%dx%d，主体宽 %d，顶部留空 %d）"
-                      % (fg_name, out.size[0], out.size[1], meta["content_w"],
-                         FG_TOP))
+    if kind == "direct":
+        # 〇 成品直通：素材自带合理顶部留空、主体已贴底 → 整幅等比缩放，不改留空比例
+        out, meta = make_direct(img)
+        report.append("     前景 → %s（%dx%d，成品直通：整幅等比缩放，未重排版）"
+                      % (fg_name, out.size[0], out.size[1]))
+        report.append("     判定依据：透明 %s%% ≥40%%、主体底边距画布下缘 %d px ≤ 2%%、"
+                      "现有顶部留空 %d px（画布高 %.1f%%）落在合理区间 %.0f%%~%.0f%% 内 → %s，"
+                      "留空比例随整幅缩放保持原样"
+                      % (st["transp"], st["size"][1] - st["bbox"][3], st["bbox"][1],
+                         st["bbox"][1] * 100.0 / st["size"][1],
+                         GAP_OK_LO * 100.0, GAP_OK_HI * 100.0, FIGURE_NAME[st["figure"]]))
+        emit({"textures": textures_dir}, root, fg_name, out, check)
+        portrait = fg_name
+        loading_fg = fg_name
+    elif kind == "subject":
+        # ① 人物抠图：按人物类型定顶部留空 → 主体等比缩放 → 贴 1080×1080 画布（居中、底边贴齐）
+        out, meta = make_frontend_fg(img, st["figure"])
+        m = meta["metrics"]
+        report.append("     前景 → %s（%dx%d，%s，主体高 %d，主体宽 %d，顶部留空 %d px）"
+                      % (fg_name, out.size[0], out.size[1],
+                         FIGURE_NAME[meta["figure"]], meta["subject_h"],
+                         meta["content_w"], meta["top"]))
+        report.append("     判定依据：头宽占比 %s（阈值 幼儿 ≥%.2f / 少年少女 ≥%.2f）、"
+                      "肩宽比 %s → %s；现有顶部留空 %d px（画布高 %.1f%%）不在合理区间"
+                      " %.0f%%~%.0f%% 内，按类型重排成目标留空 %.0f%%"
+                      % (m.get("head_frac"), HEAD_FRAC_TODDLER, HEAD_FRAC_TEEN,
+                         m.get("shoulder_ratio"), FIGURE_NAME[meta["figure"]],
+                         st["bbox"][1], st["bbox"][1] * 100.0 / st["size"][1],
+                         GAP_OK_LO * 100.0, GAP_OK_HI * 100.0,
+                         FIGURE_GAP[meta["figure"]] * 100.0))
         emit({"textures": textures_dir}, root, fg_name, out, check)
         portrait = fg_name
         loading_fg = fg_name
@@ -459,7 +622,7 @@ def _ensure_alias(root, xlp_name, entry_id, object_name, check, report):
     elif check:
         state = "将写入"
     elif st == "staged":
-        state = "改写入位 workspace/gen"
+        state = "改写入位 <解决方案根>/workspace/gen"
     else:
         state = "已写入"
     report.append("     XLP %s：%s → %s（%s）"
@@ -487,7 +650,7 @@ def _find_by_patterns(textures_dir, key, patterns):
 
 
 def acquire_bgs(root, textures_dir, key, ref_img, bg_dir, packs, args, report, check,
-                strip_src=None):
+                strip_src=None, bg_file=None):
     """取两种背景 → (placard_bg, loading_bg)。两个目标**各自独立**取源。
 
     两者尺寸要求不同，**不能共用一个源**：
@@ -509,9 +672,16 @@ def acquire_bgs(root, textures_dir, key, ref_img, bg_dir, packs, args, report, c
     # --bg-dir 里可能同时匹配到多张（竖版/宽幅），逐个按尺寸归位
     bg_candidates = []
     if bg_dir:
-        for fn in sorted(os.listdir(bg_dir)) if os.path.isdir(bg_dir) else []:
-            if fn.lower().endswith((".png", ".jpg", ".jpeg", ".dds")) and key.lower() in fn.lower():
-                bg_candidates.append(os.path.join(bg_dir, fn))
+        all_bg = [os.path.join(bg_dir, fn)
+                  for fn in sorted(os.listdir(bg_dir))
+                  if fn.lower().endswith((".png", ".jpg", ".jpeg", ".dds"))] \
+            if os.path.isdir(bg_dir) else []
+        matched = [p for p in all_bg if key.lower() in os.path.basename(p).lower()]
+        if matched:
+            bg_candidates = matched
+        elif len(all_bg) == 1:
+            # 目录只有一个素材时直接采用（素材名常不含领袖名，如「加载界面背景（…）.png」）
+            bg_candidates = all_bg
     bg_for_placard = None
     bg_for_loading = None
     for c in bg_candidates:
@@ -527,6 +697,21 @@ def acquire_bgs(root, textures_dir, key, ref_img, bg_dir, packs, args, report, c
 
     if l_nm:
         report.append("     加载界面背景 ← ① 工程既有：%s" % l_nm)
+    elif bg_file:
+        # 同源派生：一张 16:9 源同时产出加载背景与 placard 竖版背景
+        src_img = load_any(bg_file)
+        ld, pb, dm = derive_bgs_from_one(src_img)
+        l_nm = "LEADER_%s_BACKGROUND" % key
+        emit({"textures": textures_dir}, root, l_nm, ld, check)
+        report.append("     加载界面背景 ← ② 同源派生（--bg）：%s → %s（%dx%d）"
+                      % (os.path.basename(bg_file), l_nm, ld.size[0], ld.size[1]))
+        if not p_nm:
+            p_nm = "LEADER_%s_PLACARD_BACKGROUND" % key
+            emit({"textures": textures_dir}, root, p_nm, pb, check)
+            report.append("     placard 背景 ← ② 同源派生（--bg）：%s → %s（%dx%d，cover %s×）"
+                          % (os.path.basename(bg_file), p_nm, pb.size[0], pb.size[1],
+                             dm["placard"]["scale"]))
+            return p_nm, l_nm
     elif bg_for_loading:
         c, im = bg_for_loading
         out, meta = make_loading_bg(im)
@@ -588,6 +773,9 @@ def main():
     ap.add_argument("--leaders", help="逗号分隔的 LeaderType 列表（配合 --image-dir）")
     ap.add_argument("--bg-dir", help="背景素材目录（文件名含领袖名片段）")
     ap.add_argument("--pick", help="手动指定官方背景名（跳过色系回退）")
+    ap.add_argument("--bg", help="单张背景源（16:9）；给出时从它同时派生加载背景与 placard 竖版背景")
+    ap.add_argument("--force-direct", action="store_true",
+                    help="强制按成品直通处理（原尺寸采用，不重定标）")
     ap.add_argument("--force-subject", action="store_true", help="强制按人物抠图处理")
     ap.add_argument("--force-bleed", action="store_true", help="强制按满幅图处理")
     ap.add_argument("--no-color-fallback", action="store_true", help="禁用色系回退")
@@ -607,10 +795,13 @@ def main():
     root = os.path.abspath(a.project)
     if not os.path.isdir(root):
         raise SystemExit("工程目录不存在：%s" % root)
-    if bool(a.force_subject) and bool(a.force_bleed):
-        raise SystemExit("--force-subject 与 --force-bleed 互斥")
+    n_force = sum([bool(a.force_direct), bool(a.force_subject), bool(a.force_bleed)])
+    if n_force > 1:
+        raise SystemExit("--force-direct / --force-subject / --force-bleed 三者互斥")
 
-    forced = "subject" if a.force_subject else ("bleed" if a.force_bleed else None)
+    forced = ("direct" if a.force_direct else
+              "subject" if a.force_subject else
+              ("bleed" if a.force_bleed else None))
     packs = tuple(x.strip() for x in a.allow_pack.split(",") if x.strip())
 
     # 组装任务列表

@@ -35,7 +35,7 @@ def kernel():
 def ensure(project, consumers=(), libraries=(), required=()):
     """对工程 Art.xml 做增量接线，返回 (退出码, 输出文本)。
 
-    退出码 0 = 无需改动；2 = 改写结果已入位 <工程>/workspace/gen/，
+    退出码 0 = 无需改动；2 = 改写结果已入位 <解决方案根>/workspace/gen/，
     由 AI 用文件编辑工具写入工程对应路径。
     """
     argv = [sys.executable, kernel(), str(project)]

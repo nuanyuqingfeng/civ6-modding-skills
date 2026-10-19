@@ -7,7 +7,7 @@ unregister_audio.py -- 从 mod 注册点移除音频注册 (与 register_to_mod.
 移除内容:
   .modinfo   : <UpdateAudio id=...> 块 + <Files> 内 Platforms/Windows/Audio 条目
   .civ6proj  : CDATA 内 <UpdateAudio ...> 单行 + <Content Include="Platforms\Windows\Audio\..."> 条目
-回写: 改写结果由 _projwrite 守卫写入 <工程>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具
+回写: 改写结果由 _projwrite 守卫写入 <解决方案根>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具
       写入工程 (退出码 2 并打印清单)。
 --purge-source: 另删源工程里该 bank 的产物 (三件套 + 它 xml 引用的 wem) 并清掉 ini 里该 bank 的行。
       .bnk/.wem 属可再生二进制资产 (重新编译 bank 即可重出), 删除不涉及工程代码内容;

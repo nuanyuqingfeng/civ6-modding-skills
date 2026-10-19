@@ -165,7 +165,7 @@ def main():
     else:
         for path, result in changed:
             if result == "STAGED":
-                print(f"  改写结果已到 workspace/gen/：{path}")
+                print(f"  改写结果已到 <解决方案根>/workspace/gen/：{path}")
             elif result == "SAME":
                 print(f"  无需改动：{path}")
             else:

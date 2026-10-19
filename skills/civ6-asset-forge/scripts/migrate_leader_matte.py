@@ -49,7 +49,7 @@ r"""migrate_leader_matte.py — 把 2D 领袖纸片材质从 PBR 人物类 Leade
 
     --all-siblings        扫描 <Civ6 工程父目录> 下全部兄弟工程
 
-写入：既有 .mtl 内容有变化时，改写结果落到 <工程>/workspace/gen/Materials/ 的同一相对路径，
+写入：既有 .mtl 内容有变化时，改写结果落到 <解决方案根>/workspace/gen/Materials/ 的同一相对路径，
       由 AI 用文件编辑工具写入工程（退出码 2 并打印待写入清单）。
 
 ## 识别规则（只动「领袖纸片材质」）

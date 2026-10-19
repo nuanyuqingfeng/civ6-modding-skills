@@ -89,6 +89,15 @@ All database XML wraps tables in `<GameInfo>`:
 | `PlayerColors` | Color definitions | `PrimaryColor`, `SecondaryColor`, `TextColor`, `Alt1/2/3PrimaryColor`, `Alt1/2/3SecondaryColor`（参考库取 `Color_Tables.xml` + `ColorManager.sql` 并集） |
 | `BaseGameText` | Localization | PK: `Tag`, also `Text` |
 | `IconDefinitions` | Icon atlas mapping | PK: `Name`, also `Atlas`, `Index` |
+| `PlayerItems` | 选人界面特色物品清单（**Config 库**） | 准入规则见下节 |
+
+## `PlayerItems` 准入规则
+
+入 `PlayerItems` 的对象必须在注册时带 `TraitType`，且该 `TraitType` 已通过 `LeaderTraits` 或 `CivilizationTraits` 关联到本行的 `LeaderType` / `CivilizationType`。主体限 `Districts` / `Units` / `Buildings` / `Improvements` 四张表。
+
+`Projects` 表没有 `TraitType` 列，项目永远不进 `PlayerItems`。原版全表实测（`DebugConfiguration.sqlite → PlayerItems`，421 行）：`KIND_BUILDING` 56 / `KIND_DISTRICT` 66 / `KIND_IMPROVEMENT` 82 / `KIND_UNIT` 217 / `KIND_PROJECT` 0。
+
+该违规不产生任何报错——Config 侧写错只是让选人界面多出一条不该出现的条目。机械拦截在 `scripts/rgn_validate_runner.mjs` 的「FrontEnd 清单资格」一节：它在 Config 库副本上清空 `PlayerItems`、重放项目 SQL，把 Gameplay 快照的 `TraitType` 与关联表复制进来做跨库查询，只判定项目新增的行。
 
 ## Adjacency_YieldChanges 与 District_Adjacencies
 

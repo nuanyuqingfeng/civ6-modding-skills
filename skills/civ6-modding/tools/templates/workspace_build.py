@@ -9,13 +9,13 @@
 
 ## 落盘边界（硬性）
 
-工作区里只允许出现两类东西：
+  1. **工程核心文件夹**（`<解决方案根>/<ModName>/`）只放工程文件与处理后的成品素材：
+     Data/ 与 Text/ 里的 SQL / XML、.civ6proj、.gitignore、.gitattributes、AGENTS.md、
+     美术源文件与成品贴图；
+  2. **`<解决方案根>/workspace/`** —— 脚本、日志、派生产物、设计文档、资料、中间产物，
+     一律不进工程核心文件夹。
 
-  1. **mod 成品**：工程根下 Data/ 与 Text/ 里的 SQL / XML，加上 .civ6proj、.gitignore、
-     .gitattributes、AGENTS.md；
-  2. **workspace/ 下的全部内容** —— 脚本、日志、派生产物、设计文档、资料、中间产物。
-
-工程根不落任何构建产物。日常迭代走 stage + verify，产物全部落在 workspace/gen/。
+工程核心文件夹不落任何构建产物。日常迭代走 stage + verify，产物全部落在 workspace/gen/。
 
 ## 用法
 
@@ -42,11 +42,35 @@ except Exception:
     pass
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PROJ = os.path.dirname(os.path.dirname(HERE))          # workspace/_tools/build.py → 工程根
-WS = os.path.join(PROJ, "workspace")
+WS = os.path.dirname(HERE)                             # workspace/_tools/build.py → workspace
+SOLUTION = os.path.dirname(WS)                         # workspace 的上一层 = 解决方案根（.civ6sln 同层）
 GEN = os.path.join(WS, "gen")
 TMP = os.path.join(WS, "tmp")
 STAGE_MODS = os.path.join(GEN, "Mods")
+
+
+def discover_project() -> str:
+    """解决方案根下唯一的工程核心文件夹（内含恰好一个 .civ6proj）。
+
+    两层布局里它是 `<解决方案根>/<ModName>/`；单层布局里就是解决方案根本身。
+    """
+    if [f for f in os.listdir(SOLUTION) if f.endswith(".civ6proj")]:
+        return SOLUTION
+    hits = []
+    for name in sorted(os.listdir(SOLUTION)):
+        d = os.path.join(SOLUTION, name)
+        if not os.path.isdir(d) or name == "workspace":
+            continue
+        projs = [f for f in os.listdir(d) if f.endswith(".civ6proj")]
+        if projs:
+            hits.append(d)
+    if len(hits) != 1:
+        raise SystemExit("解决方案根下应恰好有 1 个含 .civ6proj 的工程核心文件夹，实际 %d 个：%s"
+                         % (len(hits), "、".join(hits) or "无"))
+    return hits[0]
+
+
+PROJ = discover_project()
 
 
 def locate_skill() -> str:

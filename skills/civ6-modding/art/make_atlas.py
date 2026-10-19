@@ -279,7 +279,7 @@ def main():
         if str(asset_map_path.resolve()).startswith(str(proj_root.resolve()) + os.sep):
             result = write_project_file(asset_map_path, payload, str(proj_root))
             if result == "STAGED":
-                print("  asset_map.json 有变化，改写结果落到 workspace/gen/")
+                print("  asset_map.json 有变化，改写结果落到 <解决方案根>/workspace/gen/")
         else:
             asset_map_path.write_text(payload, encoding="utf-8")
 

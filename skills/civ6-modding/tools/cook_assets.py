@@ -29,7 +29,7 @@ pantry 列表
 
 与 targets 刻意不同的三点
     · `IgnoreExitCode="true"` 不再沿用 —— 退出码被检查，并按日志模式分类报告；
-    · CWD 固定到 `<工程>\workspace\tmp\cook_cwd`，`cooker.log` 不脏工程根（.dep 由 banquet 兜住）；
+    · CWD 固定到 `<解决方案根>\workspace\tmp\cook_cwd`，`cooker.log` 不落工程核心文件夹；
     · cook 之后把源工程 `ArtDefs/*.artdef` 覆盖进输出副本（见 sync_artdefs 的说明）。
 
 报什么错、不报什么错
@@ -87,6 +87,14 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 PLATFORMS = ("Windows", "MacOS")
+
+
+def solution_root(project_root: str) -> str:
+    """`.civ6sln` 所在的那一层；单层布局（无 .civ6sln）时回落到工程根的上一层。"""
+    root = os.path.abspath(project_root)
+    if glob_ci(root, "*.civ6sln"):
+        return root
+    return os.path.dirname(root)
 
 # 日志模式 → 归类。顺序有意义：先匹配的先生效。
 LOG_PATTERNS = (
@@ -613,7 +621,7 @@ def main() -> int:
         print("CHECK 模式：未执行任何 cook，未写入任何文件。")
         return 1 if art_fails else 0
 
-    cook_cwd = os.path.join(root, "workspace", "tmp", "cook_cwd")
+    cook_cwd = os.path.join(solution_root(root), "workspace", "tmp", "cook_cwd")
     logdir = os.path.join(cook_cwd, "logs")
     os.makedirs(logdir, exist_ok=True)
 

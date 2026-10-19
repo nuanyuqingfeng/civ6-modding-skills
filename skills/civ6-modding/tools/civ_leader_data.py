@@ -456,7 +456,7 @@ def main() -> int:
             (os.path.join(args.project, "Data", "Config_%s.sql" % slug), c),
             (os.path.join(args.project, "Text", "Text_%s.sql" % slug), t)]
     for path, content in outs:
-        # .sql 属代码/配置类 → CRLF（换行分层铁律）；既有文件内容有变化时，改写结果由守卫入位 workspace/gen
+        # .sql 属代码/配置类 → CRLF（换行分层铁律）；既有文件内容有变化时，改写结果由守卫入位 <解决方案根>/workspace/gen
         data = content.replace("\r\n", "\n").replace("\n", "\r\n").encode("utf-8")
         result = write_project_file(path, data, args.project)
         print("写出  %s  %d B  %s" % (path, len(data), result))
