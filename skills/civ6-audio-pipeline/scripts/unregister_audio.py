@@ -7,8 +7,8 @@ unregister_audio.py -- 从 mod 注册点移除音频注册 (与 register_to_mod.
 移除内容:
   .modinfo   : <UpdateAudio id=...> 块 + <Files> 内 Platforms/Windows/Audio 条目
   .civ6proj  : CDATA 内 <UpdateAudio ...> 单行 + <Content Include="Platforms\Windows\Audio\..."> 条目
-回写: 改写结果由 _projwrite 守卫写入 <解决方案根>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具
-      写入工程 (退出码 2 并打印清单)。
+回写: .modinfo / .civ6proj / _Banks.ini 都是代码文件, 脚本只把"移除后的完整文本"写进
+      <解决方案根>/workspace/gen/reports/ 的数据清单, 由人逐行写入工程; .bnk/.wem 属音频产物直接删除。
 --purge-source: 另删源工程里该 bank 的产物 (三件套 + 它 xml 引用的 wem) 并清掉 ini 里该 bank 的行。
       .bnk/.wem 属可再生二进制资产 (重新编译 bank 即可重出), 删除不涉及工程代码内容;
       ini 属文本工程文件, 改行走守卫。未给 --bank 时只列出目录内容供确认, 不删任何文件。
@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 import paths
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _projwrite import workspace_gen, write_project_file, finish
+from _projwrite import emit_report, finish
 import register_to_mod
 
 P1 = paths.get('p1') or '<未配置 p1>'
@@ -52,9 +52,13 @@ def clean_modinfo(p, audio_id, root):
     if n:
         print('  [MODINFO] 已移除 Files 音频条目: %d' % n)
     if txt2 != txt:
-        result = write_project_file(p, (b'\xef\xbb\xbf' if bom else b'') + txt2.encode('utf-8'), root)
         ET.fromstring(txt2)
-        print('  [MODINFO] 改写结果已入位 (%s) + 回验通过' % result)
+        out_path = emit_report('unregister_modinfo.json', {
+            'target': os.path.relpath(p, root).replace('\\', '/'),
+            'reason': '.modinfo 属工程文件, 只能逐行编辑',
+            'bom': bom,
+            'content': txt2}, root)
+        print('  [MODINFO] 移除后的全文写进报告, 由人逐行写入: %s' % out_path)
 
 def clean_civ6proj(p, purge, root, bank=None):
     raw = open(p, 'rb').read()
@@ -64,8 +68,12 @@ def clean_civ6proj(p, purge, root, bank=None):
     txt2, n2 = re.subn(r'\s*<Content Include="Platforms\\Windows\\Audio\\[^"]+">\s*<SubType>Content</SubType>\s*</Content>', '', txt2)
     print('  [CIV6PROJ] 移除 UpdateAudio x%d, Content x%d' % (n1, n2))
     if txt2 != txt:
-        result = write_project_file(p, (b'\xef\xbb\xbf' if bom else b'') + txt2.encode('utf-8'), root)
-        print('  [CIV6PROJ] 改写结果已入位 (%s): %s' % (result, os.path.join(workspace_gen(root), os.path.relpath(p, root))))
+        out_path = emit_report('unregister_civ6proj.json', {
+            'target': os.path.relpath(p, root).replace('\\', '/'),
+            'reason': '.civ6proj 属工程文件, 只能逐行编辑',
+            'bom': bom,
+            'content': txt2}, root)
+        print('  [CIV6PROJ] 移除后的全文写进报告, 由人逐行写入: %s' % out_path)
     if purge:
         purge_source(os.path.dirname(p), bank)
 
@@ -73,7 +81,7 @@ def purge_source(srcdir, bank=None):
     """删除源工程音频产物：只删该 bank 的三件套与它 xml 引用的 wem，并移除 ini 里该 bank 的行。
 
     产物是 .bnk/.wem 等可再生二进制资产（重新编译 bank 即可重出），删除不涉及工程代码内容；
-    ini 属文本工程文件，改行走 _projwrite 守卫入位 workspace/gen。
+    ini 属手写注册文件，脚本把删行后的全文写进报告，由人逐行删除。
     bank 未指定时列出目录内容供人工确认，不删任何文件。
     """
     audio_dir = os.path.join(srcdir, 'Platforms', 'Windows', 'Audio')
@@ -103,8 +111,11 @@ def purge_source(srcdir, bank=None):
         txt = raw.decode('ascii')
         txt2, n = re.subn(r'%s\.bnk\r?\n' % re.escape(bank), '', txt)
         if n:
-            result = write_project_file(ini, txt2.encode('ascii'), project_root(ini))
-            print('  [PURGE] ini 移除 %s.bnk 行 (%s): %s' % (bank, result, os.path.basename(ini)))
+            out_path = emit_report('unregister_ini.json', {
+                'target': os.path.relpath(ini, project_root(ini)).replace('\\', '/'),
+                'reason': '_Banks.ini 属手写注册文件, 只能逐行编辑',
+                'content': txt2}, project_root(ini))
+            print('  [PURGE] ini 待删行写进报告, 由人逐行删除: %s' % out_path)
 
 def main():
     ap = argparse.ArgumentParser()

@@ -11,5 +11,9 @@
   },
   "scripts/wwise_shortid.py": {
     "usage": "（库：被其它脚本 import，无独立 CLI）"
+  },
+  "scripts/voice_shortid.py": {
+    "purpose": "语音对象的 ShortID 打包命名：槽位 4 位 + 角色 2 位 + 主体哈希 25 位，编号由名称算出",
+    "usage": "python voice_shortid.py assign <工程目录> --project <mod目录名> [--dry]；check 同参数；verify-bank <bank.bnk> <工程目录> --project X；id --project X --asset Y --role sound|action|container"
   }
 }

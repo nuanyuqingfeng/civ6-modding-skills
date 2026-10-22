@@ -27,7 +27,7 @@
    `    <Content Include="Platforms\Windows\Audio\x.wem">` + `      <SubType>Content</SubType>`（反斜杠）。
    实证先例：本地某领袖 mod 源工程 .civ6proj（CDATA 单行 UpdateAudio + Content 条目）。
    > 背景：给**既有 mod 首次加音频**时，P1 源工程与 P2 运行目录往往都没有音频注册——两边都要写（`register_to_mod.py` 默认双写）；该做法与"防止重建丢失"无关。
-   > ⚠ 已有条目的 `.modinfo` / `.civ6proj`（以及 `Platforms/Windows/Audio/xxx_Banks.ini`）属改写：命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。首次注册时新建的 `.bnk` / `.wem` 属可再生二进制资产，由脚本直写。
+   > ⚠ 已有条目的 `.modinfo` / `.civ6proj`（以及 `Platforms/Windows/Audio/xxx_Banks.ini`）属代码文件与工程文件：命令只把待插入的行写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由人逐行写入工程。`.bnk` / `.wem` 属音频产物，由脚本直写。
 
 ## 4. Wwise 工程直改（免 GUI）要点
 
@@ -161,3 +161,58 @@
 - **正确做法（正式交付）**：把素材做成 **Stream（流式）→ WWise Vorbis wem**（约 8-10% 体积），建事件后由 WwiseCLI 生成 bank。语音（Speech bank）与普通音频/BGM 均如此——`audio_pack.py` 的纯 Python 产品**不得用于交付**。
 - 瘦身模板 `assets/template_slim/template_speech.bnk` 是**纯结构模板**（瘦身模板 + 静音占位生成，无成品音频），仅用于研究；
   该目录属第三方派生内容，**不随公开仓库分发**（本地保留，缺失时跑 `scripts/ensure_template.py`）。
+
+## 10. 语音对象的 ShortID 打包命名
+
+编号不由随机分配、也不靠登记表避让，直接由名称算出。这样两个互不相识的作者各自建工程，编号天然错开。
+
+### 10.1 位段
+
+31 位 = 槽位 4 位（第 30..27 位）+ 角色 2 位（第 26..25 位）+ 主体哈希 25 位（第 24..0 位）。
+
+| 字段 | 取值 |
+|---|---|
+| 槽位 | 1 first_meet、2 declare_war_from_human、3 declare_war_from_ai、4 kudo_exit、5 warning_exit、6 defeat_from_ai、7 quote、8 misc_pep_talk；未命中记 0 |
+| 角色 | 0 Sound、1 Action、2 Container、3 Bus |
+| 主体 | FNV-1(32) 取低 25 位 |
+
+槽位取 15、角色取 3、主体取全 1 时恰为 `2147483647`，整段铺满可写区间。
+
+### 10.2 主体键
+
+- Sound / Container：`<mod 目录名>/<资产名>`
+- Action：`<mod 目录名>/<事件名>/<动作名>`（Action 一律叫 Play/Stop/Pause，必须带事件名）
+- 同类键重复时按文档顺序追加 `/2`、`/3`
+
+工程名用 mod 目录名（工坊 workspace 名），比两三个字母的缩写更耐撞。
+
+### 10.3 不可动的部分
+
+- **Event 编号**由 Wwise 按事件名哈希决定，写死无意义，工具不碰。
+- **三个锚点** 88602518 / 854467727 / 424381547 是 `Stop_Leader_Speech` 的寻址目标，工具跳过；主体哈希命中锚点时按 10.2 的规则追加后缀重算。
+- 显式 ShortID 必须 ≤ `2147483647`：实测写 `3000000000` 与 `4123456789` 会被 Wwise 换成随机值，写 `1123456789` 原样保留。
+
+### 10.4 用法
+
+```bash
+S=<skill目录>/scripts
+python $S/voice_shortid.py assign <工程目录> --project <mod目录名> [--dry]
+python $S/voice_shortid.py check  <工程目录> --project <mod目录名>
+python $S/voice_shortid.py verify-bank <bank.bnk> <工程目录> --project <mod目录名>
+python $S/voice_shortid.py id --project <mod目录名> --asset <资产名> --role sound
+```
+
+`assign` 只改 `.wwu` 的 `ShortID` 属性（缺属性的补上），随后照常跑 `wwise_wire.py --generate`；`check` 复算 `.wwu` 并核对，`verify-bank` 复算产物 bank 里的 Sound / Action / ActorMixer 编号，两者都以异常数作退出码。
+
+### 10.5 改号之前的硬性前提
+
+先在不改号的情况下生成一次，与在售 bank 逐字节比对；不一致的工程**不得改号**。实测两类坑：
+
+- 副本链不同：同一 mod 的另一份工程副本把三个锚点换成了别的编号，产物里语音链不在 `id854467727` 子树内，全局停止落空（表现为语音一句叠一句）。认准锚点链 `424381547 → 854467727 → 88602518` 完整的那一份。
+- 工程落后于成品：成品 bank 里的部分事件在工程里不存在（重生成会丢事件），或媒体编号整体重排（重生成会换掉全部音频源编号）。
+
+比对口径：事件编号集合一致、媒体编号与尺寸一致、对象数量一致，三者齐了才动手。
+
+### 10.6 撞号概率
+
+同一槽位同一角色才可能相撞，桶内空间 2^25。2000 个对象约 0.28%，500 个对象约 0.017%。单 mod 一个六领袖语音 bank 约 40 个对象，概率 0.001% 量级。

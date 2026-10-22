@@ -126,18 +126,19 @@ def _write_bank_outputs(out, bank_name, bank_id, voices, ini_prefix='', leader_b
     open(os.path.join(out, bank_name + '.txt'), 'w', encoding='utf-8').write(txt)
 
     ini_name = (ini_prefix or os.path.splitext(bank_name)[0].replace('_Speech', '')) + '_Banks.ini'
-    ini_text = (
-        ';\n; Sections are defined like so:\n'
-        '; Global = banks always resident\n'
-        '; Menu = banks loaded only during main menu\n'
-        '; InGame = banks loaded during gameplay, either 2D or 3D mode\n'
-        '; 2D = banks loaded only during 2D mode gameplay\n'
-        '; 3D = banks loaded only during 3D mode gameplay\n'
-        '; FMV = banks loaded only during the intro (and outro?) FMV\n;\n\n'
-        '[Global]\n\n[Menu]\n\n[InGame]\n' + bank_name + '.bnk\n\n[2D]\n\n[3D]\n\n[FMV]\n'
-    )
-    open(os.path.join(out, ini_name), 'w', encoding='utf-8').write(ini_text)
-    print(f"[OK] 已写出 {bank_name}.xml / {bank_name}.txt / {ini_name}")
+    ini_lines = (';\n; Sections are defined like so:\n'
+                 '; Global = banks always resident\n'
+                 '; Menu = banks loaded only during main menu\n'
+                 '; InGame = banks loaded during gameplay, either 2D or 3D mode\n'
+                 '; 2D = banks loaded only during 2D mode gameplay\n'
+                 '; 3D = banks loaded only during 3D mode gameplay\n'
+                 '; FMV = banks loaded only during the intro (and outro?) FMV\n;\n\n'
+                 '[Global]\n\n[Menu]\n\n[InGame]\n' + bank_name + '.bnk\n\n[2D]\n\n[3D]\n\n[FMV]\n')
+    # _Banks.ini 是手写注册文件（代码文件），脚本只输出待插入行，由人逐行写入
+    with open(os.path.join(STATE_DIR, ini_name + '.report.txt'), 'w', encoding='utf-8') as fh:
+        fh.write('# 待逐行写入 Platforms/Windows/Audio/' + ini_name + '\n')
+        fh.write(ini_lines)
+    print(f"[OK] 已写出 {bank_name}.xml / {bank_name}.txt；{ini_name} 内容见 STATE_DIR 报告")
 
 
 _EXP_WARN = (

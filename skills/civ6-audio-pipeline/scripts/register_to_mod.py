@@ -4,7 +4,7 @@ register_to_mod.py -- bank 产物注册到 mod (P1 源工程 .civ6proj / P2 运�
 拷贝: bank 三件套(bnk/xml/txt) + bank xml 内引用的全部流式 wem -> Platforms/Windows/Audio
 写盘: <名>_Banks.ini (无BOM/CRLF) + modinfo(UpdateAudio+Files) + civ6proj(CDATA UpdateAudio + Content 条目)
       modinfo/civ6proj/ini 的写入全部经 _projwrite 守卫; 目标已存在且内容有变化时结果写到
-      <解决方案根>/workspace/gen/ 的同一相对路径, 由 AI 用文件编辑工具写入工程 (退出码 2 并打印清单)
+      写进 <解决方案根>/workspace/gen/reports/ 的数据清单, 由人逐行写入工程
 用法:
   python register_to_mod.py --bank-dir <工程>\\GeneratedSoundBanks\\Windows --bank <Bank名> \
       (--find <mod名> | --mod <mod目录>) [--section ingame|global|menu] [--civ6proj <路径>] \
@@ -192,20 +192,33 @@ def same_tree(a, b):
 
 
 def write_ini(audio_dir, bank, section, root):
+    """_Banks.ini 是手写注册文件（代码文件），本脚本只产出待插入的行。
+
+    返回 (ini 路径, 待插入行)；已存在条目或文件缺失时待插入行为 None。
+    """
     ini = choose_ini(audio_dir, bank)
     if not os.path.exists(ini):
-        write_project_file(ini, INI_HEADER.encode('ascii'), root)
+        emit_report('audio_ini_%s.json' % bank, {
+            'ini': ini,
+            'action': 'create',
+            'content': INI_HEADER,
+            'line': bank + '.bnk'}, root)
+        print('  [INI] 文件不存在，创建内容与首行已写入报告:', ini)
+        return ini, None
     b = open(ini, 'rb').read().decode('ascii')
     sec = {'ingame': '[InGame]', 'global': '[Global]', 'menu': '[Menu]'}[section]
     m = re.search(re.escape(sec) + r'\r\n((?:[^\[]|\r\n)*)', b)
     assert m, 'ini 缺少节 ' + sec
     if (bank + '.bnk') in m.group(1):
         print('  [INI] 已存在条目, 跳过:', ini)
-        return ini
-    b = b[:m.end(1)] + bank + '.bnk\r\n' + b[m.end(1):]
-    # 既有 ini 内容有变化时, 改写结果由守卫入位 <解决方案根>/workspace/gen
-    write_project_file(ini, b.encode('ascii'), root)
-    return ini
+        return ini, None
+    emit_report('audio_ini_%s.json' % bank, {
+        'ini': ini,
+        'action': 'insert_line',
+        'section': sec,
+        'line': bank + '.bnk'}, root)
+    print('  [INI] 待插入行已写入报告:', ini)
+    return ini, bank + '.bnk'
 
 def rel_audio(fn):
     return 'Platforms/Windows/Audio/' + fn
@@ -268,25 +281,25 @@ def cmd_verify(modinfo, audio_id=None, audio_dir=None):
 def patch_modinfo(modinfo, bank, audio_id, section, files, dry, keep_ids=None, root=None):
     rt_audio = os.path.join(os.path.dirname(modinfo), 'Platforms', 'Windows', 'Audio')
     # 运行目录(modinfo)可能不在任何含 .civ6proj 的工程树内(如游戏 Mods 目录),
-    # 此时以调用方给定的工程根为准(用于 workspace/gen 落位与写入守卫)。
+    # 此时以调用方给定的工程根为准(用于报告落位)。
     root = root or project_root(rt_audio)
-    ini_name = os.path.basename(write_ini(rt_audio, bank, section, root)) if not dry else os.path.basename(choose_ini(rt_audio, bank))
+    ini_path, ini_line = write_ini(rt_audio, bank, section, root)
+    ini_name = os.path.basename(ini_path)
     # 约束: 所有物理文件(含 ini)都要进 Files; ini 额外在 UpdateAudio 注册
     all_files = list(files) + [os.path.join(rt_audio, ini_name)]
     raw = open(modinfo, 'rb').read()
     bom = raw[:3] == b'\xef\xbb\xbf'
     txt = raw.decode('utf-8-sig')
     nl = '\r\n' if '\r\n' in txt else '\n'
+    ins = []
     if ('UpdateAudio id="%s"' % audio_id) in txt:
         print('  [MODINFO] UpdateAudio 已存在, 跳过注入')
     else:
         block = ('    <UpdateAudio id="%s">%s' % (audio_id, nl)
                  + '      <File>%s</File>%s' % (rel_audio(ini_name), nl)
                  + '    </UpdateAudio>')
-        i = txt.find('<InGameActions>')
-        assert i >= 0, 'modinfo 缺 <InGameActions>'
-        j = i + len('<InGameActions>')
-        txt = txt[:j] + nl + block + txt[j:]
+        ins.append({'anchor': '<InGameActions>', 'position': 'after',
+                    'text': nl + block})
     if '<Files>' in txt:
         fs_start = txt.find('<Files>'); fs_end = txt.find('</Files>')
         fs_region = txt[fs_start:fs_end]
@@ -294,29 +307,46 @@ def patch_modinfo(modinfo, bank, audio_id, section, files, dry, keep_ids=None, r
                       for f in all_files
                       if rel_audio(os.path.basename(f)) not in fs_region)
         if add:
-            # 只在 <Files> 节内插入(锚定节内第一个 4空格 <File> 行前; 无则插在 </Files> 前)
             m2 = re.search(r'\n    <File>', fs_region)
             if m2:
-                ins_at = fs_start + m2.start() + 1
-                txt = txt[:ins_at] + add + txt[ins_at:]
+                ins.append({'anchor': '<Files>', 'position': 'inside-before-first-entry',
+                            'text': add})
             else:
-                fi = txt.rfind('</Files>')
-                ls = txt.rfind('\n', 0, fi) + 1
-                txt = txt[:ls] + add + txt[ls:]
+                ins.append({'anchor': '</Files>', 'position': 'before',
+                            'text': add})
     else:
         print('  [MODINFO] 无 <Files> 节 (散装 mod 可省), 跳过 Files')
-    txt = prune_wem_entries(txt, keep_ids, 'file')
+    txt2 = txt
+    for item in ins:
+        a = item['anchor']
+        if item['position'] == 'after':
+            i = txt2.find(a); assert i >= 0, 'modinfo 缺 %s' % a
+            j = i + len(a)
+            txt2 = txt2[:j] + item['text'] + txt2[j:]
+        elif item['position'] == 'before':
+            fi = txt2.rfind(a)
+            ls = txt2.rfind('\n', 0, fi) + 1
+            txt2 = txt2[:ls] + item['text'] + txt2[ls:]
+        else:
+            fs_start2 = txt2.find(a); fs_end2 = txt2.find('</Files>')
+            m3 = re.search(r'\n    <File>', txt2[fs_start2:fs_end2])
+            at = fs_start2 + m3.start() + 1 if m3 else txt2.rfind('</Files>')
+            txt2 = txt2[:at] + item['text'] + txt2[at:]
+    txt2 = prune_wem_entries(txt2, keep_ids, 'file')
+    changed = txt2 != txt
     if dry:
-        print('  [DRY] modinfo 将写入(若与原文不同):', modinfo)
+        print('  [DRY] modinfo 待改写(若与原文不同):', modinfo)
         return
-    result = write_project_file(modinfo, (b'\xef\xbb\xbf' if bom else b'') + txt.encode('utf-8'), root)
-    checked = os.path.join(workspace_gen(root), os.path.relpath(modinfo, root)) if result == 'STAGED' else modinfo
-    ok, problems = verify_modinfo(checked, audio_id, rt_audio)
-    if not ok:
-        raise SystemExit('[FAIL] 注册后语义校验未通过——UpdateAudio 只指向 ini 且所有物理文件进 Files:\n  ' + '\n  '.join(problems))
-    print('  [MODINFO] 注册完成 + 语义校验通过 (%s): %s' % (result, modinfo))
-
-def verify_civ6proj(civ6proj, audio_id=None, audio_dir=None):
+    if not changed:
+        print('  [MODINFO] 无变化, 跳过:', modinfo)
+        return
+    emit_report('audio_modinfo_%s.json' % bank, {
+        'modinfo': modinfo,
+        'bom': bool(bom),
+        'newline': 'CRLF' if nl == '\r\n' else 'LF',
+        'insertions': ins,
+        'content': (b'\xef\xbb\xbf' if bom else b'').decode('latin-1') + txt2}, root)
+    print('  [MODINFO] 待写入内容已写入报告（%d 处插入）: %s' % (len(ins), modinfo))
     """语义校验 .civ6proj:
        ① CDATA 内 UpdateAudio 只指向 .ini, 目标 id 恰好 1 个;
        ② 规则: 所有物理文件都必须在 Content Include 注册; ini 额外在 CDATA UpdateAudio 注册。
@@ -386,15 +416,14 @@ def patch_civ6proj(civ6proj, srcdir, bank, audio_id, section, files, dry, prune=
     if not dry:
         write_ini(audio_dir, bank, section, root)
     raw = open(civ6proj, 'rb').read()
-    bom = raw[:3] == b'\xef\xbb\xbf'
     txt = raw.decode('utf-8-sig')
     nl = '\r\n' if '\r\n' in txt else '\n'
+    # .civ6proj 属工程文件, 已存在即只能逐行编辑: 本脚本只算出待注入片段并写成报告。
+    blocks = []
     if ('UpdateAudio id="%s"' % audio_id) not in txt:
-        ins = ('  <UpdateAudio id="%s">%s    <File>%s</File>%s  </UpdateAudio>%s'
-               % (audio_id, nl, rel_audio(ini_name), nl, nl))
-        i = txt.find('</InGameActions>')
-        assert i >= 0, 'civ6proj 缺 InGameActions CDATA'
-        txt = txt[:i] + ins + txt[i:]
+        blocks.append('  <UpdateAudio id="%s">%s    <File>%s</File>%s  </UpdateAudio>'
+                      % (audio_id, nl, rel_audio(ini_name), nl))
+        print('  [CIV6PROJ] UpdateAudio 待注入片段已写入报告')
     else:
         print('  [CIV6PROJ] UpdateAudio 已存在, 跳过注入')
     need = [os.path.basename(f) for f in files
@@ -402,27 +431,31 @@ def patch_civ6proj(civ6proj, srcdir, bank, audio_id, section, files, dry, prune=
     if ('Include="Platforms\\Windows\\Audio\\%s"' % ini_name) not in txt:
         need.append(ini_name)
     if need:
-        add = ''.join('    <Content Include="Platforms\\Windows\\Audio\\%s">%s'
-                      '      <SubType>Content</SubType>%s'
-                      '    </Content>%s' % (fn, nl, nl, nl) for fn in need)
+        blocks.append(''.join('    <Content Include="Platforms\\Windows\\Audio\\%s">%s'
+                              '      <SubType>Content</SubType>%s'
+                              '    </Content>%s' % (fn, nl, nl, nl) for fn in need).rstrip(nl))
+        print('  [CIV6PROJ] Content 待插入 %d 条, 片段已写入报告' % len(need))
+    anchor = None
+    if blocks:
         lines = txt.split(nl)
         idx = next((k for k, l in enumerate(lines) if '<Content Include="Platforms' in l), None)
         if idx is None:
-            idx = next(k for k, l in enumerate(lines) if '<Content Include="' in l)
-        lines.insert(idx, add.rstrip(nl))
-        txt = nl.join(lines)
-    txt = prune_wem_entries(txt, keep_ids, 'content')
+            idx = next((k for k, l in enumerate(lines) if '<Content Include="' in l), None)
+        anchor = (idx + 1) if idx is not None else None
+    payload = {
+        'civ6proj': civ6proj,
+        'audio_id': audio_id,
+        'newline': 'CRLF' if nl == '\r\n' else 'LF',
+        'insert_after_content_line': anchor,
+        'blocks': blocks,
+        'removed_wem_ids': sorted(keep_ids) if keep_ids else [],
+    }
+    emit_report('civ6proj_%s.json' % bank, payload, root)
     if dry:
-        print('  [DRY] civ6proj 将写入(若与原文不同):', civ6proj)
+        print('  [DRY] civ6proj 未改动(片段已写入报告):', civ6proj)
         return
-    result = write_project_file(civ6proj, (b'\xef\xbb\xbf' if bom else b'') + txt.encode('utf-8'), root)
-    checked = os.path.join(workspace_gen(root), os.path.relpath(civ6proj, root)) if result == 'STAGED' else civ6proj
-    checked_txt = open(checked, 'rb').read().decode('utf-8-sig')
-    if same_tree(checked_txt, txt):
-        print('  [CIV6PROJ] 注册完成 + XML 回验通过 (%s): %s' % (result, civ6proj))
-    else:
-        print('  [CIV6PROJ] 已入位, 但 XML 回验警告: workspace/gen 的副本与预期文本不同')
     print('  [CIV6PROJ] 产物已拷入源工程:', audio_dir)
+    print('  [CIV6PROJ] 工程文件请按报告逐行写入:', civ6proj)
 
 def main():
     ap = argparse.ArgumentParser()
