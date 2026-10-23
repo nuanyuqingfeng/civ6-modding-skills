@@ -42,7 +42,7 @@
 >
 > 若选择直接处理，请同时说明：
 > - 只要 PNG（默认输出到 `D:\desktop`），还是
-> - 需要一步到位 `tex+dds`（输出到项目 `Textures/`，细节见「输出规则」）。
+> - 需要一步到位 `tex+dds`（`.tex`/`.dds` 输出到项目 `Textures/`，PNG 仍留在工程外，细节见「输出规则」）。
 
 **未提供素材时的默认行为**（用户未明确要求时不得主动生成素材）：
 1. 生成全部注册文件（XLPs / artdef / geo / mtl / tex / ast）
@@ -63,7 +63,7 @@
 | 为新领袖生成全套注册文件 | → 第三节：运行 `gen_leader_2d.py` |
 | 已有注册文件，只补/改某个文件 | → 直接用对应模板手动改，命名见第四节 |
 | 添加 config（领袖互斥/同名） | → 不归本 skill 管，参考项目 Data 下 Config SQL（DuplicateLeaders 表） |
-| 立绘素材处理（用户 PNG → 1024×1024 TEXTURE/OPACITY） | → `scripts/process_leader_png.py`；默认输出到 `D:\desktop`；指定 `--tex-dds` 时输出到项目 `Textures/` 并同步 `.tex`/DDS |
+| 立绘素材处理（用户 PNG → 1024×1024 TEXTURE/OPACITY） | → `scripts/process_leader_png.py`；PNG 一律写到工程外的 `--output-dir`（默认 `D:\desktop`）；指定 `--tex-dds` 时把 `.tex`/DDS 写进项目 `Textures/`，PNG 不随行 |
 | 忠诚度图标（文明 Loyalty Overlay/Pressure + 战略视图 sprite） | → **引用链路**：本 skill `reference/loyalty-icon.md`（4 张 PNG 合成 + XLP/ArtDef/mtl/ast 注册链） |
 | 其他素材导入（png → dds，图标/背景等） | → **引用链路**：`civ6-modding` skill 的 `art-pipeline.md`（素材询问铁律 + art_manifest.json + convert_art.ps1 自动转换，含 .tex 生成与 XLP 实存过滤） |
 
@@ -88,7 +88,7 @@
 
 ### 2. 运行生成脚本
 
-注册文件已存在且内容有变化时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+注册文件里的 `.sql`、`.xml`、`.civ6proj` 属代码文件与工程文件，脚本一律不写：生成器把待写内容写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由人逐行写入工程。`.dds`、`.tex`、`.ast`、`.mtl`、`.xlp`、`.artdef`、`*.Art.xml` 属美术产物，脚本直接写盘。
 
 ```bash
 python "<skills>/civ6-asset-forge/scripts/gen_leader_2d.py" \
@@ -117,7 +117,7 @@ python "<skills>/civ6-asset-forge/scripts/gen_leader_2d.py" \
 | `LightRigs/` | `{Name}_LightRig.lrg` | 灯光绑定（`m_ClassName=LeaderEnvironment`），见 §3.6 |
 | `EnvironmentLights/` | `{Name}_Environment.env` + `{Name}_Environment.dds` | 环境光定义与贴图（Hojo 通用资产），见 §3.6 |
 
-> **收尾提醒**：`Assets/*.ast` 在已有工程里承载着外交语音时间轴，重跑生成器时它的改写结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+> **收尾提醒**：`Assets/*.ast` 属美术产物，重跑生成器时由脚本直接覆盖；它在已有工程里承载着外交语音时间轴，覆盖前先确认 `m_FXName` 与时长是否需要保留。
 > 已有语音的工程写入之前先确认 `.ast` 的 `m_FXName` 与时长是否要保留。
 
 ### 2.5 立绘素材处理（可选）
@@ -129,11 +129,11 @@ python "<skills>/civ6-asset-forge/scripts/gen_leader_2d.py" \
 python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
   --input "<源PNG>" \
   --leader-type "<LeaderType>" \
-  --project "<工程根>" --tex-dds
+  --project "<工程根>" --tex-dds      # PNG 留在 --output-dir，只有 .tex/.dds 进 Textures/
 ```
 
-- 带 `--tex-dds` 时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径（`Textures/` 之下的资产属可再生资产，由脚本直接覆盖）；脚本会在退出码 2 时打印待写入清单。
-- 脚本按**短边居中裁剪**再缩放到 `1024×1024`，生成 `{LeaderType}_TEXTURE.png` / `{LeaderType}_OPACITY.png`；带 `--tex-dds` 时同步写 `.tex` 并按 `.tex` 的 `ePixelformat` 转换 DDS（TEXTURE → `R8G8B8A8_UNORM`，OPACITY → `R8_UNORM`，均带完整 mip 链）。
+- PNG 由脚本直接写到工程外的 `--output-dir`；带 `--tex-dds` 时 `.tex` 与 `.dds` 由脚本直接写进项目 `Textures/`（美术产物）。
+- 脚本按**短边居中裁剪**再缩放到 `1024×1024`，在 `--output-dir` 里生成 `{LeaderType}_TEXTURE.png` / `{LeaderType}_OPACITY.png`；带 `--tex-dds` 时在项目 `Textures/` 里写 `.tex`，并按 `.tex` 的 `ePixelformat` 转换 DDS（TEXTURE → `R8G8B8A8_UNORM`，OPACITY → `R8_UNORM`，均带完整 mip 链）。
 - 需要别的裁剪框时才加 `--crop left,top,side`（原图坐标）。**是否加这个参数，由用户指定，不自行推演。**
 - `--project` + `--leader-name` 可用于从工程 SQL/XML 查找 LeaderType。
 
@@ -150,18 +150,19 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
 ---
 
 **输出规则：**
-- 默认仅生成 PNG，输出到 `D:\desktop`：
+- PNG 只写工程外，默认 `D:\desktop`：
   - `{LeaderType}_TEXTURE.png`
   - `{LeaderType}_OPACITY.png`
 - 若用户要求一步到位（`--tex-dds`）：
-  - 输出到项目 `<project>\Textures\`
-  - 同步生成/更新 `.tex`，并将 `SourceFilePath` 指向项目内 PNG
+  - 写进项目 `<project>\Textures\` 的只有 `.tex` 与 `.dds`
+  - 同步生成/更新 `.tex`，`m_SourceFilePath` 指向工程外那张 PNG，`.tex` 的 `m_DataFiles` 引用同目录 `.dds`
   - 尝试调用 texconv 生成 DDS（TEXTURE：`R8G8B8A8_UNORM`；OPACITY：`R8_UNORM`）
-  - 已有 `.tex` 且内容有变化时，改写结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；`.dds` 由脚本直接覆盖
+  - `.tex` 与 `.dds` 均由脚本直接覆盖（美术产物）
+- **PNG 禁止落进工程任何目录**：`Textures/` 是 AssetEditor 的 pantry，cooker 递归扫描整棵工程目录树，落进去的 PNG 会被当成贴图实体登记，与 `.dds`/`.tex` 抢注册。`--output-dir` 指向工程目录内时脚本直接报错退出。
 
 **生成规则：**
 - TEXTURE：1024×1024，保留透明背景（裁剪规则见「层级 1」）。
-- OPACITY：以 PS Ctrl+点击图层选区语义为准，非全透明像素（`alpha > 0`）→ 纯白，全透明 → 纯黑，输出不透明黑白 PNG。
+- OPACITY：取源图 alpha 的连续灰度；背景段（`alpha <= --alpha-floor`，默认 8）统一写成 `--alpha-base`（默认 4），避免低值尾部被量化成同心环带（§3.6(6)）。
 
 ### 3. 素材文件（未提供素材时跳过）
 
@@ -169,7 +170,7 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
 |------|------|------|
 | `.fgx` / `.wig`（主体 + Camera） | 从已建成工程复制 | **通用平面模型，跨工程逐字节一致**（MD5：主体 fgx `D13E5D864C121D9DA51500A7DFE0DD4` / wig `B9C116E082A7DD783A89E1684ED9C0B5`；Camera fgx `7F8319922265FD53841D7C15469E4E19` / wig `C1F6B44B222FA827B683A26F411CD53E`），复制后重命名即可 |
 | 环境光 dds | 从已建成工程复制 | **通用环境光贴图，跨工程逐字节一致**（MD5 `100A9AF5…54F1A6`），复制后按 `{Name}_Environment.dds` 改名即可；`gen_leader_2d.py` 会自动复制改名 |
-| 立绘 png（TEXTURE / OPACITY） | 用户提供 | 用 `process_leader_png.py` 生成 `{LeaderType}_TEXTURE.png` / `{LeaderType}_OPACITY.png`（1024×1024）；默认输出桌面，`--tex-dds` 时输出项目 `Textures/` 并同步 `.tex`/DDS |
+| 立绘 png（TEXTURE / OPACITY） | 用户提供 | 用 `process_leader_png.py` 在工程外生成 `{LeaderType}_TEXTURE.png` / `{LeaderType}_OPACITY.png`（1024×1024，默认桌面）；`--tex-dds` 时另把 `.tex`/DDS 写进项目 `Textures/`，PNG 仍留在工程外 |
 
 
 ### 3.5 材质类铁律：平面纸片用 `Leader_Matte`，不用 `Leader`
@@ -216,13 +217,13 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
 ```bash
 python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根>            # 预演
 python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根> --check    # 有待迁移项则 exit 2
-python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根> --write    # 迁移后的 .mtl 落 <解决方案根>/workspace/gen/
+python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <工程根> --write    # 迁移后的 .mtl 直接写盘（美术产物）
 python "<skills>/civ6-asset-forge/scripts/migrate_leader_matte.py" <Civ6工程父目录> --all-siblings --write
 ```
 
-`--write` 时，命令跑完后迁移结果落在 `<解决方案根>/workspace/gen/Materials/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+`--write` 时，`.mtl` 由脚本直接写盘（美术产物）。
 
-★ 把 `workspace/gen/` 的材质写入工程后，**必须在 AssetEditor 重新 cook** 才生效（材质类属 cook 期数据）。
+★ 材质改动后**必须在 AssetEditor 重新 cook** 才生效（材质类属 cook 期数据）。
 
 ### 3.6 铁律：灯光链随工程自带；贴图必须最高品质（2026-09-28 实机实测）
 
@@ -309,6 +310,59 @@ VelocityScale         0.000000
 
 > 代价：DDS 体积上升（未压缩 RGBA 1024²）。纸片人只有 2 张图/领袖，可接受。
 
+#### (5) DDS 头部必须取自可用的领袖产物
+
+**症状**：外交场景纸片人不显示，整块区域均匀散布零星彩色碎块。材质类、灯光链、
+两个 `.tex` 的 cook 参数、几何体与可用工程逐项相同，症状照旧。
+
+**判据**：把 `Textures/{LeaderType}_TEXTURE.dds` 与 `_OPACITY.dds` 的字节头，
+与任一已正常工作的领袖同格式 DDS 逐字节比对。贴图尺寸与 mip 级数相同时头长相同。
+
+**实测差异**（`texconv` 直出与官方 cook 链产物对照，偏移从 0 起算）：
+
+| 偏移 | 字段 | `texconv` 直出 | 官方产物 |
+|---|---|---|---|
+| 8 | `dwFlags` 首字节 | `0x0f`（含 `DDSD_PITCH=0x8`） | `0x07` |
+| 21 | `dwPitchOrLinearSize` 次字节 | 非 0（TEXTURE `0x10`、OPACITY `0x04`） | `0x00` |
+| 32–35 | 保留区前 4 字节 | `00 00 00 00` | `FTXT`（`46 54 58 54`） |
+| 80–82 | `DDS_PIXELFORMAT.dwFlags` | OPACITY `0x00020000`（`DDPF_LUMINANCE`） | OPACITY `0x00000040`（`DDPF_RGB`）；TEXTURE 两侧同为 `0x41` |
+
+`texconv` 没有任何参数能产出单通道 `DDPF_RGB` 头：`-f R8_UNORM`、叠加 `-dx9`、
+叠加 `-dx10`、`-nologo -m 0` 四种组合实测都写成 `DDPF_LUMINANCE`。
+
+**解决**：像素载荷用 `texconv` 生成的，头部整段换成可用领袖同格式 DDS 的头。
+
+1. 参照文件取任一已正常工作的领袖 DDS：TEXTURE 用 `R8G8B8A8` 1024²，OPACITY 用单通道 1024²；
+2. 头部长度 128 字节（4 字节魔数 `DDS ` + 124 字节 `DDS_HEADER`）；
+3. 用参照文件的这 128 字节覆盖新文件同长度的前缀，其余字节保持不动；
+4. 覆盖后复核上表四处偏移与参照文件逐字节相同，且 `dwHeight` / `dwWidth` / `dwMipMapCount`
+   与新文件实际一致。
+
+**改完必须重新 cook**：`.tex` 引用的是 DDS 文件，像素与头部都属 cook 期输入。
+
+#### (6) OPACITY 低 alpha 尾部必须压成单一底值
+
+**症状**：外交场景纸片人物外围出现一圈一圈的同心环带。
+
+**机理**：径向羽化的 OPACITY 在低值尾部保留连续衰减，8 位量化把 1~3 这类极窄区间切成大面积台阶。
+实测 Hongkai_Elysia：alpha 1~3 三级共 55.71%（584,176 px）压在占全图 55.7% 的背景上，
+8 条射线的恒值平台合计 22 段，外交场景表现为粉色同心光环。
+
+**对照**（同引擎、同材质类，Ragunna_Pack 的 Roccia）：背景段统一写底值 4，占 63.22%（662,720 px），
+8 射线恒值平台 12 段且绝大部分是同一值 4 的长平台，肉眼无环带。
+
+**做法**：`process_leader_png.py` 把 `--alpha-floor`（默认 8）以下的像素统一写成 `--alpha-base`（默认 4），
+背景完全平坦，只保留人物边缘的过渡；`--alpha-base 0` 供硬边素材使用。
+
+**改后实测**（Hongkai_Elysia）：底值 4 占 63.40%（665,630 px）、灰阶 241 级、单段宽环 228.75、
+径向尾部 6.7 / 4.2 / 4.0 / 4.0 / 4.0；外交场景环带消失。
+
+**判据**：alpha 直方图的最低级占比，加射线扫描的恒值平台段数。最低级把绝大部分背景吞进两三级、
+平台段数达二十余段，即为需要抬底的信号。
+
+> 抬底的前提是 `(4)` 的 cook 参数：OPACITY 若不是 `Quality Loss=0` + `Skip Compression=true`，
+> 压缩会重新量化渐变，抵消抬底效果。
+
 ### 4. 更新工程文件
 
 - `*.civ6proj`：新增 `ArtDefs` / `LightRigs` / `EnvironmentLights` 三个文件夹 + 3 个 Content Include：
@@ -318,7 +372,7 @@ VelocityScale         0.000000
 - **Geometries/Materials/Textures/Assets/LightRigs/EnvironmentLights 不需注册**——构建时自动扫描编译进 `Platforms\Windows\BLPs\*.blp`
 - `*.Art.xml`：新增/修改 `XLPs\`、`ArtDefs\` 后**必须重新生成**——运行
   `python <civ6-modding skill>\art\gen_modartxml.py <projectRoot> --check`
-  （差异人工确认后加 `--write`；`.Art.xml` 尚不存在时直写新建，已有且内容有变化时改写结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本按项目实存文件重算
+  （差异人工确认后加 `--write`；`*.Art.xml` 属美术产物，脚本直接写盘；脚本按项目实存文件重算
   artConsumers/gameLibraries/requiredGameArtIDs，替代手工补 Leader/LeaderLighting 引用）
   ⚠ `LeaderLighting` 库的 `relativePackagePaths` 必须是 `leaders/light_rigs`；生成器不代写这一处，缺了则本地灯光包声明不出来。
 - **备份**：见 `SKILL.md`「不静默备份」节（四类共用，原条已上移）。
@@ -336,9 +390,10 @@ VelocityScale         0.000000
 - [ ] ast 的 GeometrySet 引用 Camera geo + 主体 geo + Material，FXName 为 `{ABBR}_{FX}_{动作}_A`
 - [ ] 素材文件（若提供）复制后哈希与源一致
 - [ ] 若已处理立绘：TEXTURE / OPACITY PNG 均为 `1024×1024`
-- [ ] OPACITY 只包含纯黑和纯白两种颜色
+- [ ] OPACITY 主体区连续灰度、背景段为单一底值（默认 4），低值尾部没有残留的连续衰减层
 - [ ] 文件名使用 `{LeaderType}_TEXTURE.png` / `{LeaderType}_OPACITY.png`
-- [ ] 一步到位时 `.tex` 的 `SourceFilePath` 指向项目内 PNG，且 DDS 已生成（或已明确提示未生成）
+- [ ] 一步到位时 `.tex` 的 `SourceFilePath` 指向工程外的 PNG，DDS 已生成（或已明确提示未生成）
+- [ ] 工程 `Textures/` 内只有 `.tex` 与 `.dds`，没有 PNG
 
 ## 四、命名规范（生成脚本自动推导，手动修改时遵循）
 

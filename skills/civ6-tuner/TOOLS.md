@@ -12,9 +12,11 @@
 | `scripts/game_input.py` | 向文明6游戏窗口投递按键，不抢焦点、不影响其它窗口。 | `python game_input.py esc            # 向游戏窗口投递一次 ESC<br>python game_input.py key 0x1B       # 同上，任意虚拟键码` |
 | `scripts/gamectl.py` | gamectl.py —— 文明6 对局生命周期控制（全部原语 2026-10-02/03 实机验证）。 | `gamectl.py —— 文明6 对局生命周期控制（全部原语 2026-10-02/03 实机验证）。` |
 | `scripts/tuner_exec.py` | civ6-tuner：通过 FireTuner 调试接口在运行中的文明6对局内执行 Lua。 | `python tuner_exec.py {check\|exec\|ports\|logs} [...]（exec 子命令执行 Lua；需游戏内开启 Tuner 且关闭 FireTuner GUI）` |
+| `scripts/tuner_link.py` | FireTuner 线协议层：帧收发、握手、Lua 执行。 | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/tuner_node.js` | FireTuner 线协议客户端（Python 不可用时的等价入口）。 | `node tuner_node.js check<br>node tuner_node.js exec --context gamecore\|ingame [--state 名字\|索引] --code <Lua>` |
+| `scripts/tunerd.py` | civ6-tuner 会话守护进程：持有唯一 FireTuner 连接，向本地 CLI 提供 JSONL 请求。 | `（见脚本 docstring）` |
 
-共 4 个脚本。
+共 6 个脚本。
 
 ## 第三方依赖
 
@@ -70,7 +72,7 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 
 静态校验（`rgn_validate` / `api.sqlite`）回答"文档说这条 API 是什么"，
 本 skill 回答"**运行时它到底是什么行为**" —— 凡是接口行为、参数语义、PROPERTY 读写时机、
-跨端可见性这类问题，别靠推断，直接实测；实测出的通道口径统一记进 `civ6-modding/reference/context-matrix.md`（端内跨上下文只有 `LuaEvents`，其余不可达）。
+跨端可见性这类问题，别靠推断，直接实测；实测出的通道口径统一记进 `civ6-modding/reference/context-matrix.md`（端内用 `LuaEvents` 首选或暴露函数；跨端四通道，暴露函数仅按钮回调禁用）。
 
 ### 边界
 

@@ -3,7 +3,7 @@ name: civ6-modding
 description: "文明6 mod 玩法侧总入口：Lua（UI + GamePlay）、ForgeUI XML 布局、.civ6proj / .modinfo 注册、数据库 XML/SQL、事件系统与全量 API 参考。内含决策树、任务工作流、XML 模板、验证清单，以及离线数据库目录（934 ModifierTypes / 761 EffectTypes / 327 RequirementTypes；1051 条 Requirements / 982 条 RequirementSets）+ SQLite 查询工具。专项章节：总督编写、城邦编写、平衡补丁（差分覆盖）、议程与领袖 AI、素材转换管线。发布：Steam 创意工坊上传/更新（release.md）。工具：7 个零依赖校验器（SQL 可执行性 / 引用完整性 / Types.Kind / SQL 语义反模式 / 内容清单闭合 / .lua 加载路径 / pantry 卫生）+ 双目录一致性比对。触发词：文明6、Civ6、modding、Lua、ForgeUI、UI 面板、按钮、弹窗、modinfo、civ6proj、数据库、Modifier、Requirement、PROPERTY、事件、GameEvents、LuaEvents、总督、governor、城邦、city-state、平衡补丁、balance patch、议程、agenda、创意工坊、workshop、上传、发布、校验、rgn_validate、外交背景、外交背景黑色遮罩、原版外交背景遮挡。"
 version: "2.0"
 author: 千与千寻瀑
-license: MIT
+license: PolyForm-Noncommercial-1.0.0 (repository root LICENSE)
 category: game-modding
 tags:
   - civ6

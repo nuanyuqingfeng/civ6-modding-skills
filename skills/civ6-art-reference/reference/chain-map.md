@@ -303,6 +303,7 @@ GreatPersonClasses.UnitType          → 类级基名（DB 只有这个，如 UN
 | `units/units` | 全部单位模型 | Units |
 | `strategicview/strategicview_*` | 战略视图 2D 精灵 | StrategicView |
 | `UI/Icons` | 2D 图标图集 | Icons.xlp（SQL 侧引用） |
+| `UI/UI_LeaderScenes` | 外交背景分层遮罩贴图（层 1–4） | 无 artdef 中转；链 B，见 `civ6-modding/art-pipeline.md` §三.1.1 |
 | `VFX` / `lighting/default_lighting` | 特效 / 灯光 | VFX / Leaders |
 
 查询任意包的条目清单：`art_lookup.py --xlp environment/clutter`。

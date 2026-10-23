@@ -2,7 +2,7 @@
 name: civ6-tuner
 version: "1.0"
 author: 千与千寻瀑
-license: MIT
+license: PolyForm-Noncommercial-1.0.0 (repository root LICENSE)
 category: game-modding
 description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局里执行任意 Lua，用于接口行为/参数/PROPERTY/modifier 的运行时验证、游戏内快速测试、复现脚本报错。探针一律 Write 落盘 --file 投递（零 shell 转义），日志按统一前缀打点 + logs --prefix 提取；内置 GP/UI 端口可用性实测矩阵、API 子集对照与生命周期控制（存读档/无头建局/强推回合）。当静态校验(rgn_validate)无法回答"这个 API 实际行为是什么"、需要查询运行时状态或验证 GP/UI 通信时使用。
 ---
@@ -17,7 +17,7 @@ description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局
 > **有能用的就改它，不要重建。** 新增或改名脚本后，跑一次
 > `python "<skills>/civ6-modding/tools/skill_manifest.py" civ6-tuner` 刷新名录（`--check` 可做漂移检测）。
 
-> ⚠ **工程文件写入铁律**：脚本可以新建工程文件，绝不允许改写工程文件。本 skill 的 `tuner_exec.py` 只连 FireTuner 执行 Lua，不写工程文件。真源见 `civ6-modding/SKILL.md` 的「工程文件写入铁律」。
+> ⚠ **工程文件写入铁律**：代码文件只能逐行编辑（焚诀「禁止用程序化的方式编写或修改任何代码文件」）。本 skill 的 `tuner_exec.py` 只连 FireTuner 执行 Lua，不写工程文件。真源见 `civ6-modding/SKILL.md` 的「工程文件写入铁律」。
 
 # civ6-tuner：游戏内 Lua 快速测试
 
@@ -33,7 +33,8 @@ description: 通过文明6 FireTuner 调试接口(TCP:4318)在运行中的对局
 5. 生命周期控制（存/读/重开/杀进程/拉起/无头建局）用 `scripts/gamectl.py`，
    "点击进入"确认界面的按键投递用 `scripts/game_input.py`（PostMessage，不抢焦点）。
 6. Python 解释器不在 PATH 时改用 `scripts/tuner_node.js`（Node 内置模块，同一线协议，
-   同样的哨兵补齐与迟帧对齐），执行能力与 `tuner_exec.py` 一致。
+   同样的哨兵补齐与迟帧对齐），执行能力与 `tuner_exec.py` 一致；加 `--via-daemon`
+   则复用 Python 侧拉起的会话守护进程（不自己冷连）。
 
 ## ★ 破坏性操作边界（2026-10-03 起，全部实测）
 
@@ -73,6 +74,11 @@ GameEvents.某个mod注册过的事件:Count()               = 0     ← 不同�
 - ❌ **不能用 tuner 调用 mod 的函数**；`GameEvents.X:Call(...)` 也到不了 mod。
 - ✅ tuner 只能：读引擎态（`GameInfo`、PROPERTY、单位/城市字段）、写引擎态、读日志。
 - ✅ 要观察 mod 内部行为 → **改 Mods 副本加 `print()` 打点**，再 `logs --grep` 提取。
+- ❌ **判"脚本是否加载/是否执行"一律看日志，不看全局名**：Civ6 每个 `AddGameplayScripts` 的 `.lua` 是**独立 `_ENV`**，
+  Tuner 的 `gamecore`/`ingame` 沙箱读不到它的任何全局（`type(ModFn) = nil` 是必然，不是加载失败）。
+  判据只有两条：`Modding.log` 的 `GameplayScripts - Registering .../X.lua`（文件已被注册）与
+  `Lua.log` 里该文件的 `print` 打点（chunk 已执行）。没有打点就加打点，别用 `type()` 反推。
+  mod 自己的 UI/GP 上下文（`--state <名字>`）才看得到它自己的全局，且仅限该上下文所属文件。
 - ✅✅ **例外（2026-09-16 实测）：mod 自有的 UI 上下文里，mod 的全局函数是可调的。**
   `LSQ:` 列表里那些带 Context 名的条目（如 `AllUnitsFoundCity`）就是 mod 自己那份 UI Lua 的 VM；
   用 `exec --state <Context 名>` 直接投递，`type(ModGlobalFunction)` = **function**、`Controls` 是 mod 的控件表。
@@ -86,7 +92,7 @@ GameEvents.某个mod注册过的事件:Count()               = 0     ← 不同�
   ```
   铁律"call 不到 mod"只适用于 `gamecore` / `ingame` 两个沙箱态；能省掉"改 Mods 加 print + 等热重载"的整轮往返。
   ⚠ 反例：GP 态探针里 `UI = nil`（`UI.GetHeadSelectedUnit()` 直接报 `attempt to index a nil value`）→
-  跨端通用的探针必须 `UI and UI.GetHeadSelectedUnit()` 这样判空；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取三个通道 → `civ6-modding/reference/context-matrix.md`。
+  跨端通用的探针必须 `UI and UI.GetHeadSelectedUnit()` 这样判空；跨端四通道：`EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取（GP 写、UI 延后读的被动辅助）/ 暴露函数（仅按钮回调禁用）→ `civ6-modding/reference/context-matrix.md`。
 
 ### 2. 两端**总线可见性不同**：`GameEvents` 在 UI 侧整条不存在
 
@@ -96,7 +102,7 @@ GameEvents.某个mod注册过的事件:Count()               = 0     ← 不同�
 | **`GameEvents`** | table | **nil** |
 | `LuaEvents` / `ReportingEvents` / `ExposedMembers` / `NotificationManager` | table | table |
 
-> 两端的表都在，不等于可以互调：端内跨上下文只有 `LuaEvents`，其余不可达 → `civ6-modding/reference/context-matrix.md`
+> 两端的表都在，不等于可以互调：端内用 `LuaEvents`（首选）或暴露函数 → `civ6-modding/reference/context-matrix.md`
 
 - 被 UI 加载的文件（含被 UI `include` 的共享库）里出现 `GameEvents.*` → **必然 `attempt to index a nil value`**，并中断该 chunk 使其后语句**全部不执行**。
 - `Events.*` 两端都有（安全）；`Events.X=nil` 且 `GameEvents.X=table` 的才是 Lua 级 GP 事件。
@@ -135,7 +141,7 @@ for _, c in Players[0]:GetCities():Members() do ... end    -- ✅ c 是城市对
 
 ### 7. 验证「跨端写入」前，先确认**对象层级**（读错层级 = 假阴性）
 
-> 跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达 → `civ6-modding/reference/context-matrix.md`。
+> 跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达 → `civ6-modding/reference/context-matrix.md`。
 
 同一个 `key` 字符串挂在 Game / Player / City / Plot / Unit 上是**不同的属性空间**：
 
@@ -156,7 +162,7 @@ Players[pid]:GetProperty(k)      -- 两端可读；只能读到【Player 层】�
 |---|---|
 | 属性读取批量返回 nil | 在同一 chunk 里对 `GetProperty` 返回的**表做了 `table.sort`**（原地改动污染）。→ 先复制再排序 |
 | 同一表达式一次给 10、一次给 0 | 在调用参数里**现拼属性 key**。→ 先把 key 落到局部变量 |
-| **"跨端写入没生效"（假阴性）** | **读错了对象层级**：写进 `Players[pid]` 却去读 `Game.GetProperty(同名 key)`。→ 先确认属性挂在 Game / Player / City / Plot / Unit 哪一层（详见 `reference/PORT_MATRIX.md` 五；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取三个通道 → `civ6-modding/reference/context-matrix.md`） |
+| **"跨端写入没生效"（假阴性）** | **读错了对象层级**：写进 `Players[pid]` 却去读 `Game.GetProperty(同名 key)`。→ 先确认属性挂在 Game / Player / City / Plot / Unit 哪一层（详见 `reference/PORT_MATRIX.md` 五；跨端四通道：`EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取（被动辅助）/ 暴露函数（仅按钮回调禁用）→ `civ6-modding/reference/context-matrix.md`） |
 | **"派发/事件没到"** | ① 读错层级（同上）；② 派发是**异步**的，读太早；③ 注册所在的 GP 态不是派发目标态 → 最稳做法是**借项目已有的生产接收器复测**（见 `snippets/bridge_probe_*.lua`） |
 | 探针"没跑"但无报错 | chunk 内抛错会**丢弃整段 stdout**。→ 顶层 `pcall` 包住并打印结果 |
 | `--both` 里 UI 段读出空 | GP 段末尾把对照用的探针键**清理掉了**。→ 清理放最后单独跑，或用 `CLEANUP=false` |
@@ -207,6 +213,12 @@ python <skill>/scripts/gamectl.py kill | launch | close [--save 档名]
 python <skill>/scripts/gamectl.py host-game [--leader LEADER_X] [--civ CIVILIZATION_X]
 python <skill>/scripts/game_input.py esc     # 向游戏窗口投递 ESC（读档/建局后的"点击进入"）
 node <skill>/scripts/tuner_node.js check     # Python 不在 PATH 时的等价回退（Node 内置模块实现）
+
+# ⑤ 会话守护进程（默认路径；详见「会话式守护进程」节）
+python "$T" daemon status                    # 看进程/连接代际/空闲计时
+python "$T" daemon stop                      # 收尾，释放 FireTuner 单连接名额
+python "$T" --no-daemon exec --file <lua>    # 逃生门：先停 daemon 再冷连
+node <skill>/scripts/tuner_node.js --via-daemon check   # Node 侧复用同一守护进程
 ```
 
 `gamectl.py wait --want inmenu` 以 `MainMenu` 态出现为准：冷启动过程中会短暂出现只有
@@ -217,6 +229,40 @@ node <skill>/scripts/tuner_node.js check     # Python 不在 PATH 时的等价�
 
 
 退出码：`0` 成功 / `1` 连接失败或不在对局 / `2` Lua 报错(ERR:) / `3` 超时(未收到哨兵) / `4` 连接被对端关闭。
+
+## ★ 会话式守护进程（2026-10-21 起为默认路径）
+
+`tuner_exec.py` 默认不再每次冷连：首个命令按需拉起 `scripts/tunerd.py`（控制端口 4319），
+后续命令经它复用同一条 4318 连接。**它不是开机常驻服务**，生命周期跟着测试会话走：
+
+| 行为 | 默认值 | 说明 |
+|---|---|---|
+| 拉起 | 首个 check/exec 自动 | `DETACHED_PROCESS`，关掉终端不影响 |
+| 空闲退出 | 180s | 有在途命令时不计时；`CIV6_TUNER_IDLE` 可调 |
+| 兜底寿命 | 8h | `CIV6_TUNER_MAX_LIFE` |
+| 对端断开 | 标记 dead，**不自动重连** | 重连只发生在下一条命令里，且只试一次（防坏握手） |
+| 退出动作 | 只关 socket + 删登记 | 不存档、不关游戏、不杀进程 |
+
+控制面：`127.0.0.1:4319`，一行一条 JSON；登记文件
+`%LOCALAPPDATA%\civ6-tuner\daemon.json`（端口 / PID / token），日志 `...\daemon.log`。
+请求必须带 token；`op` 为 `ping/status/ensure/release/exec/both/stop`。
+
+```bash
+python "$T" daemon status          # 进程、连接代际、对局状态、空闲计时
+python "$T" daemon stop            # 收尾：释放 FireTuner 单连接名额
+python "$T" --no-daemon exec ...   # 逃生门：先停 daemon，再冷连（老的逐次连接行为）
+python "$T" --daemon-port 4320 check   # 换控制端口（多实例/调试用）
+```
+
+- **单连接名额**：daemon 持连接期间，FireTuner GUI 与其它直连脚本会被拒。
+  `gamectl.py` 在连接前自动调 `yield_daemon()` 让 daemon 断开；手工直连前先 `daemon stop`。
+- **超时语义**：命令超时后 daemon 直接废弃该连接（残留 Lua 可能仍在游戏里跑，
+  继续等哨兵只会让下一条命令再烧一次超时），下一条命令重新握手。
+- **失败回收**：若守护进程是本次刚拉起、且连不上游戏，`check` 会立即把它停掉，
+  不留下空转进程占名额；主菜单属于有效连接，会保留给随后读档。
+- **实测口径（2026-10-21）**：单条命令延迟**没有变快**（CLI 仍是一次 Python 进程，
+  外加一跳本地 socket；10 次均值 136ms vs 冷连 121ms）。收益是连接/状态复用与
+  失败语义统一，不是省时间。
 
 ## 双上下文差异（选错的典型症状是 ERR 或空结果）
 
@@ -238,7 +284,7 @@ node <skill>/scripts/tuner_node.js check     # Python 不在 PATH 时的等价�
 
 ```
 改源文件 → 同步 Mods 副本(复制+哈希校验，复制命令按当前 shell 自选 cp/Copy-Item) → gamectl.py 确保对局 → check 探测
-→ exec 验证 → logs 查报错 → 结论写回源文件改动 → 循环或交付 → gamectl.py close 收尾
+→ exec 验证 → logs 查报错 → 结论写回源文件改动 → 循环或交付 → daemon stop → gamectl.py close 收尾
 ```
 
 - 需要重进对局才能生效的改动（SQL/XML）：`gamectl.py load <档>` 或 `restart`，由本 skill 自助完成，不依赖用户
@@ -273,7 +319,7 @@ node <skill>/scripts/tuner_node.js check     # Python 不在 PATH 时的等价�
 | `settle_read.lua` | **对抗「重算延迟」的稳定读数**：连读 N 次、两次一致才算稳定（复位未必同帧被下游重算，批量跑会带上一条残留） | gamecore |
 | `modifier_probe.lua` | Modifier/RequirementSet 是否入库及挂载链 | gamecore |
 | `event_trigger.lua` | 手动触发 LuaEvents 验证通知通路 | ingame |
-| `context_channel_probe.lua` | **端内/跨端通道可达性验证**（register → fire → check → unregister 四步）：同端触发时接收器回写可见，跨端触发时回写为 `nil`，用来实证「端内跨上下文只有 `LuaEvents`，其余不可达」→ `civ6-modding/reference/context-matrix.md` | 任意两个 Lua 上下文各投递一次 |
+| `context_channel_probe.lua` | **端内/跨端通道可达性验证**（register → fire → check → unregister 四步）：同端触发时接收器回写可见，跨端触发时回写为 `nil`，用来实证「端内 `LuaEvents` 可达、跨端 `LuaEvents` 不达」；暴露函数双向可达另见真源 F8 → `civ6-modding/reference/context-matrix.md` | 任意两个 Lua 上下文各投递一次 |
 | `bridge_probe_1_register.lua` → `_2_dispatch.lua` → `_3_read.lua` | **UI→GP 派发可达性三连测**（确认 `EXECUTE_SCRIPT` 的 `OnStart` 是否到达你注册的那个 GP 态） | gamecore → ingame → gamecore |
 | `cheat_setup.lua` | 造测试条件（金币/信仰/刷兵/科技进度）。⚠ `SetBalance`/`GetBalance` 是错误方法名，正确为 `SetGoldBalance`/`GetGoldBalance`；刷兵块需 gamecore 投递（待重写） | ingame/gamecore |
 | `ops_state_snapshot.lua` | **玩家全状态快照**：金/信仰/科技市政/城市(含宜居度 GetAmenities+GetAmenitiesNeeded)/单位清单/回合，一次打尽 | gamecore+ingame |
@@ -295,7 +341,8 @@ node <skill>/scripts/tuner_node.js check     # Python 不在 PATH 时的等价�
 ## 坑位清单
 
 ```
-⚠ 单连接限制：跑脚本前必须关 FireTuner GUI，否则连接被拒
+⚠ 单连接限制：跑脚本前必须关 FireTuner GUI，否则连接被拒；
+   会话守护进程持连接时同样占掉这个名额 → 手工直连前先 `daemon stop`（gamectl 已自动让路）
 ⚠ 坏握手挂死：连接异常后 tuner 可能不恢复——重启游戏是唯一解，及时叫用户
 ⚠ **`ContextPtr:Reload()`（mod UI 热重载）会把 tuner 连接一起打挂**（2026-09-16 实测：
    在 mod 上下文里投递 `ContextPtr:Reload()` 后，客户端收不到哨兵，
@@ -379,7 +426,7 @@ node <skill>/scripts/tuner_node.js check     # Python 不在 PATH 时的等价�
 ## 参考
 
 - `reference/PORT_MATRIX.md` —— **GP/UI 端口可用性实测对照表**（含与 api.sqlite 冲突的条目、审查流程）
-  - 五、跨端写入验证先确认**对象层级**（读错层级 = 假阴性；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取三个通道 → `civ6-modding/reference/context-matrix.md`）
+  - 五、跨端写入验证先确认**对象层级**（读错层级 = 假阴性；跨端四通道：`EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取（被动辅助）/ 暴露函数（仅按钮回调禁用）→ `civ6-modding/reference/context-matrix.md`）
   - 六、`Game.SetProperty` 存表保真（平行数组 / 嵌套表 / 空数组 / 负值哨兵）
   - 七、`EXECUTE_SCRIPT` **派发可达性验证配方**（含"借生产接收器做探针"的最稳变体）
   - 八、探针卫生（`--both` 清理时机、chunk 抛错丢 stdout）
@@ -392,6 +439,11 @@ node <skill>/scripts/tuner_node.js check     # Python 不在 PATH 时的等价�
 线格式与握手流程借鉴 [lmwilki/civ6-mcp](https://github.com/lmwilki/civ6-mcp)（MIT）逆向成果：
 帧 `[4B LE 长度][4B LE tag][null 结尾 payload]`；tag=4 握手(`APP:`/`LSQ:`)，tag=3 执行
 (`CMD:{索引}:{代码}`)；输出前缀 `O\x00<上下文>: `，错误前缀 `ERR:`，哨兵 `---END---`。
+
+会话守护进程另有一套**本地控制协议**（与游戏侧线协议无关）：
+`127.0.0.1:4319` 上一行一条 JSON，请求 `{"v":1,"token":...,"id":...,"op":...}`，
+应答 `{"v":1,"id":...,"ok":...,"rc":...,"lines|sections|meta|error"}`。
+`rc` 沿用上表的 0–4 语义，守护进程层面的拒绝（token/协议/未知 op）一律 `rc=1`。
 
 ---
 

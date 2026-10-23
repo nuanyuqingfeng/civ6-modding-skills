@@ -40,19 +40,18 @@ Sukritact's Civ Selection Screen 的适配素材原先被命名为
 
 ## 改动面
 
-铁律：脚本只新建工程文件，改写一律走 `_projwrite` 守卫入位 `<解决方案根>/workspace/gen/`。
+铁律：代码文件一律拒写，只有美术产物允许脚本直接落盘。
 
-1. `.dds` / `.tex` **新名文件的落点**：`workspace/gen/<相对路径>/<新名>`；
-   工程里的原文件**不动**，改名由 AI 用文件编辑工具完成（先写入新名文件，再删原文件）；
+1. `.dds` / `.tex` **新名文件**属美术产物，脚本直接写入工程的新路径，原文件由人删除；
 2. `.tex` **内部字段**（`m_Name` / `m_RelativePath` / `m_SourceFilePath` 均含该名字）——
    按**字节**替换，不动 GBK/ANSI 编码与换行；
 3. 引用该名字的文本文件（`.xlp` / `.sql` / `.lua` / `.artdef` / `.xml` / `.civ6proj`）——
-   整词匹配（不会把 `..._CHINA_...` 误当成 `...` 的子串），改写结果交给守卫。
+   整词匹配，脚本只把待改行写进 `workspace/gen/reports/suk_namespace_refs.json`，由人逐行写入。
 
 ★ 本工具**不**负责重新 cook 或同步 Mods 副本：改名后必须在 AssetEditor 重新 cook
 （新名字 = 新 BLP 条目），再按 release.md 同步/上传。
 
-退出码：0 无需迁移或已成功 / 1 错误 / 2 `--check` 发现待迁移项，或已有改写入位 `workspace/gen`
+退出码：0 无需迁移或已成功 / 1 错误 / 2 `--check` 发现待迁移项
 """
 from __future__ import annotations
 
@@ -62,7 +61,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _projwrite import write_project_file, finish, workspace_gen  # noqa: E402
+from _projwrite import write_project_file, emit_report, finish  # noqa: E402
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -157,7 +156,7 @@ def main() -> int:
         print("\n[预演] 未写盘。加 --write 实际执行。")
         return 0
 
-    # ---- 写盘：改名结果落 workspace/gen，引用改写交给守卫 ----
+    # ---- .dds/.tex 属美术产物，由守卫直写新路径；引用文件是代码，只出报告 ----
     errs = 0
     for old, new in pairs:
         for ext in (".dds", ".tex"):
@@ -177,20 +176,23 @@ def main() -> int:
             # 先改内容（.tex 内部字段），再落新名文件
             data = _apply_bytes(open(src, "rb").read(), pairs) if ext == ".tex" \
                 else open(src, "rb").read()
-            out = os.path.join(workspace_gen(root), os.path.relpath(dst, root))
-            os.makedirs(os.path.dirname(out), exist_ok=True)
-            with open(out, "wb") as fh:
-                fh.write(data)
-            print("  改名   %s -> %s" % (os.path.relpath(src, root), os.path.relpath(out, root)))
+            write_project_file(dst, data, root)
+            print("  改名   %s -> %s" % (os.path.relpath(src, root), os.path.relpath(dst, root)))
 
+    refs = {}
     for p, _n in hits.items():
         data = _apply_bytes(open(p, "rb").read(), pairs)
-        write_project_file(p, data, root)
+        refs[os.path.relpath(p, root).replace("\\", "/")] = data.decode("utf-8", "replace")
+    if refs:
+        emit_report("suk_namespace_refs.json", {
+            "root": root,
+            "rename": [{"old": o, "new": n} for o, n in pairs],
+            "files": refs}, root)
 
-    print("\n完成：改名 %d 组贴图（新名文件已落 workspace/gen），重写 %d 个引用文件。"
+    print("\n完成：改名 %d 组贴图（守卫直写新路径），%d 个引用文件的改写内容已写入报告。"
           % (len(rename), len(hits)))
-    print("★ 需人工改名：把 workspace/gen/ 下的新名文件写入工程的新路径，再删除工程里的原文件"
-          "（脚本不动工程里的原文件）。")
+    print("★ 需人工改引用：按 workspace/gen/reports/suk_namespace_refs.json 逐行改写工程内文本。")
+    print("★ 需人工删除：工程里的原贴图文件（脚本不删既有文件）。")
     print("★ 后续必须做：AssetEditor 重新 cook（新名字=新 BLP 条目）→ 同步 Mods 副本 → 按 release.md 上传。")
     if errs:
         return 1

@@ -121,6 +121,8 @@ class Session:
         self.identity = ""
 
     def connect(self):
+        # FireTuner 单连接：先让会话守护进程断开，否则本进程会被拒绝
+        T.yield_daemon()
         try:
             self.sock = T.connect(self.host, self.port)
             self.identity, self.states = T.handshake(self.sock)

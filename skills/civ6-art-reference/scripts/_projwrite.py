@@ -14,6 +14,7 @@ import glob
 import os
 
 STAGED = []
+_SNAPSHOTS = {}
 
 DIRECT_EXTS = (".dds", ".tex", ".bnk", ".wem", ".wav")
 DIRECT_DIRS = ("Textures", "Platforms")
@@ -51,6 +52,18 @@ def is_direct(rel_path):
     return head in DIRECT_DIRS and ext not in TEXT_EXTS
 
 
+def _snapshot(root):
+    """进程首次写入某工程时记录其文件清单，用于识别「先删除、再新建」的绕过手法。"""
+    if root not in _SNAPSHOTS:
+        paths = set()
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in ("__pycache__", ".git")]
+            for name in filenames:
+                paths.add(_norm(os.path.join(dirpath, name)))
+        _SNAPSHOTS[root] = paths
+    return _SNAPSHOTS[root]
+
+
 def write_project_file(target, data, project_root):
     """写入工程文件。
 
@@ -64,7 +77,17 @@ def write_project_file(target, data, project_root):
     if not _norm(target).startswith(_norm(root) + os.sep):
         raise SystemExit("目标不在工程之内，拒绝写入：%s（工程：%s）" % (target, root))
     rel = os.path.relpath(target, root)
+    snapshot = _snapshot(root)
     if not os.path.isfile(target):
+        if _norm(target) in snapshot:
+            # 该路径在首次写入时已记录、此刻却不在盘上：既有文件被删除后又重建。
+            # 按改写处理并转 workspace/gen，不允许绕过「改写由文件编辑工具完成」。
+            out = os.path.join(workspace_gen(root), rel)
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            with open(out, "wb") as handle:
+                handle.write(data)
+            STAGED.append((target, out))
+            return "STAGED"
         os.makedirs(os.path.dirname(target), exist_ok=True)
         with open(target, "xb") as handle:
             handle.write(data)

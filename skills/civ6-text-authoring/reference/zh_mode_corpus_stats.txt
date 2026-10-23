@@ -1,0 +1,25 @@
+zh 语料分类统计（mode，总 1282 tag）
+========================================
+  pedia             293
+  greatwork         191
+  project           134
+  unitcommand        71
+  notification       60
+  barbarian          56
+  unitname           50
+  policy             44
+  ability            39
+  moment             36
+  governor           34
+  unit               34
+  improvement        23
+  secretsociety      20
+  tutorial           16
+  hero               15
+  building           11
+  great              11
+  promotion          11
+  modifier            9
+  is_adjacency        1
+  has_icon          253
+  translation_missing   1085

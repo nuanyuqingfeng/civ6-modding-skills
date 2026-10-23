@@ -30,9 +30,9 @@
 |------|------|
 | 已有/正在处理完整文明图标（`ICON_CIVILIZATION_*`），任务只提文明图标/文明徽记 | → 默认进入忠诚度分支：第四节 4 张 PNG + 注册链 | 
 | 为新文明生成忠诚度图标 PNG（4 张） | → 第四节：运行 `process_loyalty_icon.py`（默认 `--kind loyalty`） |
-| 生成并注册忠诚度注册链（XLP/ArtDef/mtl/ast/Art.xml/civ6proj） | → 第四节：运行 `gen_loyalty_art.py`；注册文件的改写结果落 `<解决方案根>/workspace/gen/`，由 AI 用文件编辑工具写入工程 |
+| 生成并注册忠诚度注册链（XLP/ArtDef/mtl/ast/Art.xml/civ6proj） | → 第四节：运行 `gen_loyalty_art.py`；`.xlp`/`.artdef`/`.mtl`/`.ast`/`*.Art.xml` 属美术产物由脚本直写，`.civ6proj` 属工程文件，待插入条目写进 `workspace/gen/reports/` 由人逐行写入 |
 | **为新增自定义宗教生成宗教压力图标 PNG（3 张）** | → 第八节：`process_loyalty_icon.py --kind religion` |
-| **为新宗教生成并注册注册链** | → 第八节：`gen_religion_art.py`；注册文件的改写结果落 `<解决方案根>/workspace/gen/`，由 AI 用文件编辑工具写入工程 |
+| **为新宗教生成并注册注册链** | → 第八节：`gen_religion_art.py`；`.xlp`/`.artdef`/`.mtl`/`.ast`/`*.Art.xml` 属美术产物由脚本直写，`.civ6proj` 属工程文件，待插入条目写进 `workspace/gen/reports/` 由人逐行写入 |
 | 覆盖官方预留宗教（RELIGION_CUSTOM_1~12）的图标 | **不走注册链**：直接覆盖同名贴图（`TEXTURE_Religion_Pressure_Custom1` 等），见第八节末 |
 | 2D UI 宗教图标（Civilopedia/信仰面板的 270px、IconTextureAtlases 图集） | **不在本 skill 范围**（IconTextureAtlases 数据路径，与战略视图/3D 镜头无关） |
 | 审核通过后做 DDS/.tex | → `civ6-modding` skill 的 `art-pipeline.md`（role：`loyalty_3d` / `loyalty_sv`） |
@@ -55,7 +55,7 @@
 
 ### 注册链（gen_loyalty_art.py 生成）
 
-注册链文件已存在且内容有变化时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。新建的文件由脚本直写工程。
+注册链里的 `.xlp`、`.artdef`、`.mtl`、`.ast` 与 `*.Art.xml` 属美术产物，脚本直接写盘；`.civ6proj` 属工程文件，脚本把待插入的条目写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由人逐行写入。
 
 | 文件 | 说明 |
 |------|------|
@@ -97,7 +97,7 @@ python <skill>\scripts\process_loyalty_icon.py --project "<工程路径>" --suff
 python <skill>\scripts\gen_loyalty_art.py --project "<工程路径>" --civ-types CIVILIZATION_RAGUNNA_QYQXP
 ```
 
-注册链文件已存在且内容有变化时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+注册链里的 `.xlp`、`.artdef`、`.mtl`、`.ast` 与 `*.Art.xml` 属美术产物，脚本直接写盘；`.civ6proj` 属工程文件，脚本把待插入的条目写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由人逐行写入。
 
 多文明聚合：`--civ-types CIVILIZATION_A,CIVILIZATION_B`（XLP/ArtDef 条目幂等追加）。
 
@@ -112,7 +112,7 @@ python <skill>\scripts\gen_loyalty_art.py --project "<工程路径>" --civ-types
 用户审核 PNG 通过后，直接对审核用的 PNG（**留在原处即可**，桌面审核文件夹、任意路径均可）走 `civ6-modding` art-pipeline：
 
 1. manifest role 用 `loyalty_3d`（512/128 两张，单尺寸）与 `loyalty_sv`（256/128 两张，单尺寸），source 填绝对路径
-2. `convert_art.ps1` 出 DDS + `gen_tex.py` 出 `.tex`，产出落在工程 `Textures/`（按第五节命名）；新建的 `.tex` 由脚本直写，已有 `.tex` 内容有变化时改写结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径（`.dds` 与 `Textures/` 之下的资产属可再生资产，脚本直接覆盖）。
+2. `convert_art.ps1` 出 DDS + `gen_tex.py` 出 `.tex`，产出落在工程 `Textures/`（按第五节命名）；`.dds` 与 `.tex` 都属美术产物，脚本直接写盘。
    **`gen_tex.py` 默认把 `m_ClassName` 写成 `UserInterface`，出 `.tex` 后必须手工改类别**（见第六节第 10 条），
    直接对照 `templates/loyalty_chain/Textures/` 里的 4 个模板改 `m_ClassName` 与 `m_Tags`
 3. ModBuddy 重新构建，进游戏开一局验证：城市受忠诚度负向压力时 3D 六边形显示图标、战略视图显示 sprite
@@ -242,8 +242,8 @@ python <skill>\scripts\process_loyalty_icon.py --kind religion --icon "<图标�
 # ② 注册链（幂等追加，可与忠诚度条目共存）
 python <skill>\scripts\gen_religion_art.py --project "<工程路径>" --religion-types RELIGION_CUSTOM_RGN
 #    多宗教：--religion-types RELIGION_A,RELIGION_B
-#    注册链文件已存在且内容有变化时，命令跑完后结果落在 <解决方案根>/workspace/gen/ 的同一相对路径，
-#    由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单
+#    注册链里的 .xlp/.artdef/.mtl/.ast/*.Art.xml 属美术产物，脚本直接写盘；
+#    .civ6proj 属工程文件，待插入条目写进 <解决方案根>/workspace/gen/reports/，由人逐行写入
 
 # ③ 审核通过后 DDS/.tex：同第四节第 4 步，role 相同（loyalty_3d / loyalty_sv），
 #    .tex 类别硬约束相同（3D→Generic_BaseColor / SV→StrategicView_Sprite），

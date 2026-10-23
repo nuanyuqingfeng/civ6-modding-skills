@@ -3,7 +3,7 @@ name: civ6-asset-forge
 description: "Civ6 美术素材**整理与导入** + 注册链一体化 skill（只做裁剪/通道透明度/描边等简单操作，不做图片处理工作流）：① 总督素材（governor icon / 就职图标 / 晋升徽章 / 头像 / 立绘 / 抠边）；② 忠诚度与宗教压力图标（Loyalty Overlay/Pressure + 战略视图 sprite）；③ 单位晋升图标（仅尺寸规格）；④ 2D 领袖立绘纸片人（完整美术注册链 + 1024 TEXTURE/OPACITY）；⑤ UI 领袖立绘与选人界面背景（Sukritact's Civ Selection Screen）；⑥ 历史时刻插画（MomentIllustrations 卡片）；⑦ 原版 FrontEnd 立绘·背景；⑧ 区域图标（官方模板底图 + 图案合成）；⑨ 领袖头像（ICON_LEADER_* 圆形头像：三分判定/占比定标/底图换色/出圈）；⑩ 资源图标（加成黄盘/奢侈紫盘底盘 + 纯图案合成，PS 自动化首选）。共用同一注册链机制（.dds/.tex → xlp/artdef/mtl/ast → Art.xml → .civ6proj 幂等补注册）与校验顺序；处理用户素材前必须先询问，默认只生成注册文件。边界：不含 3D 模型、UI 布局、2D UI 宗教图标、config；png→dds 转换走 civ6-modding 的 art-pipeline；总督八边形徽章与晋升五边形盾形不得混用。触发词：总督素材、governor icon、就职图标、总督徽章、总督立绘、边缘透明渐变、立绘抠边、忠诚度图标、宗教压力图标、自定义宗教注册、晋升图标、promotion icon、单位晋升、白色图标合成、盾形徽章、区域图标、district icon、District_Icon、区域图案、区域底图、2D 领袖、立绘纸片人、领袖美术注册链、suk selection、Sukritact、Civ Selection Screen、选人界面、领袖选择界面、PortraitBackground、UILeaders.xlp、UI 领袖立绘、领袖选择背景、原版选人界面、FrontEnd 立绘、FrontEnd 背景、加载界面背景、LoadingInfo、ForegroundImage、Shell_Loading.xlp、LEADER_NEUTRAL、领袖前景、借用原版背景、自动处理立绘、素材分类、人物抠图、满幅图、历史时刻、历史时刻插画、时代得分图、historic moment、MomentIllustrations、Moment_、PrideMoments、领袖发灰、领袖发糊、纸片滤镜、材质类、Leader_Matte、migrate_leader_matte、领袖头像、leader avatar、ICON_LEADER、头像底图、头像换色、资源图标、resource icon、ICON_RESOURCE、加成图标、奢侈图标、资源底盘、黄盘、紫盘。"
 version: "1.0"
 author: 千与千寻瀑
-license: MIT
+license: PolyForm-Noncommercial-1.0.0 (repository root LICENSE)
 category: game-modding
 tags:
   - civ6
@@ -40,18 +40,52 @@ languages:
 
 ## 〇、执行顺序（先读这一节，覆盖本文件其余全部内容）
 
+### 〇.0 成品优先（本 skill 的总基调，覆盖以下全部内容）
+
+任务是产出成品。收到指令后直接产出成品，写完文件即交付。
+
+**信任链**：用户指令与 skill 判据在用户提出具体问题反馈之前均为有效结论，直接采用，
+不核对、不推导、不验证其正确性。收到问题反馈后，只针对反馈项重新审视。
+
+**深度推导与追根溯源须事先获得用户许可**，包括：
+
+- 阅读 skill 的机理章节（路由表、边界说明、事故复盘）
+- 阅读游戏本体源码（`Base/Assets/UI`、`Assets/Gameplay` 等）
+- 推导控件几何与坐标换算
+- 用两种以上度量口径测量同一张图并比对结果
+- 核实 `workspace/goal/` 里的历史结论是否仍然成立
+
+判据：这次动作会不会改变即将写入的文件里的一行？不会 → 不做。
+
+用户说「我自己测试」时，交付物 = 目标文件 + 一行预期表现，不含任何校验结论。
+
 每个任务按下面四步走，步与步之间不插入其它动作：
 
 1. **路由**：按第二节的类别路由表定出本次任务所属类别，取出该类别的入口脚本。
 2. **执行**：按路由表与对应 reference 给出的参数调用入口脚本。
-3. **校验**：跑第七节校验表里本类别的校验脚本，再跑工程自己的校验入口（如 `python workspace/_tools/build.py check`）；入口脚本改了既有工程文件时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，脚本会在退出码 2 时打印待写入清单。
-4. **交付**：按第九节报产物清单与校验退出码，并报 `<解决方案根>/workspace/gen/` 待写入清单的处置结果。
+3. **校验**：只跑第七节校验表里本类别的校验脚本。工程校验入口（如 `python workspace/_tools/build.py check`）仅在改动跨 3 个以上文件或跨类别时执行，单张贴图任务不执行；改动类型与校验范围的对应关系见项目 `AGENTS.md`「校验范围」。入口脚本需要改代码文件或工程文件时，把待插入的条目写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由 AI 逐行写入工程。
+4. **交付**：按第九节报产物清单与校验退出码，并报 `workspace/gen/reports/` 数据清单的处置结果。
 
 **收敛条件是校验器的退出码。** 退出码为 0 即交付；非 0 就只改它列出的失败项，然后原样重跑，直到为 0。理解程度、与参照工程的相似程度、对照数据的整齐程度，都不作为收敛条件。
 
 **顺序内的读取白名单**：本次要写入或改写的文件；入口脚本与校验脚本的参数所指向的文件；校验器报错时点名的那一个文件；用户在当前指令里点名的文件。白名单之外的读取（机理章节、勘误章节、兄弟工程对照、历史会话记录、游戏运行日志）**先说明要读哪个文件、用途是什么，得到用户许可再读**。
 
 **询问的唯一条件见第三节**：素材无法认定，或素材缺失、规格不满足。除这两类情形外不向用户提问，也不以调研替代执行。
+
+### 〇.1 出图顺序
+
+图片类任务的顺序固定为：写出成品 → 报一行预期表现 → 结束。
+
+不得插入：几何推导、游戏源码核实、多口径测量对比、无关键。
+用户测试提出修改后，下一轮同样先出成品。
+
+### 〇.2 分类判据脚本的调用条件
+
+带分类判据的脚本（`prepare_frontend_portrait.py`、`prepare_leader_avatar.py`、
+`classify()` 系列）只在**目标级**指令下调用（判据见项目 `AGENTS.md`「指令具体度分级」）。
+
+结果级指令下直接调底层工艺函数（`make_direct`、`make_frontend_fg`、一次裁剪 + 一次粘贴），
+不进入透明率判定、竖条判定、人物类型留空判定。
 
 ## 一、本 skill 覆盖的素材类别（边界先读）
 
@@ -89,7 +123,7 @@ languages:
 | 2D 领袖<br>`reference/leader-2d.md` | **可选扩展**：2D 领袖立绘纸片人（全套注册链）、1024×1024 TEXTURE/OPACITY；**必须步骤**：外交回退立绘 `FALLBACK_NEUTRAL_*`（见 `reference/leader-diplo-fallback.md`） | XLP 包 / `Leaders.artdef` / 几何 / 材质 / `.tex` / 行为资产 ast / **灯光链（LightRigs + EnvironmentLights + Leader_LightRigs.xlp）** | 不生成素材（用户未提供时只出注册文件）；不做 config（领袖互斥/同名，见项目 `DuplicateLeaders`）。**材质类必须是 `Leader_Matte`（平面类），误用 `Leader`（PBR 人物类）会导致纸片发灰+发糊，见 §3.5 与 `migrate_leader_matte.py`**；**灯光链必须随工程自带、artdef 的 Lightrig 槽指本工程灯光，缺本地 `leaders/light_rigs` 包会渲染成零星色块，见 §3.6**；**两个 `.tex` 必须最高品质（色度降采样会致发糊+色差），见 §3.6** |
 | **UI 领袖立绘 / 选人界面背景**<br>`reference/ui-leader-portrait.md` | **Sukritact's Civ Selection Screen** 选人界面的 2D 立绘（`Players.Portrait`）与背景（`Players.PortraitBackground`） | 每领袖 2 张 `_Suk` 贴图（立绘 = 峰值列对齐 `--peak-frac`（默认 0.70）、外交立绘保持原尺寸；背景 = 外交背景中心裁 1440×1080）+ `UPDATE Players` + XLP + `Criteria` 接线 | 不做 3D 纸片人注册链（→ 类别④）；不负责 Suk mod 本体分发；不处理加载界面（`IMG_LOADING_*` / `LoadingInfo`，另一条链） |
 | **历史时刻插画**<br>`reference/moment-illustration.md` | **`MomentIllustrations`** 的插画卡片（特色单位/区域/建筑/改良/总督的时刻图） | 每张 **456×332** 贴图（套 **18 张官方形状模板**之一）+ `UI_PrideMoments.xlp` 登记 + `MomentIllustrations` 行 | 不新增 `MomentIllustrationType`（属玩法侧表级改动）；不做 `Moments` 表（时刻本体）；不处理非历史时刻的其它 UI 图 |
-| **原版 FrontEnd 立绘 / 背景**<br>`reference/frontend-portrait.md` | **原版环境**下领袖的**前景（立绘）与背景**：FrontEnd 选人 placard（`Players`）+ 加载界面（`LoadingInfo`）+ 外交兜底立绘（`FALLBACK_NEUTRAL_*`） | 前景（**1080×1080**，底部恒贴齐、顶部留空按素材自适应：现有留空占画布高 12%~38% 时整幅等比例直通，否则按人物类型定留空（成年男性 10%、成年女性 18%、少年少女 6%、幼儿 45%），`LEADER_<X>_NEUTRAL` 约定）+ 背景（竖版 **328×935** 自建 / `--bg` 同源派生 / 别名复用原版）+ XLP 登记 + `Players`/`LoadingInfo` 行；**素材本身即 1:2.85 竖条**时 `Players.Portrait` 写显式空串 `''`（placard 形，仅环境 A）；**外交兜底立绘必须独立导入**（`Leader_Fallback` 类，见 `reference/leader-diplo-fallback.md`） | 不做外交场景的分层与 `DiplomacyInfo` 行（→ `civ6-modding/art-pipeline.md` §三.1）；不做 3D 纸片人（→ 类别④）；Suk 分支另见类别⑤ |
+| **原版 FrontEnd 立绘 / 背景**<br>`reference/frontend-portrait.md` | **原版环境**下领袖的**前景（立绘）与背景**：FrontEnd 选人 placard（`Players`）+ 加载界面（`LoadingInfo`）+ 外交兜底立绘（`FALLBACK_NEUTRAL_*`） | 前景（**1080×1080**，底部恒贴齐；选人 `LEADER_<X>_NEUTRAL` 顶部留空按素材自适应：现有留空占画布高 12%~38% 时整幅等比例直通，否则按人物类型定留空（成年男性 10%、成年女性 18%、少年少女 6%、幼儿 45%）；加载前景 `IMG_LOADING_FOREGROUND_<X>` 默认按「内容框水平居中、底边贴齐」单独产出，像素整体处于下半部）+ 背景（竖版 **328×935** 自建 / `--bg` 同源派生 / 别名复用原版）+ XLP 登记 + `Players`/`LoadingInfo` 行；**素材本身即 1:2.85 竖条**时 `Players.Portrait` 写显式空串 `''`（placard 形，仅环境 A）；**外交兜底立绘必须独立导入**（`Leader_Fallback` 类，见 `reference/leader-diplo-fallback.md`） | 不做外交场景的分层与 `DiplomacyInfo` 行（→ `civ6-modding/art-pipeline.md` §三.1）；不做 3D 纸片人（→ 类别④）；Suk 分支另见类别⑤ |
 | **区域图标**<br>`reference/district-icon.md` | 区域（District）图标母版：官方 PSD 模板底图 + 白色图案素材 → 256×256 六边形图标；**构图唯一来源**是 `build_district_icon.fit_pattern`，两引擎共用 | 每区域 1 张 256×256 PNG（区域主题色渐变图案 + 边框） | 不做 PNG→DDS 与 `IconTextureAtlases` 注册（审核通过后 → `civ6-modding/art-pipeline.md`）；不做城市横幅内的小尺寸切图 |
 | **资源图标**<br>`reference/resource-icon.md` | 资源（Resource）图标单元格：**已内置**的加成黄盘/奢侈紫盘底盘 + 纯图案素材 → 256×256 RGBA 单元格；**构图唯一来源**是 `build_resource_icon.place_pattern`（裁剪 → 等比缩放 → 居中 → 预乘重采样 → 输出空间等宽黑边），两引擎共用 | 每个资源 1 张 256×256 PNG（图案 + 黑边 + 类别底盘） | 不做 PNG→DDS 与 `IconTextureAtlases` 注册（审核通过后 → `civ6-modding/art-pipeline.md`）；不做无底盘的裸图案单元格；不重复加黑边（素材自带时用 `--no-stroke`） |
 | **领袖头像**<br>`reference/leader-avatar.md` | 领袖圆形头像 `ICON_LEADER_*` 素材整备：三分判定（合规直通/仅缩放/Icon 制作）+ 占比定标 + 底图换色 + 出圈 | 每素材 256 规范成品 + 300 等比版 + 换色底图 + 锚点证据图 + metrics（注册走 `leader_icon` 8 尺寸） | 不做注册链与 DDS（→ art-pipeline）；满幅复杂背景不承接抠图；不做 3D 纸片人与 FrontEnd 立绘；高耸头饰超画布物理空间时如实报告不自动缩小 |
@@ -286,10 +320,9 @@ leader XLP 全套；**未命中 → 纸片模型不生成**，但外交回退立
 
 ## 五quater、工程文件写入铁律
 
-脚本可以**新建**工程文件，绝不允许**改写**工程文件；既有工程文件的每一次改动由 AI 用文件编辑工具完成。
-判据、`workspace/gen/` 落点、可再生二进制资产的例外、六份 `_projwrite.py` 副本，全部以 [`civ6-modding/SKILL.md`](../civ6-modding/SKILL.md) 的「工程文件写入铁律」为唯一真源。
+代码文件只能逐行编辑（焚诀「禁止用程序化的方式编写或修改任何代码文件」）。判据、允许脚本直写的美术与音频产物清单、六份 `_projwrite.py` 副本，全部以 [`civ6-modding/SKILL.md`](../civ6-modding/SKILL.md) 的「工程文件写入铁律」为唯一真源。
 
-本 skill 的落点：`gen_leader_2d.py`、`gen_loyalty_art.py`、`gen_religion_art.py`、`gen_suk_portrait.py`、`prepare_frontend_portrait.py`、`pick_vanilla_background.py`、`process_leader_png.py`、`migrate_suk_namespace.py` 的工程写入全部经过 `scripts/_projwrite.py`；`.civ6proj`、`*.Art.xml`、`.xlp`、`.artdef`、`.sql`、`.lua` 已有内容有变化时一律入位 `workspace/gen/`，脚本不覆盖。
+本 skill 的落点：`gen_leader_2d.py`、`gen_loyalty_art.py`、`gen_religion_art.py`、`gen_suk_portrait.py`、`prepare_frontend_portrait.py`、`pick_vanilla_background.py`、`process_leader_png.py`、`migrate_suk_namespace.py` 的工程写入全部经过 `scripts/_projwrite.py`。`.dds`、`.tex`、`.artdef`、`.xlp` 属美术产物，脚本直接写盘；`.civ6proj`、`*.Art.xml`、`.sql`、`.lua`、`.xml` 属代码文件与工程文件，脚本一律不写，改为把待插入的条目写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由 AI 逐行写入工程。
 
 ## 六、注册链总览（各类共用链条）
 
@@ -306,7 +339,7 @@ leader XLP 全套；**未命中 → 纸片模型不生成**，但外交回退立
    工程接线：*.Art.xml（artConsumers / gameLibraries / requiredGameArtIDs）
         │
         ▼
-   打包清单：*.civ6proj 补 Content Include 条目（补好的 .civ6proj 落 workspace/gen/，由 AI 写入工程；类别⑤ 另需 FrontEndAction + Criteria）
+   打包清单：*.civ6proj 补 Content Include 条目（待插入条目写进 workspace/gen/reports/，由 AI 逐行写入工程；类别⑤ 另需 FrontEndAction + Criteria）
         │
         ▼
    ModBuddy 构建 → 进游戏开一局验证
@@ -335,7 +368,7 @@ leader XLP 全套；**未命中 → 纸片模型不生成**，但外交回退立
 2. **XLP / ArtDef 的构建接入点**：`.civ6proj` 的 `<Content>` 条目**不是**必需
    （`.xlp` 属 cook 输入，`.artdef` 由构建产物 `.modinfo` 自动收进）；**真正必须的是第 3 条的 `.Art.xml`**。
    脚本会幂等补 Content 条目，属可选冗余；civ6proj 可能有多个 `ItemGroup`，统一插到最后一个 `</Content>` 之后。
-   `.civ6proj` 属永不放行的工程文件：条目的新增结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程。
+   `.civ6proj` 属永不放行的工程文件：待插入的条目写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由 AI 逐行写入工程。
 3. **Art.xml 与 artdef/xlp 必须同步**：**已有 Art.xml 一律走增量接线**——
    `art\gen_modartxml.py <工程根> --ensure-consumer "<消费者>=<artdef>"`、
    `--ensure-library "<库>=<包名>"`、`--ensure-required <包>`（可重复），只做加法、不删除不重排。
@@ -343,8 +376,8 @@ leader XLP 全套；**未命中 → 纸片模型不生成**，但外交回退立
    `gen_leader_2d.py` 已直接调用；`landmark_tool.py` 调 `gen_modartxml.ensure()`。
    工程**完全没有** Art.xml 时才走全量生成：`--write` 直写新建（工程无 ArtDefs/XLPs/Textures 时判定无美术工程并拒绝创建）。
    `--check` 仍可用于与全量生成结果比对，差异需人工确认。
-   改写既有文件时结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，脚本在退出码 2 时打印待写入清单。
-4. **已存在的 artdef 不整体覆盖**：走脚本的幂等合并；脚本找不到锚点时必须报"请手动合并"，**不静默跳过**（防止覆盖工程里其他功能条目）。合并结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，脚本会在退出码 2 时打印待写入清单。
+   待插入的接线条目写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由 AI 逐行写入工程。
+4. **已存在的 artdef 不整体覆盖**：走脚本的幂等合并；脚本找不到锚点时必须报"请手动合并"，**不静默跳过**（防止覆盖工程里其他功能条目）。`.artdef` 属美术产物，合并结果由脚本直接写盘。
 5. **`.tex` 类别是硬约束**：类别与所绑 XLP 参数不匹配时，cooker 报
    `has class: 'X', but is bound to parameter: 'Y' which does not accept this class`，
    但 **XLP cook 仍显示 success**（条目被静默替换成 error asset）——**不能当成功处理**。各类正确类别：
@@ -372,7 +405,7 @@ leader XLP 全套；**未命中 → 纸片模型不生成**，但外交回退立
 
 1. **合成后立刻跑本类的本地校验脚本**（数值判据，不依赖模型）：
 
-入口脚本改了既有工程文件时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，脚本会在退出码 2 时打印待写入清单；写入完成后按下表逐项校验。
+入口脚本需要改代码文件或工程文件时，待插入的条目写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由 AI 逐行写入工程；写完后按下表逐项校验。
 
 | 类别 | 校验脚本 | 判据 |
 |------|---------|------|
@@ -437,15 +470,15 @@ civ6-asset-forge/
 | `scripts/edge_gradient.py` | ① | 立绘边缘透明渐变（软 alpha + 去杂边 + OPACITY 遮罩） |
 | `scripts/verify_badge.py` | ① | 24px 徽章几何/配色验证 |
 | `scripts/process_loyalty_icon.py` | ② | 忠诚度 4 张 / 宗教 3 张 PNG 合成（`--kind`） |
-| `scripts/gen_loyalty_art.py` | ② | 忠诚度注册链（XLP/ArtDef/mtl/ast + Art.xml + civ6proj 补注册；改写结果落 `workspace/gen/`） |
+| `scripts/gen_loyalty_art.py` | ② | 忠诚度注册链（XLP/ArtDef/mtl/ast + Art.xml + civ6proj 补注册；美术产物直写，Art.xml 与 civ6proj 的待插入条目落 `workspace/gen/reports/`） |
 | `scripts/gen_religion_art.py` | ② | 宗教注册链（同上机制，宗教命名映射） |
 | `scripts/gen_leader_2d.py` | ④ | 全套领袖美术注册文件生成（读 `templates/` 模板；含灯光链 `.lrg`/`.env`/环境光 dds/`Leader_LightRigs.xlp`，见 §五bis） |
 | `scripts/process_leader_png.py` | ④ | 立绘 PNG → 1024² TEXTURE/OPACITY（读 `templates/` 的两个 `.tex` 模板） |
-| `scripts/gen_suk_portrait.py` | ⑤ | Suk 适配素材 + `UPDATE Players` + XLP + civ6proj 接线（幂等，`--check`/`--write`；SQL/XLP/civ6proj 的改写结果落 `workspace/gen/`） |
+| `scripts/gen_suk_portrait.py` | ⑤ | Suk 适配素材 + `UPDATE Players` + XLP + civ6proj 接线（幂等，`--check`/`--write`；`.dds`/`.tex`/`.xlp` 直写，SQL 与 civ6proj 的待插入条目落 `workspace/gen/reports/`） |
 | `scripts/verify_suk_portrait.py` | ⑤ | Suk 适配只读校验（类别陷阱 / 尺寸对齐 / XLP 登记 / 悬空引用 / 行尾） |
 | `scripts/verify_frontend_portrait.py` | ⑦ | 原版 FrontEnd + 加载界面校验（A/B 两环境回退可用性 / 悬空 / Action 段归属 / 尺寸 / 类别 / 行尾） |
-| `scripts/pick_vanilla_background.py` | ⑦ | 按色调近似从官方背景里挑可复用项 + 产 XLP 别名与数据行接线（`--list` / `--check` / `--write`；XLP 别名的改写结果落 `workspace/gen/`） |
-| `scripts/prepare_frontend_portrait.py` | ⑦ | **两段式**：先出计划（分类 + 处置方案 + 背景来源，**不写盘**），用户确认后才 `--confirmed` 执行；判断类一律 exit 3 停下询问。执行时 `.dds`/`.tex` 直写工程 `Textures/`，XLP 别名的改写结果落 `workspace/gen/` |
+| `scripts/pick_vanilla_background.py` | ⑦ | 按色调近似从官方背景里挑可复用项 + 产 XLP 别名与数据行接线（`--list` / `--check` / `--write`；`.xlp` 直写，数据行落 `workspace/gen/reports/`） |
+| `scripts/prepare_frontend_portrait.py` | ⑦ | **两段式**：先出计划（分类 + 处置方案 + 背景来源，**不写盘**），用户确认后才 `--confirmed` 执行；判断类一律 exit 3 停下询问。执行时 `.dds`/`.tex`/`.xlp` 直写工程 `Textures/` 与 `XLPs/`，数据行落 `workspace/gen/reports/` |
 | `scripts/apply_moment_template.py` | ⑥ | 历史时刻插画套官方形状模板（`--list` / `--template N` / `--auto` / `--dds`；报告覆盖率对照 83~99%） |
 | `scripts/verify_moment.py` | ⑥ | 历史时刻只读校验（**覆盖率下界** / 456×332 / 类别 / XLP / `MomentIllustrations` 配对） |
 | `scripts/ps_place_district.py` | ⑧ | 区域图标 **PS 自动化引擎（首选）**：`pattern_canvas` 先按落位框完成构图，再交本机 Photoshop 原位置入智能对象做效果光栅化并逐区域导出（exit 4 = 无 PS，触发用户询问；依赖 pywin32） |

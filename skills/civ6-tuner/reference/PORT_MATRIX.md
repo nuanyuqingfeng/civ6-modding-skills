@@ -3,7 +3,7 @@
 > 数据来源：2026-09-13 FireTuner 双上下文实测（`gamecore` = GP，`ingame` = UI）。
 > 方法：同一份探针脚本两端各跑一次，只做「索引不调用」。
 > **本表优先于 `civ6-modding/database/api.sqlite` 的 `availability` 列** —— 已发现文档错漏的条目在下方单列。
-> 本表回答「某个名字在这一端是不是 table / function」；**通道口径**（能不能跨上下文调用函数、有哪些固定通道）见 端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `civ6-modding/reference/context-matrix.md`。
+> 本表回答「某个名字在这一端是不是 table / function」；**通道口径**（能不能跨上下文调用函数、有哪些固定通道）见 `civ6-modding/reference/context-matrix.md`：跨端四通道 = `EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向，仅 UI 按钮回调禁用）；端内用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。
 
 ## 一、总线与命名空间
 
@@ -11,9 +11,9 @@
 |---|---|---|---|
 | `Events` | table | table | 引擎 GameCoreEvent 总线，两端都有 |
 | **`GameEvents`** | table | **nil** | **UI 侧整条总线不存在** → UI 可达代码里任何 `GameEvents.*` 必崩 |
-| `LuaEvents` | table | table | **端内跨上下文唯一通道**：UI 上下文互播 / GP 文件互播（表格按引用传递）；不跨端，禁止用它调用其它上下文的函数 → `civ6-modding/reference/context-matrix.md` |
+| `LuaEvents` | table | table | **端内跨上下文首选通道**：UI 上下文互播 / GP 文件互播（表格按引用传递）；跨端不互通，也不能拿它当函数调用通道。端内也可用暴露函数，但不如它好用 → `civ6-modding/reference/context-matrix.md` |
 | `ReportingEvents` | table | table | 元素 `SendLuaEvent` 两端都在（GP→UI 推送用） |
-| `ExposedMembers` | table | table | GP 同端跨文件（本项目已改用 LuaEvents）；**不该跨端用**。技术可行但不属于固定通道：端内跨上下文只有 `LuaEvents`，其余不可达 → `civ6-modding/reference/context-matrix.md` |
+| `ExposedMembers` | table | table | **跨端第四通道**（双向、可同步返回）；仅 UI 按钮回调禁用，其余场景可用，需要返回值时优先 → `civ6-modding/reference/context-matrix.md` |
 | `NotificationManager` | table | table | — |
 | `Locale` | **nil** | table | `Locale.Lookup` 只能在 UI 侧调用 |
 | `UI` / `Controls` / `ContextPtr` | **ERR** | table | UI 专有命名空间，GP 侧不存在 |
@@ -99,7 +99,7 @@
    不确定就写"不确定"，禁止用假阳性凑数。
 ```
 
-## 五、跨端写入验证：先确认「对象层级」（实测踩坑，最易误判；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取三个通道 → `civ6-modding/reference/context-matrix.md`）
+## 五、跨端写入验证：先确认「对象层级」（实测踩坑，最易误判；跨端四通道：`EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取（被动辅助）/ 暴露函数（仅按钮回调禁用）→ `civ6-modding/reference/context-matrix.md`）
 
 **同一个 `key` 字符串，挂在不同的对象层级 = 完全不同的两个属性空间。**
 验证「UI→GP 写入是否生效」之前，必须先确认目标属性挂在哪一层：
@@ -128,7 +128,7 @@
 | UI 端读 GP 写入的表 | **完整可读**（实测 `#=3`、值一致） |
 
 > 顶层若是「字符串键 map」，`#t == 0` 属正常现象（不是丢数据）；判内容请看具体字段。
-> 结论：**跨端传结构体无需退化到 JSON 字符串**，平行数组 / 嵌套表直接传即可。端内跨上下文只有 `LuaEvents`（表格按引用），跨端经 `ReportingEvents` 送的是副本 → `civ6-modding/reference/context-matrix.md`。
+> 结论：**跨端传结构体无需退化到 JSON 字符串**，平行数组 / 嵌套表直接传即可。端内用 `LuaEvents`（首选，表格按引用）或暴露函数；跨端经 `ReportingEvents` 送的是副本 → `civ6-modding/reference/context-matrix.md`。
 
 ## 七、`EXECUTE_SCRIPT` 派发可达性验证配方（决定性）
 
@@ -153,7 +153,7 @@
 ## 八、探针卫生（两条硬教训）
 
 1. **不要把"清理探针键"放在 `exec --both` 的 GP 段末尾** —— `--both` 先跑 GP、后跑 UI，
-   GP 段清理会把 UI 段要做的「跨端可见性」对照读毁掉，**制造假失败**（实测踩到；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取三个通道 → `civ6-modding/reference/context-matrix.md`）。
+   GP 段清理会把 UI 段要做的「跨端可见性」对照读毁掉，**制造假失败**（实测踩到；跨端四通道：`EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取（被动辅助）/ 暴露函数（仅按钮回调禁用）→ `civ6-modding/reference/context-matrix.md`）。
    清理要么放在最后一步单独跑，要么用 `CLEANUP=false` 留到对照读之后。
 2. **探针主体一律顶层 `pcall` 包住并打印结果** —— chunk 内抛错时已 `print` 的内容**整段不回传**，
    会让你误以为"脚本没跑"。典型触发：`tostring(x:GetProperty(k))` 在未设置时抛

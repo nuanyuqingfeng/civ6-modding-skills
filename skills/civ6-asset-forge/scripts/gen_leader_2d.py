@@ -41,7 +41,7 @@ artdef 的 Lightrig 槽是一个真实被解析的引用；工程内没有本地
 
 artdef 的 Lightrig 槽写 `{LEADER}_LightRig`。工程侧还有两处接线：
 `.Art.xml` 的 `LeaderLighting` 库 `relativePackagePaths` 补 `leaders/light_rigs` —— 由本脚本
-自动调用 `gen_modartxml.py --ensure-library` 完成，改写结果入位 `<解决方案根>/workspace/gen/`；
+自动调用 `gen_modartxml.py --ensure-library` 完成（`.Art.xml` 属美术产物，由脚本直接覆盖）；
 `.civ6proj` 的 `<Content>` 补 `XLPs/Leader_LightRigs.xlp`（脚本只打印提示，不代做）。
 """
 import argparse
@@ -55,8 +55,8 @@ from _artxml_ensure import ensure as ensure_art_xml  # noqa: E402
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates')
 
-# 守卫返回值 → 控制台动词（既有的按原样保留，改写结果落在 <解决方案根>/workspace/gen）
-_RESULT_VERB = {'NEW': '生成', 'SAME': '未变', 'OVERWRITE': '覆盖', 'STAGED': '入位 gen'}
+# 守卫返回值 → 控制台动词（代码文件已在守卫处抛错，这里只会出现新建与覆盖）
+_RESULT_VERB = {'NEW': '生成', 'SAME': '未变', 'OVERWRITE': '覆盖'}
 
 # 单文件模板 -> 目标子目录。（模板文件名与输出文件名一律不含作者后缀）
 SINGLE_FILE_TEMPLATES = [

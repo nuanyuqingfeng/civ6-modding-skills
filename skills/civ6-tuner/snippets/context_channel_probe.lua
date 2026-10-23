@@ -1,5 +1,7 @@
 -- 跨上下文实测探针（2026-09-26）：在 FireTuner 里对两个 Lua 上下文各投递一次，验证通道可达性。
 -- 口径真源：civ6-modding/reference/context-matrix.md 第五节。
+-- 本探针只测 `LuaEvents`：同端可达（F1/F3）、跨端不达（F2）；
+-- 暴露函数 `ExposedMembers` 双向可读可调另见真源 F8（仅按钮回调禁用）。
 --
 -- 用法（结果见真源第五节 F1–F12）：
 --   1) 在接收方上下文跑 "--mode register"   → 注册 LuaEvents 接收器

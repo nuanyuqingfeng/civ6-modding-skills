@@ -1,5 +1,40 @@
 # CHANGELOG — civ6-asset-forge
 
+## 2026-10-21 · OPACITY 低 alpha 尾部压成单一底值，消除纸片外围同心环带
+
+**来源**：Hongkai_Elysia 外交场景纸片人物外围出现一圈一圈的分层；对照 Ragunna_Pack 的 Roccia 同样带径向渐变却无可见环带。
+
+### 修正
+
+| 文件 | 内容 |
+|---|---|
+| `scripts/process_leader_png.py` | 新增 `--alpha-base`（默认 4）：`--alpha-floor` 以下的背景段由「归零」改为写入该底值；docstring 与 `--alpha-floor` 帮助文本同步 |
+| `reference/leader-2d.md` §3.6(6) | 新增铁律「OPACITY 低 alpha 尾部必须压成单一底值」，含机理、判据与实测对照 |
+| `reference/leader-2d.md` §2.5 生成规则 | OPACITY 行由「纯白/纯黑二值化」改为连续灰度 + 抬底口径 |
+
+### 实测对照（1024²，同引擎同材质类）
+
+| 项 | Elysia 改前 | Roccia | Elysia 改后 |
+|---|---|---|---|
+| 背景最低级及占比 | 1~3 三级，55.71% | 4 一级，63.22% | 4 一级，63.40% |
+| 灰阶级数 | 253 | 252 | 241 |
+| 8 射线恒值平台段数 | 22 | 12 | 单段宽环 228.75 |
+| 径向尾部均值 | 1.90 / 1.43 / 0.93 | 4.00 / 4.00 / 4.00 | 6.7 / 4.2 / 4.0 / 4.0 / 4.0 |
+
+## 2026-10-20 · 加载界面前景默认独立产出，锚点为内容框居中贴底
+
+**来源**：Hongkai_Elysia 的加载界面立绘位置不理想；实测「内容框水平居中 + 底边贴齐、像素整体处于 1080² 画布下半部」是正确形态。
+
+### 修正
+
+| 文件 | 内容 |
+|---|---|
+| `scripts/prepare_frontend_portrait.py` | 新增 `make_loading_fg()`：取 alpha 内容框、水平居中、底边贴齐 1080×1080，内容框超出画布才等比缩小（scale = min(1, 1080/w, 1080/h)），不放大、不按人物类型重排；`plan_one()` 在四个分支之后统一产出 `IMG_LOADING_FOREGROUND_<KEY>` 并接到 `LoadingInfo.ForegroundImage` |
+| `reference/frontend-portrait.md` §2.3 | 「取值」行改为**默认 `IMG_LOADING_FOREGROUND_<X>`（独立实体）**；共用形态降为「仅在两套几何能同时成立时使用」；尺寸行写明内容框居中贴底、像素整体处于下半部；拆图小节改述为默认做法；§3b.4 命名表、§路由图同步 |
+| `SKILL.md` §一 类别⑦ 行 | 产出栏区分选人前景（顶部留空按类型）与加载前景（内容框居中贴底、像素整体处于下半部） |
+
+原先 B 的开箱默认是复用 A 的 `LEADER_<X>_NEUTRAL`，而 A 的 placard 只取贴图左侧一条窗口（§1.3），两套几何不同，复用会让加载界面偏位。
+
 ## 2026-10-11 · 1:2.85 竖条分支补进两处入口
 
 **来源**：Snezhnaya_Vodyanitsa 的前景列一度被填成 `LEADER_<KEY>_NEUTRAL`，而该工程素材本身即 1:2.85 竖条。
@@ -188,7 +223,7 @@ artdef 的 Lightrig 槽是一个真实被解析的引用：写成 `ART_DEFAULT_L
 
 1:2.85 竖条这条规则管的是**选人 placard**（`Players.Portrait` / `Players.PortraitBackground`，Config 库）。
 **加载界面（环境 B）不受它管辖**：`LoadingInfo.ForegroundImage` 是另一条独立通道
-（Gameplay 库、`LoadScreen.lua` 消费），照旧取 `LEADER_<KEY>_NEUTRAL`。
+（Gameplay 库、`LoadScreen.lua` 消费），照旧独立取 `IMG_LOADING_FOREGROUND_<KEY>`。
 竖条本身是背景，顶替不了加载界面的前景——那份前景仍需单独一张立绘抠图。
 
 ### 改动（`scripts/prepare_frontend_portrait.py`）
@@ -198,7 +233,7 @@ artdef 的 Lightrig 槽是一个真实被解析的引用：写成 `ART_DEFAULT_L
 | 新增 `is_placard_shape()` + `PLACARD_RATIO` / `PLACARD_RATIO_TOL` | 长宽比 1:2.85 ±3% 即判为 placard 形，**只看尺寸、不看 alpha** |
 | `classify()` 增第 2 条判据 | 判据次序：透明 ≥40% → **placard 形** → 透明 ≤5% 且不透明 ≥90% → 中间地带。**透明率优先**，高瘦人物抠图（同为 1:2.85、透明 81.6%）仍按抠图处理 |
 | `acquire_bgs()` 增 `strip_src` 参数 | 素材本身即 1:2.85 竖条时，直接 cover 到 328×935 采用，产出 `LEADER_<KEY>_PLACARD_BACKGROUND`；不再因"placard 缺竖版源"报 exit 3。**只影响 placard 背景这一项** |
-| placard 形分支只置 `Players.Portrait` | ``''`` 只写给 FrontEnd 那列；`loading_fg` 保持 `LEADER_<KEY>_NEUTRAL`，且**不拿竖条去顶替**加载界面前景 |
+| placard 形分支只置 `Players.Portrait` | ``''`` 只写给 FrontEnd 那列；加载前景另出 `IMG_LOADING_FOREGROUND_<KEY>`，且**不拿竖条去顶替** |
 | `PLACARD_BG_PATTERNS` 增 `LEADER_%s_PLACARD_BACKGROUND` | 二次执行走"① 工程既有"分支，幂等 |
 | 计划输出标注判定依据与作用范围 | 仅当**尺寸**这条规则真正决定了结果时才标"1:2.85 竖条 = placard 形"；并显式打印"该规则只在 FrontEnd 触发，加载界面不受管辖" |
 

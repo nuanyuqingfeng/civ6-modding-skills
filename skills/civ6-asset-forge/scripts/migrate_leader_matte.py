@@ -44,13 +44,12 @@ r"""migrate_leader_matte.py — 把 2D 领袖纸片材质从 PBR 人物类 Leade
 
     python migrate_leader_matte.py <工程根>                 # 预演（默认，不写盘）
     python migrate_leader_matte.py <工程根> --check         # 只体检：有待迁移项则 exit 2
-    python migrate_leader_matte.py <工程根> --write         # 执行（.mtl 属工程文件：改写结果落 workspace/gen）
+    python migrate_leader_matte.py <工程根> --write         # 执行（.mtl 属美术产物，直接写盘）
     python migrate_leader_matte.py <根目录1> <根目录2> ... --write   # 批量
 
     --all-siblings        扫描 <Civ6 工程父目录> 下全部兄弟工程
 
-写入：既有 .mtl 内容有变化时，改写结果落到 <解决方案根>/workspace/gen/Materials/ 的同一相对路径，
-      由 AI 用文件编辑工具写入工程（退出码 2 并打印待写入清单）。
+写入：.mtl 属美术产物，脚本直接写盘（既有内容一并覆盖）。
 
 ## 识别规则（只动「领袖纸片材质」）
 
@@ -62,7 +61,7 @@ r"""migrate_leader_matte.py — 把 2D 领袖纸片材质从 PBR 人物类 Leade
 
 ★ 本工具**不**负责 cook 与同步 Mods 副本：改完必须在 AssetEditor 重新 cook 才生效。
 
-退出码：0 无需迁移或已成功 / 1 错误 / 2 --check 发现待迁移项，或有改写入位 workspace/gen
+退出码：0 无需迁移或已成功 / 1 错误 / 2 --check 发现待迁移项
 """
 from __future__ import annotations
 
@@ -230,7 +229,7 @@ def main():
         raw = open(p, "rb").read()
         nl = "\r\n" if raw.count(b"\r\n") > raw.count(b"\n") / 2 else "\n"
         out = text if nl == "\n" else text.replace("\n", "\r\n")
-        # .mtl 属工程文本文件：改写经 _projwrite 守卫，既有文件内容有变化时结果入位 workspace/gen
+        # .mtl 属美术产物：经 _projwrite 守卫直接写盘覆盖
         result = write_project_file(p, out.encode("utf-8"), root_of(p))
         ok += 1
         print("   已迁移 %s（%s）" % (p, result))

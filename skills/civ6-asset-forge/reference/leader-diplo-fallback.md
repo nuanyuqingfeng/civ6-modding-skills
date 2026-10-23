@@ -63,3 +63,41 @@ Leader_Fallback 机制按外交状态换图，后者是完整 3D 纸片注册链
 飞花白 LeaderFallbacks 模板（经 ModTools 5.4 知识库转述，MIT）——状态名已按官方枚举
 （DebugGameplay.sqlite 实测）使用全拼；资源命名、尺寸与类别规格同源。
 游戏内表现不视为已验证，需实机验收。
+
+## 案例：外交前景与整图背景共存（2026-10-22）
+
+> 本节为历史案例记录，仅供查阅。不作为任何流程的路由判据，不进入决策树、判据章节与脚本，
+> 不得据此改写默认做法。
+
+### 现象
+
+工程 Honkai_Elysia 采用整图外交背景（`DiplomacyInfo` 单图，`Data/Honkai_Elysia_Data.sql` 的
+`INSERT OR REPLACE INTO DiplomacyInfo (Type, BackgroundImage)` 行），背景贴图
+`IMG_LEADER_ELYSIA_QYQXP_DIPLOMACY_BACKGROUND` 为 1920×1080 横条。
+
+| 前景状态 | 外交界面表现 |
+|---|---|
+| 前景三件套（`LEADER_ELYSIA_QYQXP_TEXTURE`、`LEADER_ELYSIA_QYQXP_OPACITY`、`FALLBACK_NEUTRAL_ELYSIA_QYQXP`）贴图与 `.tex` 全部删除，材质 `m_Values` 清空 | 背景被不透明前景盖住，只露出裁切后的局部 |
+| 三件套重建为载荷全零的透明贴图（`LEADER_ELYSIA_QYQXP_TEXTURE` 1024²/11 级 mip/32 位 5,592,532 字节；`LEADER_ELYSIA_QYQXP_OPACITY` 1024²/11 级 mip/8 位 1,398,229 字节；`FALLBACK_NEUTRAL_ELYSIA_QYQXP` 1024²/单 mip/32 位 4,194,432 字节），材质恢复 `Opacity` / `BaseColor` 两个 `ObjectValue` 引用 | 背景完整露出，横条铺满整屏 |
+
+### 触发条件
+
+整图外交背景生效（`DiplomacyInfo` 有该领袖一行）同时前景贴图或材质参数缺失。
+前景贴图缺失时引擎侧不会留空，仍按不透明画布参与合成。
+
+### 可操作结论
+
+要让整图外交背景可见，前景三件套必须存在且为全透明素材，`Materials/<材质>.mtl` 的
+`Opacity` 与 `BaseColor` 两个 `ObjectValue` 必须指向实际存在的贴图。
+删除贴图、清空材质参数这两种做法都会让前景变成不透明遮挡。
+前景素材的 `.tex` 类别与尺寸规格仍按本文上半部分执行。
+
+### 反向证据
+
+贴图删除而材质仍引用时，cook 报 `I/O error reading XML: .../Textures/LEADER_ELYSIA_QYQXP_TEXTURE.tex`
+与 `Loading error asset: (Error/Leader_Error_Asset)`，整条领袖资产被替换为错误资产
+（`Replacing asset: (LEAD_ELY_Elysia_QYQXP) in entry (LEADER_ELYSIA_QYQXP) with error asset`）。
+恢复三件套后上述两类日志清零。
+
+另：整图背景生效时 `XLPs/UI_LeaderScenes.xlp` 不再需要 `<领袖标识>_1..4` 分层条目，
+分层遮罩（层 4 常指向 `BARBAROSSA_4`）在链 C 下不被读取。

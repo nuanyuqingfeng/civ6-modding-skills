@@ -26,250 +26,184 @@
 from __future__ import annotations
 
 import argparse
-import itertools
+import json
 import os
 import socket
-import struct
+import subprocess
 import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tuner_link import (  # noqa: E402  同目录脚本，必须先补 sys.path
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    LOG_DIR,
+    FrameReader,
+    LinkClosed,
+    LuaError,
+    connect,
+    execute,
+    handshake,
+    resolve_state,
+    suggest_states,
+)
+from tunerd import (  # noqa: E402
+    CREATE_NO_WINDOW,
+    DAEMON_PORT,
+    DETACHED_PROCESS,
+    pid_alive,
+    read_registry,
+)
+
+
 # ---------------------------------------------------------------------------
-# 协议常量
+# 守护进程客户端
 # ---------------------------------------------------------------------------
-HEADER_FMT = "<Ii"          # [长度][tag]，均为小端 4 字节
-TAG_HANDSHAKE = 4
-TAG_COMMAND = 3
-SENTINEL = "---END---"
-
-# 每条命令带独立递增标记：前一条超时后迟到的结束帧不会被下一条命令错认成自己的，
-# 因此一次超时不会污染后续命令的输出。
-_CMD_NONCE = itertools.count(1)
-DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 4318
-
-# 日志目录（持久保留上次游玩记录，直到下次启动覆盖）
-LOG_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / \
-    "Firaxis Games" / "Sid Meier's Civilization VI" / "Logs"
+def _control_port(args: argparse.Namespace) -> int:
+    return args.daemon_port or int(os.environ.get("CIV6_TUNER_DAEMON_PORT", DAEMON_PORT))
 
 
-class LuaError(Exception):
-    """游戏返回 ERR: 时抛出。"""
-
-
-# ---------------------------------------------------------------------------
-# 帧收发
-# ---------------------------------------------------------------------------
-class LinkClosed(Exception):
-    """连接被对端关闭。"""
-
-
-MAX_FRAME_BYTES = 16 * 1024 * 1024
-
-
-class FrameReader:
-    """持久接收缓冲。
-
-    帧边界跨多次 recv 时残字节留在缓冲里：读超时抛 TimeoutError 且缓冲原样保留，
-    不存在"读残了再丢掉"的路径，因此任何一次超时都不会让后续帧错位。
-    """
-
-    def __init__(self, sock: socket.socket):
-        self.sock = sock
-        self.buf = bytearray()
-        # 上一条命令超时后遗留的结束标记：下一条命令先等它到达并整段丢弃，
-        # 否则迟到的输出行会被下一条命令当成自己的输出。
-        self.pending_token: str | None = None
-
-    def close(self) -> None:
-        try:
-            self.sock.close()
-        except OSError:
-            pass
-
-    def _extract(self) -> tuple[int, str] | None:
-        """凑够一整帧就弹出；不足一帧返回 None（残字节留在缓冲）。"""
-        if len(self.buf) < 8:
-            return None
-        length, tag = struct.unpack(HEADER_FMT, bytes(self.buf[:8]))
-        if length < 0 or length > MAX_FRAME_BYTES:
-            raise LinkClosed(f"帧长度异常（{length}），连字节流已错位")
-        if len(self.buf) < 8 + length:
-            return None
-        payload = bytes(self.buf[8:8 + length])
-        del self.buf[:8 + length]
-        return tag, payload.rstrip(b"\x00").decode("utf-8", errors="replace")
-
-    def read(self, timeout: float) -> tuple[int, str]:
-        """读一整帧；超时抛 TimeoutError，对端关闭抛 LinkClosed。"""
-        deadline = time.monotonic() + timeout
-        while True:
-            frame = self._extract()
-            if frame is not None:
-                return frame
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError("等待帧超时")
-            self.sock.settimeout(remaining)
-            try:
-                chunk = self.sock.recv(65536)
-            except socket.timeout:
-                raise TimeoutError("等待帧超时") from None
-            except OSError as e:
-                raise LinkClosed(str(e)) from None
+def _request(port: int, payload: dict, wait: float) -> dict:
+    """向守护进程发一条 JSONL 请求并读回一条应答。"""
+    reg = read_registry() or {}
+    token = reg.get("token") if reg.get("port") == port else None
+    body = {"v": 1, "token": token, **payload}
+    with socket.create_connection(("127.0.0.1", port), timeout=3.0) as sock:
+        sock.settimeout(wait)
+        sock.sendall((json.dumps(body, ensure_ascii=False) + "\n").encode("utf-8"))
+        buf = bytearray()
+        while b"\n" not in buf:
+            chunk = sock.recv(65536)
             if not chunk:
-                raise LinkClosed("对端关闭连接")
-            self.buf += chunk
-
-    def drain(self) -> list[tuple[int, str]]:
-        """取走缓冲里已完整到达的全部帧，不阻塞等待新数据。"""
-        out = []
-        while True:
-            frame = self._extract()
-            if frame is None:
-                return out
-            out.append(frame)
-
-
-def send_msg(sock: socket.socket, tag: int, payload: str) -> None:
-    data = payload.encode("utf-8") + b"\x00"
-    sock.sendall(struct.pack(HEADER_FMT, len(data), tag) + data)
-
-
-# ---------------------------------------------------------------------------
-# 握手与状态发现
-# ---------------------------------------------------------------------------
-def parse_states(raw: str) -> dict[str, int]:
-    """解析 LSQ 回包：条目交替为 [索引数字, 状态名]。"""
-    entries = [s.strip() for s in raw.split("\x00") if s.strip()]
-    if len(entries) <= 1 and "\n" in raw:
-        entries = [s.strip() for s in raw.split("\n") if s.strip()]
-    states: dict[str, int] = {}
-    i = 0
-    while i + 1 < len(entries):
-        try:
-            states[entries[i + 1]] = int(entries[i])
-            i += 2
-        except ValueError:
-            i += 1
-    return states
-
-
-def _query(reader: "FrameReader", timeout: float) -> str | None:
-    """在 timeout 内等一条握手回包；超时返回 None。"""
-    try:
-        return reader.read(timeout)[1]
-    except TimeoutError:
-        return None
-
-
-def handshake(reader: "FrameReader", timeout: float = 8.0) -> tuple[str, dict[str, int]]:
-    """握手并解析 Lua 状态表。返回 (游戏身份, {状态名: 索引})。
-
-    两条 query 各持独立截止时间，避免单次未达就静默退化成空表。
-    """
-    reader.drain()
-
-    send_msg(reader.sock, TAG_HANDSHAKE, "APP:")
-    identity = _query(reader, timeout) or "<无响应>"
-
-    send_msg(reader.sock, TAG_HANDSHAKE, "LSQ:")
-    raw = _query(reader, timeout) or ""
-    return identity, parse_states(raw)
-
-
-def connect(host: str, port: int) -> FrameReader:
-    """建立连接并返回带持久缓冲的读取器。"""
-    sock = socket.create_connection((host, port), timeout=5.0)
-    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    return FrameReader(sock)
-
-
-# ---------------------------------------------------------------------------
-# Lua 执行
-# ---------------------------------------------------------------------------
-def _frame_text(payload: str) -> str | None:
-    """print 帧取净文本；非 print 帧返回 None。"""
-    if not payload.startswith("O"):
-        return None
-    sep = payload.find(": ", 2)
-    text = payload[sep + 2:] if sep >= 0 else payload.lstrip("O\x00").strip()
-    return text.strip()
-
-
-def _resync_after_timeout(reader: "FrameReader", timeout: float) -> None:
-    """上一条命令超时后，先等它的结束标记到达并把这段输出整段丢弃。
-
-    标记唯一，因此只有那个特定标记才算对齐；在它之前到达的一切（该命令迟到的
-    输出行、其他命令的标记）一律丢弃。始终等不到就抛 LinkClosed，由调用方重连，
-    避免把上一条命令的输出错记到本条命令名下。
-    """
-    stale = reader.pending_token
-    if stale is None:
-        return
-    reader.pending_token = None
-    deadline = time.monotonic() + timeout
-    while True:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise LinkClosed("上一条超时命令的结束标记始终未到，字节流无法确认对齐")
-        try:
-            _tag, payload = reader.read(remaining)
-        except TimeoutError:
-            raise LinkClosed(
-                "上一条超时命令的结束标记始终未到，字节流无法确认对齐") from None
-        if _frame_text(payload) == stale:
-            return
-
-
-def execute(reader: "FrameReader", state_index: int, code: str,
-            timeout: float = 10.0) -> list[str]:
-    """在指定状态 VM 中执行 Lua，收集 print 输出直到哨兵或超时。
-
-    结束帧由本函数负责补齐，且每条命令带独立标记（游戏不会自动追加结束标记：
-    实测未带哨兵的代码只回 print 帧与一条空 ack）。标记唯一 ⇒ 即使前一条命令超时
-    后其结束帧迟到，也不会被本次当成自己的终止帧。
-    残帧由 FrameReader 跨次保留，只有真的到达 deadline 才判超时。
-    """
-    token = f"{SENTINEL}{next(_CMD_NONCE)}"
-    _resync_after_timeout(reader, timeout)
-    code += ('\n' if "\n" in code else ' ') + f'print("{token}")'
-    reader.drain()
-    send_msg(reader.sock, TAG_COMMAND, f"CMD:{state_index}:{code}")
-
-    lines: list[str] = []
-    deadline = time.monotonic() + timeout
-    while True:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            reader.pending_token = token
-            raise TimeoutError(f"{timeout:.0f}s 内未收到哨兵，已收集 {len(lines)} 行")
-        try:
-            _tag, payload = reader.read(remaining)
-        except TimeoutError:
-            reader.pending_token = token
-            raise TimeoutError(
-                f"{timeout:.0f}s 内未收到哨兵，已收集 {len(lines)} 行") from None
-        if payload.startswith("ERR:"):
-            raise LuaError(payload)
-        text = _frame_text(payload)
-        if text is not None:
-            if text == token:
                 break
-            # 迟到的结束帧（本命令之外的一切 ---END--- 变体）丢弃，不计入本次输出
-            if text.startswith(SENTINEL):
-                continue
-            lines.append(text)
-        # 其他 tag（如空 ack）忽略
+            buf += chunk
+    if not buf:
+        raise OSError("守护进程未返回应答")
+    return json.loads(bytes(buf).split(b"\n", 1)[0].decode("utf-8"))
 
-    return lines
+
+def _ping(port: int) -> bool:
+    try:
+        return bool(_request(port, {"op": "ping"}, 2.0).get("ok"))
+    except (OSError, ValueError):
+        return False
+
+
+def ensure_daemon(port: int) -> str | None:
+    """返回 existing / spawned；起不来返回 None。
+
+    只按需拉起，不做任何后台轮询——这是与"常驻服务"的关键区别。
+    """
+    if _ping(port):
+        return "existing"
+    script = Path(__file__).resolve().parent / "tunerd.py"
+    try:
+        subprocess.Popen(
+            [sys.executable, str(script), "--port", str(port)],
+            creationflags=DETACHED_PROCESS | CREATE_NO_WINDOW,
+            close_fds=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError as e:
+        print(f"[WARN] 无法拉起守护进程：{e}", file=sys.stderr)
+        return None
+    deadline = time.monotonic() + 6.0
+    while time.monotonic() < deadline:
+        reg = read_registry() or {}
+        if reg.get("port") == port and pid_alive(reg.get("pid")) and _ping(port):
+            return "spawned"
+        time.sleep(0.1)
+    return None
+
+
+def daemon_call(args: argparse.Namespace, payload: dict,
+                wait: float) -> tuple[dict | None, bool]:
+    """发请求；返回 (应答, 是否本次拉起)。应答为 None 时调用方回退直连。"""
+    port = _control_port(args)
+    state = ensure_daemon(port)
+    if state is None:
+        return None, False
+    try:
+        return _request(port, payload, wait), state == "spawned"
+    except (OSError, ValueError) as e:
+        print(f"[WARN] 守护进程通信失败：{e}", file=sys.stderr)
+        return None, state == "spawned"
+
+
+def _stop_daemon(port: int) -> None:
+    """尽力通知守护进程退出；失败不报错（它会在空闲熔断时自己走）。"""
+    try:
+        _request(port, {"op": "stop"}, 3.0)
+    except (OSError, ValueError):
+        pass
+
+
+def yield_daemon(port: int | None = None) -> bool:
+    """让守护进程主动断开游戏连接。
+
+    FireTuner 只允许一个连接：gamectl 等需要直连的工具在连接前调用本函数，
+    避免被守护进程占着名额而收到"连接被拒绝"。
+    """
+    port = port or int(os.environ.get("CIV6_TUNER_DAEMON_PORT", DAEMON_PORT))
+    if not _ping(port):
+        return False
+    try:
+        return bool(_request(port, {"op": "release"}, 5.0).get("ok"))
+    except (OSError, ValueError):
+        return False
+
+
+def _print_game_status(resp: dict) -> int:
+    """按 check 的既有格式打印守护进程返回的连接状态。"""
+    if not resp.get("ok"):
+        err = resp.get("error") or {}
+        msg = err.get("message") or "未知错误"
+        print(f"[FAIL] {msg}")
+        if err.get("kind") == "connect":
+            print("检查项：游戏是否已启动？EnableTuner 是否开启？FireTuner GUI 是否已关闭？")
+        return int(resp.get("rc") or 1)
+    meta = resp.get("meta") or {}
+    if not meta.get("connected"):
+        print("[FAIL] 未建立连接")
+        return 1
+    print(f"[OK] 已连接：{meta.get('identity')}")
+    states = meta.get("states") or {}
+    for name, idx in sorted(states.items(), key=lambda kv: kv[1]):
+        print(f"  [{idx}] {name}")
+    if meta.get("in_game"):
+        print(f"[OK] 对局进行中（gamecore={states.get('GameCore_Tuner')}, "
+              f"ingame={states.get('InGame')}），可以执行测试。")
+        return 0
+    print("[WAIT] 已连上但缺少 GameCore_Tuner/InGame —— 当前在主菜单，请读档进入对局。")
+    return 1
 
 
 # ---------------------------------------------------------------------------
 # 子命令实现
 # ---------------------------------------------------------------------------
 def cmd_check(args: argparse.Namespace) -> int:
-    """探测连接与对局状态。"""
+    """探测连接与对局状态。默认经守护进程；--no-daemon 时冷连接直连。"""
+    if not getattr(args, "no_daemon", False):
+        resp, spawned = daemon_call(args, {"op": "ensure"}, 40.0)
+        if resp is not None:
+            rc = _print_game_status(resp)
+            # 只有"本次刚拉起却连不上游戏"才回收；主菜单是有效连接，留着给后续读档用
+            kind = (resp.get("error") or {}).get("kind")
+            if spawned and not resp.get("ok") and kind == "connect":
+                _stop_daemon(_control_port(args))
+            return rc
+        print("[WARN] 守护进程不可用，回退直连 FireTuner", file=sys.stderr)
+    else:
+        # 显式回退：先把守护进程停掉，否则它占着 FireTuner 唯一连接
+        _stop_daemon(_control_port(args))
+    return _cold_check(args)
+
+
+def _cold_check(args: argparse.Namespace) -> int:
+    """冷连接版 check（原实现，作为回退路径保留）。"""
     try:
         sock = connect(args.host, args.port)
     except OSError as e:
@@ -298,42 +232,13 @@ def cmd_check(args: argparse.Namespace) -> int:
         sock.close()
 
 
-def _resolve_state(states: dict[str, int], key: str | None) -> int | None:
-    """把状态名或索引解析成索引；未命中返回 None。
-
-    支持 mod 自有 UI 上下文（如 AllUnitsFoundCity）：铁律 1 的
-    "gamecore/ingame 里 mod 全局为 nil" 只适用于那两个沙箱态 ——
-    mod 自己的上下文（LSQ 列表里带 Context 名的条目）里 mod 全局**是在的**，
-    直接按名或索引投递即可。
-    """
-    if key is None:
-        return None
-    if key in states:
-        return states[key]
-    if key.isdigit():
-        idx = int(key)
-        if idx in states.values():
-            return idx
-    return None
-
-
-def _suggest_states(states: dict[str, int], key: str) -> str:
-    """列几个名字里含 key 片段的状态，帮用户找对上下文。"""
-    needle = (key or "").lower()
-    hits = [(n, i) for n, i in states.items() if needle and needle in n.lower()]
-    if not hits:
-        return ""
-    txt = "，".join(f"{n}({i})" for n, i in sorted(hits, key=lambda kv: kv[1])[:8])
-    return f" 名字相近的状态：{txt}"
-
-
 def _run_in_context(reader: "FrameReader", states: dict[str, int], key: str,
                     code: str, timeout: float) -> tuple[int, list[str]]:
     """在指定状态 VM 执行，返回 (退出码, 输出行)。"""
-    idx = _resolve_state(states, key)
+    idx = resolve_state(states, key)
     if idx is None:
         return 1, [f"[FAIL] 未找到状态 {key}。若在主菜单请先读档进对局。"
-                   + _suggest_states(states, key)]
+                   + suggest_states(states, key)]
     try:
         return 0, execute(reader, idx, code, timeout=timeout)
     except LuaError as e:
@@ -354,14 +259,69 @@ def _load_code(args: argparse.Namespace) -> str | None:
     return None
 
 
+def _daemon_exec(args: argparse.Namespace, code: str) -> dict | None:
+    """把 exec/both 转成一条守护进程请求。"""
+    payload = {
+        "op": "both" if args.both else "exec",
+        "code": code,
+        "timeout": args.timeout,
+    }
+    if getattr(args, "state", None):
+        payload["state"] = args.state
+    else:
+        payload["context"] = getattr(args, "context", "gamecore")
+    resp, spawned = daemon_call(args, payload, args.timeout + 30.0)
+    if resp is None:
+        return None
+    kind = (resp.get("error") or {}).get("kind")
+    if int(resp.get("rc") or 0) != 0 and spawned and kind in ("connect", "closed"):
+        _stop_daemon(_control_port(args))
+    return resp
+
+
+def _print_exec_result(resp: dict) -> int:
+    rc = int(resp.get("rc") or 0)
+    if resp.get("sections"):
+        for sec in resp["sections"]:
+            print(f"########## {sec['label']} ({sec['key']}) ##########")
+            for ln in sec.get("lines") or []:
+                print(ln)
+            print()
+        return rc
+    if resp.get("ok"):
+        for ln in resp.get("lines") or []:
+            sys.stdout.write(ln + "\n")
+        return rc
+    if resp.get("lines"):
+        for ln in resp["lines"]:
+            sys.stderr.write(ln + "\n")
+    err = resp.get("error") or {}
+    msg = err.get("message") or "未知错误"
+    tag = {"lua": "[LUA ERROR]", "timeout": "[TIMEOUT]",
+           "closed": "[CLOSED]", "state_missing": "[FAIL]"}.get(err.get("kind"), "[FAIL]")
+    print(f"{tag} {msg}", file=sys.stderr)
+    return rc or 1
+
+
 def cmd_exec(args: argparse.Namespace) -> int:
-    """执行 Lua 并打印收集到的输出。--both 时两端各跑一次并加标签。"""
+    """执行 Lua。默认经守护进程；--no-daemon 时冷连接直连。"""
     code = _load_code(args)
     if code is None:
         return 1
     if getattr(args, "tag", None):
         code = ('print("TUNER|op=' + args.tag + '|begin|turn=" .. Game.GetCurrentGameTurn())\n') + code
+    if not getattr(args, "no_daemon", False):
+        resp = _daemon_exec(args, code)
+        if resp is not None:
+            return _print_exec_result(resp)
+        print("[WARN] 守护进程不可用，回退直连 FireTuner", file=sys.stderr)
+    else:
+        _stop_daemon(_control_port(args))
+    return _cold_exec(args, code)
 
+
+def _cold_exec(args: argparse.Namespace, code: str) -> int:
+    """冷连接版 exec（原实现，作为回退路径保留）。"""
     try:
         sock = connect(args.host, args.port)
     except OSError as e:
@@ -412,6 +372,35 @@ def cmd_ports(args: argparse.Namespace) -> int:
     return cmd_exec(args)
 
 
+def cmd_daemon(args: argparse.Namespace) -> int:
+    """查询或停止会话守护进程（不触发拉起）。"""
+    port = _control_port(args)
+    if not _ping(port):
+        print("[OFF] 守护进程未运行")
+        return 0
+    try:
+        resp = _request(port, {"op": "stop" if args.action == "stop" else "status"}, 5.0)
+    except (OSError, ValueError) as e:
+        print(f"[FAIL] 守护进程通信失败：{e}")
+        return 1
+    meta = resp.get("meta") or {}
+    if args.action == "stop":
+        print("[OK] 已通知守护进程退出")
+        return 0
+    if args.json:
+        print(json.dumps(meta, ensure_ascii=False, indent=2))
+        return 0
+    idle_limit = float(meta.get("idle_limit") or 0)
+    print(f"[ON] pid={meta.get('pid')} port={meta.get('port')} "
+          f"uptime={meta.get('uptime')}s idle={meta.get('idle_for')}s/{idle_limit:.0f}s")
+    conn = (f"已连接 {meta.get('identity')}" if meta.get("connected") else "未连接")
+    print(f"     游戏：{conn}（代际 {meta.get('generation')}，"
+          f"对局 {'是' if meta.get('in_game') else '否'}）")
+    if meta.get("last_error"):
+        print(f"     最近错误：{meta['last_error']}")
+    return 0
+
+
 def cmd_logs(args: argparse.Namespace) -> int:
     """尾随/检索日志。支持 --grep/--prefix 过滤与 --since-mark 从最近一次标记起截取。"""
     import re
@@ -451,6 +440,28 @@ def cmd_logs(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+def _hoist_globals(argv: list[str]) -> list[str]:
+    """把 --no-daemon / --daemon-port 提到子命令之前，两种写法都接受。"""
+    head: list[str] = []
+    rest: list[str] = []
+    i = 0
+    while i < len(argv):
+        cur = argv[i]
+        if cur == "--no-daemon":
+            head.append(cur)
+            i += 1
+        elif cur == "--daemon-port" and i + 1 < len(argv):
+            head.extend([cur, argv[i + 1]])
+            i += 2
+        elif cur.startswith("--daemon-port="):
+            head.append(cur)
+            i += 1
+        else:
+            rest.append(cur)
+            i += 1
+    return head + rest
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         prog="tuner_exec.py",
@@ -458,6 +469,10 @@ def main() -> int:
     )
     ap.add_argument("--host", default=DEFAULT_HOST)
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
+    ap.add_argument("--no-daemon", action="store_true",
+                    help="不走会话守护进程，冷连接直连 FireTuner（回退路径）")
+    ap.add_argument("--daemon-port", type=int, default=None,
+                    help=f"守护进程控制端口，默认 {DAEMON_PORT}（也可用 CIV6_TUNER_DAEMON_PORT）")
 
     sub = ap.add_subparsers(dest="cmd")
 
@@ -486,6 +501,11 @@ def main() -> int:
     p_ports.add_argument("--timeout", type=float, default=20.0)
     p_ports.set_defaults(func=cmd_ports)
 
+    p_daemon = sub.add_parser("daemon", help="查询或停止会话守护进程（不会主动拉起）")
+    p_daemon.add_argument("action", choices=["status", "stop"])
+    p_daemon.add_argument("--json", action="store_true", help="status 输出原始 meta JSON")
+    p_daemon.set_defaults(func=cmd_daemon)
+
     p_logs = sub.add_parser("logs", help="尾随/检索游戏日志")
     p_logs.add_argument("--log-file", default="Lua.log",
                         help="日志文件名，如 Database.log / Lua.log，默认 Lua.log")
@@ -497,7 +517,7 @@ def main() -> int:
                         help="从最后一次出现该字符串的位置开始截取（避开旧会话噪声）")
     p_logs.set_defaults(func=cmd_logs)
 
-    argv = sys.argv[1:]
+    argv = _hoist_globals(sys.argv[1:])
     # 简写：`--check` 单独出现等价于 `check`
     if "--check" in argv:
         argv = [a for a in argv if a != "--check"] or ["check"]

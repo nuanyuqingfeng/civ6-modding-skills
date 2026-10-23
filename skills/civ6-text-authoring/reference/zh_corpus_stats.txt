@@ -1,0 +1,9 @@
+zh 语料分类统计（main，总 27998 tag）
+========================================
+  leader_trait     1946
+  item             4682
+  opening_ode       179
+  diplomacy        3748
+  other           17443
+  is_adjacency      440
+  has_icon         2579

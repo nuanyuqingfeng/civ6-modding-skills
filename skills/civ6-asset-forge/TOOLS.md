@@ -10,7 +10,7 @@
 | 工具 | 干什么 | 用法 |
 |---|---|---|
 | `scripts/_artxml_ensure.py` | Art.xml 增量接线：调用 civ6-modding/art/gen_modartxml.py 的 --ensure 系列。 | `（库：被其它脚本 import，无独立 CLI）` |
-| `scripts/_projwrite.py` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
+| `scripts/_projwrite.py` | （无 docstring，待补） | `（见脚本 docstring）` |
 | `scripts/apply_moment_template.py` | apply_moment_template.py — 历史时刻插画：把源图套上官方形状模板 | `python apply_moment_template.py (--input <源图> \| --input-dir <目录>) [--template N \| --auto] [--out <目录>] [--dds] [--list]` |
 | `scripts/build_district_icon.py` | build_district_icon.py — 文明6 区域图标合成：官方 PSD 模板底图 + 白色图案素材 | `python build_district_icon.py --input <图案.png> --outdir <目录> [--preview]<br>python build_district_icon.py --input <png> --outdir out --districts "Theater,Holy Site"` |
 | `scripts/build_icon_set.py` | build_icon_set.py - 由"一张头像"生成总督全套图标（色调高度一致） | `python build_icon_set.py --avatar 头像.png --outdir out --key CTTH_RGN<br>python build_icon_set.py --avatar 头像.png --outdir out --glyph 图形.png --checker` |

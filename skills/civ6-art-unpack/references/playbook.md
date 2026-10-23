@@ -106,8 +106,9 @@ NaN 与量化误差需单独记账。
 
 ## 上下文口径
 
-Lua 与玩法旁支遵循家族口径：端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、
-`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道
+Lua 与玩法旁支遵循家族口径：端内跨上下文用 `LuaEvents`（首选）或暴露函数；跨端四通道 =
+`EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、
+PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数（仅 UI 按钮回调禁用）
 → `civ6-modding/reference/context-matrix.md`。
 
 ## 来源

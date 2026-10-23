@@ -14,8 +14,8 @@
   示例工程.Art.xml             consumer/library 接线（幂等补齐）
   <工程>.civ6proj                  Content 条目（幂等补齐）
 
-写入：目标不存在时脚本新建直写；已存在且内容有变化时，改写结果落到
-      <解决方案根>/workspace/gen/ 的同一相对路径，由 AI 用文件编辑工具写入工程（退出码 2 并打印清单）。
+写入：美术产物（.xlp/.artdef/.mtl/.ast）直接写盘；
+      代码文件（.civ6proj / .xml / .sql）一律拒写，待插入的条目写进 <解决方案根>/workspace/gen/reports/。
 
 不生成 .tex/.dds（素材审核通过后走 civ6-modding art-pipeline 转换）。
 """
@@ -560,7 +560,7 @@ def read_preserve(path: Path) -> tuple[str, str]:
 
 
 def stage_project_file(path: Path, text: str, newline: str, project: Path) -> str:
-    """把拼好的完整文本交给工程写入守卫（新建直写，改写入位 <解决方案根>/workspace/gen）。
+    """把拼好的完整文本交给工程写入守卫（美术产物直写；代码文件拒写并转报告）。
 
     换行风格：既有文件的内容已在 read_preserve 统一为 \n，故按统一结果交给守卫；
     新建文本按 CRLF 交给守卫（Windows 工程惯例）。
@@ -599,7 +599,7 @@ def gen_xlp(path: Path, cls: str, pkg: str, entry_ids: list[str], project: Path,
 def patch_art_xml(art_xml: Path, project: Path, results: list[str]) -> int:
     """Art.xml 接线：交给 gen_modartxml.py 的 --ensure 增量内核，本脚本不接触 XML 结构。
 
-    返回内核退出码：0 无需改动 / 2 改写结果已入位 <解决方案根>/workspace/gen/。
+    返回内核退出码：0 无需改动 / 2 有代码文件待逐行写入。
     """
     rc, text = ensure_art_xml(
         project,

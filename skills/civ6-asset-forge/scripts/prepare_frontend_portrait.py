@@ -22,7 +22,7 @@ r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与
 
 | 次序 | 类别 | 判据 | 处理 |
 |---|---|---|---|
-| 1 | **① 人物抠图** | 透明像素 ≥ `--subject-min-transp`（默认 40%） | 现有顶部留空占画布高 12%~38% 且主体贴底时**整幅等比缩放直通**，不改留空比例；留空过少或过多才按人物类型重排（成年男性 10%、成年女性 18%、少年少女 6%、幼儿 45%），主体等比缩到画布高减留空、水平居中、**底边贴齐** → `LEADER_<KEY>_NEUTRAL` |
+| 1 | **① 人物抠图** | 透明像素 ≥ `--subject-min-transp`（默认 40%） | 选人前景：现有顶部留空占画布高 12%~38% 且主体贴底时**整幅等比缩放直通**，不改留空比例；留空过少或过多才按人物类型重排（成年男性 10%、成年女性 18%、少年少女 6%、幼儿 45%），主体等比缩到画布高减留空、水平居中、**底边贴齐** → `LEADER_<KEY>_NEUTRAL`。加载前景一律另出 `IMG_LOADING_FOREGROUND_<KEY>`：内容框水平居中、底边贴齐，像素整体处于下半部（`make_loading_fg`） |
 | 2 | **② 满幅图（placard 形）** | 长宽比 1:2.85 ±3%（控件 328×935 的比例） | **素材本身作 placard 背景；`Players.Portrait` 置显式空串**（★ 见下） |
 | 3 | **② 满幅图** | 透明 ≤ `--bleed-max-transp`（默认 5%）且不透明 ≥90% | **空白前景（显式空串）+ 铺满背景** → `LEADER_<KEY>_BACKGROUND` |
 | 4 | **③ 中间地带** | 其余 | **停下问用户**（exit 3），用 `--force-subject` / `--force-bleed` 表明裁决 |
@@ -35,7 +35,8 @@ r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与
 ★ **1:2.85 竖条这条规则只在 FrontEnd（环境 A）触发。** 它管的是选人 placard
 （`Players.Portrait` / `Players.PortraitBackground`，Config 库）。**加载界面（环境 B）不受它管辖**：
 `LoadingInfo.ForegroundImage` 是另一条独立通道（Gameplay 库、`LoadScreen.lua` 消费），
-照旧取 `LEADER_<KEY>_NEUTRAL`。竖条本身是背景，顶替不了加载界面的前景。
+默认按「内容框水平居中、底边贴齐」单独产出 `IMG_LOADING_FOREGROUND_<KEY>`。
+竖条本身是背景，顶替不了加载界面的前景。
 
 ## 二、分支②「空白前景」的正确写法（极易写错）
 
@@ -63,7 +64,8 @@ r"""prepare_frontend_portrait.py — 原版 FrontEnd 前景/背景的**整理与
 
 | 产物 | 命名 | 说明 |
 |---|---|---|
-| 前景 | `LEADER_<KEY>_NEUTRAL` | 官方约定（选人 placard 与加载界面**共用**）；1080×1080，顶部留空按人物类型定、**底边恒贴齐** |
+| 选人前景 | `LEADER_<KEY>_NEUTRAL` | 官方约定；1080×1080，顶部留空按人物类型定、**底边恒贴齐** |
+| 加载前景 | `IMG_LOADING_FOREGROUND_<KEY>` | 独立实体；1080×1080，内容框水平居中、**底边贴齐**、像素整体处于下半部 |
 | 加载界面背景 | `LEADER_<KEY>_BACKGROUND` | 官方约定；**高 ≥960**（960 是基准、非上限） |
 | placard 竖版背景 | `LEADER_<KEY>_PLACARD_BACKGROUND` | 官方无此物（官方直接拿 1920×960 去凑），故取官方前缀 + 语义后缀；素材本身就是 1:2.85 竖条时按此名产出 |
 
@@ -446,6 +448,35 @@ def make_direct(src):
                      scale=round(scale, 4))
 
 
+def make_loading_fg(src):
+    """加载界面前景：**内容框水平居中 + 底边贴齐**，不做竖向重排。
+
+    加载界面的 Portrait 控件是整图等比缩放的（LoadScreen.xml:15，StretchMode="Auto"），
+    它不像选人 placard 那样只取左侧一条窗口，所以这里不需要可见窗口补偿：
+    直接把 alpha 内容框裁出来、水平居中、贴到底边即可。
+
+    缩放只在内容框超出画布时才发生（等比缩到装得下），否则原尺寸搬运 ——
+    不放大、不改顶部留空、不按人物类型重排。源图本身已是 1080² 的成品时，
+    结果就是「像素整体靠下居中」。
+    """
+    bb = alpha_bbox(src, ALPHA_THR)
+    if bb is None:
+        raise ValueError("立绘完全透明，无法定内容框")
+    subj = src.crop(bb)
+    w, h = subj.size
+    scale = min(1.0, FG_CANVAS / float(w), FG_CANVAS / float(h))
+    if scale < 1.0:
+        w, h = max(1, int(round(w * scale))), max(1, int(round(h * scale)))
+        subj = subj.resize((w, h), Image.LANCZOS)
+    x = (FG_CANVAS - w) // 2
+    y = FG_CANVAS - h
+    out = Image.new("RGBA", (FG_CANVAS, FG_CANVAS), (0, 0, 0, 0))
+    out.paste(subj, (x, y))
+    return out, dict(src="%dx%d" % src.size, content="%dx%d" % (w, h),
+                     left=x, right=FG_CANVAS - w - x, top=y, bottom=FG_CANVAS - h - y,
+                     scale=round(scale, 4))
+
+
 def derive_bgs_from_one(src_img):
     """同源派生：一张 16:9 源同时产出加载背景与 placard 竖版背景。
 
@@ -507,6 +538,7 @@ def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, w
         return EXIT_ASK
 
     fg_name = "LEADER_%s_NEUTRAL" % key
+    loading_fg_name = "IMG_LOADING_FOREGROUND_%s" % key
     # placard 与 loading 的背景**来源不同、尺寸不同**，必须分开取：
     #   placard 要竖版 328×935；loading 要 ≥960 高（同一张竖版会因 935<960 被裁）
     placard_bg, loading_bg = acquire_bgs(root, textures_dir, key, img, bg_dir,
@@ -528,7 +560,7 @@ def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, w
                          GAP_OK_LO * 100.0, GAP_OK_HI * 100.0, FIGURE_NAME[st["figure"]]))
         emit({"textures": textures_dir}, root, fg_name, out, check)
         portrait = fg_name
-        loading_fg = fg_name
+        loading_fg = None          # 下方统一产独立加载前景
     elif kind == "subject":
         # ① 人物抠图：按人物类型定顶部留空 → 主体等比缩放 → 贴 1080×1080 画布（居中、底边贴齐）
         out, meta = make_frontend_fg(img, st["figure"])
@@ -547,7 +579,7 @@ def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, w
                          FIGURE_GAP[meta["figure"]] * 100.0))
         emit({"textures": textures_dir}, root, fg_name, out, check)
         portrait = fg_name
-        loading_fg = fg_name
+        loading_fg = None          # 下方统一产独立加载前景
     elif st["placard_shape"]:
         # ② placard 形竖条：**这条规则只在 FrontEnd（环境 A）触发**。
         #   1:2.85 竖条按尺寸就是 placard 背景，placard 那时不该再叠前景 → Players.Portrait 写显式空串。
@@ -561,13 +593,26 @@ def plan_one(root, lt, image_path, check, forced, bg_dir, packs, args, report, w
         if not os.path.isfile(os.path.join(textures_dir, fg_name + ".dds")):
             report.append("        该前景贴图当前不在工程里 → 加载界面另有需要时请单独提供立绘抠图")
         portrait = "''"
-        loading_fg = fg_name
+        loading_fg = None          # 下方统一产独立加载前景
     else:
         # ② 满幅图：空白前景（显式空串！）
         report.append("     前景 → '' （**显式空串**：Lua 空串 truthy → 真空白且短路回退；"
                       "写 NULL 会回退到不存在的 _NEUTRAL）")
         portrait = "''"
         loading_fg = "''"
+
+    if loading_fg is None:
+        lout, lmeta = make_loading_fg(img)
+        report.append("     加载前景 → %s（%dx%d，内容 %s 水平居中、底边贴齐："
+                      "左 %d / 右 %d / 上 %d / 下 %d，缩放 %s×）"
+                      % (loading_fg_name, lout.size[0], lout.size[1], lmeta["content"],
+                         lmeta["left"], lmeta["right"], lmeta["top"], lmeta["bottom"],
+                         lmeta["scale"]))
+        emit({"textures": textures_dir}, root, loading_fg_name, lout, check)
+        if portrait != "''":
+            report.append("     ⚠ 加载前景与选人前景**分成两个实体**：placard 只取左侧窗口、"
+                          "加载界面整图缩放，同一张图满足不了两种几何（§〇.1）")
+        loading_fg = loading_fg_name
 
     if placard_bg is None:
         report.append("     ⛔ placard 背景未定 → **需用户裁决**（--pick / --bg-dir）")
@@ -621,8 +666,6 @@ def _ensure_alias(root, xlp_name, entry_id, object_name, check, report):
         state = "已存在"
     elif check:
         state = "将写入"
-    elif st == "staged":
-        state = "改写入位 <解决方案根>/workspace/gen"
     else:
         state = "已写入"
     report.append("     XLP %s：%s → %s（%s）"

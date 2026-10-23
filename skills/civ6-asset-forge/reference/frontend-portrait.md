@@ -31,16 +31,26 @@
 
 | | 环境 A 选择界面 | 环境 B 加载界面 | 环境 C 外交界面 |
 |---|---|---|---|
-| 贴图名 | `LEADER_<X>_NEUTRAL` | `LEADER_<X>_NEUTRAL`（复用）**或** `IMG_LOADING_FOREGROUND_<X>`（独立） | `FALLBACK_NEUTRAL_<X>`（**只能独立**） |
+| 贴图名 | `LEADER_<X>_NEUTRAL` | `IMG_LOADING_FOREGROUND_<X>`（**默认独立**）；`LEADER_<X>_NEUTRAL` 仅在构图可共用时 | `FALLBACK_NEUTRAL_<X>`（**只能独立**） |
 | `.tex` 类 | `UserInterface` | `UserInterface` | `Leader_Fallback` |
 | 注册 XLP | `UILeaders.xlp`（`UITexture`） | `Shell_Loading.xlp`（`UITexture`） | `LeaderFallbackImages.xlp`（`LeaderFallback`） |
 | 引用方 | `PlayerSetupLogic` | `LoadScreen` | `UI.SetLeaderImageControl` |
-| 是否可复用实体 | 与 B 可共用 | 与 A 可共用 | **不可** |
+| 是否可复用实体 | 仅在构图可共用时可与 B 共用 | 默认独立，不与 A 共用 | **不可** |
 
 **为什么 C 必须独立导入**：`FALLBACK_NEUTRAL_*` 的 `.tex` 类是 `Leader_Fallback`，注册在 `LeaderFallbackImages.xlp`（`LeaderFallback` 类包），由 `UI.SetLeaderImageControl` 消费；A/B 的是 `UserInterface` 类、注册在 `UITexture` 包。**类不同、包不同、消费方不同**，同一个贴图实体不可能同时满足两套引用方式。改了类名会让 A/B 侧解析失败，不改类名则 C 侧根本取不到。所以 C 的前景只能从同一张源**另外导入一次**。
 
-> **A 与 B 可以共用**：两边都读 `UITexture` 包里的 `LEADER_<X>_NEUTRAL`，区别只在**读它的表**不同（Config vs Gameplay）与**没填时的回退行为**不同。做一份实体可以同时喂 A 和 B；但**两边的数据行必须分别写**（不同库、不同 Action 段）。
-> **也可以分开做**：B 另出 `IMG_LOADING_FOREGROUND_<X>`，与 A 的 `LEADER_<X>_NEUTRAL` 各自独立（兄弟工程 `Ragunna_Pack` / `Black_Shores_Pack` / `Jinzhou_*` 都是这种形态，两份 1080×1080 实体并存）。选哪种按"是否希望两处构图一致"决定，两种都合法。
+> **B 的默认形态是独立贴图**：A 保留 `LEADER_<X>_NEUTRAL`（按 placard 的裁切窗口调好），
+> B 另出一张 `IMG_LOADING_FOREGROUND_<X>`（按整图缩放调好），两份 1080×1080 实体并存
+> （兄弟工程 `Ragunna_Pack` / `Black_Shores_Pack` / `Jinzhou_*` 都是这种形态）。
+> **共用只在构图能同时成立时采用**：两边都读 `UITexture` 包里的 `LEADER_<X>_NEUTRAL`，
+> 区别只在**读它的表**不同（Config vs Gameplay）与**没填时的回退行为**不同。共用时**两边的数据行仍要分别写**
+> （不同库、不同 Action 段）。
+>
+> **为什么不能共用（A 的裁切窗口与 B 的整图缩放不同）**：A 的 `LeaderImage` 是
+> `StretchMode="UniformToFill" Size="parent,670"`，**按高度撑满、宽度从贴图左上角裁**（见 §1.3），
+> 1080 宽的贴图只有最左边约 529px 进得了方框；B 的 `LoadScreen.Portrait` 是 `StretchMode="Auto"`，
+> **整图等比缩放**。同一张图满足不了两种几何：按 A 把主体挪到画布左侧（使它在 A 的裁切窗口里居中），
+> B 就会整体偏左；反之 B 正了 A 又偏。**给 A 调过构图后必须拆出独立的 B 贴图。**
 
 **与环境 C 的背景**：C 的背景走 `DiplomacyInfo.BackgroundImage`（整图，压过分层），与 A/B 的背景链无关，见 `civ6-modding/art-pipeline.md` §三.1。
 
@@ -119,8 +129,13 @@ mod 领袖通常**没有**这两个名字的贴图 → 这两个控件**空白**
 ```
 
 - **背景 `LeaderBG`**：`StretchMode="None"` → 贴图**按原始像素贴左上角**，超出裁掉。竖版 328×935 或更高（如 656×1870）不会变形。
-- **前景 `LeaderImage`**：`UniformToFill` + 高 670 → **等比填满，超出裁切**，任意尺寸都不会拉变形。
-- **比例自适应**：`DummyImage:GetSizeX()/GetSizeY()`（`PlayerSetupLogic.lua:816-821`）按贴图长宽比决定偏移 → 宽扁图与瘦高图会自动换位置。
+- **前景 `LeaderImage`**：`UniformToFill` + 高 670 → **按高度撑满缩放**（1080² 的图缩成 670²），
+  **宽度从贴图左上角裁**：方框宽 328 只放得下 `328 / (670 / 1080) ≈ 529` 个画布像素，
+  即**永远只有贴图最左边那约 529px 进得了方框**，不是居中裁切。
+- **引擎还会再挪一下**：`PlayerSetupLogic.lua:816-821` 按贴图长宽比调 `SetTextureOffsetVal`——
+  `ratio > 0.51` → `(30,10)`，否则 `(10,50)`；量级只有几十像素，改变不了"从左上角裁"这个事实。
+- **所以前景构图不能按"画布居中"排**：要让主体落在方框中央，得把主体的中轴线放到**可见窗口的中心**
+  ≈ `30 + 529/2 ≈ 294`（按 1080 画布的 x），而不是 540。按 540 排的图，主体会整块跑到方框右侧外面。
 
 > 该 placard 出现在**单人选人 / 剧情设置 / 多人 StagingRoom**：`AdvancedSetup.lua:1188`、
 > `ScenarioSetup.lua:555`、`StagingRoom.lua:1311`（后者 `HasLeaderPlacard=false` 时不显示人物板）。
@@ -130,7 +145,7 @@ mod 领袖通常**没有**这两个名字的贴图 → 这两个控件**空白**
 | 项 | 前景 `Portrait` | 背景 `PortraitBackground` |
 |---|---|---|
 | 目标控件 | 328×670（`UniformToFill`） | 328×935（`None`） |
-| **尺寸** | **1080×1080** 方画布：主体水平居中、**底边贴齐画布下缘**；顶部留空由素材自适应（见下） | **328×935** 竖版（控件原始尺寸，1:1 无裁切）；若要留余量可 656×1870 等比放大 |
+| **尺寸** | **1080×1080** 方画布：**主体中轴线对齐可见窗口中心（≈ 画布 x 294，见 §1.3）**、**底边贴齐画布下缘**；顶部留空由素材自适应（见下） | **328×935** 竖版（控件原始尺寸，1:1 无裁切）；若要留余量可 656×1870 等比放大 |
 | 内容贴底 | 是（主体底边贴齐画布下缘，下边距恒 0） | — |
 | `.tex` `m_ClassName` | `UserInterface` | `UserInterface` |
 | `.tex` `m_Tags` | `UserInterface` | `UserInterface` |
@@ -140,7 +155,7 @@ mod 领袖通常**没有**这两个名字的贴图 → 这两个控件**空白**
 > **顶部留空怎么定**：先看素材本身。现有顶部留空占画布高 **12%~38%** 且主体已贴底时，判为
 > 「留空合理」，**整幅等比缩放直通**——不重排版、不改留空比例，作者留的余量原样保留。
 > 只有留空过少（顶到画布上缘）或过多（人物缩成一小团）才按人物类型重排：主体等比缩到
-> 「画布高 − 目标留空」，水平居中、底边贴齐，底部恒不留空。
+> 「画布高 − 目标留空」，中轴线对齐可见窗口中心（≈ 画布 x 294，见 §1.3）、底边贴齐，底部恒不留空。
 >
 > | 人物类型 | 目标顶部留空（占画布高） |
 > |---|---|
@@ -152,8 +167,12 @@ mod 领袖通常**没有**这两个名字的贴图 → 这两个控件**空白**
 > 人物类型由两条与裁切方式无关的度量判定（全身像与半身像同样适用）：头宽占比 = 头宽 ÷ 主体宽
 > （≥0.45 幼儿、≥0.36 少年少女、其余成人），成人再按肩宽比 = 肩宽 ÷ 头宽（≥2.35 判男）。
 > 工艺见 `scripts/prepare_frontend_portrait.py` 的 `make_direct()` 与 `make_frontend_fg()`。
-> 方画布把主体摆位固定下来，`UniformToFill`（选人 placard，328×670）与 `Auto`（加载界面）
-> 两种模式下构图一致。
+> 方画布把主体摆位固定下来，但**归位基准是"可见窗口中心"而不是画布中心**（§1.3）。
+> **A 与 B 不能因此共用一张图**：A 的裁切窗口只取贴图最左约 529px，B 是整图等比缩放，
+> 同一张图满足不了两种几何——判据与拆图流程见 §〇.1 与 §2.3。
+>
+> **结果级指令不适用本节判据**：用户已给定裁法、留空、锚点或底边关系时，本节全部判据不参与执行，
+> 直接按指令裁剪粘贴。级别判定见项目 `AGENTS.md`「指令具体度分级」，基调见 `SKILL.md` §〇.0。
 
 ### 1.5 接线（三处，缺一不可）
 
@@ -233,8 +252,8 @@ end
 
 | 项 | 前景 `ForegroundImage` | 背景 `BackgroundImage` |
 |---|---|---|
-| 取值 | **二选一**：`LEADER_<X>_NEUTRAL`（与 A 共用一张实体）**或** `IMG_LOADING_FOREGROUND_<X>`（独立实体） | `LEADER_<X>_BACKGROUND` |
-| 尺寸 | **1080×1080** 方画布（水平居中、底边贴齐、顶部留空自适应）；素材本身已带合理留空时整幅直通不重定标 | **官方基线 1920×960**；实作**以 960 为基准、允许超过**（本项目 1920×1080 实机效果良好）。**低于 960 会有两侧裁剪风险**——见 §2.4 |
+| 取值 | **默认 `IMG_LOADING_FOREGROUND_<X>`（独立实体）**；仅在确认两边构图可共用时才写 `LEADER_<X>_NEUTRAL` | `LEADER_<X>_BACKGROUND` |
+| 尺寸 | **1080×1080** 方画布：**内容框水平居中、底边贴齐画布下缘、顶部留空自适应**（像素整体处于画布下半部）；内容框超出画布时等比缩小到装得下，否则原尺寸搬运，不放大、不按人物类型重排 | **官方基线 1920×960**；实作**以 960 为基准、允许超过**（本项目 1920×1080 实机效果良好）。**低于 960 会有两侧裁剪风险**——见 §2.4 |
 | 注册 XLP | 共用时 `XLPs/UILeaders.xlp`；独立时 `XLPs/Shell_Loading.xlp`（均 `UITexture`） | `XLPs/Shell_Loading.xlp`（`UITexture`） |
 | 加载 | 无条件 | 无条件 |
 
@@ -242,10 +261,20 @@ end
 
 | 形态 | `LoadingInfo.ForegroundImage` | 贴图实体 | 适用 |
 |---|---|---|---|
-| **共用** | `LEADER_<X>_NEUTRAL` | 与 A 同一个 `.dds` | 只做一套素材、追求最少文件 |
-| **独立** | `IMG_LOADING_FOREGROUND_<X>` | 单独一份 `.dds`/`.tex`，源可与外交兜底立绘同图 | 三套系统各自控制构图、或外交侧要求独立导入时 |
+| **共用** | `LEADER_<X>_NEUTRAL` | 与 A 同一个 `.dds` | 仅在两套几何能同时成立时可用；默认**不用**这一形态 |
+| **独立** | `IMG_LOADING_FOREGROUND_<X>` | 单独一份 `.dds`/`.tex` | **默认形态**：加载前景按「内容框水平居中、底边贴齐」单独产出（`make_loading_fg`） |
 
 两种形态**都合法**，引擎只看 `LoadingInfo.ForegroundImage` 里的字符串能否在 `UITexture` 包里解析到。
+
+> ⚠ **B 的默认做法是独立贴图。** 加载界面的 `Portrait` 是整图等比缩放（`LoadScreen.xml:15`，
+> `StretchMode="Auto"`），选人 placard 只取贴图左侧一条窗口（§1.3）——两套几何不同，共用会让其中一侧偏位。
+> 拆法：
+> ① 从**同一张源 PNG** 另出一份 `IMG_LOADING_FOREGROUND_<X>`：取 alpha 内容框、**水平居中**、
+> **底边贴齐** 1080×1080 画布，顶部留空随内容高度自适应（像素整体处于下半部），
+> 内容框超出画布时等比缩小，**不放大**、不按人物类型重排；
+> ② 把 `LoadingInfo.ForegroundImage` 改成这个新名；
+> ③ 在工程的 `UITexture` XLP 里登记新条目（`EntryID` = `ObjectName` = 新名）。
+> `Players.Portrait` 保持 A 的 `LEADER_<X>_NEUTRAL` 不动。
 独立形态的命名沿用兄弟工程既有约定（`Ragunna_Pack` / `Black_Shores_Pack` / `Jinzhou_*` 实测均为
 `IMG_LOADING_FOREGROUND_<KEY>`，1080×1080，`m_ClassName=UserInterface`）；
 它与 `FALLBACK_NEUTRAL_<X>` 可以**同源**（同一张 PNG 导两次），但**不能同实体**——两者的 `m_ClassName` 与注册包不同（§〇.1）。
@@ -386,7 +415,7 @@ python <skill>/scripts/pick_vanilla_background.py --reference <主角图.png> --
 python <skill>/scripts/pick_vanilla_background.py --project <工程根>     --leader LEADER_CARTETHYIA_QYQXP --reference <立绘.png> --write
 ```
 
-XLP 里已有同名条目时跳过；别名条目要加进工程 XLP 时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。`Players` / `LoadingInfo` 两段接线 SQL 只打印，由 AI 用文件编辑工具写入工程 SQL。
+XLP 里已有同名条目时跳过；别名条目要加进工程 XLP 时，`.xlp` 属美术产物，脚本直接写盘。`Players` / `LoadingInfo` 两段接线 SQL 属代码文件，脚本只打印，由 AI 逐行写入工程 SQL。
 
 > 🔴 **仍必须先问用户**（本 skill 通用铁律一）：借用官方背景属"素材决策"，
 > 脚本只出**候选与理由**；**未确认前不写盘**（`--write` 需显式给出，且 `--check` 可先预演）。
@@ -440,7 +469,7 @@ XLP 里已有同名条目时跳过；别名条目要加进工程 XLP 时，命�
 > 那时 placard 不该再叠前景，于是 `Players.Portrait` 写显式空串。
 >
 > **加载界面（环境 B）不受这条规则管辖。** `LoadingInfo.ForegroundImage` 是另一条独立通道
-> （Gameplay 库、`LoadScreen.lua` 消费），它照旧取 `LEADER_<KEY>_NEUTRAL`。
+> （Gameplay 库、`LoadScreen.lua` 消费），它照旧取独立前景 `IMG_LOADING_FOREGROUND_<KEY>`（§2.3）。
 > 竖条本身是背景，顶替不了加载界面的前景——那份前景仍需单独一张立绘抠图。
 >
 > **为什么尺寸要单列一条**：只看透明率会漏掉竖条——带柔和边缘或少量透明的竖版背景图
@@ -473,7 +502,7 @@ XLP 里已有同名条目时跳过；别名条目要加进工程 XLP 时，命�
 
 > **结论**：分支② **必须写显式空串 `''`，不能写 `NULL`**。
 > **适用范围**：本节讲的是 `Players.Portrait`（环境 A）。`LoadingInfo.ForegroundImage`（环境 B）
-> 是另一条通道，1:2.85 竖条那条规则不管它——它的前景照旧取 `LEADER_<KEY>_NEUTRAL`。
+> 是另一条通道，1:2.85 竖条那条规则不管它——它的前景照旧按 §2.3 的默认形态独立产出。
 > 本项目当前 `Config_RGN.sql` 写的正是 `''`，属**正确设计**。
 
 ### 3b.3 背景获取顺序（严格降级，不静默编造）
@@ -509,7 +538,8 @@ XLP 里已有同名条目时跳过；别名条目要加进工程 XLP 时，命�
 
 | 产物 | 命名 | 备注 |
 |---|---|---|
-| 前景 | `LEADER_<KEY>_NEUTRAL` | 官方约定；选人 placard 与加载界面**共用**；尺寸 **1080×1080**（顶部留空按人物类型自适应、底边贴齐） |
+| 选人前景（A） | `LEADER_<KEY>_NEUTRAL` | 官方约定；尺寸 **1080×1080**（顶部留空按人物类型自适应、底边贴齐） |
+| 加载前景（B） | `IMG_LOADING_FOREGROUND_<KEY>` | 独立实体；尺寸 **1080×1080**（内容框水平居中、底边贴齐，像素整体处于下半部） |
 | 加载界面背景 | `LEADER_<KEY>_BACKGROUND` | 官方约定；高 ≥960 |
 | placard 竖版背景 | `LEADER_<KEY>_PLACARD_BACKGROUND` | 官方无此物（官方直接拿 1920×960 凑），取官方前缀 + 语义后缀；素材本身即 1:2.85 竖条时按此名产出 |
 
@@ -526,8 +556,7 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> \
 # ② 用户确认后执行
 python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> \
     --leader LEADER_X_QYQXP --image <素材.png> --write --confirmed
-#    已有 XLP 条目要加别名时，命令跑完后结果落在 <解决方案根>/workspace/gen/ 的同一相对路径，
-#    由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单
+#    已有 XLP 条目要加别名时，.xlp 属美术产物，脚本直接写盘
 
 # ③ 裁决项由用户拍板后强制指定
 ... --force-subject --write --confirmed      # 或 --force-bleed
@@ -541,7 +570,7 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> --imag
 **`--write` 必须与 `--confirmed` 同时给**：只给 `--write` 会被直接拒绝（exit 3），
 防止在用户没看过计划时写入。
 
-**落点**：`.dds` 与 `.tex` 落在工程 `Textures/`（属可再生资产，脚本直接写盘，AI 无需再写）；XLP 别名的改写结果、退出码 2 时的待写入清单，都落在 `<解决方案根>/workspace/gen/` 的同一相对路径。
+**落点**：`.dds`、`.tex` 与 `.xlp` 别名都属美术产物，脚本直接写盘到工程对应路径；接线 SQL 属代码文件，脚本只打印，由 AI 逐行写入。
 
 ### 3b.6 会停下询问的情形（`SKILL.md` §三）
 
@@ -562,8 +591,8 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> --imag
 
 | 会 | 不会 |
 |---|---|
-| 产出 `.dds` + `.tex`（前景 / placard 背景 / 加载背景，直写工程 `Textures/`） | **不自动改工程 SQL**（打印接线 SQL，由 AI 用文件编辑工具写入工程） |
-| 幂等登记 XLP 别名（`Shell_Loading.xlp` / `UILeaders.xlp`；改写结果落 `workspace/gen/`） | **不覆盖**已存在的工程贴图 |
+| 产出 `.dds` + `.tex`（前景 / placard 背景 / 加载背景，直写工程 `Textures/`） | **不自动改工程 SQL**（接线 SQL 写进 `workspace/gen/reports/`，由人逐行写入工程） |
+| 幂等登记 XLP 别名（`Shell_Loading.xlp` / `UILeaders.xlp`；`.xlp` 属美术产物，脚本直接写盘） | **不覆盖**已存在的工程贴图 |
 | 打印 FrontEnd 段 / InGame 段的接线 SQL | 不重构本项目既有的 `PORTRAIT_*` / `IMG_LOADING_*` 命名 |
 | 只做**裁剪 / 通道透明度 / 描边**（§1.0 总规则） | 不做重绘、修补、重着色、调色、生成式补图、迭代调参 |
 
@@ -587,7 +616,7 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> --imag
      │    │               主体等比缩到「1080 − 留空」、水平居中、底边贴齐
      │    │               背景走 §三bis.3 降级（工程 → --bg 同源派生 → --bg-dir → 色系回退 → 问用户）
      │    ├─ ② placard 形（1:2.85 竖条，**仅 FrontEnd**）→ 素材本身作 placard 背景（cover 328×935）
-     │    │               Players.Portrait = ''；LoadingInfo.ForegroundImage **不受影响**，仍取 _NEUTRAL
+     │    │               Players.Portrait = ''；LoadingInfo.ForegroundImage **不受影响**，仍按默认独立产出
      │    ├─ ② 满幅图（透明 ≤5%）→ 前景 = '' （**显式空串**）+ 铺满背景
      │    ├─ 中间地带 → ⛔ exit 3，**停下问用户**（--force-direct / --force-subject / --force-bleed）
      │    └─ 第 2 次（用户确认后）→ 加 --write --confirmed 执行
@@ -597,7 +626,7 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> --imag
           │    ├─ 前景 → LEADER_<X>_NEUTRAL，1080×1080（顶部留空按人物类型、底边贴齐），UILeaders.xlp
           │    └─ 背景 → ① 自建 328×935 竖版（推荐）或 ② 别名复用官方（§3）
           ├─ 要加载界面(B)的前景/背景？
-          │    ├─ 前景 → 复用同一张 _NEUTRAL（B 自动跟随）**或**独立出 IMG_LOADING_FOREGROUND_<X>（§2.3）
+          │    ├─ 前景 → 默认独立出 IMG_LOADING_FOREGROUND_<X>（内容框居中贴底，§2.3）；确认可共用时才复用 _NEUTRAL
           │    └─ 背景 → LEADER_<X>_BACKGROUND，**高 ≥960**（基准，可超过），Shell_Loading.xlp
           ├─ 要外交兜底立绘(C)？
           │    └─ FALLBACK_NEUTRAL_<X>（Leader_Fallback 类，**独立导入**，不可与 A/B 共用实体）→ leader-diplo-fallback.md
@@ -611,7 +640,7 @@ python <skill>/scripts/prepare_frontend_portrait.py --project <工程根> --imag
 
 ```
 0. （若有素材）**两段式**：先跑计划态交用户确认，确认后再 `--write --confirmed`；
-   XLP 别名等改写结果落在 `<解决方案根>/workspace/gen/` 的，先由 AI 用文件编辑工具写入工程
+   接线 SQL 属代码文件，由 AI 逐行写入工程
 1. python <skill>/scripts/verify_frontend_portrait.py --project <工程根>   # A+B 两环境专用校验器
 2. python <civ6-modding>/scripts/check_pantry.py                           # 0 error
 3. python <civ6-modding>/art/verify_tex_class.py --project <工程根>          # .tex 类别

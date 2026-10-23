@@ -65,7 +65,7 @@ import struct
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _projwrite import write_project_file, finish  # noqa: E402
+from _projwrite import write_project_file, emit_report, finish  # noqa: E402
 
 # 复用 civ6-modding 的 DDS 读写（单一真源，避免重复实现头构造）。
 # 解析顺序：本 skill 同级 → ~/.agents/skills → 环境变量 CIV6_SKILLS_ROOT 指定。
@@ -405,10 +405,21 @@ def gen_sql(files, srcs, check, sql_name, criteria):
             "WHERE LeaderType = '%s';" % lt,
             "",
         ]
-    text = "\n".join(lines).rstrip() + "\n"
     path = os.path.join(files["proj_dir"], SUK_DIR, sql_name)
     if not check and ok:
-        write_project_file(path, text.replace("\n", "\r\n"), files["proj_dir"])
+        emit_report("suk_players_portrait.json", {
+            "target_sql": path,
+            "criteria": criteria,
+            "statement_template": [
+                "UPDATE Players",
+                "SET",
+                "    Portrait = '<Portrait>',",
+                "    PortraitBackground = '<PortraitBackground>'",
+                "WHERE LeaderType = '<LeaderType>';",
+            ],
+            "updates": [{"LeaderType": lt, "Portrait": s["_pname"],
+                         "PortraitBackground": s["_bname"]} for lt, s in ok],
+        }, files["proj_dir"])
     return path, len(ok)
 
 
@@ -426,14 +437,20 @@ def gen_xlp(files, srcs, check):
     add = [n for n in names if ('<m_EntryID text="%s"' % n) not in text]
     if not add or check:
         return path, len(add)
-    blocks = "\n".join(
-        '\t\t<Element>\n\t\t\t<m_EntryID text="%s"/>\n\t\t\t<m_ObjectName text="%s"/>\n\t\t</Element>'
-        % (n, n) for n in add)
     marker = "\t</m_Entries>"
     if text.count(marker) != 1:
         raise SystemExit("XLP %s 的 </m_Entries> 锚点不唯一，请手工合并" % path)
-    text = text.replace(marker, blocks + "\n" + marker)
-    write_project_file(path, text, files["proj_dir"])
+    emit_report("suk_xlp_entries.json", {
+        "xlp": path,
+        "anchor": marker,
+        "entry_template": [
+            "\t\t<Element>",
+            '\t\t\t<m_EntryID text="<Name>"/>',
+            '\t\t\t<m_ObjectName text="<Name>"/>',
+            "\t\t</Element>",
+        ],
+        "entries": add,
+    }, files["proj_dir"])
     return path, len(add)
 
 
@@ -512,8 +529,14 @@ def gen_proj(files, check, sql_name, action_id, criteria):
             changed.append("frontend:ok")
     if check:
         return changed
-    write_project_file(path, (b"\xef\xbb\xbf" if bom else b"") + t.encode("utf-8"),
-                       files["proj_dir"])
+    emit_report("suk_civ6proj_edits.json", {
+        "civ6proj": path,
+        "has_bom": bom,
+        "sql_rel": "%s/%s" % (SUK_DIR.replace("\\", "/"), sql_name),
+        "action_id": action_id,
+        "criteria": criteria,
+        "changes": changed,
+    }, files["proj_dir"])
     return changed
 
 

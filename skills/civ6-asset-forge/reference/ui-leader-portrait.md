@@ -150,7 +150,7 @@ Suk 适配素材进**独立命名空间**：
 >
 > `Players.Portrait` / `PortraitBackground` 是**自由字符串列**，贴图名无格式要求，
 > 因此迁入独立命名空间无技术约束。旧命名工程迁移：
-> `scripts/migrate_suk_namespace.py <工程根> --write`：改名后的 `.dds` / `.tex` 新名文件与文本引用的改写结果都落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，再删除工程里的原文件（脚本不动工程里的原文件）；脚本会在退出码 2 时打印待写入清单。
+> `scripts/migrate_suk_namespace.py <工程根> --write`：改名后的 `.dds` / `.tex` 新名文件属美术产物，脚本直接写入工程的新路径；引用文件属代码文件，待改写的全文写进 `<解决方案根>/workspace/gen/reports/suk_namespace_refs.json`，由人逐行写入，再删除工程里的原贴图（脚本不删既有文件）。
 
 **交付前务必自查**：`python scripts/verify_suk_portrait.py --project <工程根>`
 （含 legacy 命名告警、类别、尺寸、XLP 登记、悬空引用、行尾；不依赖文件名约定的
@@ -214,7 +214,7 @@ python <skill>/scripts/gen_suk_portrait.py --project "<工程根>" \
 ```
 
 脚本行为：
-- `--write` 时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径（`Textures/` 之下的 `.dds` / `.tex` 属可再生资产，脚本直接覆盖）；脚本会在退出码 2 时打印待写入清单。
+- `--write` 时，`.dds` / `.tex` 属美术产物，脚本直接写盘；`UPDATE Players` 的接线 SQL、XLP 别名条目、`.civ6proj` 接线三条属代码文件与工程文件，改写内容写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由人逐行写入。
 - 自动从 `Data/*.sql` 的 `('LEADER_X', 'KIND_LEADER')` 探测领袖
   （**不认** `'LEADER_DEFAULT'` 这类「继承模板」引用值；被注释的可选领袖也会被命中，这是有意的）；
 - 缺源素材的领袖**跳过并告警**，不中断其余领袖；
