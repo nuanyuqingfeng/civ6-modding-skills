@@ -227,6 +227,29 @@ UI 集合是缓存视图。**单位读数以 gamecore 为准**，或 `exec --bot
 → **结论**：`AddProgress` 类生产效果的数值落点在 tuner 侧不可观测（写入无错误、读回全缺、
 占位夹具无法当生产项）。数值验证改走完成式观测（科技/市政 hasTech/hasCivic、资源/国库差分）。
 
+### 组合动作层实测补充（2026-10-21，本地对局）
+
+| API | gamecore 沙箱 | 备注 |
+|---|---|---|
+| `GameInfo.Technologies` / `Civics` / `Terrains` / `Features` / `Leaders` / `Civilizations` / `Units` / `Buildings` | **userdata，必须按函数调用迭代** | `for row in GameInfo.Technologies() do` 可用；`ipairs(GameInfo.X)` 与 `pairs()` 抛 `bad argument #1 to 'ipairs' (table expected, got userdata)`。按名取行 `GameInfo.Technologies["TECH_POTTERY"]` 与按序号 `GameInfo.Technologies[0]` 都可用 |
+| `GameInfo.Features[-1]` | **nil** | 地块无地貌时 `Plot:GetFeatureType()` 返回 -1，直接取 `GameInfo.Features[-1].FeatureType` 抛错；按 <0 判定为空 |
+| `Techs:SetResearchProgress(idx, cost)` | function ✓ | 写满科学成本即完成，`HasTech` 立刻变 true |
+| `Culture:SetCulturalProgress(idx, cost)` | function ✓ | 同上，`HasCivic` 立刻变 true；`GetCulturalProgress` 在完成时读回 0 |
+| `CityBuildQueue:CreateBuilding(city, bIdx, 100, city:GetLocation())` | function ✓ | 一次建成，`CityBuildings:HasBuilding` 立刻变 true；`city:GetLocation()` 直接作为地块参数可用 |
+| `PlayersVisibility[pid]:ChangeVisibilityCount(idx, +1 / -1)` | function ✓ | 单次 ±1 与成对 +1/-1 均落为永久揭示（`IsRevealed` false→true）。索引必须来自 `plot:GetIndex()`；`Map.GetPlotIndex(x, y)` 在 gamecore 侧返回 nil，`IsRevealed(nil)` 静默为 false，`ChangeVisibilityCount(nil, 1)` 会让引擎进程无报错直接退出 |
+| `GameConfiguration.SetValue("GAMEMODE_*", bool)` | MainMenu 态 ✓ | 键名取 `SetupParameters` 表的 `ConfigurationId`（如 `GAMEMODE_SECRETSOCIETIES`、`GAMEMODE_DRAMATICAGES`、`GAMEMODE_BARBARIAN_CLANS`）；写入后 `GetValue` 立即回读为布尔值 |
+| `GameConfiguration.SetValue("GAMEMODES_ENABLED_NAMES", {...})` | MainMenu 态 ✓ | 元素是 `Locale.Bundle("LOC_GAMEMODE_*_NAME")` 返回的字符串；界面显示名靠这个数组，缺它则键已生效但界面不显示 |
+| `ConfigurationParameters` / `g_GameParameters` | MainMenu 态 **nil** | 参数表对象是 `SetupParameters` 实例的内部状态，沙箱读不到；`GameInfo.GameModes` 也为 nil → 模式键名只能硬写在动作片段里 |
+| `GameConfiguration.SetToDefaults()` + 七步建局准备链 | MainMenu 态 ✓ | 与 `MainMenu.lua:160-175` 一致；`leader` 动作在 `RebuildPlayerParameters(true)` 之后写领袖才生效 |
+| `load(...)()` | **nil** | 沙箱没有 `load`（`loadstring` 存在），动作片段一律直接调用步骤函数，不经 `load` 拼串 |
+| `NotificationManager.GetAllEndTurnBlocking()` | ingame 返回数字 id 数组 | 实测 5 项：`-286188551` / `-2034242607` / `-513644209` / `-1610199318` / `23669119`；非 force 的 END_TURN 被挡，`REASON="UserForced"` 可推过 |
+| `UI.RequestPlayerOperation(pid, PlayerOperations.RESEARCH, {PARAM_TECH_TYPE=hash, PARAM_INSERT_MODE=VALUE_EXCLUSIVE})` | ingame ✓ | 出处 `ResearchChooser.lua:255-261`；投递后 `Techs:GetResearchingTech` 在 GP 侧回读即为新目标 |
+| `... PlayerOperations.PROGRESS_CIVIC, {PARAM_CIVIC_TYPE=hash, PARAM_INSERT_MODE=VALUE_EXCLUSIVE}` | ingame ✓ | 出处 `CivicsChooser.lua:245-250`；`Culture:GetProgressingCivic` 回读为新目标 |
+| `CityManager.RequestOperation(city, CityOperationTypes.BUILD, {PARAM_UNIT_TYPE / PARAM_BUILDING_TYPE / PARAM_DISTRICT_TYPE, PARAM_INSERT_MODE, PARAM_QUEUE_DESTINATION_LOCATION})` | ingame **function，派发不可达** | 函数存在、`CanStartOperation` 返回 true，调用返回 nil，gamecore 侧回读 `BuildQueue:CurrentlyBuilding` 保持旧项；gamecore 侧该函数为 nil。参数写法照 `ProductionPanel.lua:2896-2897`（`VALUE_REPLACE_AT` 配 `PARAM_QUEUE_DESTINATION_LOCATION`）与 `:2893`（`VALUE_APPEND`），区域另需 `PARAM_X` / `PARAM_Y`（`StrategicView_MapPlacement.lua:204-210`），写法正确但操作不落地 |
+| `BuildQueue:CurrentlyBuilding()` | **gamecore ✓ / ingame nil** | 返回类型名（空闲时为字符串 `"NONE"`）；生产队列回读只能从 gamecore 发 |
+| `CityManager.CanStartOperation` / `City:CanStartOperation` | **ingame function（实测恒 true）/ gamecore nil；`City:CanStartOperation` 双端 nil** | 预检通过不代表操作会落地（与上一行同因）；区域落点无法预判 |
+| `BuildQueue:CreateIncompleteBuilding` / `AddProgress` | **gamecore 不可用** | 三参签名 `(hash, plotIndex, progress)` 返回 false，`AddProgress` 返回 nil；一次性建成只能用 `CreateBuilding`（见上） |
+
 ### 错误可见性（"没报错"的证据效力）
 
 `RGNPCall`（Core_RGN.lua:259-265）失败时**必然**打印 `[ERROR][RGN_PCALL] <tag> <错误>`，从不静默。

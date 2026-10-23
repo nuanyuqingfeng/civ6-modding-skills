@@ -37,6 +37,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 try:
@@ -46,6 +47,14 @@ except ImportError:
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _projwrite import write_project_file, finish  # noqa: E402
+
+# 头部校验与修复复用 civ6-modding 的 DDS 单一真源。
+for _cand in (os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "civ6-modding", "art"),
+              os.path.join(os.path.expanduser("~"), ".agents", "skills", "civ6-modding", "art")):
+    if os.path.isfile(os.path.join(_cand, "dds_io.py")):
+        sys.path.insert(0, os.path.abspath(_cand))
+        break
+from dds_io import ensure_official_header  # noqa: E402
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 TEMPLATE_DIR = SCRIPT_DIR.parent / "templates"
@@ -170,20 +179,20 @@ def find_leader_type(project, leader_name):
 
 
 def run_texconv(texconv, src, out_dir, fmt):
+    """texconv 转出一份 DDS 到 out_dir（中间产物），返回路径。失败就地终止。"""
     # -m 0 = 完整 mip 链，与 .tex 的 bUseMips=true / bCompleteMipChain=true 对应。
     # 写单 mip 会让远处采样失真。
     cmd = [texconv, "-y", "-f", fmt, "-m", "0", "-o", out_dir, src]
     proc = subprocess.run(cmd, capture_output=True)
     if proc.returncode != 0:
         err = proc.stderr.decode("utf-8", errors="replace").strip()
-        print("  警告: texconv 转换失败: %s" % (err or proc.stdout.decode("utf-8", errors="replace").strip()))
-        return False
+        raise SystemExit("错误: texconv 转换失败（%s）: %s"
+                         % (os.path.basename(src),
+                            err or proc.stdout.decode("utf-8", errors="replace").strip()))
     dds = os.path.join(out_dir, os.path.splitext(os.path.basename(src))[0] + ".dds")
-    if os.path.isfile(dds):
-        print("  生成 %s" % dds)
-        return True
-    print("  警告: 未找到 texconv 输出 DDS: %s" % dds)
-    return False
+    if not os.path.isfile(dds):
+        raise SystemExit("错误: texconv 未产出 DDS: %s" % dds)
+    return dds
 
 
 def crop_square(img, crop=None):
@@ -252,12 +261,7 @@ def main():
     args = ap.parse_args()
 
     if Image is None:
-        print("错误: 当前环境缺少 Pillow（PIL）。")
-        print("退化选项：")
-        print("  1) 请提供本机可用的 Python/Pillow 环境或图片工具路径；")
-        print("  2) 允许调用其他有图片处理能力的模型/工具来读图并自行裁剪；")
-        print("  3) 本次跳过自动处理，由你稍后自行添加素材。")
-        sys.exit(2)
+        raise SystemExit("错误: 当前环境缺少 Pillow（PIL），无法生成 TEXTURE/OPACITY。")
 
     if not os.path.isfile(args.input):
         raise SystemExit("错误: 输入 PNG 不存在: %s" % args.input)
@@ -294,6 +298,9 @@ def main():
                     or os.path.normcase(output_dir).startswith(os.path.normcase(project) + os.sep)):
         raise SystemExit("错误: --output-dir 不能指向工程目录内（含 Textures/）：%s" % output_dir)
 
+    # texconv 的中间产物落在系统临时目录（%TEMP%），头部修好后才写进工程。
+    staging = tempfile.mkdtemp(prefix="civ6_leader_dds_")
+
     crop_box = None
     if args.crop:
         parts = [int(x.strip()) for x in args.crop.split(",")]
@@ -329,18 +336,8 @@ def main():
         print("\n完成。已生成 PNG；未指定 --tex-dds，因此不修改任何 .tex。")
         return
 
-    # ---- 一步到位：.tex 同步 ----
-    print("\n[--tex-dds] 同步 .tex...")
-    tex_texture = render_tex(TEX_TEMPLATE_TEXTURE, texture_stem, texture_png)
-    tex_opacity = render_tex(TEX_TEMPLATE_OPACITY, opacity_stem, opacity_png)
-    tex_texture_path = os.path.join(tex_dir, texture_stem + ".tex")
-    tex_opacity_path = os.path.join(tex_dir, opacity_stem + ".tex")
-    enc1 = _write_tex(tex_texture_path, tex_texture, project)
-    enc2 = _write_tex(tex_opacity_path, tex_opacity, project)
-    print("  生成 %s (编码 %s)" % (tex_texture_path, enc1))
-    print("  生成 %s (编码 %s)" % (tex_opacity_path, enc2))
-
-    # ---- 一步到位：DDS 转换（texconv） ----
+    # ---- 一步到位：DDS 转换（texconv）→ 头部校验修复 → 写进工程 ----
+    # 中间产物落在系统临时目录，头部修好后才进 pantry：中断不会在 Textures/ 留半截文件。
     print("\n[--tex-dds] 转换 DDS...")
     texconv = None
     if args.texconv_path:
@@ -351,18 +348,40 @@ def main():
     if not texconv:
         texconv = find_texconv()
     if not texconv:
-        print("警告: 未找到 texconv（仅做 PATH / 固定目录简单查找，不自动安装、不扩大搜索）。")
-        print("退化选项：")
-        print("  1) 请提供 texconv 所在目录或完整路径（使用 --texconv-path）；")
-        print("  2) 允许调用其他有图片处理能力的模型/工具；")
-        print("  3) 本次只生成 PNG 和 .tex，DDS 稍后由 art-pipeline 补充。")
-    else:
-        for src, fmt in ((texture_png, "R8G8B8A8_UNORM"), (opacity_png, "R8_UNORM")):
-            if run_texconv(texconv, src, tex_dir, fmt):
-                dds = os.path.join(tex_dir, os.path.splitext(os.path.basename(src))[0] + ".dds")
-                with open(dds, "rb") as fh:
-                    write_project_file(dds, fh.read(), project)
+        raise SystemExit("错误: 找不到 texconv（已查 TEXCONV / 随包内置 / PATH / WinGet Links）。"
+                         "用 --texconv-path 指定完整路径。")
+    for src, fmt in ((texture_png, "R8G8B8A8_UNORM"), (opacity_png, "R8_UNORM")):
+        run_texconv(texconv, src, staging, fmt)
 
+    # texconv 直出的头部带 DDSD_PITCH、保留区无 FTXT、单通道写成 DDPF_LUMINANCE，
+    # 与官方 cook 产物不一致（外交场景纸片人不显示、散布零星色块）。按官方口径重写。
+    print("\n[--tex-dds] 校验并修复 DDS 头部...")
+    for src in (texture_png, opacity_png):
+        dds = os.path.join(staging, os.path.splitext(os.path.basename(src))[0] + ".dds")
+        changed, issues = ensure_official_header(dds)
+        if changed:
+            print("  修复 %s：%s" % (os.path.basename(dds), "；".join(issues)))
+        else:
+            print("  合规 %s" % os.path.basename(dds))
+
+    # ---- 一步到位：.tex 与 .dds 进工程 ----
+    print("\n[--tex-dds] 同步 .tex 与 .dds...")
+    tex_texture = render_tex(TEX_TEMPLATE_TEXTURE, texture_stem, texture_png)
+    tex_opacity = render_tex(TEX_TEMPLATE_OPACITY, opacity_stem, opacity_png)
+    tex_texture_path = os.path.join(tex_dir, texture_stem + ".tex")
+    tex_opacity_path = os.path.join(tex_dir, opacity_stem + ".tex")
+    enc1 = _write_tex(tex_texture_path, tex_texture, project)
+    enc2 = _write_tex(tex_opacity_path, tex_opacity, project)
+    print("  生成 %s (编码 %s)" % (tex_texture_path, enc1))
+    print("  生成 %s (编码 %s)" % (tex_opacity_path, enc2))
+
+    for src in (texture_png, opacity_png):
+        dds = os.path.join(staging, os.path.splitext(os.path.basename(src))[0] + ".dds")
+        with open(dds, "rb") as fh:
+            write_project_file(os.path.join(tex_dir, os.path.basename(dds)), fh.read(), project)
+        print("  生成 %s" % os.path.join(tex_dir, os.path.basename(dds)))
+
+    shutil.rmtree(staging)
     print("\n完成。PNG: %s；.tex/.dds: %s" % (output_dir, tex_dir))
     return finish()
 

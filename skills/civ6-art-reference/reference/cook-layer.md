@@ -468,7 +468,9 @@ $out = "<mod>\workspace\tmp\verify"            # 必须是临时目录
 1. **`--banquet_hall` / `--stewpot` 必须指临时目录**。cook 会顺带写出
    `<项目名>.dep`，指到实机 Mods 目录会用「单个 artdef 的 cook」覆盖掉整套依赖清单。
 2. cooker 会在**当前工作目录**写 `cooker.log`（完整日志，比控制台全）。
-   先切到临时目录再执行，别把工程的 `cooker.log` 覆盖掉。
+   CWD 固定到 `<解决方案根>\workspace\tmp\cook_cwd`，跑完把这一轮的输出**追加**进
+   `<工程核心根>\cooker.log`（全解决方案唯一一份），再删掉 CWD 里的那份。
+   核心根以外的任何位置出现 `cooker.log` 都判违规。
 3. **不要用管道或重定向捕获 cooker 输出**（`| Out-Null`、`> file.txt`
    `2>$null` 等）。原生 exe 在这种捕获下会以「拒绝访问」类错误启动失败，
    看起来像 cooker 坏了，其实是宿主环境的限制。让它直接继承控制台输出即可，

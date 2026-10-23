@@ -9,7 +9,7 @@ description: 用 HTML/CSS 设计文明6 Mod 界面并导出背景、透明装饰
 
 ## 入口与分享
 
-> ⚠ **工程文件写入铁律**：脚本可以新建工程文件，绝不允许改写工程文件。本 skill 的 `render-textures.cjs` 只写 `--out` 指定的纹理目录，不写工程文件。真源见 `civ6-modding/SKILL.md` 的「工程文件写入铁律」。
+> ⚠ **工程文件写入铁律**：代码文件只能逐行编辑（焚诀「禁止用程序化的方式编写或修改任何代码文件」）。本 skill 的 `render-textures.cjs` 只写 `--out` 指定的纹理目录，不写工程文件。真源见 `civ6-modding/SKILL.md` 的「工程文件写入铁律」。
 
 本目录即为可独立复制的技能包，使用普通 Markdown、Node.js 和 Python，不依赖任何特定工程工具或 agent 平台。首次接收 ZIP 可先看 [分享包说明](README.md)。首次配置、分享或批量导入时读 [通用入口与依赖](references/portable-use.md)。渲染与校验直接运行包内脚本（`scripts/render-textures.cjs` / `verify-textures.py` / `check-native-ui.py`）。
 

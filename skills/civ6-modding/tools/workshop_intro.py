@@ -65,6 +65,18 @@ TAG_RE = re.compile(r"\{([A-Za-z0-9_]+)\}")
 # 清除游戏内标记：[ICON_x] [NEWLINE] [COLOR:xxx] [ENDCOLOR] 等
 MARKER_RE = re.compile(r"\[(?:ICON_[A-Za-z0-9_]+|NEWLINE|COLOR:[^\]]*|ENDCOLOR|NUMBER|SPEAKER[^\]]*)\]")
 
+# 标记连同它前后的半角空格一起吃掉：「获得 [ICON_X] 权能点」→「获得权能点」
+SPACED_MARKER_RE = re.compile(r"[ \t]*" + MARKER_RE.pattern + r"[ \t]*")
+
+
+def drop_marker(m: re.Match) -> str:
+    """标记两侧都是 ASCII 字母数字时留一个空格，避免英文单词粘连。"""
+    left = m.string[m.start() - 1] if m.start() else ""
+    right = m.string[m.end()] if m.end() < len(m.string) else ""
+    if left.isascii() and left.isalnum() and right.isascii() and right.isalnum():
+        return " "
+    return ""
+
 # 中日韩字符与全角标点的区间，用于清理标记清除后残留的半角空格
 CJK = "\u3000-\u303f\u3040-\u30ff\u4e00-\u9fff\uff00-\uffef"
 
@@ -141,7 +153,7 @@ def clean_text(value: str, table: dict[str, str], expand: bool, depth: int = 0) 
                 break
             for ref in refs:
                 value = value.replace("{%s}" % ref, clean_text(table[ref], table, expand, depth + 1))
-    value = MARKER_RE.sub("", value)
+    value = SPACED_MARKER_RE.sub(drop_marker, value)
     value = TAG_RE.sub("", value)
     value = re.sub(r"[ \t]{2,}", " ", value)
     value = re.sub(r"\s*\n+\s*", " ", value)

@@ -25,6 +25,12 @@
 - [ ] **更新已有条目**：更新说明按 `workshop-intro.md` §三 产生
   - [ ] `release/scripts/draft_note.py --project <源工程根>` 已跑出草稿（基线取自台账「上传基线」）
   - [ ] `changeNote` 已人工定稿（玩家视角、1~3 条、无路径与标识符）
+  - [ ] 条目编号按 `release/scripts/find_item_id.ps1 -ModName <mod>` 核对，命中顺序为
+        ① 账户工坊列表（`-Account` 列出全部条目；来源 `steamcommunity.com/profiles/<steamid>/myworkshopfiles/?appid=289070`，直连不通时走本地代理 `127.0.0.1:7897`）
+        ② 项目台账 `<p1>\<工程>\<mod>\workshop-ledger.md`
+        ③ Steam `content_log*.txt` 的 `<id>\<mod>.modinfo`
+        三处都没有 → 向用户索要；台账只作为记录与复制来源，不作为唯一来源。
+        **禁止用 `new` 建工作区探编号**，那会另建重复条目
   - [ ] `mod_id.txt` 已存在且 ID 正确
         （★ 缺失会被当成新条目**另建一个**，上传前先 `Test-Path "$ws\mod_id.txt"`；
         用 `make_workspace.ps1 -ItemId <ID>` 可显式写入，省略它会打 WARN 提醒）

@@ -145,7 +145,7 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
 | 主体贴边、多主体、构图特殊 | 请用户给出裁剪范围 |
 | 脚本依赖缺失（无 Pillow）、texconv 定位不到 | 请用户给出解释器或 texconv 路径 |
 
-> `process_leader_png.py` 的 DDS 子步骤通过子进程管道调用 texconv。若运行环境禁止该管道（报 `PermissionError: [WinError 5]`），**就地停下**，把错误原文与 `.png`/`.tex` 已生成的状态报给用户，由用户决定后续，不换写法重试。
+> `process_leader_png.py` 的 DDS 子步骤通过子进程管道调用 texconv。若运行环境禁止该管道（报 `PermissionError: [WinError 5]`），**就地停下**，把错误原文报给用户，由用户决定后续，不换写法重试。texconv 找不到、转换非零退出、未产出 DDS，三种情形一律就地 `SystemExit`，不继续写 `.tex`。
 
 ---
 
@@ -156,13 +156,14 @@ python "<skills>/civ6-asset-forge/scripts/process_leader_png.py" \
 - 若用户要求一步到位（`--tex-dds`）：
   - 写进项目 `<project>\Textures\` 的只有 `.tex` 与 `.dds`
   - 同步生成/更新 `.tex`，`m_SourceFilePath` 指向工程外那张 PNG，`.tex` 的 `m_DataFiles` 引用同目录 `.dds`
-  - 尝试调用 texconv 生成 DDS（TEXTURE：`R8G8B8A8_UNORM`；OPACITY：`R8_UNORM`）
+  - 调用 texconv 生成 DDS（TEXTURE：`R8G8B8A8_UNORM`；OPACITY：`R8_UNORM`），中间产物落在系统临时目录
+  - **DDS 头部按官方口径校验并修复**（`dds_io.ensure_official_header`）：texconv 直出会带 `DDSD_PITCH`、`dwPitchOrLinearSize` 非 0、保留区无 `FTXT`、单通道写成 `DDPF_LUMINANCE`，四处差异会让纸片在外交场景不显示（§3.6(5)）。修复在临时目录完成，合格后才写进工程
   - `.tex` 与 `.dds` 均由脚本直接覆盖（美术产物）
 - **PNG 禁止落进工程任何目录**：`Textures/` 是 AssetEditor 的 pantry，cooker 递归扫描整棵工程目录树，落进去的 PNG 会被当成贴图实体登记，与 `.dds`/`.tex` 抢注册。`--output-dir` 指向工程目录内时脚本直接报错退出。
 
 **生成规则：**
 - TEXTURE：1024×1024，保留透明背景（裁剪规则见「层级 1」）。
-- OPACITY：取源图 alpha 的连续灰度；背景段（`alpha <= --alpha-floor`，默认 8）统一写成 `--alpha-base`（默认 4），避免低值尾部被量化成同心环带（§3.6(6)）。
+- OPACITY：取源图 alpha 的连续灰度；背景段（`alpha <= --alpha-floor`，默认 8）统一写成 `--alpha-base`（默认 4），避免低值尾部被量化成同心环带（§3.6(6)）。源图的 alpha 是铺满画布的宽羽化光晕时（三条判定见 §3.6(7)），默认参数不够用，需按该条做分段拉伸。
 
 ### 3. 素材文件（未提供素材时跳过）
 
@@ -330,13 +331,25 @@ VelocityScale         0.000000
 `texconv` 没有任何参数能产出单通道 `DDPF_RGB` 头：`-f R8_UNORM`、叠加 `-dx9`、
 叠加 `-dx10`、`-nologo -m 0` 四种组合实测都写成 `DDPF_LUMINANCE`。
 
-**解决**：像素载荷用 `texconv` 生成的，头部整段换成可用领袖同格式 DDS 的头。
+**解决**：像素载荷用 `texconv` 生成的，头部按官方口径重写。
 
-1. 参照文件取任一已正常工作的领袖 DDS：TEXTURE 用 `R8G8B8A8` 1024²，OPACITY 用单通道 1024²；
-2. 头部长度 128 字节（4 字节魔数 `DDS ` + 124 字节 `DDS_HEADER`）；
-3. 用参照文件的这 128 字节覆盖新文件同长度的前缀，其余字节保持不动；
-4. 覆盖后复核上表四处偏移与参照文件逐字节相同，且 `dwHeight` / `dwWidth` / `dwMipMapCount`
-   与新文件实际一致。
+`civ6-modding/art/dds_io.py` 承担这一步，`process_leader_png.py` 在 `--tex-dds` 流程里自动调用：
+
+| 接口 | 作用 |
+|---|---|
+| `dds_header_bytes(width, height, mips, bit_count)` | 按官方口径构造 128 字节头；`bit_count` 取 32（RGBA8）或 8（单通道） |
+| `header_issues(path)` | 校验四处偏移与像素载荷长度，返回问题清单 |
+| `ensure_official_header(path)` | 校验后不合规就地重写头部，像素载荷原样保留 |
+
+命令行等价入口：
+
+```bash
+python "<skills>/civ6-modding/art/dds_io.py" --check <DDS ...>   # 不合规即非零退出
+python "<skills>/civ6-modding/art/dds_io.py" --fix   <DDS ...>   # 校验并重写头部
+```
+
+`process_leader_png.py` 的中间产物落在系统临时目录，头部修复完成后才写进工程 `Textures/`；
+修复失败或载荷长度不符时就地 `SystemExit`，工程侧不留半截文件。
 
 **改完必须重新 cook**：`.tex` 引用的是 DDS 文件，像素与头部都属 cook 期输入。
 
@@ -362,6 +375,46 @@ VelocityScale         0.000000
 
 > 抬底的前提是 `(4)` 的 cook 参数：OPACITY 若不是 `Quality Loss=0` + `Skip Compression=true`，
 > 压缩会重新量化渐变，抵消抬底效果。
+
+#### (7) 宽羽化光晕的 OPACITY 需要分段拉伸
+
+**症状**：`(6)` 的抬底已经做了（背景段是单一底值 4），外交场景里仍能看到一圈一圈的环带，人物外围还有一层弥散的灰雾。
+
+**成因**：源图的 alpha 是一条跨度极大的径向羽化——从 0 爬到 255 铺满了画布的大部分面积，低值尾段横跨二十多个灰阶。抬底只切掉最底部那一小段，`9~63` 仍以连续灰阶铺在离人物很远的背景上，8 位量化后每一级都是一条宽环。
+
+**判定**（把源图 alpha 缩放到 1024 后统计，三条同时成立才命中）：
+
+| 量 | 测法 | 命中阈值 | Hongkai_Elysia 实测 |
+|---|---|---|---|
+| 低值段离主体的距离 | `alpha>=64` 做 16px 形态学膨胀，统计 `9~16` 区间落在其中的比例 | < 5% | 2.84% |
+| 低值段面积 | `9~16` 区间像素占全图比例 | > 3% | 4.96% |
+| 渐变铺开程度 | `8~247` 区间占比；横向游程 ≥4px 的灰阶级数 | > 20% 且级数 > 级数总量的 90% | 27.87%，255/256 |
+
+三条全部命中即「渐变铺满画布」。任一条不命中说明渐变本来就贴着人物边缘，属正常的边缘抗锯齿，按 `(6)` 的默认流程处理。
+
+判定由 `scripts/check_opacity_halo.py` 完成，接受源立绘 PNG 或已是单通道 alpha 的 OPACITY DDS：
+
+```bash
+python "<skills>/civ6-asset-forge/scripts/check_opacity_halo.py" <源立绘.png | OPACITY.dds ...>
+```
+
+命中任一张即退出码 1（提示按本条做分段拉伸），全部未命中退出码 0。实测兄弟工程 Ragunna_Pack 的五个领袖成品与 Hongkai_Elysia 处理后的贴图全部未命中，源立绘 `真我·人之律者立绘.png` 命中。
+
+**做法**：对 alpha 做分段线性拉伸，端点取该图直方图的拐点（`low` 取低值尾段结束处，`high` 取主体实心区起点）：
+
+- `alpha <= low` → `alpha_base`（默认 4）
+- `alpha >= high` → 255
+- 其间按 `(alpha - low) / (high - low)` 线性映射到 `alpha_base..255`
+
+Hongkai_Elysia 实测 `low=96 / high=160 / base=4`：底值 4 占 63.45%、255 占 32.91%、中间调 3.64%、灰阶级数 65、轮廓跳变 2471、过渡带均宽 15.45px；兄弟工程 Ragunna_Pack 的 Roccia 成品为底值 63.20%、255 31.63%、中间调 5.17%、级数 252。两者形态一致。
+
+**落笔前的复核**：过渡带均宽 = 中间调像素数 ÷ 轮廓跳变数，实测 15.45px，与源图边缘的羽化宽度同量级。被压到 2~3px 说明 `low` / `high` 取窄了，人物边缘会硬切。
+
+**代价**：真正的半透明区域（薄纱、玻璃、发光特效、发丝末端）会被一并写成 4 或 255。素材里存在这类区域时这条处置会吃掉它们，因此只在三条判定全部命中时使用。
+
+**重出载荷时头部原样保留**：`(5)` 的头部修复只针对 `texconv` 直出。工程里已合规的 DDS 换载荷时直接写入原 128 字节头 + 新载荷，实测头部 md5 `d3d8413442dc16e969b3eae7bdca25ff` 前后一致。
+
+**改后必须重新 cook**，并在 Mods 副本上核对 BLP 逐字节变化：Hongkai_Elysia 实测 BLP md5 `58a71431b5e85027ae9bcd818a8cb3eb` → `9db2f19be559dfe8b7b3efe3c78e6432`。
 
 ### 4. 更新工程文件
 
@@ -391,8 +444,10 @@ VelocityScale         0.000000
 - [ ] 素材文件（若提供）复制后哈希与源一致
 - [ ] 若已处理立绘：TEXTURE / OPACITY PNG 均为 `1024×1024`
 - [ ] OPACITY 主体区连续灰度、背景段为单一底值（默认 4），低值尾部没有残留的连续衰减层
+- [ ] 源图 alpha 命中 §3.6(7) 的三条判定时，OPACITY 已按该条做分段拉伸；未命中时保持默认流程（中间调占比、过渡带均宽两项复测留档）
 - [ ] 文件名使用 `{LeaderType}_TEXTURE.png` / `{LeaderType}_OPACITY.png`
 - [ ] 一步到位时 `.tex` 的 `SourceFilePath` 指向工程外的 PNG，DDS 已生成（或已明确提示未生成）
+- [ ] 两个 `.dds` 的 128 字节头通过 `dds_io.header_issues`（无 `DDSD_PITCH`、`dwPitchOrLinearSize=0`、保留区 `FTXT`、单通道 `DDPF_RGB`）
 - [ ] 工程 `Textures/` 内只有 `.tex` 与 `.dds`，没有 PNG
 
 ## 四、命名规范（生成脚本自动推导，手动修改时遵循）

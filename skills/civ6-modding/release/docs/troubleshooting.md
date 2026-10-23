@@ -107,7 +107,7 @@ Reverting to previous content ...
 处理：
 
 - 用上传器以作者身份尝试。
-- 用 `release\scripts\find_item_id.ps1` 从本地 Steam 日志确认。
+- 用 `release\scripts\find_item_id.ps1 -ModName <mod>` 取编号：先查账户工坊列表（`-Account` 可列全部，走个人资料页），再查项目台账 `<p1>\<工程>\<mod>\workshop-ledger.md`，最后查本地 Steam 日志；三处都没有时向用户索要，禁止新建工作区。
 
 ## 6. 官方上传器对个别作品 0 字节 success
 

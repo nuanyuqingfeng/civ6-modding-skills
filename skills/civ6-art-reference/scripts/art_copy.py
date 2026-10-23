@@ -236,7 +236,7 @@ def insert_into_file(path, entry_el, template, collection, dry_run=False):
         new = new[:close].rstrip() + '\n' + snippet + '\n\t\t' + new[close:]
     result = 'DRY'
     if not dry_run:
-        # 既有文件内容有变化时，改写结果由守卫入位 <解决方案根>/workspace/gen
+        # .artdef 属美术产物，由守卫直接写盘
         result = write_project_file(path, new.encode('utf-8'), project_root_of(path))
     print(f"written: {path} (+{entry_el.find('m_Name').get('text')})" if not dry_run else f"[dry-run] {path} (+{entry_el.find('m_Name').get('text')})")
     return result

@@ -81,4 +81,35 @@ python "<skills>/civ6-modding/tools/_paths.py"        # 打印 P1-P6 + 外部工
 - 判端口合法性**必须在调用方所在的那一端**实测，另一端的结果不算数。
 - 片段库在 `<skill>/snippets/`，新写的一次性 Lua 也往里放，别散落。
 
+### 组合动作层
+
+`tuner_exec.py act <动作名> --参数 值` 执行预设的多步测试操作。动作片段在
+`snippets/actions/<动作名>.lua`，Python 侧按 `ACTIONS` 参数表生成 CONFIG 块替换片段里的
+标记区间，再按动作声明投递到对应上下文（`MainMenu` / `gamecore` / `ingame`）。
+
+常用动作：
+
+- `game-mode`、`leader`（MainMenu，建局前）
+- `end-turn`、`select-unit`、`research-set`、`civic-set`、`city-build`（ingame）
+- `build`、`gold-inject`、`faith-inject`、`tech-complete`、`civic-complete`、
+  `unit-spawn`、`terrain-change`、`fog-reveal`、`snapshot`（gamecore）
+
+研究目标、市政推进目标与城市生产队列都走**玩家操作/城市操作**通道，只有 ingame 侧能发：
+`research-set` 与 `civic-set` 用 `UI.RequestPlayerOperation`（`PlayerOperations.RESEARCH` /
+`PROGRESS_CIVIC` + `PARAM_INSERT_MODE=VALUE_EXCLUSIVE`）。城市生产队列的入队在 tuner 沙箱内
+不可达：`CityManager.RequestOperation` 在 ingame 侧是 function、`CanStartOperation` 返回 true，
+调用后 gamecore 回读 `BuildQueue:CurrentlyBuilding` 保持旧项；gamecore 侧该函数为 nil。
+`city-build` 保留作通道探测，建建筑用 `build`、出兵用 `unit-spawn`。
+
+调试技巧：
+
+- 列出全部动作与所需上下文：`python tuner_exec.py act list`
+- 查看某动作的参数表与步骤：`snippets/actions/<动作名>.lua` 的文件头注释
+- 提取本次动作打点：`python tuner_exec.py logs --prefix "VERIFY_" -n 0`
+- 冷路径对照：`python tuner_exec.py --no-daemon act <动作名> ...`（输出与守护进程路径一致）
+
+动作片段的固定结构：文件头注释（参数、前置断言、执行步骤、成功判据、失败码、已知限制）、
+`-- ===== CONFIG =====` 标记区间、`ASSERTION_*` / `EXECUTE` / `VERIFY_*` / `FINAL=OK|FAIL` 打点。
+新增动作时两步走：在 `ACTIONS` 里登记参数表与上下文，再按同一结构写片段。
+
 <!-- MANUAL:END -->

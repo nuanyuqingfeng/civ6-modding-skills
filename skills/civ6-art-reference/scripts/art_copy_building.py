@@ -345,7 +345,7 @@ def main():
     if args.dry_run:
         print('[dry-run] 未写文件')
         return
-    # 既有文件内容有变化时，改写结果由守卫入位 <解决方案根>/workspace/gen
+    # .artdef 属美术产物，由守卫直接写盘
     write_project_file(args.landmarks_out, text.encode('utf-8'),
                        art_copy.project_root_of(args.landmarks_out))
 

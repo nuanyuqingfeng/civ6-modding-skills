@@ -41,9 +41,9 @@ JSON 不写空字符串。模型实例内偏移编辑、动画、外包附件和
 
 `landmark_tool.py compose` 校验全部配方后写出 Assets、XLPs、ArtDefs、已声明本地资源、recipe.json 和 manifest.json。manifest 记录文件 SHA-256、绑定、SDK 来源与必需 Art ID。非空且不含 manifest 的输出目录被拒绝；不会递归清空用户目录。
 
-`landmark_tool.py install --bundle <manifest> --project <工程根>` 先完整校验再落地：Assets/Geometries/Materials/Textures 源文件进工程同名目录（pantry 源，不进 Content）；Landmarks/Buildings artdef 无则写入、已有则按条目合并（合并结果不擦既有美术）；tilebases.xlp 已存在且不同时要求 `--force`（必须与 AST 全集一致）；实体条目的 Landmark Xref 自动回填，条目缺失时如实报告。工程里已有且内容有变化的 artdef / xlp，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。`--dry-run` 只出计划。ArtDefs/XLPs 不登记 .civ6proj（Civ6.targets 直接扫描磁盘；D6 决议：工程清单手工维护）；check_proj_content.py 照跑，核对工程既有清单闭合。
+`landmark_tool.py install --bundle <manifest> --project <工程根>` 先完整校验再落地：Assets/Geometries/Materials/Textures 源文件进工程同名目录（pantry 源，不进 Content）；Landmarks/Buildings artdef 无则写入、已有则按条目合并（合并结果不擦既有美术）；tilebases.xlp 已存在且不同时要求 `--force`（必须与 AST 全集一致）；实体条目的 Landmark Xref 自动回填，条目缺失时如实报告。`ArtDefs/*.artdef` 与 `XLPs/*.xlp` 属美术产物，脚本直接写盘。`--dry-run` 只出计划。ArtDefs/XLPs 不登记 .civ6proj（Civ6.targets 直接扫描磁盘；D6 决议：工程清单手工维护）；check_proj_content.py 照跑，核对工程既有清单闭合。
 
-重跑 install 幂等：与 bundle 一致的文件如实报告不重写（改写既有 artdef 时，先由 AI 把 `<解决方案根>/workspace/gen/` 的结果写入工程，再重跑 install 即为这个状态）。直接修改资源包里的受管文件会改变散列，verify 会阻断并提示重新 compose；AE 中试出的有效布局应改回配方再生成；当前不支持将任意 AE 工程反向导入配方。
+重跑 install 幂等：与 bundle 一致的文件如实报告不重写。直接修改资源包里的受管文件会改变散列，verify 会阻断并提示重新 compose；AE 中试出的有效布局应改回配方再生成；当前不支持将任意 AE 工程反向导入配方。
 
 ## 静态检查
 
@@ -55,7 +55,7 @@ JSON 不写空字符串。模型实例内偏移编辑、动画、外包附件和
 
 ## 官方 Cooker
 
-`landmark_tool.py cook` 使用新建的英文临时目录，因为官方 Cooker 实测会损坏中文 pantry 路径。它复制当前资源包和可选项目 ArtDef/Art.xml，再调用安装的 `Civ6AssetCooker_FinalRelease.exe`；不修改 SDK、不启动 ModBuddy、不部署游戏。整机 cook（全部 ArtDef/XLP 重放 ModBuddy 构建）走 `civ6-modding/tools/cook_assets.py`。`--out` 落在工程之内时，工程里尚不存在的产物由脚本直写，既有产物有变化则结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径（退出码 2 时打印待写入清单）。
+`landmark_tool.py cook` 使用新建的英文临时目录，因为官方 Cooker 实测会损坏中文 pantry 路径。它复制当前资源包和可选项目 ArtDef/Art.xml，再调用安装的 `Civ6AssetCooker_FinalRelease.exe`；不修改 SDK、不启动 ModBuddy、不部署游戏。整机 cook（全部 ArtDef/XLP 重放 ModBuddy 构建）走 `civ6-modding/tools/cook_assets.py`。cook 产物（BLP、ArtDefs、`*.dep`）属美术与音频产物，脚本直接写盘。
 
 输出包含日志、`cook-report.json` 和本次生成的 BLP/ArtDefs。检查返回码、非空新文件以及错误日志，不沿用上次输出。官方 MSBuild 的部分 Exec 使用 IgnoreExitCode，不能仅凭 ModBuddy 的“成功”判定资源有效。
 

@@ -45,24 +45,25 @@ languages:
 
 ## 工程文件写入铁律
 
-脚本可以**新建**工程文件，绝不允许**改写**工程文件；既有工程文件的每一次改动由 AI 用文件编辑工具完成。
-判据、`workspace/gen/` 落点、可再生二进制资产的例外、六份 `_projwrite.py` 副本，全部以 `civ6-modding/SKILL.md` 的「工程文件写入铁律」为唯一真源。
+代码文件只能逐行编辑（焚诀「禁止用程序化的方式编写或修改任何代码文件」）。`.artdef` 与 `.xlp` 属美术产物，脚本直接写盘；`.civ6proj`、`*.Art.xml`、`.sql`、`.lua`、`.xml` 属代码文件与工程文件，脚本一律不写，改为把待插入的条目写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由 AI 逐行写入工程。
+判据、允许脚本直写的美术与音频产物清单、六份 `_projwrite.py` 副本，全部以 `civ6-modding/SKILL.md` 的「工程文件写入铁律」为唯一真源。
 
-本 skill 的落点：`art_copy.py` 与 `art_copy_building.py` 对 `ArtDefs/*.artdef` 的插入与骨架生成全部经过 `scripts/_projwrite.py`。
+本 skill 的落点：`art_copy.py` 与 `art_copy_building.py` 对 `ArtDefs/*.artdef` 的插入与骨架生成全部经过 `scripts/_projwrite.py`。`.artdef` 与 `.xlp` 属美术产物，脚本直接写盘。
 
 ## ⚠ 注意事项：mod 工程目录**本身就是 pantry**（曾致 AssetEditor 闪退）
 
 AssetEditor / cooker 会把**整个工程目录树**递归当 pantry 扫描 —— **不只是 `Textures/`**。
 任何位置的 `.tex` 都会被注册为贴图实体，同名副本会抢占注册。实测（2026-09-12）：同名 `.tex` 副本 + `m_SourceFilePath` 为 depot 库路径 `//civ6/main/...`
 → AE 版本状态更新抛 `NotSupportedException: 不支持给定路径的格式` → 日志 `CRASH` → **浏览素材时闪退**。
-复盘与完整证据链保存在作者本地工程记录中（不随 skill 分发）；下面的四条硬性规则即其结论。
+复盘与完整证据链保存在作者本地工程记录中（不随 skill 分发）；下面的五条硬性规则即其结论。
 
-**四条硬性规则**
+**五条硬性规则**
 
 1. **`.tex` 只允许存在于 `Textures/`**，每个资产只留一份；`workspace/`、`gen/`、`tmp/`、`*_reimport/`、任何备份/中间目录**严禁**出现 `.tex`；
 2. `m_Name` 与 `m_RelativePath` **全工程唯一**（`Textures/` 内同样不允许重名）；
 3. `m_SourceFilePath` 统一为 **ASCII 虚拟路径**（本工程约定 `D:\desktop\<stem>.png`）；**严禁** `//civ6/main/...` 等 depot/库路径，严禁中文/乱码路径；
-4. pantry 内文件名保持 **ASCII**。
+4. pantry 内文件名保持 **ASCII**；
+5. **构建期裸名日志 `cooker.log` 与贴图同受唯一化管制**：全解决方案只允许一份，位于工程核心根，由 ModBuddy 构建或本家族 cook 工具写出；代理不得在 pantry 任意深度、`workspace/` 任意位置、Mods 副本内留下第二份，也不得复制或改名这一份。cook 工具的当前工作目录固定为 `<解决方案根>/workspace/tmp/cook_cwd`，跑完把该轮输出**追加**进核心根那一份，cooker 自己写在 CWD 的副本立即删除。
 
 **改名 `.tex` 时必须同步三元组**（否则 cooker 按旧名找贴图 → 全部引用条目变成 error asset「红色感叹号」）：
 
@@ -134,7 +135,7 @@ python art_copy.py Resources RESOURCE_OLIVES RESOURCE_OLIVES_RGN \
 ```
 
 克隆原版条目整棵子树 → 改名 → 换 XrefName → 追加进 mod artdef（自动建骨架/幂等跳重）。
-`--out` 指向的 artdef 尚不存在时脚本直写新建；工程里已有同名 artdef 且内容有变化时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+`--out` 指向的 artdef 不存在时脚本新建，已存在时脚本按幂等合并直接改写：`.artdef` 属美术产物，允许脚本写盘。
 
 **替换型建筑（取代原版建筑）走另一条链**：建筑模型由「所在区域」给出，且必须反查
 `DistrictReplaces`；完整步骤见 `reference/workflow.md` §④′，机制见 `reference/chain-map.md` §三.3：
@@ -145,7 +146,7 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
 
 `--district` 里的 **mod 侧区域不在索引里，必须显式给出**。
 
-`--buildings-out` / `--landmarks-out` 指向的文件尚不存在时脚本直写新建；工程里已有同名 artdef 且内容有变化时，命令跑完后结果落在 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+`--buildings-out` / `--landmarks-out` 指向的文件由脚本新建或按幂等合并改写：`.artdef` 属美术产物，允许脚本写盘。
 
 **两条铁律**：① 只能**新增**新标签子条目，绝不改名覆盖原版子条目；
 ② 必须把**所有**取代该区域的 District 都挂上（原版特色区域 + 本 mod 特色区域）。
@@ -173,7 +174,7 @@ python art_copy_building.py BUILDING_AMPHITHEATER BUILDING_GOLDEN_POETRY_SOCIETY
   `引用被清空`（`_MissingArt` / `text=""`，**真实缺陷**）。详见 `cook-layer.md` §2.2–2.4。
 - 替换型建筑附加校验：① **原有子条目零丢失**（读改写前后同区域内各子集合的子条目名集合，
   旧集合必须是新集合的子集）；② 所有取代该区域的 District 都已挂。
-  `art_copy_building.py` 自带第 ① 项自检，输出 `原有内容丢失 = 0` 才算过；改写既有 artdef 时，自检针对的是入位 `<解决方案根>/workspace/gen/` 的那份结果。
+  `art_copy_building.py` 自带第 ① 项自检，输出 `原有内容丢失 = 0` 才算过；自检针对的是脚本写盘后的 artdef。
 - **克隆单位条目前**：先按 `chain-map.md` §5.2 做 bin 可解析性体检（原版自身存在
   引用了不存在 bin 的成员类型，克隆过去会渲染残缺，典型表现是「只剩一个头」）。
 

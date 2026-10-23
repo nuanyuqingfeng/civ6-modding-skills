@@ -290,6 +290,7 @@ python "$T" --daemon-port 4320 check   # 换控制端口（多实例/调试用�
 - 需要重进对局才能生效的改动（SQL/XML）：`gamectl.py load <档>` 或 `restart`，由本 skill 自助完成，不依赖用户
 - 视觉/UI 表现（镜头、浮字、VFX、HUD 完整性、弹窗）可经 `snippets/screenshot.ps1` 截屏判读
   （2026-10-03 实测：表演移镜、传送光柱、ESC 菜单残留均成功判读）；色彩/布局细节仍需用户实机确认
+- 需要与任何工程隔离的 mod 加载 / UI 上下文测试：读 `reference/ISOLATED_TEST_MOD.md`。普通 `gamecore` / `ingame` 探针不需要测试 Mod。
 
 ### ★ 改动生效路径速查（2026-10-03 实测，每轮测试前先判据）
 
@@ -422,6 +423,52 @@ python "$T" --daemon-port 4320 check   # 换控制端口（多实例/调试用�
    → `logs --prefix` 提取无此标记 = 调用链零 Lua 错误；探针打点同步打印 pcall 返回值双确认
    （打点自身注意铁律 3：`tostring(GetProperty(...))` 先落局部变量）
 ```
+
+## 组合动作速查
+
+`tuner_exec.py act <动作名> --参数 值` 把多步测试操作封装成一条命令。动作片段在
+`snippets/actions/<动作名>.lua`，Python 侧按 `ACTIONS` 参数表注入 CONFIG 块后投递；
+`act list` 列出全部动作。参数一律 `--键 值` 或 `--键=值`，布尔参数单独出现即为真。
+
+| 动作名 | 命令示例 | 依赖 API（端） | 前置断言 | 成功判据 | 已知限制 | 未覆盖场景 |
+|--------|---------|---------------|---------|---------|---------|-----------|
+| `game-mode` | `act game-mode --modes GAMEMODE_SECRETSOCIETIES,GAMEMODE_HEROES` | `GameConfiguration.SetValue`/`GetValue`（MainMenu）、`Locale.Bundle`（MainMenu） | MainMenu 态可达、SetValue 为 function | `VERIFY_MODE_<键>=true` 且 `GAMEMODES_ENABLED_NAMES` 长度与启用数一致 | `GAMEMODE_*` 布尔键无法从参数表反查，只能按内置 KNOWN 表关闭；mod 自带模式不写 `GAMEMODES_ENABLED_NAMES` | DLC 依赖缺失与互斥冲突（由 HostGame 阶段判定） |
+| `leader` | `act leader --player-id 0 --leader LEADER_CARTETHYIA_QYQXP --civ CIVILIZATION_CARTETHYIA_QYQXP` | `PlayerConfigurations[pid]:Set/GetLeaderTypeName`、`SetCivilizationTypeName`（MainMenu） | 槽位存在、领袖与文明在 `GameInfo` 内 | `VERIFY_ACTUAL_LEADER` 等于写入值 | 默认先跑七步建局准备链（`--prepare` 可关）；对局内 `Players[i]:GetType()` 一致性需建局后核对 | DLC 领袖检查、建局后入局核对 |
+| `end-turn` | `act end-turn --force --timeout 180` | `UI.RequestAction`/`UI.RequestPlayerOperation`（ingame）、`Game.GetCurrentGameTurn`（gamecore） | InGame 态、RequestAction 为 function | Python 侧 `[OK] 回合推进：X -> Y` | 阻塞项返回数字 id，反查名无路，只报数量与 id | AI 外交挂起检测 |
+| `select-unit` | `act select-unit --type UNIT_WARRIOR` / `--x 25 --y 13` / `--radius 3` | `UI.SelectUnit`/`UI.GetHeadSelectedUnit`（ingame） | InGame 态、SelectUnit 为 function | `VERIFY_SELECTED` 的 ID 与 `FOUND_MATCH` 一致 | 半径按方形范围算，六边形距离未实现；单位清单取 UI 侧集合，含幽灵行 | 晋升筛选的完整实测（依赖 `GetExperience():GetPromotions`） |
+| `build` | `act build --building BUILDING_MONUMENT [--city 65536] [--force-precost]` | `CityBuildQueue:CreateBuilding`（gamecore）、`CityBuildings:HasBuilding`（gamecore） | 城市存在（`capital` 取首都）、建筑在 `GameInfo.Buildings` 内 | `VERIFY_BUILDING=true` | 生产进度不可观测，验证走完成式；`PrereqDistrict` 不补齐；人口与产能不校验 | 区域前置自动补齐 |
+| `gold-inject` | `act gold-inject --amount 10000 [--delta] [--pid N]` | `Treasury:SetGoldBalance`/`ChangeGoldBalance`（gamecore） | 玩家存在、SetGoldBalance 为 function | `AFTER` 等于设定值或 `BEFORE+增量` | 负余额引擎照收（实测 `--amount -100` 得到 -100） | 阈值与负债判定 |
+| `faith-inject` | `act faith-inject --amount 500 [--delta]` | `Religion:SetFaithBalance`/`ChangeFaithBalance`（gamecore） | 玩家存在、SetFaithBalance 为 function | `AFTER` 等于预期 | 不校验万神殿与宗教是否已创立 | 宗教创立前置 |
+| `tech-complete` | `act tech-complete --tech TECH_POTTERY` | `Techs:SetResearchProgress`/`HasTech`/`GetResearchCost`（gamecore） | 科技在 `GameInfo.Technologies` 内、SetResearchProgress 为 function | `VERIFY_HAS_TECH=true` | 不记尤里卡；会顶掉原研究目标 | 尤里卡触发 |
+| `civic-complete` | `act civic-complete --civic CIVIC_CODE_OF_LAWS` | `Culture:SetCulturalProgress`/`HasCivic`/`GetCultureCost`（gamecore） | 市政在 `GameInfo.Civics` 内、SetCulturalProgress 为 function | `VERIFY_HAS_CIVIC=true` | 不记鼓舞；政策卡与政体解锁不额外处理 | 政体切换 |
+| `unit-spawn` | `act unit-spawn --type UNIT_WARRIOR --x 26 --y 13 --count 2` | `UnitManager.InitUnit`（gamecore）、`Map.GetPlot` | 单位在 `GameInfo.Units` 内、地块存在且非水域/非不可通行 | `SPAWN_SUCCESS` 行数等于 `--count` 且落点等于请求坐标 | 同格堆叠超上限时引擎挤到邻格，按失败报出 | 相邻格自动搜索 |
+| `terrain-change` | `act terrain-change --x 26 --y 13 --terrain TERRAIN_GRASS [--feature FEATURE_X]` | `TerrainBuilder.SetTerrainType`/`SetFeatureType`（gamecore） | 地块存在、类型名在 `GameInfo` 内 | `VERIFY_TERRAIN`/`VERIFY_FEATURE` 等于请求值 | 清除地貌的取值约定未实测，只支持写入指定地貌 | 地貌清除 |
+| `fog-reveal` | `act fog-reveal --x 40 --y 20 --radius 2` | `PlayersVisibility[pid]:IsRevealed`/`ChangeVisibilityCount`（gamecore） | 视野管理器存在、中心地块存在、地块索引经 `plot:GetIndex()` 取得且为 number | `AFTER_REVEALED` 等于范围内地块总数 | 半径按方形范围；`GetVisibility`/`Plot:IsRevealed` 双端 nil，唯一入口是全局表；地块索引必须用 `plot:GetIndex()`，`Map.GetPlotIndex(x, y)` 在 gamecore 侧返回 nil 且会把 nil 索引喂给引擎 | 六边形半径 |
+| `snapshot` | `act snapshot [--pid N]` | `GetTreasury`/`GetReligion`/`GetTechs`/`GetCulture`（gamecore） | 玩家存在 | 输出 `SNAP|unit_count=N` 与 `FINAL=OK` | 宜居度只在 UI 侧可读，本动作不输出 | 宜居度与产出明细 |
+| `research-set` | `act research-set --tech TECH_BRONZE_WORKING` | `UI.RequestPlayerOperation`+`PlayerOperations.RESEARCH`（ingame） | PlayerOperations.RESEARCH 为数字、科技在库内 | `VERIFY_RESEARCHING` 等于请求科技 | 操作异步结算；已完成科技由引擎拒绝 | 研究队列批量推进 |
+| `civic-set` | `act civic-set --civic CIVIC_CRAFTSMANSHIP` | `UI.RequestPlayerOperation`+`PlayerOperations.PROGRESS_CIVIC`（ingame） | PROGRESS_CIVIC 可用、市政未完成 | `VERIFY_CIVIC` 等于请求市政 | 只设推进目标，不改文化进度；已完成市政在操作前即拒绝 | 政体与政策卡联动 |
+| `city-build` | `act city-build --building BUILDING_GRANARY` / `--unit UNIT_WARRIOR` / `--district DISTRICT_CAMPUS --x 25 --y 12` | `CityManager.RequestOperation`+`CityOperationTypes.BUILD`（ingame）、`BuildQueue:CurrentlyBuilding`（gamecore） | 三个类型名恰好给一个、城市存在、区域须带坐标 | `VERIFY_QUEUE` 等于请求类型名 | **入队在 tuner 沙箱内不可达**：ingame 侧 `CityManager.RequestOperation` 是 function、`CanStartOperation` 返回 true，调用返回 nil，gamecore 回读队列保持旧项；gamecore 侧该函数为 nil，`BuildQueue:CreateIncompleteBuilding` 返回 false、`AddProgress` 返回 nil。建建筑走 `build`、出兵走 `unit-spawn` | 队列插序与批量操作 |
+
+组合动作层实测（2026-10-21，本地对局）：
+
+| 动作 | 正例 | 失败例 |
+|---|---|---|
+| `game-mode` | 启用两种模式回读 true、`--enable-only` 关闭 7 项回读 false | — |
+| `leader` | `LEADER_CARTETHYIA_QYQXP` + `CIVILIZATION_CARTETHYIA_QYQXP` 回读一致，随后 host-game 入局成功 | — |
+| `end-turn` | `--force` 回合 1→2 推进 | 非 force 时被 5 个阻塞项挡住，退出码 3 |
+| `select-unit` | `--type UNIT_WARRIOR` 命中 ID=131073 且回读一致 | `--type UNIT_NONEXISTENT` 退出码 2 |
+| `build` | `BUILDING_MONUMENT` 回读 true | `INVALID_BUILDING` 退出码 2 |
+| `gold-inject` | 10→10000 回读一致；`--delta` 与冷路径（`--no-daemon`）输出一致 | 负值被引擎接受（余额 -100），不作拒绝 |
+| `faith-inject` | 0→500 回读一致 | — |
+| `tech-complete` | `TECH_POTTERY` 回读 true | `INVALID_TECH` 退出码 2 |
+| `civic-complete` | `CIVIC_CODE_OF_LAWS` 回读 true | — |
+| `unit-spawn` | 同格刷 2 个 `UNIT_WARRIOR`，落点回读一致 | — |
+| `terrain-change` | 平原→草原回读一致 | — |
+| `fog-reveal` | `TARGET_PLOTS=25`、`BEFORE_REVEALED=0`、`EXECUTE\|revealed_new_plots=25`、`AFTER_REVEALED=25`、`FINAL=OK` | — |
+| `snapshot` | 回合/金币/信仰/市政/城市/单位全量输出 | — |
+| `research-set` | `TECH_BRONZE_WORKING` 设为当前研究，GP 侧 `GetResearchingTech` 复核一致 | `INVALID_TECH` 退出码 2 |
+| `civic-set` | `CIVIC_MYSTICISM` 设为推进目标，GP 侧复核一致 | 已完成市政在断言处退出 |
+| `city-build` | — | 三条派发通道逐项实测均不可达：ingame 侧 `CanStartOperation` 返回 true、`RequestOperation` 调用返回 nil，gamecore 回读 `VERIFY_QUEUE` 保持旧项，报 `FINAL=FAIL\|queue_mismatch` 退出码 2（`--append` 与 `--building` 分支同样）；gamecore 侧 `CityManager.RequestOperation` 为 nil；`BuildQueue:CreateIncompleteBuilding` 返回 false、`AddProgress` 返回 nil。非法类型、缺参数、互斥类型按退出码 1/2 报出 |
 
 ## 参考
 
