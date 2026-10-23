@@ -216,3 +216,85 @@ python $S/voice_shortid.py id --project <mod目录名> --asset <资产名> --rol
 ### 10.6 撞号概率
 
 同一槽位同一角色才可能相撞，桶内空间 2^25。2000 个对象约 0.28%，500 个对象约 0.017%。单 mod 一个六领袖语音 bank 约 40 个对象，概率 0.001% 量级。
+
+## 11. 领袖语音改号与重编运行手册
+
+按顺序执行，每步都有验收判据；任何一步判据不过就停下，不要带着不一致往下走。
+
+### 11.1 备份
+
+改号前把在售 bank 与侧车复制到工程外的备份位置：
+
+```
+<Bank>.bnk / <Bank>.txt / <Bank>.xml
+```
+
+记录 sha1。改号后与原件的差异应当只有 Sound / Action / Container 编号与总字节数。
+
+### 11.2 取源
+
+按工程是否存在分两条路：
+
+| 情况 | 做法 |
+|---|---|
+| 有与在售 bank 一致的 Wwise 工程 | 直接进入 11.3 |
+| 只有字母名 wav 素材 | `new_bank_project.py --proj <目录> --bank <Bank名> --media <wav目录> --category voice` |
+| 只剩 bank 与 `.txt` 侧车 | `speech_rebuild.py --bank <Bank>.bnk --proj <目录> --name <Bank名> --work <中间目录> [--generate]` |
+
+`speech_rebuild.py` 需要 `vgmstream-cli`：Wwise 私有 ADPCM 用 ffmpeg 解会报 `block_predictor`，这是已知现象。
+
+### 11.3 工程可信度
+
+```
+python voice_shortid.py verify-project <工程目录>
+```
+
+判据：三个锚点齐全、语音对象都在 `id424381547` 子树下、退出码 0。锚点被换过的工程副本会在这里被挡住——用它生成的 bank 语音停不下来。
+
+### 11.4 事件补齐
+
+工程与成品的事件集合不一致时先补齐，再谈改号：
+
+```
+python wwise_wire.py <工程目录> --add-stop <Play事件名>
+```
+
+它按同工程既有 Stop 动作的结构补建 `Stop_<去 Play_ 的名字>`，并把新事件加进收录了该 Play 事件的 SoundBank。
+
+已知限制：`ObjectExclusionList` 里放事件引用会让 Wwise 判 `Project contains errors and cannot be loaded`，两种属性写法都失败。想缩小 bank 收录范围，只加减收录表。
+
+### 11.5 内容对齐
+
+先不改号生成一次，与在售 bank 比对：
+
+```
+python bank_compare.py <新生成 bank> <在售 bank> [--media size]
+```
+
+- 未改号的重生成：用默认 `--media id`，要求事件编号、媒体编号与尺寸、对象计数三项全同，退出码 0。
+- 解码重建出来的工程：用 `--media size`，媒体编号会被重新分配，只比尺寸多重集。
+
+判据不过就不要改号：要么工程落后于成品，要么取到了错误的工程副本。
+
+### 11.6 改号
+
+```
+python voice_shortid.py assign <工程目录> --project <mod 目录名>
+python voice_shortid.py check  <工程目录> --project <mod 目录名>
+```
+
+`check` 退出码必须是 0。
+
+### 11.7 生成与产物验收
+
+```
+python wwise_wire.py <工程目录> --generate <Bank名>
+python voice_shortid.py verify-bank <生成物.bnk> <工程目录> --project <mod 目录名>
+python bank_compare.py <生成物.bnk> <在售 bank> --media size
+```
+
+判据：`verify-bank` 退出码 0；`bank_compare` 事件编号零差异、媒体尺寸一致。
+
+### 11.8 同步
+
+`.bnk`、`.txt`、`.xml` 三个文件同时写入源工程与游戏加载副本，逐字节核对 sha1 一致。只写一边会让下一次上传或调试拿到不同版本。

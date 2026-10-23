@@ -213,6 +213,7 @@ python $S/audio_pack.py plainbank <wav目录> --bank <名>_Bank --out <Audio目�
 
 - ✅ **ShortID 规律（有效）**：Event ShortID = FNV-1(32)(小写事件名)，区分不同对象/音频靠唯一事件名前缀；媒体/声音/动作/容器 ID 从 `state/id_registry.json` 避让分配，杜绝不同内容 ID 撞车。`scan` 命令产出注册表，供 `new_bank_project.py` / `wwise_wire.py` 建 Wwise 工程时参考防冲突。
 - ✅ **语音对象用打包命名（推荐，取代随机避让）**：Speech bank 里的 Sound / Action / Container 编号由名称算出（槽位 4 位 + 角色 2 位 + 主体哈希 25 位），不查注册表、不扫别人的 bank。分配与校验用 `scripts/voice_shortid.py`，口径与实测见 `references/mechanism.md` §10。
+- 🧭 **改号与重编走运行手册**：`references/mechanism.md` §11，八步各有验收判据；配套工具 `voice_shortid.py verify-project`（工程锚点链体检）、`wwise_wire.py --add-stop`（补建缺失的 Stop 事件）、`bank_compare.py`（产物与在售 bank 比对）、`speech_rebuild.py`（只剩 bank 时逆推工程）。
 - ⚠️ **编码（废弃）**：不可用于交付（原因见本节首段）。
 - 模板 `assets/template_slim/template_speech.bnk` 现在仅作实验参考；正式交付用完整模板工程（`ensure_template.py` 拉取）。
 - 产物：实验产物 `.bnk/.xml/.txt` + `_Banks.ini` 仅用于研究，**不要**拿去 `register_to_mod.py` 注册交付。

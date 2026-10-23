@@ -9,6 +9,7 @@ wwise_wire.py -- Wwise 工程直改工具 (Wwise 2015.x, Yuni 谱系工程实测
                 [--play-prefix Play_] [--stop-prefix Stop_]
                 [--only <名称子串>] [--max N] [--dry-run]
   改名   python wwise_wire.py <工程目录> --rename-event <旧事件名> <新事件名>
+  补Stop python wwise_wire.py <工程目录> --add-stop <Play事件名>
   生成   python wwise_wire.py <工程目录> --generate [BANK名...]
 
 铁律:
@@ -233,6 +234,80 @@ def do_generate(proj, banks):
     return r.returncode
 
 # ---------------- main ----------------
+def do_add_stop(proj, play_event):
+    """为已有的 Play 事件补建配对的 Stop 事件，并把它加进收录了该 Play 事件的 SoundBank。"""
+    sound = None
+    efile = None
+    block = None
+    for p in list_wwu(proj, 'Events'):
+        txt = rd(p)
+        m = re.search(r'<Event\s+Name="%s"\s+ID="%s">(.*?)</Event>' % (re.escape(play_event), GUID_RE), txt, re.S)
+        if not m:
+            continue
+        efile, block = p, m.group(1)
+        ref = re.search(r'<ObjectRef\s+Name="([^"]+)"\s+ID="(%s)"\s+WorkUnitID="(%s)"' % (GUID_RE, GUID_RE), block)
+        if ref:
+            sound = ref.groups()
+            break
+    if not sound:
+        raise SystemExit('未找到 Play 事件或其目标: %s' % play_event)
+
+    bank_file, bank_name = None, None
+    for p in list_wwu(proj, 'SoundBanks'):
+        txt = rd(p)
+        for bm in re.finditer(r'<SoundBank\s+Name="([^"]+)"[^>]*>(.*?)</SoundBank>', txt, re.S):
+            if ('Name="%s"' % play_event) in bm.group(2):
+                bank_name, bank_file = bm.group(1), p
+                break
+        if bank_file:
+            break
+    if not bank_file:
+        raise SystemExit('没有任何 SoundBank 收录 %s' % play_event)
+
+    stop_event = 'Stop_' + (play_event[len('Play_'):] if play_event.startswith('Play_') else play_event)
+    etxt = rd(efile)
+    if ('Name="%s"' % stop_event) in etxt:
+        raise SystemExit('Stop 事件已存在: %s' % stop_event)
+
+    ev_guid, act_guid, el_guid = G(), G(), G()
+    ev_wu = re.search(r'<WorkUnit\s+Name="[^"]+"\s+ID="(%s)"' % GUID_RE, etxt).group(1)
+    ind = re.search(r'(\t+)<Event\s', etxt).group(1)
+    lines = [
+        ind + '<Event Name="%s" ID="%s">' % (stop_event, ev_guid),
+        ind + '\t<ChildrenList>',
+        ind + '\t\t<Action Name="Stop" ID="%s" Type="Stop" Scope="One" Global="false">' % act_guid,
+        ind + '\t\t\t<PropertyList>',
+        ind + '\t\t\t\t<Property Name="FadeTime" Type="Real64" Value="1"/>',
+        ind + '\t\t\t</PropertyList>',
+        ind + '\t\t\t<ElementList>',
+        ind + '\t\t\t\t<Element ID="%s" Global="false">' % el_guid,
+        ind + '\t\t\t\t\t<ObjectRef Name="%s" ID="%s" WorkUnitID="%s"/>' % sound,
+        ind + '\t\t\t\t</Element>',
+        ind + '\t\t\t</ElementList>',
+        ind + '\t\t</Action>',
+        ind + '\t</ChildrenList>',
+        ind + '</Event>',
+    ]
+    new_block = '\r\n'.join(lines)
+    pos = etxt.find('</Event>', etxt.find('Name="%s"' % play_event))
+    pos += len('</Event>')
+    backup(efile)
+    etxt = etxt[:pos] + '\r\n' + new_block + etxt[pos:]
+    open(efile, 'wb').write(etxt.encode('utf-8'))
+
+    btxt = rd(bank_file)
+    m = re.search(r'(<SoundBank\s+Name="%s".*?)(\s*</ObjectInclusionList>)' % re.escape(bank_name), btxt, re.S)
+    assert m, 'SoundBank 块异常: %s' % bank_name
+    im = re.search(r'(\t+)<ObjectRef\s', m.group(1))
+    pad = im.group(1) if im else '\t\t\t\t\t'
+    ref_line = '%s<ObjectRef Name="%s" ID="%s" WorkUnitID="%s" Filter="7" Origin="Manual"/>' % (
+        pad, stop_event, ev_guid, ev_wu)
+    backup(bank_file)
+    btxt = btxt[:m.start(2)] + '\r\n' + ref_line + btxt[m.start(2):]
+    open(bank_file, 'wb').write(btxt.encode('utf-8'))
+    print('[STOP] %s 已补建，目标 %s，收录进 bank %s' % (stop_event, sound[0], bank_name))
+
+
 def main():
     a = sys.argv[1:]
     proj = a[0]; rest = a[1:]
@@ -245,6 +320,8 @@ def main():
                 val('--play-prefix', 'Play_'), val('--stop-prefix', 'Stop_'),
                 val('--only'), int(val('--max', '999')),
                 dry=('--dry-run' in rest))
+    elif '--add-stop' in rest:
+        do_add_stop(proj, val('--add-stop'))
     elif '--rename-event' in rest:
         i = rest.index('--rename-event'); do_rename(proj, rest[i+1], rest[i+2])
     elif '--generate' in rest:

@@ -14,6 +14,7 @@
 | `scripts/audio_dedupe.py` | audio_dedupe.py -- 跨目录音频指纹查重: 同曲判定 -> 组内质量排序 -> 淘汰件备份隔离(默认只报告) | `python audio_dedupe.py <文件或目录...> [--auto 0.975 --env 0.985 --dur 0.99]` |
 | `scripts/audio_normalize.py` | audio_normalize.py -- Civ6 audio loudness normalization (ffmpeg loudnorm 2-pass, linear) | `python audio_normalize.py <文件或目录...> [--category voice\|quote\|bgm\|sfx] [--era ancient\|later] [--mode absolute\|relative\|shortterm] [--i <目标LUFS>] [--out DIR] [--filelist F]` |
 | `scripts/audio_pack.py` | audio_pack.py - ShortID 注册表 + 纯 Python bank 结构实验（历史独立打包器内化） | `python audio_pack.py scan<br>[实验] python audio_pack.py speechbank <wav目录> --out <Audio目录> [--bank 名] [--template 模板bnk]` |
+| `scripts/bank_compare.py` | 两个 bank 的内容比对：事件编号集合、媒体编号与尺寸、对象计数、锚点链 | `python bank_compare.py <新 bank> <在售 bank> [--media size]（默认比媒体编号与尺寸；解码重建的产物用 size）` |
 | `scripts/bank_output.py` | bank_output.py -- Wwise 生成产物 (GeneratedSoundBanks/Windows) 的落盘后处理 | `python bank_output.py --normalize-eol <GeneratedSoundBanks/Windows 目录>` |
 | `scripts/build_combination_bank.py` | build_combination_bank.py -- 组合式 bank 构建器（乐队/分层音频专用） | `python build_combination_bank.py --proj <工程目录> --bank <Bank名>       --stems a.wav b.wav c.wav d.wav --codes C,D,H,L [--prefix Play_] [--dry]` |
 | `scripts/ensure_template.py` | ensure_template.py -- 模板自适应保障 | `python ensure_template.py [--to <目录>] [--repo https://github.com/dwughjsd/Civ6_Modding_Textbook]` |
@@ -24,12 +25,13 @@
 | `scripts/new_bank_project.py` | new_bank_project.py -- 克隆模板工程 -> 独立 bank 工程 (素材导入 + work unit 注入 + 可选生成) | `python new_bank_project.py --proj <新工程目录> --bank <Bank名> --media <素材目录\|文件...>` |
 | `scripts/paths.py` | Skill 路径配置中心（本机私有，不随 skill 分发）。 | `读取 skill 根目录 local_paths.json；也支持同名 CIV6_* 环境变量覆盖，<br>local_paths.json 示例：` |
 | `scripts/register_to_mod.py` | register_to_mod.py -- bank 产物注册到 mod (P1 源工程 .civ6proj / P2 运行目录 .modinfo 双注册) | `python register_to_mod.py --bank-dir <工程>\GeneratedSoundBanks\Windows --bank <Bank名>       (--find <mod名> \| --mod <mod目录>) [--section ingame\|global\|menu] [--civ6proj <路径>]       [--project-root <mod 工程根>] [--dry-run]` |
+| `scripts/speech_rebuild.py` | 从成品语音 bank 逆推 Wwise 工程：提取内嵌媒体、解码、按媒体名重命名、建工程 | `python speech_rebuild.py --bank <Bank.bnk> --proj <工程目录> --name <Bank名> --work <中间目录> [--vgm <vgmstream-cli>] [--generate]` |
 | `scripts/unregister_audio.py` | unregister_audio.py -- 从 mod 注册点移除音频注册 (与 register_to_mod.py 互逆) | `python unregister_audio.py --audio-id <id> [--find <mod名> \| --mod <目录> \| --civ6proj <路径>]` |
-| `scripts/voice_shortid.py` | 语音对象的 ShortID 打包命名：槽位 4 位 + 角色 2 位 + 主体哈希 25 位，编号由名称算出 | `python voice_shortid.py assign <工程目录> --project <mod目录名> [--dry]；check 同参数；verify-bank <bank.bnk> <工程目录> --project X；id --project X --asset Y --role sound\|action\|container` |
+| `scripts/voice_shortid.py` | 语音对象的 ShortID 打包命名：槽位 4 位 + 角色 2 位 + 主体哈希 25 位，编号由名称算出 | `python voice_shortid.py assign <工程目录> --project <mod目录名> [--dry]；check 同参数；verify-bank <bank.bnk> <工程目录> --project X；verify-project <工程目录>；id --project X --asset Y --role sound\|action\|container` |
 | `scripts/wwise_shortid.py` | wwise_shortid.py - WWise ShortID 核心规律 + 纯 Python bank 打包核心库。 | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/wwise_wire.py` | wwise_wire.py -- Wwise 工程直改工具 (Wwise 2015.x, Yuni 谱系工程实测) | `扫描   python wwise_wire.py <工程目录> --scan<br>接线   python wwise_wire.py <工程目录> --wire <BANK名> [--events-wu <名称>]` |
 
-共 19 个脚本。
+共 21 个脚本。
 
 ## 第三方依赖（非标准库）
 

@@ -17,7 +17,7 @@ import wwise_shortid as ws
 #   验产物 python voice_shortid.py verify-bank <bank.bnk> <工程目录> --project <工程全名>
 #   查号   python voice_shortid.py id --project <工程全名> --asset <资产名> --role sound|action|container
 
-USAGE = "用法: voice_shortid.py {assign|check|verify-bank|id} ... --project <工程全名>"
+USAGE = "用法: voice_shortid.py {assign|check|verify-bank|verify-project|id} ... --project <工程全名>"
 
 ANCHORS = (88602518, 854467727, 424381547)
 
@@ -205,6 +205,47 @@ def check(proj, project):
 TYPE_ROLE = {2: "sound", 3: "action", 7: "container"}
 
 
+def verify_project(proj):
+    """检查工程里三个锚点是否齐全，以及语音容器是否挂在 id424381547 子树下。"""
+    import xml.etree.ElementTree as ET
+
+    anchor_ids = {str(a) for a in ANCHORS}
+    problems = []
+    found = set()
+    root_files = []
+    mixer_dir = os.path.join(proj, "Actor-Mixer Hierarchy")
+    for dirpath, _, files in os.walk(mixer_dir):
+        for fn in files:
+            if fn.endswith(".wwu"):
+                root_files.append(os.path.join(dirpath, fn))
+
+    for path in root_files:
+        tree = ET.parse(path)
+        parent = {child: node for node in tree.iter() for child in node}
+        for node in tree.iter():
+            sid = node.get("ShortID")
+            if sid in anchor_ids:
+                found.add(sid)
+        for node in tree.iter():
+            if node.tag in ("ActorMixer", "Sound") and node.get("ShortID") not in anchor_ids:
+                chain = []
+                cur = node
+                while cur in parent:
+                    cur = parent[cur]
+                    chain.append(str(cur.get("ShortID")) if cur.get("ShortID") else cur.tag)
+                if str(ANCHORS[2]) not in chain:
+                    problems.append("%s 不在 %d 子树下（祖先链 %s）" % (node.get("Name"), ANCHORS[2], chain[:4]))
+
+    missing = anchor_ids - found
+    for a in sorted(missing):
+        problems.append("缺锚点 ShortID=%s" % a)
+    for item in problems[:10]:
+        print("  [FAIL] " + item)
+    print("[PROJECT] 锚点 %s；语音对象不在锚点链下的 %d 个" % (
+        "齐全" if not missing else "缺失 %s" % sorted(missing), len(problems) - len(missing)))
+    return len(problems)
+
+
 def verify_bank(bank, proj, project):
     expected = {}
     for row in plan(proj, project):
@@ -234,9 +275,13 @@ def verify_bank(bank, proj, project):
 
 def main():
     argv = sys.argv[1:]
-    if len(argv) < 3:
+    if len(argv) < 2:
         raise SystemExit(USAGE)
     cmd = argv[0]
+    if cmd == "verify-project":
+        return verify_project(argv[1])
+    if len(argv) < 3:
+        raise SystemExit(USAGE)
     if cmd == "id":
         project = argv[argv.index("--project") + 1]
         asset = argv[argv.index("--asset") + 1]
@@ -253,6 +298,8 @@ def main():
         return check(proj, project)
     if cmd == "verify-bank":
         return verify_bank(argv[1], proj, project)
+    if cmd == "verify-project":
+        return verify_project(argv[1])
     raise SystemExit(USAGE)
 
 
