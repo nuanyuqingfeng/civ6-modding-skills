@@ -13,7 +13,19 @@
   - [ ] `workshop.json` 已写：
     - 仅更新内容 → 只写 `changeNote`
     - **完全不想留更新说明 → 写空对象 `{}`**（不写任何字段则一切 metadata 不被触碰）
-  - [ ] **更新已有条目**：`mod_id.txt` 已存在且 ID 正确
+    - ★ 线上条目**有工坊依赖**时，无论上面哪种写法都要把 `dependencies` 全量写出（不写 = 依赖被清空）
+- [ ] **首次上传**：介绍按 `workshop-intro.md` 的三栏口径写好
+  - [ ] 丙栏 `[code]` 主体由 `tools/workshop_intro.py build` 从工程 `Text/` 提取
+  - [ ] 甲栏点赞横幅 / QQ 群行按需取自 `release/templates/intro-presets.md`（本机自留）
+  - [ ] 乙栏（前置行、标语、致谢、写在最后）与用户提供的内容逐字一致；未提供的段落**不存在**
+  - [ ] 无占位符残留（`TODO` / `<待填>` / `{{` 一类由 `workshop_meta.py` 判失败）
+  - [ ] 整篇 description ≤ **8000 字节**（UTF-8；超出会被服务端整次拒收，见 `troubleshooting.md` 第 7 节）
+  - [ ] 各语言 `title` ≤ **128 字节**（UTF-8；作者未指定时取模组 modinfo 的 `..._MOD_TITLE`，用 `workshop_intro.py titles` 回填）
+  - [ ] `dependencies` 与 `workshop_intro.py deps <源工程根>` 的结果一致
+- [ ] **更新已有条目**：更新说明按 `workshop-intro.md` §三 产生
+  - [ ] `release/scripts/draft_note.py --project <源工程根>` 已跑出草稿（基线取自台账「上传基线」）
+  - [ ] `changeNote` 已人工定稿（玩家视角、1~3 条、无路径与标识符）
+  - [ ] `mod_id.txt` 已存在且 ID 正确
         （★ 缺失会被当成新条目**另建一个**，上传前先 `Test-Path "$ws\mod_id.txt"`；
         用 `make_workspace.ps1 -ItemId <ID>` 可显式写入，省略它会打 WARN 提醒）
   - [ ] `image.png`（可选）：要换预览图才放，规格 **PNG / 512×512 / ≤ 1 MB**，

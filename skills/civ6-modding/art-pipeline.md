@@ -39,15 +39,15 @@
 → 多图图集：python <skill>\art\make_atlas.py -Manifest <manifest 路径>
    （内部：组员按 grid 拼版 → 逐尺寸出整版 PNG → texconv 转 DDS → gen_tex.py 生成 .tex
      → 产出 <atlas>_registration.xml 注册片段）
-     ★ 组员/整版 PNG 与注册片段按**新建直写**，目标已存在时脚本报错拒绝改写；
-       .dds / .tex 由 texconv / gen_tex.py 直接写入（可再生资产）
+     ★ 注册片段（.xml）属代码文件，脚本只把内容写进 `<解决方案根>/workspace/gen/reports/`；
+       组员/整版 PNG、.dds、.tex 属美术产物，由 texconv / gen_tex.py 直接写入
 → 注册：**用 `art\merge_icon_registration.py` 幂等并入**（不要手工合并：漏行/重名高发）
      python <skill>\art\merge_icon_registration.py <projectRoot> --fragment <atlas>_registration.xml
             [--icons Data/Icons_RGN.xml] [--xlp XLPs/Icons.xlp] [--dry-run]
      它同时完成两件事：并入 IconTextureAtlases / IconDefinitions 行 + 给 XLP 补 UITexture 条目，
      并保留目标文件的 BOM / CRLF / 格式（只做行插入）；--dry-run 可先看将要插什么。
-     ★ 目标文件已存在且内容有变化时，改写结果落到 `<解决方案根>/workspace/gen/` 的同一相对路径，
-       由 AI 用文件编辑工具写入工程对应路径；退出码 2 时打印待写入清单。
+     ★ 目标 Icons XML 与 XLP 的 .xlp 分属两类：`.xlp` 属美术产物由脚本直写，
+       `Icons_*.xml` 属代码文件，脚本只把待插入的行写进 `<解决方案根>/workspace/gen/reports/`，由人逐行写入。
 → 注意 **新贴图必须登记进某个 `<m_ClassName text="UITexture"/>` 的 XLP**（本工程是 XLPs\Icons.xlp）。
      漏登记 = .dds 存在但不会被打进 UI/Icons 包，游戏里图标是空白。merge 工具会代劳。
      别混：几何/材质/模型类 XLP（`tilebases.xlp`=TileBase、本工程 `RGN_Clutter_*.xlp`=Landmark、
@@ -60,8 +60,8 @@
      只做加法，不删除、不重排、不改写既有条目；自闭合容器会自动展开成对形式。
      全量核对仍用 `--check`（差异需人工确认后才 `--write`；注意 --check 报的差异可能是**本次改动之前
      就存在的**，先看差异里有没有提到你这次新增的 XLP/artdef，没有就别顺手 --write）。
-     ★ 工程内已有 Mod.Art.xml 且内容有变化时，改写结果落到 `<解决方案根>/workspace/gen/` 的同一相对
-       路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单
+     ★ `*.Art.xml` 属美术产物，由脚本在工程根原地写入，不经任何暂存目录；
+       已有条目一律走增量接线，只做加法，不删除、不重排。
 → 校验：python <skill>\art\verify_icon_atlas.py <projectRoot> [--vanilla "<官方 Icons 目录>"]
      （第八节「完成标准」的可执行版，交付前必跑，见第十节）
 → **类别校验**：python <skill>\art\verify_tex_class.py --project <projectRoot>
@@ -118,9 +118,8 @@ Python 3 + **Pillow**（`make_atlas.py` 组版）、**numpy + scipy**（`normali
 > **legacy 兼容**：`gen_tex.py` 的 `_UI_PORTRAIT_SUFFIXES = ("_Suk",)` 仍保留，
 > 用于尚未迁移的旧工程；某工程报 `*_Suk` 贴图时，跑
 > `migrate_suk_namespace.py <工程根> --write` 一次性迁移（会同时改文件名、`.tex` 内部
-> 三字段、XLP 与 SQL 引用；`.tex` 直接覆盖，XLP 与 SQL 这类既有工程文件的内容有变化时，
-> 改写结果落到 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，
-> 脚本在退出码 2 时打印待写入清单）。**全部工程迁移完成后，该常量与 `is_fallback()` 里的
+> 三字段、XLP 与 SQL 引用；`.tex` 与 `.xlp` 属美术产物直接覆盖，SQL 属代码文件时脚本只把
+> 改名清单与引用改写清单写进 `<解决方案根>/workspace/gen/reports/`，由人逐行写入）。**全部工程迁移完成后，该常量与 `is_fallback()` 里的
 > 那次判断可一并删除。** 迁移后**必须重新 cook**（新名字＝新 BLP 条目）。
 
 > ⚠ **多情绪槽命名（`FALLBACK_<STATE>_LEADER_<KEY>`）**：这是另一套并存写法
@@ -284,6 +283,79 @@ end
 - **重采样说明**：make_atlas 小尺寸缩放用 Pillow LANCZOS（锐利度优于普通插值），
   与旧序列图合成工具（普通插值）的输出允许像素级差异——尺寸/网格/命名完全一致，
   仅像素级更锐；重生成覆盖旧 DDS 前须向用户说明此差异（一致性上报守则）。
+
+#### 三.1.1 备选形态：复用原版分层遮罩（默认不启用）
+
+> **本节与链 C 互斥。** 默认走链 C（`DiplomacyInfo` 单图横版彩图）；
+> 仅当用户明确要求「原版那种带黑色遮罩的外交背景」时启用本节。
+> 用户未提及即按默认处理。
+
+需要改动四处：
+
+| 位置 | 写法 |
+|---|---|
+| `Data/*.sql` | **删除**该领袖的 `DiplomacyInfo` 行。留着这一行，引擎只画那一张图，`SceneLayers` 与分层贴图都不会被读，结果是横版彩图铺满整屏 |
+| `Data/*.sql` | `Leaders.SceneLayers` 保持 `4`。引擎按 `1..SceneLayers` 逐层请求贴图，写小就永远请求不到第 4 层，遮罩不存在 |
+| `XLPs/UI_LeaderScenes.xlp` | 包名写 `UI_LeaderScenes`，条目名去掉 `LEADER_` 前缀 |
+| `*.Art.xml` | `UITexture` 库的 `relativePackagePaths` 含 `UI_LeaderScenes` |
+
+**条目名去掉 `LEADER_` 前缀**：引擎在 `Base/Assets/UI/LeaderScene.lua:67` 用
+`string.gsub(leaderName, "LEADER_", "")` 去掉前缀，再拼 `_<层号>`。SQL 的
+`LeaderType` 写 `LEADER_<X>`，XLP 的 `m_EntryID` 写 `<X>_1`、`<X>_4`。
+
+**只注册两条，跳过 2、3**：
+
+```xml
+<m_Entries>
+    <Element>
+        <m_EntryID text="<X>_1"/>
+        <m_ObjectName text="<X>_1"/>
+    </Element>
+    <Element>
+        <m_EntryID text="<X>_4"/>
+        <m_ObjectName text="BARBAROSSA_4"/>
+    </Element>
+</m_Entries>
+```
+
+第 4 层直接指向原版对象 `BARBAROSSA_4`，本工程不复制 `.dds` / `.tex`。原版 8 个领袖
+共用同一张 `_4`，`Expansion1`、`Expansion2` 的 `UI_LeaderScenes.xlp` 里全是这种别名。
+
+第 2、3 层跳过，是因为**原版这三层各自有画面**，复用会把原版内容混进来；承担遮罩职能的
+只有第 4 层。未注册的层渲染为空，被第 4 层盖住，不报错。
+
+**彩图尺寸**：层 1 的出图规格是 **1920×1080**。`SizeBackgrounds()` 里的条件写作
+`if(not layer == numLayers)`，Lua 求值为 `(not layer) == numLayers`，恒为假，
+`SetParentRelativeSizeY(-200)` 从未执行，层 1 按 `Size="parent,parent" StretchMode="Fill"`
+铺满全屏。`chain-map.md` 记的层 1–3 `960×505` 是原版素材自身分辨率，与出图规格是两件事。
+
+**彩图位置**：按高度 1080 等比缩放，`W = W_s × 1080 / H_s`。
+
+默认不做水平偏移（`dx = 0`）：左边缘与屏幕左边缘重合，露出的是源图最左侧
+`935 / W` 的比例（`W = 1920` 时为 48.7%），右侧超出部分落在全黑区。
+
+用户点明露出区间时才计算偏移。记 `f_a`、`f_b` 为该区间在源图宽度上的归一化比例：
+
+```
+c  = (f_a + f_b) / 2 × W      区间中心在彩图内的横坐标
+dx = round(935 / 2 − c)       把区间中心移到通行区中心
+```
+
+算完后校验：`f_a × W + dx ≥ 0` 且 `f_b × W + dx ≤ 935`。不通过说明区间宽度超过
+通行区的 935 像素，需要缩小区间或换更宽的源图。
+
+`935` 是 `BARBAROSSA_4.dds`（1920×1010）的实测值：alpha 在 x=935 降到 1，其右侧恒为 255。
+换用其它原版 `_4` 贴图时重新量这个值。
+
+> **参考案例（Denia_Pack，2026-10-19）**：源图 3200×1800，要求露出中间 20%。
+> `W = 3200 × 1080 / 1800 = 1920`；`f_a = 0.40`、`f_b = 0.60`，`c = 960`；
+> `dx = round(467.5 − 960) = −492`。区间落在屏幕 `x 276..660`，右边界余量 275 像素。
+> 产物：`Textures/DENIA_1.dds`（1920×1080，alpha 全 255）、`DENIA_1.tex`
+> （`m_ClassName=UserInterface`）、`XLPs/UI_LeaderScenes.xlp` 两条、`SceneLayers=4`。
+> 该区间遮罩 alpha 均值 1.003、最大值 30，彩色层与源图中间 20% 的最大通道差 10。
+
+> 窗口几何来自原版贴图实测，`.tex` / `.xlp` / `.sql` 侧过了静态校验器；
+> 实机渲染效果尚未确认，交付时按项目门禁标注「未经实机验证」。
 
 ### 三.2 单位立绘（unit_portrait）与伟人立绘（great person portrait）
 
@@ -583,9 +655,7 @@ XML 字符引用转义，文件仍是合法 XML。**不要手工把 `.tex` 另�
 5. 若本次新增/修改了 `XLPs\` 或 `ArtDefs\` 文件：**先跑增量内核**
    `gen_modartxml.py <projectRoot> --ensure-consumer "<consumer>=<artdef>"`（库用 `--ensure-library`，
    依赖包用 `--ensure-required`）；确认工程整体仍自洽再跑 `--check` 全量核对，差异人工确认后才 `--write`
-   （新增 XLP/Artdef 不接线 = 最常见的漏项）。三条路径改写既有 Mod.Art.xml 时，结果都落到
-   `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径，
-   脚本在退出码 2 时打印待写入清单；
+   （新增 XLP/Artdef 不接线 = 最常见的漏项）。`*.Art.xml` 属美术产物，由脚本直接写入工程根原地；
 6. 未动用户未确认的任何素材文件；
 7. **各尺寸档的边缘抗锯齿质量合格**：`verify_icon_atlas.py <projectRoot> --edge-qa` 必须通过
    （见第 8.1 节）。这是唯一能抓出「结构全对、实机却是锯齿」的门。
@@ -779,17 +849,17 @@ python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png
 | 工具 | 干什么 | 何时用 |
 |---|---|---|
 | `normalize_icon.py` | 图标规范化（裁 bbox / 等比 / 居中 / 可选描边 / 可选剪影涂色）；`ICON_SPECS` 存各类别规范 | 转 DDS 前统一构图；`--role <类别> --show` 查规范 |
-| `make_atlas.py` | 多图拼网格序列图集 → 逐尺寸 PNG → texconv DDS → `.tex` → **注册片段**（组员 PNG 与注册片段新建直写，已存在即拒绝）；`.dds`/`.tex` 属可再生资产直接写入 | 多图合并成一张序列图时 |
+| `make_atlas.py` | 多图拼网格序列图集 → 逐尺寸 PNG → texconv DDS → `.tex` → **注册片段**（组员/整版 PNG 与 `.dds`/`.tex` 属美术产物直接写入；注册片段 `.xml` 属代码文件，内容只写进 `workspace/gen/reports/`） | 多图合并成一张序列图时 |
 | `convert_art.ps1` | 单图 → 多尺寸 DDS + `.tex` | 单图独立出图时 |
-| `merge_icon_registration.py` | **幂等**把注册片段并入项目 Icons XML + 补 XLP 条目；保 BOM/CRLF；**改写结果落到 `workspace/gen/`**，由 AI 用文件编辑工具写入工程（退出码 2 打印待写入清单） | `make_atlas.py` 出完片段之后（别手工合并） |
+| `merge_icon_registration.py` | **幂等**把注册片段并入项目 Icons XML + 补 XLP 条目；保 BOM/CRLF；`.xlp` 属美术产物直接写盘，`Icons_*.xml` 属代码文件，待插入的行写进 `workspace/gen/reports/` 由人逐行写入 | `make_atlas.py` 出完片段之后（别手工合并） |
 | `verify_icon_atlas.py` | 写入情况自查：引用闭合 / 画布与网格一致 / mips=1 / **格子非空** / `.tex` 对齐 / XLP 无悬空 / 与官方重名；**`--edge-qa` 另查中间档边缘抗锯齿质量**（第 8.1 节） | **交付前必跑**（第八节的可执行版）；改了图集贴图再加 `--edge-qa` |
 | `regen_atlas_tiers.py` | **图集中间档母版重出**：从最大档逐格 LANCZOS 重出各小档，修「被锐化/压对比 → 实机锯齿」；`--report` 体检、`--report --write-damaged` 一键全修；`--file` 可重出单档贴图（如字体图集）；产物是 `.dds`，属可再生资产直接覆盖 | `--edge-qa` 报 DAMAGED 时；或接手他人图集想确认中间档是否干净 |
 | `align_tex_format.py` | **`.tex` 格式对齐官方**：统一 UTF-8 / 补 `m_Groups` / 按类别修正 `bCompleteMipChain`；**只动格式不动值**，且不碰 `m_SourceFilePath`；`.tex` 属可再生资产直接覆盖 | 接手他人工程的 `.tex`、或发布前统一格式；见第 8.2 节 |
 | `apply_fow.py` | 生成迷雾「羊皮纸」FOW 变体 | 该类别原版有 `_FOW` 时（建筑/区域/资源有，项目没有） |
-| `gen_tex.py` | 按 DDS 头生成 `.tex`（GBK/ANSI 编码，别存 UTF-8）；新建直写，已有同名 `.tex` 时直接覆盖（可再生资产） | 一般不直接调，make_atlas/convert_art 会调 |
-| `gen_modartxml.py` | 生成/核对 `Mod.Art.xml`；`--ensure-*` 做增量接线（只加不删，自闭合容器自动展开，同名多 library 逐个处理）；工程完全没有 Art.xml 时可创建（无美术工程拒绝）；改写既有文件时结果落到 `workspace/gen/`，由 AI 用文件编辑工具写入工程（退出码 2 打印待写入清单） | 新增或改了 XLP/Artdef 时先 `--ensure-*`，再 `--check` |
+| `gen_tex.py` | 按 DDS 头生成 `.tex`（GBK/ANSI 编码，别存 UTF-8）；`.tex` 属美术产物，脚本直接覆盖 | 一般不直接调，make_atlas/convert_art 会调 |
+| `gen_modartxml.py` | 生成/核对 `Mod.Art.xml`；`--ensure-*` 做增量接线（只加不删，自闭合容器自动展开，同名多 library 逐个处理）；工程完全没有 Art.xml 时可创建（无美术工程拒绝）；`*.Art.xml` 属美术产物，脚本直接写盘 | 新增或改了 XLP/Artdef 时先 `--ensure-*`，再 `--check` |
 | `make_workshop_preview.py` | **工坊预览图生成**（Lanczos 逐级减半 + unsharp，默认 512×512）；**已达标成品直通不二次缩放**；`--qa` 出锐度/振铃指标 | 出/换工坊封面 `image.png`（第九·补节） |
-| `iconify_text.py` | **文本图标化**：按中文关键词给游戏文本插 `[ICON_x]`（幂等防重复、保编码换行），并用**官方图标全表 + 工程 Icons XML** 校验图标名；`--audit` 只查悬空图标名；`--write` 改写既有文本时结果落到 `workspace/gen/`，由 AI 用文件编辑工具写入工程（退出码 2 打印待写入清单） | 批量给文本加图标、或**排查「图标不显示」**（见第十·补节） |
+| `iconify_text.py` | **文本图标化**：按中文关键词给游戏文本插 `[ICON_x]`（幂等防重复、保编码换行），并用**官方图标全表 + 工程 Icons XML** 校验图标名；`--audit` 只查悬空图标名；`--write` 把待改内容写进 `workspace/gen/reports/`，由人逐行写入 | 批量给文本加图标、或**排查「图标不显示」**（见第十·补节） |
 
 `verify_icon_atlas.py` 的实战产出（本项目 2026-09 首跑）：一次抓出 2 个此前无人发现的既有问题——
 `RGN_Product_Font.dds` 被引用但文件不存在（7 条 IconDefinitions 悬空）、
@@ -820,9 +890,8 @@ python <skill>\art\make_workshop_preview.py <已有512.png> --out <ws>\image.png
 > 实测（本项目 2026-09）：全局审计 `Text/` 下全部 `.sql`，**0 处悬空**；同一跑法能识别
 > 377 个工程自定义图标名 + 36 个图集名。
 
-**批量加图标**用 `--check` 预演 → `--write` 写入。工程内既有文本文件的内容有变化时，改写结果
-落到 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在
-退出码 2 时打印待写入清单。两个必须知道的实现要点：
+**批量加图标**用 `--check` 预演 → `--write` 出报告。文本是代码文件，脚本只把待插行写进
+`<解决方案根>/workspace/gen/reports/iconify_text_plan.json`，由人逐行写入工程。两个必须知道的实现要点：
 
 - **幂等**：关键词左侧若已是同名 `[ICON_x]`（允许夹空白、大小写不敏感）则跳过，重复跑不叠加；
 - **长词优先**：`旅游业绩` 先于 `旅游`、`大预言家` 先于 `预言家`，避免切错。

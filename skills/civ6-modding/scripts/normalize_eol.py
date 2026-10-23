@@ -23,7 +23,7 @@
 
 用法:
     python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）
-    python normalize_eol.py <工程目录> --fix           # 归一化（既有文件内容有变化时，改写结果落到 <解决方案根>/workspace/gen/）
+    python normalize_eol.py <工程目录> --fix           # 就地归一美术与音频产物；代码文件只输出报告清单
     python normalize_eol.py <工程目录> --fix --quiet
     python normalize_eol.py <工程目录> --only .lua,.xml
     python normalize_eol.py <工程目录> --exclude workspace,.git
@@ -34,13 +34,15 @@
     # i/lf + w/crlf = 索引正确、仅工作区漂移 → 归一化不会改变已提交内容
 
 退出码: 0 已达成目标风格（或 --fix 后全部完成）；1 仍存在偏离（报告模式）。
+--fix 只写美术与音频产物；代码文件（.sql/.lua/.xml/.ini 等）一律不写盘，改为把清单写进
+<解决方案根>/workspace/gen/reports/normalize_eol_manual.json，由人逐行编辑（焚诀·最严厉铁律）。
 """
 import argparse
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _projwrite import finish, write_project_file  # noqa: E402
+from _projwrite import classify, emit_report, finish, write_project_file  # noqa: E402
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -119,7 +121,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="按原版换行分层铁律归一化文本文件")
     ap.add_argument("root", help="工程根目录")
     ap.add_argument("--fix", action="store_true",
-                    help="写入（默认只报告）：工程既有文件内容有变化时，改写结果落到 <解决方案根>/workspace/gen/")
+                    help="写入（默认只报告）：只归一美术与音频产物，代码文件仅输出报告清单")
     ap.add_argument("--only", default=None,
                     help="只处理这些扩展名，逗号分隔（如 .lua,.xml）")
     ap.add_argument("--exclude", default=None,
@@ -153,6 +155,7 @@ def main() -> int:
             target_map[_e] = "LF"
 
     changed, ok, skipped_bin, skipped_other = [], 0, [], 0
+    needs_manual = []
     for dp, dns, fns in os.walk(root):
         dns[:] = [d for d in dns if d not in skip_dirs]
         for fn in sorted(fns):
@@ -187,13 +190,17 @@ def main() -> int:
                 continue
             new = convert(raw, target)
             changed.append((rel, kind, target, len(raw), len(new)))
-            if args.fix:
-                if args.repo_skill:
-                    # skill 仓库自身不是 civ6 工程，不受工程文件写入铁律约束
-                    with open(p, "wb") as f:
-                        f.write(new)
-                else:
+            if args.fix and args.repo_skill:
+                # skill 仓库自身不是 civ6 工程，不受工程文件写入铁律约束
+                with open(p, "wb") as f:
+                    f.write(new)
+            elif args.fix:
+                # 代码文件（.sql/.lua/.xml/.ini/.civ6proj 等）按焚诀不得由脚本改写；
+                # 美术与音频产物（.artdef/.xlp/.tex/.txt 等）仍可由脚本就地归一。
+                if classify(rel) in ("art", "audio"):
                     write_project_file(p, new, root)
+                else:
+                    needs_manual.append(rel)
 
     if not args.quiet:
         for rel, kind, target, before, after in changed:
@@ -210,6 +217,13 @@ def main() -> int:
     if skipped_other:
         print("非目标扩展名跳过 = %d" % skipped_other)
 
+    if needs_manual:
+        emit_report("normalize_eol_manual.json", {
+            "reason": "换行偏离的代码文件只能逐行编辑（焚诀·最严厉铁律）",
+            "files": needs_manual}, root)
+        print("\n[!] 以下 %d 个代码文件换行偏离，需逐行编辑：" % len(needs_manual))
+        for rel in needs_manual:
+            print("   %s" % rel)
     if changed and not args.fix:
         print("\n[!] 以上 %d 个文件换行偏离目标；加 --fix 执行归一化。" % len(changed))
         return 1

@@ -31,8 +31,8 @@ Civ6 文本里写 `[ICON_Science]` 会在游戏内渲染成图标。手工加很
     # 2) 预演：看会给哪些文本加什么图标（不写盘）
     python iconify_text.py <工程根> --check
 
-    # 3) 实际写入：新建直写；既有文本内容有变化时，改写结果落到 <解决方案根>/workspace/gen/，
-    #    由 AI 用文件编辑工具写入工程（退出码 2 并打印清单）
+    # 3) 输出改写清单：SQL 属代码文件，脚本不写盘，把待改内容写进
+    #    <解决方案根>/workspace/gen/reports/ 的数据清单，由人逐行写入工程
     python iconify_text.py <工程根> --write
 
     # 4) 单个文件
@@ -109,6 +109,12 @@ ICON_MAPPING: dict[str, str] = {
 }
 
 TOKEN_RE = re.compile(r"\[ICON_([A-Za-z0-9_]+)\]")
+
+# 对白句不加图标：`LOC_DIPLO_*_ANY` 是领袖**说的话**（官方 2,491 条该形态文本里
+# 仅 2 条含 `[ICON_x]`，且都是旁注说明）。图标只用于规则说明类文本
+# （能力/物品描述、`LOC_DIPLOACTION_*_DESCRIPTION`）。同时内建映射的关键词是简体，
+# 对 zh_Hant 繁体正文匹配不上，若给对白句插图标会让简繁两版出现不对称。
+_SPEECH_TAG_RE = re.compile(r"^LOC_DIPLO_.*_ANY$", re.I)
 
 
 def icon_token(name: str) -> str:
@@ -420,6 +426,9 @@ def process_file(path: str, mapping: dict[str, str], known: set[str],
     changed = 0
     unknown: list[str] = []
     for e in entries:
+        if _SPEECH_TAG_RE.match((e.get("tag") or "").strip()):
+            e["new"] = e["text"]
+            continue
         new = iconify_text(e["text"], mapping)
         e["new"] = new
         if new != e["text"]:
@@ -522,9 +531,11 @@ def main() -> int:
 
     if args.write:
         if not total_changed:
-            print("\n无需写入。")
+            print("\n无需改动。")
             return 0
-        written = 0
+        # 文本文件是代码文件，脚本不得编写或改写（焚诀·最严厉铁律）。
+        # 这里只把逐条改动写成数据清单，由人用文件编辑工具写入工程。
+        report = {}
         for p in files:
             try:
                 entries, changed, _u, content, enc = process_file(p, mapping, known, False)
@@ -532,12 +543,19 @@ def main() -> int:
                 continue
             if not changed:
                 continue
-            new_content = apply_entries(content, [e for e in entries if e["new"] != e["text"]])
-            # 写入走守卫：既有文本内容有变化时，改写结果入位 <解决方案根>/workspace/gen。
-            # newline="" 防止 Windows 把已有 \r\n 变成 \r\r\n（原桌面版同款处理）
-            write_project_file(p, new_content.encode(enc), args.root or os.path.dirname(p))
-            written += 1
-        print("\n已处理 %d 个文件（新建直写；既有文件内容有变化时改写结果落到 workspace/gen/）。" % written)
+            todo = [e for e in entries if e["new"] != e["text"]]
+            report[os.path.relpath(p, args.root or os.path.dirname(p)).replace("\\", "/")] = {
+                "encoding": enc,
+                "entries": [{"tag": e["tag"], "old": e["text"], "new": e["new"]} for e in todo],
+                "content": apply_entries(content, todo),
+            }
+        if not report:
+            print("\n无需改动。")
+            return 0
+        out = emit_report("iconify_text_plan.json", {
+            "note": "按 content 字段逐文件整份写入，或按 entries 逐条替换 old 为 new",
+            "files": report}, args.root or os.path.dirname(list(report)[0]))
+        print("\n待改 %d 个文件，清单：%s" % (len(report), out))
         return finish()
 
     if total_changed:

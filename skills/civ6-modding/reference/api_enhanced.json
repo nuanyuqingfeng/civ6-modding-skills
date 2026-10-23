@@ -34306,10 +34306,10 @@
         "invokeNote": "通过命名空间调用：Object.Method()",
         "typeNote": "执行操作，无返回值",
         "displayName": "ImprovementBuilder.SetImprovementPillaged()",
-        "exampleCode": "local pPlot = FindClosestImprovement(player, pUnit:GetX(), pUnit:GetY())\nMap.GetImprovementBuilder().SetImprovementPillaged(pPlot, true)",
+        "exampleCode": "local pPlot = Map.GetPlot(x, y)\nImprovementBuilder.SetImprovementPillaged(pPlot, false)",
         "notes": [
           "[作用] 设置单元格改良设施的掠夺状态",
-          "通过 Map.GetImprovementBuilder() 获取 ImprovementBuilder 实例后调用",
+          "ImprovementBuilder 是全局命名空间，直接 ImprovementBuilder.SetImprovementPillaged 调用",
           "修改类函数，无返回值",
           "[核验] 2026-09-08 FireTuner 实测：GP=function、UI=ERR；范围=仅GP；与文档 availability=GamePlay 一致"
         ],
@@ -35004,12 +35004,12 @@
         ],
         "invokeNote": "通过命名空间调用：Object.Method()",
         "typeNote": "查询并返回值",
-        "displayName": "Map.GetImprovementBuilder()",
-        "exampleCode": "local pImprovementBuilder = Map.GetImprovementBuilder()\nif pImprovementBuilder ~= nil then\n    pImprovementBuilder.SetImprovementPillaged(pPlot, true)\nend",
+        "displayName": "Map.GetImprovementBuilder() [不存在]",
+        "exampleCode": "local pPlot = Map.GetPlot(x, y)\nImprovementBuilder.SetImprovementPillaged(pPlot, false)",
         "notes": [
-          "[作用] 获取地图的 ImprovementBuilder 对象，用于修改改进物状态（如标记为掠夺）",
-          "返回对象有 SetImprovementPillaged 方法",
-          "[核验] 2026-09-08 FireTuner 实测：GP=nil、UI=nil；文档名称/路径有误，运行时真身：ImprovementBuilder.*（全局命名空间）；已加注真身，未改文档键（挂错父级：真身是同名命名空间）"
+          "[作用] 此成员不存在：Map 表上无 GetImprovementBuilder",
+          "正确写法：全局命名空间 ImprovementBuilder 直接调用，如 ImprovementBuilder.SetImprovementPillaged(pPlot, false)",
+          "[核验] 2026-09-08 FireTuner 实测：GP=nil、UI=nil；ImprovementBuilder 全局对象两端可用（SetImprovementPillaged 仅 GP）"
         ],
         "signature": "GetImprovementBuilder() -> ImprovementBuilder: object",
         "functionB": "",
@@ -35049,13 +35049,13 @@
           }
         ],
         "returns": [],
-        "displayName": "Map.GetImprovementBuilder():SetImprovementPillaged()",
-        "exampleCode": "local pImprovementBuilder = Map.GetImprovementBuilder()\npImprovementBuilder:SetImprovementPillaged(pPlot, true)",
+        "displayName": "ImprovementBuilder.SetImprovementPillaged() [经 Map 调用不成立]",
+        "exampleCode": "local pPlot = Map.GetPlot(x, y)\nImprovementBuilder.SetImprovementPillaged(pPlot, true)",
         "notes": [
-          "[作用] 设置单元格上的改良设施损毁状态",
-          "GetImprovementBuilder() 无参数，返回 ImprovementBuilder 对象",
+          "[作用] 设置单元格改良设施的掠夺状态",
+          "调用路径为全局命名空间 ImprovementBuilder.SetImprovementPillaged，未经 Map.GetImprovementBuilder（该成员不存在）",
           "SetImprovementPillaged 接受 plot 对象和布尔值，无返回值",
-          "[核验] 2026-09-08 FireTuner 实测：GP=ERR、UI=ERR；文档名称/路径有误，运行时真身：ImprovementBuilder.SetImprovementPillaged；已加注真身，未改文档键（挂错父级：名字在别的面存在）"
+          "[核验] 2026-09-08 FireTuner 实测：ImprovementBuilder.SetImprovementPillaged GP=function、UI=ERR"
         ],
         "signature": "GetImprovementBuilder() -> ImprovementBuilder: object, SetImprovementPillaged(plot: object, pillaged: boolean)",
         "functionC": "",

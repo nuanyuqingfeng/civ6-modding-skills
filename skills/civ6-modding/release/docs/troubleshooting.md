@@ -121,3 +121,26 @@ Reverting to previous content ...
 
 - 改用本文档所属的 `civ6-modding/release.md` 所述非 Trimmed 工具。
 - 上传后必须 verify。
+
+## 7. k_EResultAccessDenied（提交阶段被拒）
+
+现象：
+
+```text
+PreparingContent -> UploadingContent -> CommittingChanges -> k_EItemUpdateStatusInvalid
+Error occurred while uploading to the workshop! Result: k_EResultAccessDenied
+```
+
+Steam 日志：
+
+```text
+No content change detected for item <id>
+Upload finished for workshop item <id> : Access Denied
+```
+
+两类成因，先分辨再处置：
+
+1. **描述或标题超限**：`description` 上限 8000 字节（`k_cchPublishedDocumentDescriptionMax`，按 UTF-8 字节计），标题上限 128 字节（`k_cchPublishedDocumentTitleMax`）。超限时服务端在提交阶段**整次拒绝** —— 描述与 `changeNote` 都不生效，内容也不提交，2026-10-21 实测 8001 字节即返回 Access Denied。处置：把描述压回 8000 字节以内（`workshop_meta.py` 会提前判失败）。
+2. **上传节流**（同一时段反复上传同一作品）：与描述长度无关，241 字节的短描述同样被拒；静默数分钟后恢复。因此同一作品不要在同一分钟内反复上传。
+
+排查顺序：先核对本次描述与标题的字节数 → 都合规则视为节流，静默后重试 → 重试仍被拒则记录该条目状态并停止连续尝试。

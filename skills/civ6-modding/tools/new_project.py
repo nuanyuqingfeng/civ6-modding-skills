@@ -85,10 +85,15 @@ import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _paths  # noqa: E402
-from _projwrite import finish, write_project_file  # noqa: E402
+from _projwrite import emit_report, finish, write_project_file  # noqa: E402
 
-# 本次运行的工程根（w() 的写入作用域），在 main() 校验通过后填入
-PROJECT_SCOPE = [""]
+# 本次运行的工程根（工程文件写入作用域）与解决方案根（骨架报告落点），在 main() 校验通过后填入
+PROJECT_SCOPE = ["", ""]
+
+# 这些扩展名的骨架内容一律不写盘，全文收进 workspace/gen/reports/project_scaffold/，
+# 由人逐行落位。焚诀·最严厉铁律：代码文件禁止程序化产出。
+SCAFFOLD_CODE_EXTS = (".sql", ".lua", ".xml", ".ini", ".gitignore", ".gitattributes", ".py", ".md")
+SCAFFOLD = []
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -181,21 +186,29 @@ EndGlobal
 WS_DIRS = ["_tools", "gen", "src", "tmp"]
 
 def w(path, text, eol):
-    """写文本；eol ∈ {'crlf','lf'}。显式控制，避免平台默认把 CRLF 写成 LF。
+    """登记一份骨架内容；eol ∈ {'crlf','lf'}。显式控制，避免平台默认把 CRLF 写成 LF。
 
-    工程根之内的文件经 _projwrite 写入（铁律：脚本只可新建工程文件），目标已存在即拒绝；
-    工程根之外的解决方案文件（工作区根的 <Name>.civ6sln）不在工程范围，由本函数直写。
+    代码文件（.sql / .lua / .xml / .ini / .gitignore / .gitattributes / .py）一律不写盘，
+    全文收进 `workspace/gen/reports/project_scaffold/`，由人逐行落位。
+    工程文件（.civ6sln / .civ6proj）只在目标不存在时从零直写，已存在即拒绝。
     """
     data = text.replace("\r\n", "\n")
     if eol == "crlf":
         data = data.replace("\n", "\r\n")
-    scope = os.path.abspath(PROJECT_SCOPE[0])
-    if os.path.abspath(path).startswith(scope + os.sep):
-        if write_project_file(path, data.encode("utf-8"), scope) != "NEW":
-            raise SystemExit("目标文件已存在，按铁律拒绝覆盖：%s" % path)
+    target = os.path.abspath(path)
+    ext = os.path.splitext(target)[1].lower()
+    if ext in SCAFFOLD_CODE_EXTS:
+        root = os.path.abspath(PROJECT_SCOPE[1])
+        SCAFFOLD.append((os.path.relpath(target, root).replace("\\", "/"), data))
         return
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(path, "w", encoding="utf-8", newline="") as f:
+    if os.path.exists(target):
+        raise SystemExit("目标文件已存在，按铁律拒绝覆盖：%s" % path)
+    scope = os.path.abspath(PROJECT_SCOPE[0])
+    if target.startswith(scope + os.sep):
+        write_project_file(target, data.encode("utf-8"), scope)
+        return
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "x", encoding="utf-8", newline="") as f:
         f.write(data)
 
 
@@ -381,6 +394,7 @@ def main() -> int:
                 print("   %s" % n)
             return 2
     PROJECT_SCOPE[0] = target
+    PROJECT_SCOPE[1] = root
 
     guid = args.guid
     if guid:
@@ -455,6 +469,16 @@ def main() -> int:
           open(tpl, encoding="utf-8").read(), "lf")
     else:
         print("WARN 缺少模板 %s —— 未生成 workspace/_tools/build.py" % tpl)
+
+    if SCAFFOLD:
+        payload = {
+            "reason": "焚诀·最严厉铁律：代码文件禁止程序化产出，以下骨架内容必须逐行写入",
+            "solution_root": root,
+            "project_dir": target,
+            "files": [{"path": rel, "content": body} for rel, body in SCAFFOLD],
+        }
+        out = emit_report("project_scaffold.json", payload, target)
+        print("\n骨架清单 %s（%d 份代码文件需逐行落位）" % (out, len(SCAFFOLD)))
 
     print("已生成工程：%s" % target)
     print("   解决方案   %s" % os.path.join(root, args.name + ".civ6sln"))

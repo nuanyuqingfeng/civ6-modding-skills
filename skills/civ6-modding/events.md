@@ -367,7 +367,7 @@ On hot reload, `OnContextInitialize(isReload:boolean)` receives `isReload=true` 
 
 ## 2. Lua Broadcast Events (`LuaEvents.*`) — 同端广播（UI 各上下文 / GP 各文件），端内跨上下文唯一通道 → `reference/context-matrix.md`
 
-> 端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`。
+> 跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`。
 
 No need to unregister — auto-cleanup on context teardown. GP 侧同样可用：GP 文件之间经同一总线跨文件派发，注册/触发双向可达，表格按引用传递。
 
@@ -454,8 +454,8 @@ end)
 
 **规则：**
 - GP 数据变更时主动推送，UI 在 `LuaEvents` handler 中更新显示
-- UI **被动读取** GP 数据（刷新查询）只能用 PROPERTY 直接读或 Core 共享读取函数；`ExposedMembers` 禁止跨端暴露给 UI。端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`
-- UI **主动触发 GP 动作**（按钮回调中）必须走 `EXECUTE_SCRIPT`，禁止通过 `ExposedMembers` 直接调用。端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`
+- UI **被动读取** GP 数据（刷新查询）用 PROPERTY 直接读或 Core 共享读取函数（被动辅助）；`ExposedMembers` 仅按钮回调禁用，其余跨端场景可用。跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`
+- UI **主动触发 GP 动作**（按钮回调中）必须走 `EXECUTE_SCRIPT`，禁止通过 `ExposedMembers` 直接调用。跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`
 - UI 可直接读 PROPERTY：`Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")` 在 UI 侧同样可用。共享读取函数定义在 Core 文件中，GP 和 UI 各自 `include()` 即可
 
 ---
@@ -568,7 +568,7 @@ Plus 24 `ScenarioCommand_*` events for Pirates scenario (`python database/script
 
 #### GP 跨文件自定义钩子（LuaEvents）
 
-GP 文件之间用 `LuaEvents` 做同端跨文件通信（注册/触发双向可达；表格按引用传递，handler 回写结果、调用方无需 return 即可读）。GP 侧 `LuaEvents` 与 UI 侧不是同一实例，跨端仍用 `ReportingEvents`。端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`：
+GP 文件之间用 `LuaEvents` 做同端跨文件通信（注册/触发双向可达；表格按引用传递，handler 回写结果、调用方无需 return 即可读）。GP 侧 `LuaEvents` 与 UI 侧不是同一实例，跨端仍用 `ReportingEvents`。跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`：
 
 **Gameplay file A（接收端，文件加载期注册）：**
 ```lua
@@ -584,7 +584,7 @@ LuaEvents.MyModReadData(params);
 local data = params.result;   -- handler 已同步回写
 ```
 
-**UI 侧禁止**跨端调用 GP 的 LuaEvents。UI→GP 动作只能走 `PlayerOperations` + `EXECUTE_SCRIPT`；UI 读取 GP 数据用 PROPERTY 或 Core 共享读取函数。端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`。
+**UI 侧禁止**跨端调用 GP 的 LuaEvents。UI→GP 动作只能走 `PlayerOperations` + `EXECUTE_SCRIPT`；UI 读取 GP 数据用 PROPERTY 或 Core 共享读取函数。跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`。
 
 ---
 
@@ -595,7 +595,7 @@ local data = params.result;   -- handler 已同步回写
 | UI Lua context | `Events.*` | Must `.Remove()` in `OnShutdown()` |
 | UI Lua context / GamePlay Lua script | `LuaEvents.*` | Auto-cleanup；表格按引用传递，禁传 C++ 对象 |
 | GamePlay Lua script | `Events.*` **或** `GameEvents.*` | 二选一，**按事件定**（见下） |
-| Raising an event cross-context（同端：UI 上下文间 / GP 文件间） | `LuaEvents.*` | Name after the raising context/file. 端内跨上下文只有它，其余不可达 → `reference/context-matrix.md` |
+| Raising an event cross-context（同端：UI 上下文间 / GP 文件间） | `LuaEvents.*` | Name after the raising context/file. 端内跨上下文用 `LuaEvents`（首选）或暴露函数；跨端四通道（含暴露函数，仅按钮回调禁用）→ `reference/context-matrix.md` |
 | Reacting to game state change | **查 `eventSystem` 后决定** | ⚠ 不可一律用 `Events.*`，见 Gotcha 8 |
 
 > **选总线三步法（禁止凭印象）**
@@ -609,13 +609,13 @@ local data = params.result;   -- handler 已同步回写
 
 2. **GameEvents.* not available in UI** — Don't use `GameEvents.*` in UI Lua contexts. It won't exist.
 
-3. **`LuaEvents.*` 在 GamePlay 可用（同端跨文件）** — GP 脚本间用 `LuaEvents.X.Add()` 注册、`LuaEvents.X(...)` 触发，表格按引用传递；GP↔UI 不互通（GP→UI 用 `ReportingEvents.SendLuaEvent`）。引擎事件仍按 `eventSystem` 选 `GameEvents.*` / `Events.*`。端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`。
+3. **`LuaEvents.*` 在 GamePlay 可用（同端跨文件）** — GP 脚本间用 `LuaEvents.X.Add()` 注册、`LuaEvents.X(...)` 触发，表格按引用传递；GP↔UI 不互通（GP→UI 用 `ReportingEvents.SendLuaEvent`）。引擎事件仍按 `eventSystem` 选 `GameEvents.*` / `Events.*`。跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`。
 
-4. **Don't pass C++ objects through LuaEvents*** — Tables are passed by reference（同端实时同步；跨端经 `ReportingEvents` 为副本，见 `reference/context-matrix.md` 第三节第 4 行）；C++ objects (Units, Cities, Controls) may be deleted after the event is raised but before the receiver processes them. 端内跨上下文只有 `LuaEvents`，其余不可达 → `reference/context-matrix.md`
+4. **Don't pass C++ objects through LuaEvents*** — Tables are passed by reference（同端实时同步；跨端经 `ReportingEvents` 为副本，见 `reference/context-matrix.md` 第三节第 4 行）；C++ objects (Units, Cities, Controls) may be deleted after the event is raised but before the receiver processes them. 端内跨上下文用 `LuaEvents`（首选）或暴露函数；跨端四通道（含暴露函数，仅按钮回调禁用）→ `reference/context-matrix.md`
 
 5. **Events.* uses colon notation** — Sometimes engine events have both a dot method and a colon method. Be consistent: `.Add()` and `.Remove()` for subscriptions.
 
-6. **LuaEvents are broadcast to ALL contexts on the same side** — Every loaded UI context (UI side) / every loaded GP file (GamePlay side) receives every `LuaEvents.*` message fired from that side; GP↔UI 不互通（端内跨上下文只有它，其余不可达 → `reference/context-matrix.md`）。Use unique names to avoid conflicts between mods.
+6. **LuaEvents are broadcast to ALL contexts on the same side** — Every loaded UI context (UI side) / every loaded GP file (GamePlay side) receives every `LuaEvents.*` message fired from that side; GP↔UI 不互通（端内跨上下文用 `LuaEvents`（首选）或暴露函数；跨端四通道（含暴露函数，仅按钮回调禁用）→ `reference/context-matrix.md`）。Use unique names to avoid conflicts between mods.
 
 7. **Context load order matters** — When a context loads, it subscribes to events. Already-fired events won't be replayed. Use `LoadScreenClose` or manual re-initialization for late-loading contexts.
 

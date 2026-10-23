@@ -60,7 +60,7 @@ import sqlite3
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _projwrite import write_project_file, finish  # noqa: E402
+from _projwrite import emit_report, finish  # noqa: E402
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -71,6 +71,8 @@ except Exception:
 LANGS = ["en_US", "zh_Hans_CN", "zh_Hant_HK", "ja_JP", "ko_KR", "de_DE", "es_ES", "fr_FR"]
 DEFAULT_DOMAIN = "Players:Expansion2_Players"
 CITYNAME_BASE = 1000000        # CityNames.ID 起始值（避免与官方冲突）
+# 只存在于 Config 库的表：这类行必须注册到 FrontEndActions
+CONFIG_TABLES = ("Players", "PlayerItems")
 
 
 def q(v):
@@ -223,6 +225,7 @@ def build(spec):
         g.append(ins("Traits", ["TraitType", "Name", "Description"],
                      {"TraitType": tt, "Name": td.get("name"), "Description": td.get("description")}))
     if cid:
+        g.append(ins("Types", ["Type", "Kind"], {"Type": cid, "Kind": "KIND_CIVILIZATION"}))
         g.append(ins("Civilizations",
                      ["CivilizationType", "Name", "Description", "Adjective",
                       "RandomCityNameDepth", "StartingCivilizationLevelType", "Ethnicity"],
@@ -287,6 +290,7 @@ def build(spec):
 
     for ld in leaders:
         lt = ld["type"]
+        g.append(ins("Types", ["Type", "Kind"], {"Type": lt, "Kind": "KIND_LEADER"}))
         g.append(ins("Leaders",
                      ["LeaderType", "Name", "OperationList", "IsBarbarianLeader",
                       "InheritFrom", "SceneLayers", "Sex", "SameSexPercentage"],
@@ -408,9 +412,11 @@ def build(spec):
 def main() -> int:
     ap = argparse.ArgumentParser(description="新文明/新领袖：规格 JSON → 数据与文本 SQL")
     ap.add_argument("spec", help="规格 JSON（UTF-8）")
-    ap.add_argument("--project", default=None, help="工程根（--write 时必填）")
-    ap.add_argument("--write", action="store_true", help="写盘（默认仅预演）")
-    ap.add_argument("--check", action="store_true", help="只校验规格，不生成")
+    ap.add_argument("--project", default=None,
+                    help="工程根（--emit 时必填；清单落在其解决方案根的 workspace/gen/reports/）")
+    ap.add_argument("--emit", action="store_true",
+                    help="把数据清单写到 workspace/gen/reports/（默认只预演）")
+    ap.add_argument("--check", action="store_true", help="只校验规格，不产出清单")
     args = ap.parse_args()
 
     try:
@@ -440,33 +446,56 @@ def main() -> int:
         for w in warns:
             print("   ! %s" % w)
 
-    if args.check or not args.write:
-        if not args.write and not args.check:
-            print("\n[预演] 未写盘。加 --write 实际生成。")
+    if args.check or not args.emit:
+        if not args.emit and not args.check:
+            print("\n[预演] 未产出清单。加 --emit 写到 workspace/gen/reports/。")
         return 1 if problems else (2 if warns else 0)
 
     if not args.project or not os.path.isdir(args.project):
-        print("FAIL --write 需要有效的 --project <工程根>")
+        print("FAIL --emit 需要有效的 --project <工程根>")
         return 1
     if problems:
-        print("FAIL 规格有问题，拒绝写盘（先修上面的 ✗）")
+        print("FAIL 规格有问题，拒绝产出清单（先修上面的 ✗）")
         return 1
 
-    outs = [(os.path.join(args.project, "Data", "CivLeader_%s.sql" % slug), g),
-            (os.path.join(args.project, "Data", "Config_%s.sql" % slug), c),
-            (os.path.join(args.project, "Text", "Text_%s.sql" % slug), t)]
-    for path, content in outs:
-        # .sql 属代码/配置类 → CRLF（换行分层铁律）；既有文件内容有变化时，改写结果由守卫入位 <解决方案根>/workspace/gen
-        data = content.replace("\r\n", "\n").replace("\n", "\r\n").encode("utf-8")
-        result = write_project_file(path, data, args.project)
-        print("写出  %s  %d B  %s" % (path, len(data), result))
-
-    print("\n★ 还需手动在 .civ6proj 注册（本工具不动工程文件）：")
-    print("   InGameActions  → UpdateDatabase: Data/CivLeader_%s.sql" % slug)
-    print("                    UpdateText:     Text/Text_%s.sql" % slug)
-    print("   FrontEndActions→ UpdateDatabase: Data/Config_%s.sql" % slug)
-    print("                    UpdateText:     Text/Text_%s.sql" % slug)
-    print("   并补 <Content Include> 三条（漏了不会被部署）")
+    tables = []
+    for table, _row in _ROWS:
+        if table not in tables:
+            tables.append(table)
+    ingame_tables = [t for t in tables if t not in CONFIG_TABLES]
+    config_tables = [t for t in tables if t in CONFIG_TABLES]
+    blocks = {}
+    for tag, blk in (spec.get("text") or {}).items():
+        filled = {lang: txt for lang, txt in blk.items() if txt}
+        if filled:
+            blocks[tag] = filled
+    payload = {
+        "spec": os.path.abspath(args.spec),
+        "civilization": cid,
+        "leaders": [ld.get("type") for ld in (spec.get("leaders") or [])],
+        "gameplay_rows": [{"table": table, "row": row} for table, row in _ROWS],
+        "localized_text": blocks,
+        "registration": {
+            "InGameActions": [
+                {"action": "UpdateDatabase", "tables": ingame_tables},
+                {"action": "UpdateText", "tags": len(blocks)},
+            ],
+            "FrontEndActions": [
+                {"action": "UpdateDatabase", "tables": config_tables},
+                {"action": "UpdateText", "tags": len(blocks)},
+            ],
+        },
+        "problems": problems,
+        "warnings": warns,
+    }
+    out = emit_report("civleader_%s.json" % slug, payload, args.project)
+    print("\n数据清单 %s" % out)
+    print("  行 %d 条 / 文本 %d 个 tag" % (len(_ROWS), len(blocks)))
+    print("  按清单逐行写入工程的 Data/ 与 Text/，并在 .civ6proj 注册：") 
+    for entry in payload["registration"]["InGameActions"]:
+        print("   InGameActions   %s  %s" % (entry["action"], entry.get("tables") or ("%d tag" % entry["tags"])))
+    for entry in payload["registration"]["FrontEndActions"]:
+        print("   FrontEndActions %s  %s" % (entry["action"], entry.get("tables") or ("%d tag" % entry["tags"])))
     print("\n下一步校验：python tools/modinfo_build.py <civ6proj> --deploy")
     print("            node scripts/rgn_validate_runner.mjs <Data 目录>")
     return finish() or (2 if warns else 0)

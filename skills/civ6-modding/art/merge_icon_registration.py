@@ -164,9 +164,7 @@ def main():
         print("\n无需改动（全部已存在）")
     else:
         for path, result in changed:
-            if result == "STAGED":
-                print(f"  改写结果已到 <解决方案根>/workspace/gen/：{path}")
-            elif result == "SAME":
+            if result == "SAME":
                 print(f"  无需改动：{path}")
             else:
                 print(f"  已写入 {path}")

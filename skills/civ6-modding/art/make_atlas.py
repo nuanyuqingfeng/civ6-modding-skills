@@ -158,9 +158,9 @@ def main():
             mod_name = proj.parent.name
         textures_dir = root / mod_name / "Textures"
     assets_dir = Path(cfg["assetsDir"]) if cfg.get("assetsDir") else root / ".assets"
-    # 写盘口径（铁律：脚本可新建工程文件，绝不允许改写）：
-    #   组员/整版 PNG 与注册片段、asset_map.json 一律新建直写，已存在即报错；
-    #   .dds 由 texconv 产出、.tex 由 gen_tex.py 写入，两者都走 gen_tex 的守卫分支。
+    # 写盘口径（焚诀·最严厉铁律）：PNG 与 .dds 属美术产物，可直接落盘。
+    #   组员/整版 PNG 属美术产物，直接写盘；注册片段是 .xml（代码文件），只写进报告；
+    #   .tex 由 gen_tex.py 写入，走守卫分支。
     for png in sorted(assets_dir.glob("**/*.png")):
         raise SystemExit(f"组员/中间 PNG 已存在，按铁律拒绝改写：{png}")
     if not assets_dir.is_dir():
@@ -249,7 +249,7 @@ def main():
                         check=True, capture_output=True)
                     produced = Path(staging) / (Path(out_png).stem + ".dds")
                     # 临时目录与项目可能跨盘，用 shutil.move（os.replace 跨盘会 WinError 17）
-                    # .dds 属可再生二进制资产：新建直写；已存在时交 gen_tex.py 走守卫分支改写
+                    # .dds 属美术产物，脚本直接落盘
                     shutil.move(str(produced), str(textures_dir / (dds_name + ".dds")))
                 print(f"  ok: {dds_name}.dds  ({cols * s}x{rows * s}, {cols}x{rows} 格)")
 
@@ -277,9 +277,7 @@ def main():
         # 工程根 = Textures 目录的上一级（两层布局下 root 是工作区根，不是工程根）。
         proj_root = textures_dir.parent
         if str(asset_map_path.resolve()).startswith(str(proj_root.resolve()) + os.sep):
-            result = write_project_file(asset_map_path, payload, str(proj_root))
-            if result == "STAGED":
-                print("  asset_map.json 有变化，改写结果落到 <解决方案根>/workspace/gen/")
+            write_project_file(asset_map_path, payload, str(proj_root))
         else:
             asset_map_path.write_text(payload, encoding="utf-8")
 

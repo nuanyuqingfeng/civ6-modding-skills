@@ -8,6 +8,8 @@
 
 ## 一、术语（先看这一节）
 
+> **★ 每个 `.lua` 文件都是一个独立上下文。** `AddGameplayScripts` 里的每个文件、`<Context Name="X">` 对应的每个 UI 文件，各自持有一份全局；**同端文件之间同样互不可见**，不存在「同一端就共享全局」。
+
 | 词 | 含义 |
 |---|---|
 | **Lua 上下文** | 一段 Lua 代码运行时所在的独立状态。每个 UI 上下文（`<Context Name="X">` 对应的同名 `.lua`）是一个 Lua 上下文；每个 GP 脚本（`AddGameplayScripts` 列表里的 `.lua`）也是一个 Lua 上下文 |
@@ -25,13 +27,24 @@
 
 1. **全局互不可见。** A 上下文里定义的函数、变量、表格，B 上下文读到的是 `nil`。跨端如此，同端跨上下文同样如此。
 2. **加载期唯一共享手段是 `include()`。** 被包含文件的顶层在包含者的上下文里执行一次，**每个包含者各持一份副本**；在某个上下文里改写被包含进来的函数，不影响别的上下文。
-3. **运行期通信只能走下表的固定通道。** 除此以外任何「在 A 里调用 B 的函数」的写法都不可达。
+3. **运行期通信走第三节列出的通道。** 「在 A 里直接调用 B 的全局函数」仍然不可达（`type(BFn) == nil`）；但这不等于没有桥——跨端可用暴露函数 `ExposedMembers` 显式登记，端内可用 `LuaEvents` 或暴露函数。
 
 ---
 
 ## 三、通信矩阵（权威表）
 
-端内跨上下文只有 `LuaEvents`，GP↔GP 与 UI↔UI 双端可用；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道；其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
+**跨端（UI↔GP）有四个通道**：
+
+| 通道 | 方向 | 性质 |
+|---|---|---|
+| `EXECUTE_SCRIPT` | UI→GP | 动作派发，无同步返回值 |
+| `ReportingEvents.SendLuaEvent` | GP→UI | 推送，接收方拿到副本 |
+| PROPERTY 读取 | GP 写 → UI 延后读 | **被动辅助**：读写解耦、无通知、无回调 |
+| 暴露函数 `ExposedMembers` | 双向 | 直接可调、可同步返回；**仅 UI 按钮回调禁用** |
+
+**端内跨上下文（UI↔UI / GP↔GP）**：`LuaEvents`（首选，表格按引用）或暴露函数（可行，但不如 `LuaEvents` 好用）。
+
+**仍然不可达的只有一件事**：直接读写另一上下文的全局。暴露函数是显式登记后的桥，不是全局可见。
 
 | # | 调用方 | 目标 | 直接调用函数 | 允许的通道 | 传参与返回 |
 |---|---|---|---|---|---|
@@ -40,15 +53,15 @@
 | 3 | UI 上下文 | GP 脚本（动作） | ❌ 不可达 | `UI.RequestPlayerOperation(pid, PlayerOperations.EXECUTE_SCRIPT, { OnStart = "名字", ... })`；GP 侧 `GameEvents.名字.Add(fn)` | 无同步返回值 |
 | 4 | GP 脚本 | UI 上下文（推送） | ❌ 不可达 | `ReportingEvents.SendLuaEvent("名字", 参数)`；UI 侧 `LuaEvents.名字.Add(fn)` | 表格**按值**（接收方拿到副本）；单向 |
 | 5 | 任意上下文 | 另一端（推送） | ❌ 不可达 | 同第 4 行 | 同第 4 行。`ReportingEvents` 的两端表是同一个实例，广播域是「全部 UI 上下文」，GP 侧不参与 |
-| 6 | 任意上下文 | PROPERTY（读取） | — | `Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")`；共享读取函数放 Core 文件，两端各自 `include` | 同步读取 |
+| 6 | 任意上下文 | PROPERTY（读取） | — | `Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")`；共享读取函数放 Core 文件，两端各自 `include` | 读取调用本身同步；**通信是 GP 写、UI 延后读的被动模式**（无通知、无回调），仅作辅助手段 |
 | 7 | GP 脚本 | PROPERTY（写入） | — | `Game:SetProperty(key, v)` / `pPlayer:SetProperty(key, v)` | 同帧生效 |
 | 8 | UI 上下文 | PROPERTY（写入） | ❌ `SetProperty` 在 UI 侧为 `nil` | 只能经第 3 行的 `EXECUTE_SCRIPT` 交给 GP 侧写入 | — |
-| 9 | UI 上下文 | GP 全局函数（需要同步返回值） | ❌ 不可达 | 暴露函数 `ExposedMembers`（**技术可行**，实测双向可读可调；使用策略见下） | 同步 |
+| 9 | UI 上下文 | GP 全局函数（需要同步返回值） | ❌ 直接调用不可达 | 暴露函数 `ExposedMembers`（**第四通道**，实测双向可读可调；仅 UI 按钮回调禁用） | 同步返回 |
 | 10 | 其它任意组合 | — | ❌ 不可达 | 无 | 报错原文见第四节 |
 
 **`LuaEvents` 与 `ReportingEvents` 是两套东西，接收端写法相同、触发端不同**：接收端都写 `LuaEvents.名字.Add(fn)`，只看 `.Add` 判断不出来源，必须看触发端那一行。
 
-**第 9 行的策略口径**（工程私有约定，优先于技术矩阵）：按钮触发的 UI→GP 调用**只允许**走 `EXECUTE_SCRIPT`；非按钮的被动触发、且需要跨端拿到同步返回值时，才允许使用暴露函数，且**使用前须经用户首肯**（每会话授权一次），此外尽量少开。
+**暴露函数的使用口径**：唯一硬规则是「**UI 按钮回调里不得调用暴露函数**」，按钮触发的 UI→GP 一律走 `EXECUTE_SCRIPT`。其余场景不设强制限制，也不需要会话授权；需要跨端同步返回值时优先用暴露函数。
 
 ---
 
@@ -59,6 +72,8 @@
 | `attempt to call a nil value`（点调用）或 `function expected instead of nil`（冒号调用） | 在另一个 Lua 上下文里调用了该函数，它在当前上下文是 `nil` | 改用第三节对应行的通道；共享代码放进 Core 文件由两端各自 `include` |
 | `attempt to index a nil value (global 'GameEvents')` | UI 侧用了 `GameEvents.*`，整条为 `nil`，并中断该 chunk 使其后语句全部不执行 | 把 GP 事件注册下沉到 GP 脚本 |
 | UI 收不到 GP 的通知 | GP 侧写了 `LuaEvents.X(参数)` | 改用 `ReportingEvents.SendLuaEvent`（第 4 行） |
+| UI 按钮回调里调用 `ExposedMembers` 失败 | 按钮回调路径不支持暴露函数（唯一硬禁令） | 改走 `EXECUTE_SCRIPT`（第 3 行）；非按钮场景才可用暴露函数 |
+| 想在 UI 同步拿到 GP 的返回值 | 误以为只能 `EXECUTE_SCRIPT`（它无返回值） | 非按钮场景用暴露函数（第 9 行） |
 | GP 收不到 UI 的动作 | UI 侧直接调用了 GP 函数 | 改用 `EXECUTE_SCRIPT`（第 3 行） |
 | UI 侧 `SetProperty` 报 `function expected instead of nil` | UI 侧没有 `SetProperty` 端口 | 经 `EXECUTE_SCRIPT` 交给 GP 侧写入（第 8 行） |
 | handler 回写的值调用方读不到 | 该表格是经 `ReportingEvents` 跨端送来的副本 | 跨端不依赖回写；需要回写就用端内 `LuaEvents`（第 1、2 行） |

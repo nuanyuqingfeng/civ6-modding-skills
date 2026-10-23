@@ -1,6 +1,6 @@
 ---
 name: civ6-modding
-description: "文明6 mod 玩法侧总入口：Lua（UI + GamePlay）、ForgeUI XML 布局、.civ6proj / .modinfo 注册、数据库 XML/SQL、事件系统与全量 API 参考。内含决策树、任务工作流、XML 模板、验证清单，以及离线数据库目录（934 ModifierTypes / 761 EffectTypes / 327 RequirementTypes；1051 条 Requirements / 982 条 RequirementSets）+ SQLite 查询工具。专项章节：总督编写、城邦编写、平衡补丁（差分覆盖）、议程与领袖 AI、素材转换管线。发布：Steam 创意工坊上传/更新（release.md）。工具：7 个零依赖校验器（SQL 可执行性 / 引用完整性 / Types.Kind / SQL 语义反模式 / 内容清单闭合 / .lua 加载路径 / pantry 卫生）+ 双目录一致性比对。触发词：文明6、Civ6、modding、Lua、ForgeUI、UI 面板、按钮、弹窗、modinfo、civ6proj、数据库、Modifier、Requirement、PROPERTY、事件、GameEvents、LuaEvents、总督、governor、城邦、city-state、平衡补丁、balance patch、议程、agenda、创意工坊、workshop、上传、发布、校验、rgn_validate。"
+description: "文明6 mod 玩法侧总入口：Lua（UI + GamePlay）、ForgeUI XML 布局、.civ6proj / .modinfo 注册、数据库 XML/SQL、事件系统与全量 API 参考。内含决策树、任务工作流、XML 模板、验证清单，以及离线数据库目录（934 ModifierTypes / 761 EffectTypes / 327 RequirementTypes；1051 条 Requirements / 982 条 RequirementSets）+ SQLite 查询工具。专项章节：总督编写、城邦编写、平衡补丁（差分覆盖）、议程与领袖 AI、素材转换管线。发布：Steam 创意工坊上传/更新（release.md）。工具：7 个零依赖校验器（SQL 可执行性 / 引用完整性 / Types.Kind / SQL 语义反模式 / 内容清单闭合 / .lua 加载路径 / pantry 卫生）+ 双目录一致性比对。触发词：文明6、Civ6、modding、Lua、ForgeUI、UI 面板、按钮、弹窗、modinfo、civ6proj、数据库、Modifier、Requirement、PROPERTY、事件、GameEvents、LuaEvents、总督、governor、城邦、city-state、平衡补丁、balance patch、议程、agenda、创意工坊、workshop、上传、发布、校验、rgn_validate、外交背景、外交背景黑色遮罩、原版外交背景遮挡。"
 version: "2.0"
 author: 千与千寻瀑
 license: MIT
@@ -27,30 +27,48 @@ languages:
   - zh
 ---
 
-> ☁ **云端总仓库（合一 monorepo，单 main 分支）**：`https://github.com/nuanyuqingfeng/civ6-modding-skills`
-> —— 全部 skill 以 `skills/<skill名>/` 子目录共存于总仓库 **main**。
-> **上传流程**：一条命令 `python "<skills>/civ6-modding/tools/sync_monorepo.py"` —— 脚本临时克隆总仓库到 `%TEMP%\civ6-mono`，逐个比对本地 skill 的 HEAD 树与云端 `skills/<名>/` 子树，只重新导出有差异的那些（`git rm --cached` → `git read-tree --prefix` → `git checkout-index`，整棵子树替换，本地删掉的文件随之消失；不用 `tar`，Windows bsdtar 解不开仓库里的中文路径），提交、推送、核对云端 ref 后删除临时目录。`--dry-run` 只建提交并保留临时目录，`--keep` 推送后保留，完整口径见该脚本 docstring。网络间歇失败时重试，直连失败自动改走 Clash 混合端口 `127.0.0.1:7897`。
-> **上传判据**：用户明示「上传 / 推送云端」时，无视改动归属统一处理全部有改动的 skill；推送前先 `git ls-remote origin` 检测云端可达且与上述地址匹配，不匹配即停下报告，不得换址推送。
+## 0. 这份 skill 是什么
 
-> 🗂 **本地 git 仓库位置（提交前必读）**：每个 skill 目录**自身就是一个独立 git 仓库**，
-> 仓库根 = skill 目录（本机即 `C:\Users\Administrator\.agents\skills\civ6-modding`），
-> `.git` 是该目录下的**隐藏目录**。
->
-> 两个常见的「找不到仓库」误判：
->
-> | 现象 | 原因 | 正确做法 |
-> |---|---|---|
-> | 在工程目录或 `~/.agents/skills` 父目录执行 `git status` → `fatal: not a git repository` | 父目录不是仓库，skill 各自独立 | 用 `git -C <skill目录> …`，或先 `cd` 进 skill 目录 |
-> | `Get-Item <skill目录>\.git` → 找不到项 | `.git` 是隐藏目录，`Get-Item` 默认不返回隐藏项 | `Get-ChildItem <skill目录> -Force` 或 `Test-Path` 才看得见 |
->
-> 提交本 skill 的改动：
->
-> ```powershell
-> git -C "<skill目录>" add -A
-> git -C "<skill目录>" commit -m "<说明>"
-> ```
->
-> 同一台机器上 8 个 civ6-* skill 各自都有 `.git`，互不隶属；改动哪个 skill 就在哪个目录提交。
+**定位**：文明6 玩法侧的总入口。从「一句话需求」到「可加载的 mod」之间的工作都从这里起步——Lua（UI 与 GamePlay）、ForgeUI XML 布局、`.civ6proj` / `.modinfo` 注册、数据库 SQL/XML、事件与 API 查询，以及交付前的校验。
+
+**本文件覆盖**：任务路由、硬性规则、工作流程、速查表、验证脚本、参考库入口。
+
+**外派边界**（这些任务进对应的 skill，本文件只保留路由行）：
+
+| 任务 | 去处 |
+|---|---|
+| 原版美术素材引用、ArtDef / XLP / cook 层 | `civ6-art-reference` |
+| 素材整理与导入（图标、立绘、素材注册链） | `civ6-asset-forge` |
+| 音频整备、Wwise、bank、语音、BGM | `civ6-audio-pipeline` |
+| 面向玩家的文本描述、翻译、LOC 规范 | `civ6-text-authoring` |
+| HTML 原型转 ForgeUI 原生界面与纹理 | `civ6-html-ui` |
+| 地标模型与 TileBase AST | `civ6-landmarks` |
+| 运行时实测（FireTuner 执行 Lua） | `civ6-tuner` |
+| 受限素材通道（默认禁用，需会话内授权） | `civ6-art-unpack` |
+
+**首次阅读顺序**：
+
+1. 家族职责与分工 → [`reference/FAMILY_INDEX.md`](reference/FAMILY_INDEX.md)
+2. 本次任务属于哪一类 → 本文件 §2 任务路由
+3. 工程根存在 `AGENTS.md` 时先读它，项目私有约定优先于本 skill
+
+**本文件地图**：
+
+| 节 | 管什么 | 什么时候读 |
+|---|---|---|
+| §1 硬性规则 | 工程文件写入、目录卫生、中文文件处理 | 每次动手前 |
+| §2 任务路由 | 一类任务去哪个文件或哪个 skill | 接到需求的第一步 |
+| §3 工作流程 | 查询阶梯、写前检索、判级、代码生成五步 | 写代码的全程 |
+| §4 速查 | 事件总线、跨上下文通信（→ `reference/context-matrix.md`）、PROPERTY | 写 UI 或 GP 通信时 |
+| §5 验证 | 校验脚本清单与执行器用法 | 写完代码之后 |
+| §6 参考资料 | 路径总表、数据查询、文件清单、图标尺寸、数据库与 API 核验字段 | 需要查具体值时 |
+| §7 附录 | 致谢、workspace 落点、Agent 约束模板 | 建立新工程或需要出处时 |
+
+§2 回答「去哪个文件」，§6.4 回答「那个文件是什么」，两张表分工固定，不互相替代。
+
+## 1. 硬性规则（先读）
+
+以下三条在每一次改动里都成立，与焚诀同源，违反即任务不合格。
 
 > 🧰 **工具先查名录（硬性）**：要写脚本做某件事之前，先看本 skill 的 [`TOOLS.md`](TOOLS.md)
 > —— 本 skill 全部脚本的用途 / 用法 / 路径清单，外加本机**路径收纳**表。
@@ -59,20 +77,33 @@ languages:
 > 跨 skill 找工具先看 [`reference/FAMILY_INDEX.md`](reference/FAMILY_INDEX.md)（家族路由）；
 > `tools/` 的用法细节、推荐顺序与踩坑记录见 [`tools/README.md`](tools/README.md)。
 
-## ★ 工程文件写入铁律（适用本家族全部 skill）
+### 1.1 工程文件写入铁律（适用本家族全部 skill）
 
-> **脚本可以新建工程文件，绝不允许改写工程文件。既有的工程文件，每一次改动都由 AI 使用文件编辑工具完成。**
+> **代码文件只能逐行编辑。脚本与工具不得编写、不得改写任何代码文件，新建的空文件同样必须从零逐行编辑。**
+>
+> 这一条与焚诀「禁止用程序化的方式编写或修改任何代码文件（最严厉铁律）」同源，违反即整个任务不合格。
+>
+> 允许由官方工具从零产生的只有三个工程文件：`.civ6sln` 与 `.civ6proj` 由 ModBuddy 产生，`.modinfo` 由 `.civ6proj` 派生。这三个文件需要在既有内容上改动某几行时，同样只能逐行编辑。
+>
+> 美术与音频产物由官方工具直接落盘：`.artdef`、`.xlp`、`.ast`、`.mtl`、`.dep`、`*.Art.xml`、`.dds`、`.tex`、`.png`、`.tga`、`.jpg`、`.jpeg`、`.bnk`、`.wem`、`.wav`、`.wwu`、`.wproj`，以及 `Platforms/Windows/Audio/` 下 WwiseCLI 产出的 `<Bank>.xml` 与 `<Bank>.txt`。
 
 「工程文件」指工程核心文件夹之下的一切文件：`.civ6proj`、`.modinfo`、`*.Art.xml`，以及 `Data/`、`Text/`、`Scripts/`、`UI/`、`Mod_Adaptation/`、`ImportFiles/`、`Assets/`、`Textures/`、`XLPs/`、`ArtDefs/`、`Materials/`、`Geometries/`、`LightRigs/`、`EnvironmentLights/`、`Platforms/` 下的全部文件；`.civ6sln` 按两层目录布局位于解决方案根（工程核心文件夹的上一层，见 `project-setup.md`），同样受本铁律约束。
 
-1. **判定只看目标路径有没有文件**：没有 → 脚本新建直写；已有且内容与生成结果一致 → 跳过、不动盘；已有且内容有变化 → 把结果写到 `<解决方案根>/workspace/gen/` 的同一相对路径下，由 AI 用文件编辑工具写入工程。`.civ6proj`、`.modinfo`、`.civ6sln`、`*.Art.xml` 永不例外。
-2. **唯一例外是二进制与编码敏感的可再生资产**：`Textures/` 之下的贴图、`Platforms/` 之下的音频产物，以及扩展名为 `.dds`、`.tex`、`.bnk`、`.wem`、`.wav` 的文件，文件编辑工具无法忠实写出其字节，允许脚本直接覆盖。文本类工程文件（`.sql`、`.lua`、`.xml`、`.xlp`、`.artdef`、`.ast`、`.civ6proj`、`.modinfo`、`_Banks.ini` 等）一律走第 1 条。
-3. **实现的唯一通道是 `_projwrite.py`**：`write_project_file(target, data, project_root)` 返回 `NEW`（新建直写）、`SAME`（未动盘）、`OVERWRITE`（可再生资产直写覆盖）、`STAGED`（改写结果入位 `<解决方案根>/workspace/gen`）；`finish()` 给出退出码（有 `STAGED` 时返回 2）。该模块在本家族有六份逐字节相同的副本（`civ6-modding/art/`、`civ6-modding/tools/`、`civ6-modding/scripts/`、`civ6-asset-forge/scripts/`、`civ6-art-reference/scripts/`、`civ6-audio-pipeline/scripts/`），不得各写一份，一致性由 `scripts/check_script_write_targets.py` 体检。
-4. **不受本条约束的动作**：`tools/new_project.py`（建立全新工程骨架，目标目录已存在且非空即拒绝执行）、`tools/modinfo_build.py`、`tools/cook_assets.py`、`tools/cook_dep.py`、`landmark_tool.py cook` 写的是 Mods 加载副本与构建输出目录；`scripts/` 的校验器与 `database/scripts/` 的查询器只读。
-5. **AI 拿到 `workspace/gen/` 的产物之后**：读一遍内容，与工程既有文件逐段比对，再用文件编辑工具写入工程对应路径。`.tex` 按工程既定的 ANSI 代码页写出（口径见 `art-pipeline.md`）。
+1. **分类判定只看目标路径的类别**：`classify(rel)` 返回 `code` / `project` / `art` / `audio` 四档，未登记的扩展名一律按 `code` 处理（失败关闭）。
+   - `code`：一律抛 `CodeWriteForbidden`，不提供暂存分支。脚本只能把结果写成 `<解决方案根>/workspace/gen/reports/` 下的 JSON / TSV / Markdown 数据清单，由人逐行写入工程。
+   - `project`：目标不存在时允许从零直写；目标已存在即抛 `CodeWriteForbidden` 并提示逐行编辑。
+   - `art` / `audio`：允许脚本直接覆盖。
+2. **`workspace/gen` 不再是代码文件的出口**：该目录只承载数据清单（`reports/` 子目录）与暂存部署副本（`Mods/`）。旧机制把改写结果转存 `gen` 再由人写回，现已取消。
+3. **实现的唯一通道是 `_projwrite.py`**：`write_project_file(target, data, project_root)` 返回 `NEW`（官方工具从零新建）或 `SAME`（与既有一致，未动盘），美术与音频产物另返回 `OVERWRITE`；代码文件与已存在的工程文件一律抛 `CodeWriteForbidden`。`emit_report(name, payload, project_root)` 把结果写成 `workspace/gen/reports/` 下的数据清单并返回落盘路径，`finish()` 打印本轮写出的报告清单。该模块在本家族有六份逐字节相同的副本（`civ6-modding/art/`、`civ6-modding/tools/`、`civ6-modding/scripts/`、`civ6-asset-forge/scripts/`、`civ6-art-reference/scripts/`、`civ6-audio-pipeline/scripts/`），不得各写一份，一致性由 `scripts/check_script_write_targets.py` 体检。
+4. **不受本条约束的动作**：`tools/modinfo_build.py`、`tools/cook_assets.py`、`tools/cook_dep.py`、`landmark_tool.py cook` 写的是 Mods 加载副本与构建输出目录；`tools/new_project.py` 只创建目录，并把骨架全文写进 `workspace/gen/reports/project_scaffold/`；`scripts/` 的校验器与 `database/scripts/` 的查询器只读。
+5. **AI 拿到 `workspace/gen/reports/` 的数据清单之后**：读一遍内容，与工程既有文件逐段比对，再用文件编辑工具逐行写入工程对应路径。`.tex` 按工程既定的 ANSI 代码页写出（口径见 `art-pipeline.md`）。
 6. 用户要求「直接用脚本改工程」时，说明本条铁律，改用第 1 条与第 5 条的做法。
+7. **禁止用「先删除既有工程文件、再新建同名文件」绕过第 1 条**：`_projwrite.py` 在首次写入该工程时记下文件清单，目标已不在盘上、却出现在清单里即抛 `CodeWriteForbidden`（删除是持久意图，脚本不得重建）；`check_script_write_targets.py` 对同时 import 守卫与调用删除／改名原语的脚本判违规（删除豁免须在脚本内显式声明）。
 
-## ★ 工程核心文件夹卫生（适用本家族全部 skill）
+8. **`workspace/gen` 的回收**：`prune_applied(project_root)` 拿工程侧同相对路径逐字节比对，相同即删暂存副本、并自下而上删空目录，返回 `(removed, pending, orphans)`。判据三档：工程侧存在且相同 → 回收；存在但不同 → 待写回；工程侧不存在 → 孤立（源文件已改名或删除，只报告不动）。该机制只处理历史遗留，新流程不再产生暂存副本。`gen/Mods` 与 `gen/reports` 不参与判定。
+9. **`*.Art.xml` 禁止写入 `workspace/` 任何位置**（含 `gen/`、`tmp/`、`src/`）：它是 cook 的唯一输入，也是 mod 名与产物目录名的真源（`project_mod_name` 优先取它的 `<id><name>`）。`workspace/gen/` 里的副本不被任何体检覆盖 —— `find_art_xml` 只扫工程根、`check_project_hygiene.py` 只扫解决方案根顶层 —— 陈旧副本一旦被搬回工程，`<requiredGameArtIDs>` 会静默回退到旧状态，症状是全部美术与图标空白。`*.Art.xml` 的改写一律在工程根原地完成，不转存；`workspace/` 下已存在的副本按疑似遗留上报，不得搬回工程。
+
+### 1.2 工程核心文件夹卫生（适用本家族全部 skill）
 
 > **工程核心文件夹（`<解决方案根>/<ModName>/`）只允许出现工程文件与处理后的成品素材；中间产物、日志、脚本、备份、素材库副本一律落在 `<解决方案根>/workspace/`。**
 
@@ -86,42 +117,189 @@ languages:
 
 - `workspace/`、`gen/`、`tmp/` 与任何备份目录（`*.bak_*`、`_offproj_*`、时间戳目录、`copy_*`）；
 - `Build/`、`Cooked/`、`.modinfo` 等构建产物；
-- 日志（`*.log`）、调试脚本、临时图片、素材库副本。
+- 日志（`*.log`）、调试脚本、临时图片、素材库副本；唯一例外是工程核心根顶层的 `cooker.log`（ModBuddy 与本家族 cook 工具共用的唯一一份构建日志，全解决方案不允许第二份，判据见 `civ6-art-reference/SKILL.md` 铁律五）。
 
 中间产物落点 = `<解决方案根>/workspace/`（`gen/`、`tmp/`、`src/`、`_tools/`）。工具若在工程核心文件夹内新建了 `workspace/`，必须把产物归位到解决方案根 `workspace/` 的同一相对路径，并删除工程核心文件夹内的该目录。
 
-体检：`python scripts/check_project_hygiene.py <工程核心文件夹>`（退出码 0 = 干净）。
+**workspace 自身不留冗余（硬性）**：`workspace/` 是中间产物的落点，不是第二份工程的存放处。
 
-## 环境路径总表（必读 · 分享自举）
+- `gen/` 顶层只允许 `Mods/`（暂存部署副本）、`reports/`（待逐行写入工程的数据清单）与 `build.py modinfo` 派生的 `<ModName>.modinfo`。`reports/` 里的清单写入工程后即删除；
+- 暂存部署副本按「干净重建」维护：`modinfo_build.py --deploy` 收尾用 `prune_stale()` 删掉本次没有产出的旧文件，副本恒等于本次部署结果；
+- 暂存区（`workspace/gen/Mods`）内的 `<Content Include>` 文件走硬链接，与工程共用同一份字节（`modinfo_build.py` 按 `--mods-root` 是否落在暂存区自动判定，也可用 `--hardlink` / `--no-hardlink` 覆盖）。游戏 Mods 目录不用硬链接：那里在测试迭代中会被直接改动，硬链接会把改动回写进工程；
+- cook 的平台轮次按全部 XLP 的 `m_AllowedPlatforms` 并集与 `Civ6.targets` 两档求交集，某档无任何声明时不跑该轮；跨平台逐字节相同的 BLP 由 `dedupe_identical_blps()` 换成指向 Windows 档的硬链接。
 
-> **使用顺序：`<skill目录>\local_paths.json`（若存在）＞ 下表硬编码值。**
-> 任一路径 `Test-Path` 失败 → 按"自动纠正"列依次探测；全部失败 → **询问用户一次**，
-> 把结果写入 `<skill目录>\local_paths.json`（个人环境文件，分享时不携带、不覆盖他人）后继续。
+**删除纪律（硬性）**：代理只把「工程所需文件」新建进核心文件夹；核心文件夹内**既有**的文件，只有**本次任务自己造成错位**的才允许由代理处置，其余一律只报告、不迁移、不删除（对照 AGENTS.md「文件落盘边界与 Workspace 规范」第 2、3 条）。允许表只收录引擎通用目录与工程描述／版本控制文件，工程自建的专属目录一律走「未登记 → 由人裁决」，不靠登记放行。
 
-| # | 用途 | 本机硬编码 | 自动纠正链 |
-|---|---|---|---|
-| P1 | ModBuddy 源工程目录 | `D:\documents\Firaxis ModBuddy\Civilization VI` | ① `%USERPROFILE%\Documents\Firaxis ModBuddy\Civilization VI` → ② 询问用户 |
-| P2 | Mods 加载目录 | `D:\documents\My Games\Sid Meier's Civilization VI\Mods` | ① 注册表 `UserPath`＋`\Mods` → ② `%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods` → ③ 询问用户 |
+**解决方案根顶层同样只允许**「工程主体目录 + `workspace/` + 解决方案文件（`.civ6sln`／`.civ6suo`／`.code-workspace`）与版本控制、Agent 规范文件」；`Cooked/`、`Docs/`、日志、调试脚本、素材库副本一律收进 `<解决方案根>/workspace/`。
 
-> ⚠ **P2 是游戏递归扫描的加载根**：任何位置的 `*.modinfo` 都会被收成一条 mod 记录。
-> **源工程目录绝不允许放在 P2 之内**（否则工程里的构建产物会被当成第二个 mod，同一 GUID
-> 两条记录）。判定由 `tools/_paths.py` 的 `assert_source_tree()` 提供，四个写入工具入口已接入；
-> 依据见 `gotchas.md`「Mods 加载树里不能放工程」。
-| P3 | 游戏本体（UI/Lua/XML/Text 官方原文） | `F:\Steam\steamapps\common\Sid Meier's Civilization VI` | ① 注册表 `ToolsPath` 去尾部 ` SDK` → ② Steam `libraryfolders.vdf` 找 appid 289070 → ③ 询问用户 |
-| P4 | SDK Assets（artdef/解包素材） | `F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK Assets` | ① 注册表 `AssetsPath` → ② P3＋` SDK Assets` → ③ 询问用户 |
-| P5 | SDK 工具（ModBuddy/MSBuild） | `F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK` | ① 注册表 `ToolsPath` → ② P3＋` SDK` → ③ 询问用户 |
-| P6 | 创意工坊参考件 | `F:\Steam\steamapps\workshop\content\289070` | ① libraryfolders.vdf → ② 询问用户 |
+体检：`python scripts/check_project_hygiene.py <解决方案根> --solution`（工程核心文件夹与解决方案根顶层一并体检，退出码 0 = 干净）；只查核心文件夹时去掉 `--solution`。
 
-注册表键（P2/P4/P5 同源，一条读三值）：
-`HKCU\SOFTWARE\Firaxis\Civilization6_ModBuddy\2013\DialogPage\Firaxis.VisualStudio.Projects.Civ6.OptionsPages.OptionsDialogPage`
-→ `UserPath / AssetsPath / ToolsPath`
+### 1.3 中文文件处理（必读）
 
-## 查询阶梯（无结果时的强制流程，禁止跳步）
+处理含中文的 SQL/Lua/XML 时，严格执行以下规则（完整版见项目 AGENTS.md「UTF-8 与中文文件处理」）：
+
+- 所有文件读写默认 UTF-8，不得改变原有编码、换行风格和无关内容。
+- PowerShell 中读写含中文文件前先 `chcp 65001`，并设置 `[Console]::OutputEncoding` / `$OutputEncoding` 为 UTF-8。
+- 查看含中文文件优先用 Read 工具，避免 PowerShell 打印中文（控制台乱码多为显示问题，不代表文件损坏）。
+- 禁止 PowerShell here-string 管道/重定向/`Set-Content`/`Out-File` 写入含中文内容；不要用 `sed`/`awk` 处理含中文文件，改用 Python 或 Node.js 并显式 UTF-8 读写。
+- 不要为了修编码而整文件重写、全文件格式化或全文件字符串替换。
+
+## 2. 任务路由（Task Routing — Read This First）
+
+先在这里定位任务，再进入对应小节或对应 skill。
+
+> 🧭 **第一次接触这个 skill 家族？先读 `reference/FAMILY_INDEX.md`**（7 个 skill 的职责/边界/路由表 + 共用约定 + 分享状态）。
+
+**Full workflow:** `workflows.md` · **Gotchas (必读):** `gotchas.md`  
+**若项目根目录存在 AGENTS.md，也需提前阅读。**
+
+### 2.1 Task Type → Go To
+
+| Type | Go To |
+|------|-------|
+| **从零新建工程**（"建一个新 mod / 新工程骨架"、要一个可构建的 `.civ6proj`） | → `python tools/new_project.py <源工程根>\<ModName> --name <ModName>`（生成 **两层布局**：工作区根放 `.civ6sln`、同名子目录放 `.civ6proj` + **按需创建的目录** + `.gitignore`/`.gitattributes` + **`workspace/_tools/build.py` 构建入口**；`--deploy` 建完直接部署到 Mods）；格式细节见 `project-setup.md`「两层目录布局」，**GUID 必须新生成**（工具内置全网查重）。★ **目标目录不得位于 Mods 加载目录内** —— 游戏递归扫描 Mods 全树，工程里的构建产物会被当成第二个 mod（同一 GUID 两条记录），命中即退出码 2 |
+| **"直接生成在 Mods 目录"**（用户只要一份游戏能加载的成品，不要工程） | → 两种情况：**工程已存在** → `python tools/modinfo_build.py <X.civ6proj> --deploy`（cook 美术 + 拷 Content + 写 modinfo + ArtDefs 同步，一条命令出成品）；**工程不存在** → `python tools/new_project.py <源工程根>\<ModName> --name <ModName> --deploy`。**不要**把工程目录取在 Mods 里 |
+| **新文明 / 新领袖的数据与文本** | → `civilization-authoring.md` / `leader-authoring.md`（表清单、LOC 推导、注册位置）；**LOC 文本命名与写法 → `civ6-text-authoring`**（trait/能力文案见其 `leader-trait-text.md`）；美术→`civ6-asset-forge`、3D 引用→`civ6-art-reference`、BGM/语音→`civ6-audio-pipeline`（Wwise 侧）；文明音乐的引擎侧接线判定（`CivilizationAudioTags` + `Civilizations.artdef`）→ `reference/civ-metadata.md` §六 |
+| **Config 文件改动**（增删改 `Players` / `PlayerItems` 行、选人界面物品清单与条目） | → `leader-authoring.md`「**`PlayerItems` 准入规则**」（哪些对象有资格进物品清单：限有实质 TRAIT 链的区域/建筑/单位/改良设施，资源不入列）+ `project-setup.md`「文件类型 → 注册位置对照表」（Config 文件挂 FrontEnd 仅） |
+| **领袖前景（立绘）/ 背景**（选人界面立绘、加载界面背景、`Players.Portrait/PortraitBackground`、`LoadingInfo`、借用原版背景） | → `civ6-asset-forge` skill 的 **`reference/frontend-portrait.md`**（三环境对照：选人 placard / 加载界面 / 外交；含 328×935 推导与色调近似选型）；Suk 分支另见其 `reference/ui-leader-portrait.md` |
+| **文明图标配套**（已做/正在做 `ICON_CIVILIZATION_*`，补忠诚度/压力镜头图标） | → `civ6-asset-forge` skill 的 **`reference/loyalty-icon.md`**（4 张 PNG + UILens 注册链；纯 2D 图集档位另走 `art-pipeline.md`） |
+| **UI panel** (XML + Lua) | → UI Routing ↓ |
+| **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节，图标规范化/占幅/边距规范查其第四节。★ 该管线把 `.xlp`/`.artdef`/`*.Art.xml`/`.dds`/`.tex` 直接写盘；Icons XML 属代码文件，待插入的行写进 `<解决方案根>/workspace/gen/reports/` 的数据清单，由人逐行写入工程 |
+| **图标实机锯齿 / 边缘发硬 / 毛刺**（"游戏里图标不清晰"、"小尺寸档有锯齿"、接手他人图集想验中间档） | → `art-pipeline.md` **第 8.1 节「边缘质量门」**：`verify_icon_atlas.py --edge-qa` 体检 + `regen_atlas_tiers.py` 从母版重出（产物是 `.dds`，脚本直接覆盖，不必 AI 回写）。**注意结构校验查不出这类问题** |
+| **原版美术素材引用 / ArtDef·XLP 链**（给新对象配原版模型、查引用链、排查美术悬空、ArtDef cook 报错或"不同步"、单位渲染残缺） | → **`civ6-art-reference` skill**（引用链与 cook 层逻辑全在该 skill 内，此处不重复） |
+| **Gameplay logic** (Lua only) | → Gameplay Routing ↓ |
+| **Game data** (units, buildings, modifiers) | → Data Routing ↓ |
+| **总督（Governor）**（新增总督 / 晋升树 / 就职回合 / 立绘注册 / 名额扩容） | → `governor-authoring.md`（美术规格另见 `civ6-asset-forge` skill 的 `reference/governor-art.md`） |
+| **城邦（City-State）**（自定义城邦 / 选单不出现 / 宗主国加成 / 使者层级） | → `citystate-authoring.md` |
+| **文明周边数据收尾**（百科资料卡 `CivilizationInfo` / 城市名 `CityNames` / 市民名 `CivilizationCitizenNames` / 出生关联 `StartBias*` / 文明音乐（`CivilizationAudioTags` + `ArtDefs/Civilizations.artdef`）/ 知名地名 `NamedMountains·NamedRivers` 等） | → **`reference/civ-metadata.md`**（各表 schema、取值域、写作要点、数量建议、最小检查清单） |
+| **Asset Editor 字段名 / 调试查日志 / 枚举取值**（"AE 里那个框叫什么"、"Database.log 怎么看"、"Culture 有哪些值"、"忠诚度材质的字段名"） | → **`reference/editor-and-enums.md`**（AE 字段速查 / 调试三板斧 / `Cultures.artdef` 取值表 / 忠诚度 3D 链字段） |
+| **平衡补丁 / 差分覆盖**（改主工程数值、解挂载、覆盖文本的补丁 mod） | → `balance-patch.md` |
+| **换行 / EOL 归一化**（"CRLF 还是 LF"、行尾混了、`.gitattributes` 怎么写、接手他人工程先体检） | → `gotchas.md` **§68「换行分层铁律」**（唯一真源）+ `scripts/normalize_eol.py`（默认只报告；`--fix` 只写美术与音频产物，代码文件的换行偏离清单落 `<解决方案根>/workspace/gen/reports/`；`--repo-skill` 清理 skill 自身仓库仍直写） |
+| **工坊封面 / 预览图**（做封面、"封面上的中文别画错"、"封面太模糊"） | → 排版走 `tools/workshop_cover.py`（确定性 CJK 排版）；**预览图缩放执行端在 `art/make_workshop_preview.py`**（Lanczos 阶梯 + unsharp、默认 512、已达标直通不二次缩放；见 `art-pipeline.md` 第九·补节）；发布流程见 `release.md` §3.2 |
+| **音频**（导入 / 素材整备 / 响度均衡 / Wwise / bank / 语音 / BGM） | → **`civ6-audio-pipeline` skill**（音频全流程在该 skill 内，此处不重复） |
+| **运行时验证**（"这个 API 实际行为是什么"、复现脚本报错、PROPERTY/modifier 实测） | → **`civ6-tuner` skill**（FireTuner TCP 4318，在运行中的对局里执行 Lua；静态校验回答不了的问题走这里） |
+| **面向玩家的文本描述**（新建 / 改 / 译 / 润色 / 校验文案、LOC tag 命名与后缀变体、`[ICON_x]`/`[COLOR]`/`[NEWLINE]` 标记、相邻加成写法、**开幕颂词（领袖加载介绍词 `LOC_LOADING_INFO_LEADER_*`）**、外交文本、领袖能力描述） | → **`civ6-text-authoring` skill**（文本权威规范唯一真源；含风云变幻口径 zh 语料 `zh_corpus.sqlite` + 六大类规范文档 + `SKILL.md` 入口） |
+| **翻译 / 多语言文本**（补缺失语言、审计语言齐缺失、主工程 vs 补丁文本 diff） | → **`civ6-text-authoring`**（语言代码 / 标记必须保留 / 合并进原 SQL / 写后复核，口径在该 skill；本 skill §2.5 仅保留本地化参考库构建工具） |
+| **Mixed** | → Read all relevant |
+| **Steam 创意工坊上传/更新** | → `release.md` |
+| **工坊介绍 / 条目依赖 / 更新说明**（首传写介绍、更新写 changeNote、声明官方 DLC 与工坊作品依赖） | → `workshop-intro.md`（`release.md` 的姊妹分册：它管上传什么文字，`release.md` 管怎么传） |
+| **"能不能从这个文件调用那个文件的函数"** / **"跨文件、跨上下文、跨端怎么通信"** / **"UI 怎么调 GP 的函数"** | → **`reference/context-matrix.md`**（唯一真源：术语 / 通道矩阵 / 症状表 / 检索词） |
+| **"UI 收不到 GP 的消息"** / **`attempt to call a nil value`** / **`attempt to index a nil value`** / **`function expected instead of nil`** | → **`reference/context-matrix.md`** 症状表，再进 `gotchas.md` §36–§38 |
+| **Debug** | → `debug-tools.md` + `gotchas.md` |
+
+### 2.2 UI Routing
+
+```
+ADD to existing UI
+├─ Button on LaunchBar/PartialScreen → workflows.md "A" + xml-templates.md "LaunchBar"
+├─ Info onto CityPanel/UnitPanel     → workflows.md "B" (ReplaceUIScript)
+└─ Popup/overlay from existing UI    → workflows.md "C" + "E"
+
+REPLACE existing UI behavior → workflows.md "B" + ui-lua.md "UI Replacement"
+CREATE new standalone panel  → workflows.md "C" + xml-templates.md "Fullscreen Overlay"
+MODIFY data display          → workflows.md "D" + database.md
+```
+
+**必读:** `ui-controls.md`（控件属性/Lua 方法/XML 示例）· `ui-lua.md`（生命周期/事件/热重载）· `xml-templates.md`（模板）
+
+### 2.3 Gameplay Routing
+
+```
+ADD game mechanic
+├─ React to events (turn, move, build)  → gameplay-lua.md + events.md
+├─ Store custom data                    → gameplay-lua.md "SetProperty/GetProperty"
+└─ Expose data to UI                    → gameplay-lua.md "UI ↔ GP Communication"
+
+MODIFY rules
+├─ Via SQL modifiers (preferred)        → database.md + `query_api.py`
+├─ Via Lua hooks (GameEvents)           → gameplay-lua.md + events.md
+└─ Via Lua override                     → gameplay-lua.md + `query_api.py`
+
+ADD content (unit/building/district)    → database.md + project-setup.md（优先查 .civ6proj）
+ADD civ/leader / agenda / AI 偏好                          → database.md + agenda-authoring.md + `query_api.py`
+```
+
+**查询:** 事件签名 → `python database/scripts/query_events.py --search 关键词` · API → `api-cheatsheet.md` + `database\api.sqlite`
+
+### 2.4 Data Routing
+
+```
+ADD new unit/building/district
+├─ 列定义 → PRAGMA table_info(TableName) (DebugGameplay.sqlite)
+├─ 写法   → database.md
+├─ 有取代关系（*Replaces 表）时先取子表清单 → `python scripts/replacement_subtables.py <工程根> --diff`（见 gotchas.md G15b）
+├─ ModifierType 查询 → SELECT * FROM Modifiers WHERE ModifierType LIKE '%Key%'
+├─ ModifierArguments → SELECT Name,Value FROM ModifierArguments WHERE ModifierId='X'
+├─ RequirementType   → SELECT * FROM Requirements WHERE RequirementType LIKE '%Key%'
+└─ 类型名中英对照    → SELECT UnitType FROM Units WHERE UnitType LIKE '%Key%'
+
+Modifier/PROPERTY 设计
+├─ 作用域决策 → 见下文"写前三问"的「三问的执行材料」（先按该节第一步判级）
+├─ ATTACH 模式 → reference/WORKSHOP_PATTERNS.md
+├─ 参数分类   → reference/MODIFIER_ARGUMENTS.md
+├─ **参数取值域（该 Effect 的参数能填什么）** → `python database/scripts/query_effect_args.py --effect <EFFECT_X>`
+│    （或 `--modifier <MODIFIER_X>` 自动解析到 Effect；`--arg <参数名>` 反查）
+└─ **某效果原版怎么实现的（照抄现成链）** → 查 `DynamicModifiers ⋈ Modifiers ⋈ ModifierArguments`
+     + `TraitModifiers`/`CivilizationTraits` 等绑定表（见下"写前先搜现成实现"）
+
+ADD tech/civic/policy   → database.md
+ADD resource/feature    → database.md
+REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "LoadOrder"（优先查 .civ6proj）
+ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
+                         生成文本时按内置映射直接补 `[ICON_x]`（不需要等用户说明）→ `python art/iconify_text.py <工程根> --audit` / `--check` / `--write`
+                         （`--write` 把待改内容写进 `<解决方案根>/workspace/gen/reports/`，由人逐行写入工程）
+                         双向引用体检（图标正向 + `{LOC_x}` 反向 + 配置孤儿 tag）→ `python scripts/check_text_refs.py <工程根>`
+                         DLC 文本查不到 → `python database/scripts/build_localization.py --report`
+```
+
+### 2.5 多语言文本 / 本地化 → **全部路由到 `civ6-text-authoring`**
+
+> ★ **文本处理的权威规范已独立为 `civ6-text-authoring` skill**
+> （本机：`C:\Users\Administrator\.agents\skills\civ6-text-authoring`）。
+> 凡涉及**面向玩家的文本描述**——新建 / 修改 / 翻译 / 润色 / 校验文案、LOC tag 命名与后缀变体、
+> `[ICON_x]` / `[COLOR]` / `[NEWLINE]` 标记、相邻加成写法、**开幕颂词（领袖加载介绍词 `LOC_LOADING_INFO_LEADER_*`）**、外交文本——
+> **一律路由到该 skill 处理**；本处不再重复口径。
+>
+> 该 skill 自带**风云变幻口径的简体中文语料**（27,998 tag，`reference/zh_corpus.sqlite`，六大类规范文档），
+> 比本 skill 的 `DebugLocalization.sqlite` 更贴合「以风云变幻为准」——后者不应用 `<Delete>`、
+> 对 DLC 只补缺不覆盖，存在 14 条取值差 / 18 条集合差（差异明细见该 skill 的 `reference/zh_diff_report.txt`）。
+> 入口与六大类路由见 `civ6-text-authoring/SKILL.md`。
+
+**本 skill 只保留**本地化参考库的**构建工具与查询口径**（`database/scripts/build_localization.py`）：
+
+> 主库 `database/DebugLocalization.sqlite`（Base + EXP1 + EXP2 + 全部领袖/文明 DLC，
+> 规则 `EXP2 > EXP1 > base`、其它领袖包只补缺不覆盖，**排除情景与 Mode**；336,125 行）与
+> 模式库 `database/Localization_Mode.sqlite`（8 个 GAMEMODE，独立成库只加不覆盖；15,417 行）。
+> 两库在 `database/` 下**只在本机保存、不入 git**（可从游戏文件数十秒重建）。
+>
+> ```bash
+> python database/scripts/build_localization.py --report            # 只读：分段 + 分层 + 差异统计
+> python database/scripts/build_localization.py --rebuild --dry-run # 一键重建两库（预演）
+> python database/scripts/build_localization.py --rebuild           # 实际重建
+> ```
+>
+> ⚠️ **不要试图用游戏运行时缓存补全**：`%LOCALAPPDATA%\...\Cache\DebugLocalization.sqlite`
+> 实测恒为 base 15,229 tag，**连当前加载的 mod 文本都没有**——它不反映"加载了什么"。
+> 权威分段判据在 `.modinfo`：新式看 `<ActionCriteria>` 里 `ConfigurationId=GAMEMODE_*`，
+> 旧式（仅 `VikingsScenario`）看 `<Properties><RuleSet>` 的 `RULESET_SCENARIO_*`；
+> 模式清单的权威表是 `DebugConfiguration.sqlite → GameModeItems`（8 行），**不在 Gameplay 库**。
+
+> 文本与图标/颜色的对照数据在本 skill 内：`database/DebugLocalization.sqlite`（官方文本 + 手工标注侧表
+> `SkillAnnotation_Colors` / `SkillAnnotation_Icons`）与 `reference/sources/` 的两份社区常量表。
+> **文本类规范的唯一真源是 `civ6-text-authoring`。**
+
+---
+
+## 3. 工作流程
+
+需求落到代码的全程：先按 §3.1 决定能查什么，再按 §3.3 判定要查多少，按 §3.5 的五步推进。
+
+### 3.1 查询阶梯（无结果时的强制流程，禁止跳步）
 
 ```
 L0  skill 家族正文检索（最先，零许可）
     在 <skills>\civ6-modding、civ6-tuner、civ6-asset-forge、civ6-art-reference、
-    civ6-audio-pipeline、civ6-html-ui、civ6-landmarks 的 *.md 里按「检索词表」逐个搜；
+    civ6-audio-pipeline、civ6-html-ui、civ6-landmarks、civ6-text-authoring 的 *.md 里按「检索词表」逐个搜；
     命中即用，不再往下走
     （受限通道 civ6-art-unpack 不在检索范围；新增成员在此与下方 Select-String 同步登记）
     ⚙ 结论型知识（能不能调用、走哪个通道、有没有这种用法）**只在 md 正文里**，
@@ -154,200 +332,13 @@ L3  联网（未获批准前禁止任何 websearch/webfetch 动作）
 **L0 的一条命令**（把「检索词表」整表喂给 ripgrep；词表真源见 `reference/context-matrix.md` 第六节）：
 
 ```powershell
-Select-String -Path "<skills>\civ6-modding\*.md","<skills>\civ6-tuner\*.md","<skills>\civ6-asset-forge\*.md","<skills>\civ6-art-reference\*.md","<skills>\civ6-audio-pipeline\*.md","<skills>\civ6-html-ui\*.md","<skills>\civ6-landmarks\*.md" -Pattern "跨上下文|跨端|跨脚本|跨文件|调用函数|全局函数|互不可见|独立沙箱|LuaEvents|ExposedMembers|EXECUTE_SCRIPT|ReportingEvents|SendLuaEvent|RequestPlayerOperation|GetProperty|SetProperty|attempt to call a nil value|attempt to index a nil value"
+Select-String -Path "<skills>\civ6-modding\*.md","<skills>\civ6-tuner\*.md","<skills>\civ6-asset-forge\*.md","<skills>\civ6-art-reference\*.md","<skills>\civ6-audio-pipeline\*.md","<skills>\civ6-html-ui\*.md","<skills>\civ6-landmarks\*.md","<skills>\civ6-text-authoring\*.md" -Pattern "跨上下文|跨端|跨脚本|跨文件|调用函数|全局函数|互不可见|独立沙箱|LuaEvents|ExposedMembers|EXECUTE_SCRIPT|ReportingEvents|SendLuaEvent|RequestPlayerOperation|GetProperty|SetProperty|attempt to call a nil value|attempt to index a nil value"
 ```
 
 > ⚠ 检索范围是**显式枚举**：受限通道 `civ6-art-unpack` 永远不在 L0 检索范围（无授权禁止读取）；
 > 家族新增成员时在此处与上方 L0 清单同步登记，门禁 skill 除外。
 
-## Task Routing — Read This First
-
-> 🧭 **第一次接触这个 skill 家族？先读 `reference/FAMILY_INDEX.md`**（7 个 skill 的职责/边界/路由表 + 共用约定 + 分享状态）。
-
-**Full workflow:** `workflows.md` · **Gotchas (必读):** `gotchas.md`  
-**若项目根目录存在 AGENTS.md，也需提前阅读。**
-
-### 1. Task Type → Go To
-
-| Type | Go To |
-|------|-------|
-| **从零新建工程**（"建一个新 mod / 新工程骨架"、要一个可构建的 `.civ6proj`） | → `python tools/new_project.py <源工程根>\<ModName> --name <ModName>`（生成 **两层布局**：工作区根放 `.civ6sln`、同名子目录放 `.civ6proj` + **按需创建的目录** + `.gitignore`/`.gitattributes` + **`workspace/_tools/build.py` 构建入口**；`--deploy` 建完直接部署到 Mods）；格式细节见 `project-setup.md`「两层目录布局」，**GUID 必须新生成**（工具内置全网查重）。★ **目标目录不得位于 Mods 加载目录内** —— 游戏递归扫描 Mods 全树，工程里的构建产物会被当成第二个 mod（同一 GUID 两条记录），命中即退出码 2 |
-| **"直接生成在 Mods 目录"**（用户只要一份游戏能加载的成品，不要工程） | → 两种情况：**工程已存在** → `python tools/modinfo_build.py <X.civ6proj> --deploy`（cook 美术 + 拷 Content + 写 modinfo + ArtDefs 同步，一条命令出成品）；**工程不存在** → `python tools/new_project.py <源工程根>\<ModName> --name <ModName> --deploy`。**不要**把工程目录取在 Mods 里 |
-| **新文明 / 新领袖的数据与文本** | → `civilization-authoring.md` / `leader-authoring.md`（表清单、LOC 推导、注册位置）；美术→`civ6-asset-forge`、3D 引用→`civ6-art-reference`、BGM/语音→`civ6-audio-pipeline`（Wwise 侧）；文明音乐的引擎侧接线判定（`CivilizationAudioTags` + `Civilizations.artdef`）→ `reference/civ-metadata.md` §六 |
-| **Config 文件改动**（增删改 `Players` / `PlayerItems` 行、选人界面物品清单与条目） | → `leader-authoring.md`「**`PlayerItems` 准入规则**」（哪些对象有资格进物品清单：限有实质 TRAIT 链的区域/建筑/单位/改良设施，资源不入列）+ `project-setup.md`「文件类型 → 注册位置对照表」（Config 文件挂 FrontEnd 仅） |
-| **领袖前景（立绘）/ 背景**（选人界面立绘、加载界面背景、`Players.Portrait/PortraitBackground`、`LoadingInfo`、借用原版背景） | → `civ6-asset-forge` skill 的 **`reference/frontend-portrait.md`**（三环境对照：选人 placard / 加载界面 / 外交；含 328×935 推导与色调近似选型）；Suk 分支另见其 `reference/ui-leader-portrait.md` |
-| **文明图标配套**（已做/正在做 `ICON_CIVILIZATION_*`，补忠诚度/压力镜头图标） | → `civ6-asset-forge` skill 的 **`reference/loyalty-icon.md`**（4 张 PNG + UILens 注册链；纯 2D 图集档位另走 `art-pipeline.md`） |
-| **UI panel** (XML + Lua) | → UI Routing ↓ |
-| **Art asset conversion / Icon 尺寸规格问答**（用户素材 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、XLP 实存过滤、"xxx 图标需要什么尺寸"类提问） | → `art-pipeline.md`（先读其"素材询问铁律"，≥2 张图必问拼版意图）尺寸表直接查其第三节，图标规范化/占幅/边距规范查其第四节。★ 该管线改写既有 Icons XML / XLP / `Mod.Art.xml` 时结果落 `<解决方案根>/workspace/gen/`，由 AI 用文件编辑工具写入工程，脚本退出码 2 打印待写入清单；`.tex` / `.dds` 属可再生资产，由脚本直接写入 |
-| **图标实机锯齿 / 边缘发硬 / 毛刺**（"游戏里图标不清晰"、"小尺寸档有锯齿"、接手他人图集想验中间档） | → `art-pipeline.md` **第 8.1 节「边缘质量门」**：`verify_icon_atlas.py --edge-qa` 体检 + `regen_atlas_tiers.py` 从母版重出（产物是 `.dds`，脚本直接覆盖，不必 AI 回写）。**注意结构校验查不出这类问题** |
-| **原版美术素材引用 / ArtDef·XLP 链**（给新对象配原版模型、查引用链、排查美术悬空、ArtDef cook 报错或"不同步"、单位渲染残缺） | → **`civ6-art-reference` skill**（引用链与 cook 层逻辑全在该 skill 内，此处不重复） |
-| **Gameplay logic** (Lua only) | → Gameplay Routing ↓ |
-| **Game data** (units, buildings, modifiers) | → Data Routing ↓ |
-| **总督（Governor）**（新增总督 / 晋升树 / 就职回合 / 立绘注册 / 名额扩容） | → `governor-authoring.md`（美术规格另见 `civ6-asset-forge` skill 的 `reference/governor-art.md`） |
-| **城邦（City-State）**（自定义城邦 / 选单不出现 / 宗主国加成 / 使者层级） | → `citystate-authoring.md` |
-| **文明周边数据收尾**（百科资料卡 `CivilizationInfo` / 城市名 `CityNames` / 市民名 `CivilizationCitizenNames` / 出生关联 `StartBias*` / 文明音乐（`CivilizationAudioTags` + `ArtDefs/Civilizations.artdef`）/ 知名地名 `NamedMountains·NamedRivers` 等） | → **`reference/civ-metadata.md`**（各表 schema、取值域、写作要点、数量建议、最小检查清单） |
-| **Asset Editor 字段名 / 调试查日志 / 枚举取值**（"AE 里那个框叫什么"、"Database.log 怎么看"、"Culture 有哪些值"、"忠诚度材质的字段名"） | → **`reference/editor-and-enums.md`**（AE 字段速查 / 调试三板斧 / `Cultures.artdef` 取值表 / 忠诚度 3D 链字段） |
-| **平衡补丁 / 差分覆盖**（改主工程数值、解挂载、覆盖文本的补丁 mod） | → `balance-patch.md` |
-| **换行 / EOL 归一化**（"CRLF 还是 LF"、行尾混了、`.gitattributes` 怎么写、接手他人工程先体检） | → `gotchas.md` **§68「换行分层铁律」**（唯一真源）+ `scripts/normalize_eol.py`（默认只报告；`--fix` 才写入 —— 工程内既有文件内容有变化时改写结果落 `<解决方案根>/workspace/gen/`，由 AI 用文件编辑工具写入工程；`--repo-skill` 清理 skill 自身仓库仍直写） |
-| **工坊封面 / 预览图**（做封面、"封面上的中文别画错"、"封面太模糊"） | → 排版走 `tools/workshop_cover.py`（确定性 CJK 排版）；**预览图缩放执行端在 `art/make_workshop_preview.py`**（Lanczos 阶梯 + unsharp、默认 512、已达标直通不二次缩放；见 `art-pipeline.md` 第九·补节）；发布流程见 `release.md` §3.2 |
-| **音频**（导入 / 素材整备 / 响度均衡 / Wwise / bank / 语音 / BGM） | → **`civ6-audio-pipeline` skill**（音频全流程在该 skill 内，此处不重复） |
-| **运行时验证**（"这个 API 实际行为是什么"、复现脚本报错、PROPERTY/modifier 实测） | → **`civ6-tuner` skill**（FireTuner TCP 4318，在运行中的对局里执行 Lua；静态校验回答不了的问题走这里） |
-| **翻译 / 多语言文本**（补缺失语言、审计语言齐缺失、主工程 vs 补丁文本 diff） | → `SKILL.md` §4.1 的 Civ6 侧规则（语言代码 / 标记必须保留 / 合并进原 SQL / 写后复核）；工具自备 |
-| **Mixed** | → Read all relevant |
-| **Steam 创意工坊上传/更新** | → `release.md` |
-| **"能不能从这个文件调用那个文件的函数"** / **"跨文件、跨上下文、跨端怎么通信"** / **"UI 怎么调 GP 的函数"** | → **`reference/context-matrix.md`**（唯一真源：术语 / 通道矩阵 / 症状表 / 检索词） |
-| **"UI 收不到 GP 的消息"** / **`attempt to call a nil value`** / **`attempt to index a nil value`** / **`function expected instead of nil`** | → **`reference/context-matrix.md`** 症状表，再进 `gotchas.md` §36–§38 |
-| **Debug** | → `debug-tools.md` + `gotchas.md` |
-
-### 2. UI Routing
-
-```
-ADD to existing UI
-├─ Button on LaunchBar/PartialScreen → workflows.md "A" + xml-templates.md "LaunchBar"
-├─ Info onto CityPanel/UnitPanel     → workflows.md "B" (ReplaceUIScript)
-└─ Popup/overlay from existing UI    → workflows.md "C" + "E"
-
-REPLACE existing UI behavior → workflows.md "B" + ui-lua.md "UI Replacement"
-CREATE new standalone panel  → workflows.md "C" + xml-templates.md "Fullscreen Overlay"
-MODIFY data display          → workflows.md "D" + database.md
-```
-
-**必读:** `ui-controls.md`（控件属性/Lua 方法/XML 示例）· `ui-lua.md`（生命周期/事件/热重载）· `xml-templates.md`（模板）
-
-### 3. Gameplay Routing
-
-```
-ADD game mechanic
-├─ React to events (turn, move, build)  → gameplay-lua.md + events.md
-├─ Store custom data                    → gameplay-lua.md "SetProperty/GetProperty"
-└─ Expose data to UI                    → gameplay-lua.md "UI ↔ GP Communication"
-
-MODIFY rules
-├─ Via SQL modifiers (preferred)        → database.md + `query_api.py`
-├─ Via Lua hooks (GameEvents)           → gameplay-lua.md + events.md
-└─ Via Lua override                     → gameplay-lua.md + `query_api.py`
-
-ADD content (unit/building/district)    → database.md + project-setup.md（优先查 .civ6proj）
-ADD civ/leader / agenda / AI 偏好                          → database.md + agenda-authoring.md + `query_api.py`
-```
-
-**查询:** 事件签名 → `python database/scripts/query_events.py --search 关键词` · API → `api-cheatsheet.md` + `database\api.sqlite`
-
-### 4. Data Routing
-
-```
-ADD new unit/building/district
-├─ 列定义 → PRAGMA table_info(TableName) (DebugGameplay.sqlite)
-├─ 写法   → database.md
-├─ ModifierType 查询 → SELECT * FROM Modifiers WHERE ModifierType LIKE '%Key%'
-├─ ModifierArguments → SELECT Name,Value FROM ModifierArguments WHERE ModifierId='X'
-├─ RequirementType   → SELECT * FROM Requirements WHERE RequirementType LIKE '%Key%'
-└─ 类型名中英对照    → SELECT UnitType FROM Units WHERE UnitType LIKE '%Key%'
-
-Modifier/PROPERTY 设计
-├─ 作用域决策 → 见下文"写前三问"的「三问的执行材料」（先按该节第一步判级）
-├─ ATTACH 模式 → reference/WORKSHOP_PATTERNS.md
-├─ 参数分类   → reference/MODIFIER_ARGUMENTS.md
-├─ **参数取值域（该 Effect 的参数能填什么）** → `python database/scripts/query_effect_args.py --effect <EFFECT_X>`
-│    （或 `--modifier <MODIFIER_X>` 自动解析到 Effect；`--arg <参数名>` 反查）
-└─ **某效果原版怎么实现的（照抄现成链）** → 查 `DynamicModifiers ⋈ Modifiers ⋈ ModifierArguments`
-     + `TraitModifiers`/`CivilizationTraits` 等绑定表（见下"写前先搜现成实现"）
-
-ADD tech/civic/policy   → database.md
-ADD resource/feature    → database.md
-REMOVE/MODIFY data      → database.md "Removing Data" + project-setup.md "LoadOrder"（优先查 .civ6proj）
-ADD localization text   → database.md + DebugLocalization.sqlite (SkillAnnotation_Colors/Icons) + 本地化桥接
-                         生成文本时按内置映射直接补 `[ICON_x]`（不需要等用户说明）→ `python art/iconify_text.py <工程根> --audit` / `--check` / `--write`
-                         （`--write` 改写既有文本时结果落 `<解决方案根>/workspace/gen/`，由 AI 用文件编辑工具写入工程；
-                          退出码 2 时打印待写入清单）
-                         双向引用体检（图标正向 + `{LOC_x}` 反向 + 配置孤儿 tag）→ `python scripts/check_text_refs.py <工程根>`
-                         DLC 文本查不到 → `python database/scripts/build_localization.py --report`
-```
-
-### 4.1 多语言文本 / 本地化（**Civ6 侧规则**）
-
-本 skill **不内置**翻译工具链（审计/词表/合并等脚本不随包分发）；做翻译/多语言文本时按下面的
-**Civ6 侧规则**执行，工具自备（任何能按行处理 SQL 的脚本/GUI 均可）：
-
-1. **语言代码固定为**：`en_US` / `zh_Hans_CN` / `zh_Hant_HK` / `ja_JP` / `ko_KR` / `de_DE` / `es_ES` / `fr_FR`
-   （与 `Text/*.sql` 的 `UpdateText` 动作语言段一致；`Config` 覆盖属预期加载语义）。
-2. **标记必须原样保留**：`[ICON_X]`、`[COLOR:...]`、`[ENDCOLOR]`、`[NEWLINE]`、`{LOC_TAG}`。
-   生成任何面向玩家的文本时，直接按 `art/iconify_text.py` 内置关键词映射补 `[ICON_x]`，不需要用户另行要求；
-   写完先 `--check` 预览、`--write` 落位 `workspace/gen` 后由 AI 写入工程。图标名写错**不会报错**，只是不显示——
-   用 `python art/iconify_text.py <工程根> --audit` 与 `python scripts/check_text_refs.py <工程根>` 双向核验
-   （后者同时查 `{LOC_x}` 文本往回的悬空与 `Text/*Config*.sql` 孤儿 tag）。
-3. **默认多语言合并进原 SQL**，不新增分语言文件；UTF-8 / CRLF / 注释 / 尾逗号保持原样。
-4. **先查原版有没有现成 tag**：`SELECT Text FROM LocalizedText WHERE Tag='LOC_X' AND Language='zh_Hans_CN'`
-   （`database/DebugLocalization.sqlite`）——能复用就复用，文案还与官方逐字一致。
-   > ⚠️ **该库是「基础游戏」快照**（实测 **28,060 tag × 12 语言**），**不含任何 DLC/资料片文本**：
-   > `LOC_LEADER_MANSA_MUSA_NAME`（曼萨穆萨）、`LOC_DISTRICT_PRESERVE_NAME`（保护区）、
-   > `LOC_GOVERNOR_THE_DEFENDER_NAME`（维克多）**全部查不到**。别据此断定"官方没这个 tag"。
-   >
-   > **需要 DLC 覆盖时按分层规则合成**（`build_localization.py`）。两个库都在
-   > `database/` 下**只在本机保存、不入 git**（可从游戏文件数十秒重建）：
-   >
-   > | 库 | 内容 | 规则 | 期望规模 |
-   > |---|---|---|---|
-   > | `DebugLocalization.sqlite`（主） | Base + EXP1 + EXP2 + 全部领袖/文明 DLC | `EXP2 > EXP1 > base`，其它领袖包只补缺不覆盖；**排除情景与 Mode** | 336,125 行 |
-   > | `Localization_Mode.sqlite`（模式） | 8 个 GAMEMODE（英雄/秘密结社/塔防/行业与公司/风云变幻/蛮族氏族/天启/树随机） | 独立成库，只加不覆盖 | 15,417 行 |
-   >
-   > ```bash
-   > python database/scripts/build_localization.py --report            # 只读：分段 + 分层 + 差异统计
-   > python database/scripts/build_localization.py --rebuild --dry-run # 一键重建两库（预演）
-   > python database/scripts/build_localization.py --rebuild           # 实际重建
-   > ```
-   >
-   > 主库语义是「**游戏文件权威、既有库补缺**」：游戏文件定义了的键取分层值（EXP2 优先），
-   > 没有的键（如项目自造 tag）用既有库补——**既有行一行不丢**，`SkillAnnotation_*` 侧表原样保留。
-   > 两库**互不覆盖**：有 239 个交集键、其中 238 个是模式对主库的改写；
-   > **运行时若同时启用模式，按「模式库胜出」合并使用**。
-   > 完整重建流程与验收口径见 `database/README.md` §零。
-   >
-   > ⚠️ **不要试图用游戏运行时缓存补全**：`%LOCALAPPDATA%\...\Cache\DebugLocalization.sqlite`
-   > 实测恒为 base 15,229 tag，**连当前加载的 mod 文本都没有**（同目录的 `DebugGameplay.sqlite`
-   > 却含本局全部内容），与本局模式/mods 无关——它不反映"加载了什么"。
-   > 权威分段判据在 `.modinfo`：新式看 `<ActionCriteria>` 里 `ConfigurationId=GAMEMODE_*`，
-   > 旧式（仅 `VikingsScenario`）看 `<Properties><RuleSet>` 的 `RULESET_SCENARIO_*`；
-   > 模式清单的权威表是 `DebugConfiguration.sqlite → GameModeItems`（8 行），**不在 Gameplay 库**。
-
-#### 语言分级制度（写文本前先定语种数）
-
-**默认基线 L0 = 三语**：`zh_Hans_CN` + `zh_Hant_HK` + `en_US`。
-
-**判定优先级：项目 `AGENTS.md` 的要求 ＞ skill 默认 L0。**
-项目里明确要求更多或更少语种时，**以项目内部要求为准**；没说就按 L0 三语。
-
-| 级别 | 语种 |
-|---|---|
-| **L0（默认）** | `zh_Hans_CN` / `zh_Hant_HK` / `en_US` |
-| **L1（可选扩展）** | `ja_JP` / `ko_KR` / `de_DE` / `es_ES` / `fr_FR` / `it_IT` / `pl_PL` / `pt_BR` / `ru_RU` |
-
-> **语言文本库（DebugLocalization.sqlite）保持全量 12 语言维护，不按分级裁剪** ——
-> 分级只约束「本项目交付多少语种」，不约束查询库。
-> 实测该库 12 语言：`en_US` / `fr_FR` / `de_DE` / `it_IT` / `es_ES` / `ja_JP` / `ru_RU` /
-> `pl_PL` / `ko_KR` / `zh_Hant_HK` / `zh_Hans_CN` / `pt_BR`（28,060 tag）。
-
-
-5. 写入后逐条复核：标签齐缺失（**按上方「语言分级制度」定的语种数**）、空值、标记漂移；改动量大时按 `validation.md` 的清单过一遍。
-6. 文本生成后必跑 `python scripts/check_text_refs.py <工程根>`：`[ICON_x]` 正向查图标定义、`{LOC_x}` 反向查本地化定义，
-   并报告 `Text/*Config*.sql` 中不被任何工程文件引用的孤儿 tag；有输出即先修复再交付。
-
-> 文本与图标/颜色的对照数据在本 skill 内：`database/DebugLocalization.sqlite`（官方文本 + 手工标注侧表
-> `SkillAnnotation_Colors` / `SkillAnnotation_Icons`）与 `reference/sources/` 的两份社区常量表。
-
-### 5. 中文文件处理（必读）
-
-处理含中文的 SQL/Lua/XML 时，严格执行以下规则（完整版见项目 AGENTS.md「UTF-8 与中文文件处理」）：
-
-- 所有文件读写默认 UTF-8，不得改变原有编码、换行风格和无关内容。
-- PowerShell 中读写含中文文件前先 `chcp 65001`，并设置 `[Console]::OutputEncoding` / `$OutputEncoding` 为 UTF-8。
-- 查看含中文文件优先用 Read 工具，避免 PowerShell 打印中文（控制台乱码多为显示问题，不代表文件损坏）。
-- 禁止 PowerShell here-string 管道/重定向/`Set-Content`/`Out-File` 写入含中文内容；不要用 `sed`/`awk` 处理含中文文件，改用 Python 或 Node.js 并显式 UTF-8 读写。
-- 不要为了修编码而整文件重写、全文件格式化或全文件字符串替换。
-
----
-
-## 写前先搜现成实现（硬性 · 先查再写）
+### 3.2 写前先搜现成实现（硬性 · 先查再写）
 
 写任何 Modifier / Requirement **之前**，先在官方库里搜「这个效果原版是怎么实现的」——
 **别凭记忆拼 ModifierType + 参数**。原版几乎总有同类效果可以照抄，照抄的链路一定是对的。
@@ -400,12 +391,12 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 ---
 
-## 写前三问（按指令明确程度分级）
+### 3.3 写前三问（按指令明确程度分级）
 
 同一份 skill，对「已经指名文件与做法的指令」和「只有一句需求」该花的检索量差一个数量级。
 动手前先按用户这一轮指令的文本判级，再按级别决定问几问、能读什么。
 
-### 第一步：判级
+#### 第一步：判级
 
 判据只看用户这一轮指令的文本，不看工程里有什么、不看 skill 里有什么。四样：
 
@@ -425,7 +416,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 判级出现歧义时取检索更少的一级。
 
-### 第二步：按级执行
+#### 第二步：按级执行
 
 | 级别 | 一问 SQL 能否解决 | 二问 API 是否查证 | 三问 接口用法是否查证 | 参考库之外允许的读取 | 改动范围 |
 |---|---|---|---|---|---|
@@ -438,7 +429,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 三问的详细执行材料（一问确认清单、Modifier 作用域速查、`query_api.py` 命令与陷阱、三问的四类查证入口）在下方「三问的执行材料」一节，供三级与四级使用。
 
-### skill 参考库的使用口径（与级别无关）
+#### skill 参考库的使用口径（与级别无关）
 
 **范围**。随 skill 分发的一切内容：`<skill>\*.md`、`<skill>\reference\**`、`<skill>\database\*.sqlite`、`<skill>\database\schema-annotated.md`、`<skill>\database\scripts\**` 里既定的查询命令、`<skill>\tools\**`。
 
@@ -455,7 +446,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 **禁止扩散**。参考库里搜不到某个标识符时，按当前级别的规则处理（升级或停下询问），不因为「参考库允许读」就把检索范围扩到参考库之外。
 
-### 第三步：各级共用的四条约束
+#### 第三步：各级共用的四条约束
 
 **停止条件。** 手上材料足以把整段代码一次写完整时，检索立即停止。判断标准是能否一次写出完整可运行的代码。
 
@@ -465,14 +456,14 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 **失败升级。** 按当前级别写完并执行校验，校验未通过时允许升一级重试一次；仍未通过则升到四级。书写类失败（语法错误、拼写错误、格式错误、静默报错、单次输出被截断）就地修正，不计入升级次数。
 
-### 覆盖开关
+#### 覆盖开关
 
 用户在本轮任务里说过「不调研」「不额外调研」「不做验证」「直接做」中的任意一句，当次任务直接按一级执行，参考库之外的读取全部关闭，仅保留参考库读取。
 
 反向同样成立：用户在本轮指令中明确授权完全读取 / 全面调研（如「随便读」「放开查」「彻底调研一下」）时，当次任务不受判级的读取范围、「单次检索上限」与通读禁令束缚，按用户授权的范围执行；「改动边界默认值」与「工程文件写入铁律」不受此开关影响，改动边界仍以指令为准。
 
 
-### 三问的执行材料（三级 · 四级用）
+### 3.4 三问的执行材料（三级 · 四级用）
 
 #### 一问：SQL 能搞定吗？
 
@@ -540,7 +531,63 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 ---
 
-## Event System Quick Decision
+### 3.5 Code Generation Workflow
+
+所有代码生成任务遵循此流程。
+
+#### ① Understand — 理解需求
+
+写任何代码前，先澄清：
+- 任务类型：UI（XML+Lua）/ Gameplay（Lua）/ Data（SQL/XML）/ 混合
+- 范围：新增 / 修改 / 修复
+- 通信需求：需要 UI↔GP 吗？需要跨脚本传数据吗？（→ `reference/context-matrix.md` 通道矩阵）
+- 持久化：需要跨存档保存状态吗？（→ PROPERTY）
+
+#### ② Route — 确定走向
+
+按 §2.1 Task Routing 表选定模式，进入对应 Routing 小节。
+
+#### ③ Plan — 规划实现
+
+确定文件清单、模式、API：
+
+先按 §3.3「写前三问」判级；一级与二级按判级结果直接写，下表只对三级与四级生效。
+
+| 维度 | 参考文件 |
+|------|---------|
+| 检索量 | §3.3「写前三问」第一步判级 |
+| 文件清单 | `project-setup.md`「文件清单同步」+ 本次 diff 涉及的文件 |
+| 模式选择 | `workflows.md`（A-J） |
+| API 查询 | `api-cheatsheet.md` / `database\api.sqlite` |
+| 事件选择 | `events.md` |
+| 命名规范 | `conventions.md` |
+| 多列表格填表 | **预先** `database/schema-annotated.md`（列定义/必填/示例值） |
+
+#### ④ Write — 编写代码
+
+遵循参考文件写代码，完成后注册到 `.civ6proj` / `.modinfo`（仅 XML/SQL/Lua 必须写文件清单；ImportFiles 图片/视频、Platform 音频 bank 等媒体资产走专门导入或用户手动导入，其余文件 ModBuddy 引擎自动打包无需写入 —— 见 project-setup.md「文件清单同步」）。
+
+**写取代映射之后必做一步**：本次写的 SQL 里出现 `BuildingReplaces` / `DistrictReplaces` / `UnitReplaces` 时，映射写完、子表开写之前跑一次 `python scripts/replacement_subtables.py <工程根> --diff`，按它列出的未覆盖表逐表复刻，口径见 `gotchas.md` G15b。被取代对象的子表行不会被引擎继承，缺一张表就是一类行为静默丢失、加载期零报错。用户点名「补全 xx 的全部表格」时，用 `--object xx --sql` 取原版全部行。
+
+#### ⑤ Validate — 验证
+
+按 `scripts/README.md` 的标准顺序跑完全部脚本（含改过 `.lua` 时必跑的 `check_lua_context.py`，必须 0 问题）；对照 `validation.md` 清单逐项确认。
+
+---
+
+#### 反模式（Anti-Patterns）
+
+1. **不要混用 UI/GP API** — 查可用性
+2. **不要忘记热重载** — 始终处理 `OnInit(isReload)` 和 `OnShutdown()`
+3. **不要通过 LuaEvents 传 C++ 对象** — 表格按引用传递（端内跨文件实时同步），C++ 对象（userdata）禁止
+
+---
+
+## 4. 速查
+
+写 UI 与 GP 通信时的对照表，口径真源是 `reference/context-matrix.md`。
+
+### 4.1 事件总线（Event System Quick Decision）
 
 | 所在位置 | 用 | 必须移除？ |
 |---------|----|-----------|
@@ -557,23 +604,26 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 > `availability: "None"` 的 48 条**哪一层都订阅不到**（UI 侧 `.Add()` 会 nil 崩溃）。
 > 详见 `gotchas.md` §7 与 `events.md` Gotcha 8。
 
-## 数据传递速查
+### 4.2 数据传递速查
 
-### 跨脚本通信
+#### 跨脚本通信
 
-> **端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。**
+> **★ 前提：每个 `.lua` 文件都是一个独立上下文**（`AddGameplayScripts` 的 GP 文件、`<Context Name="X">` 的 UI 文件皆然），各自一份全局、互不可见——同端文件之间也不例外。下面列的都是运行期桥接手段，口径真源 `reference/context-matrix.md`。
+
+> **跨端（UI↔GP）四个通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需要同步返回值时优先）。端内跨上下文：`LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`。**
 
 完整口径（术语 / 通道矩阵 / 症状表 / 实测记录 / 检索词表）见 **`reference/context-matrix.md`**。
 
 | 方向 | 方式 | 场景 |
 |------|------|------|
-| UI ↔ UI / GP ↔ GP | LuaEvents（表格按引用传递；禁传 C++ 对象） | 端内跨文件广播/通知；**端内跨上下文只有这一个通道** → `reference/context-matrix.md` |
+| UI ↔ UI / GP ↔ GP | LuaEvents（表格按引用传递；禁传 C++ 对象） | 端内跨文件广播/通知（首选；也可用暴露函数） → `reference/context-matrix.md` |
 | UI → Gameplay | EXECUTE_SCRIPT | 按钮触发 GP 动作 |
 | Gameplay → UI | ReportingEvents.SendLuaEvent | 数据变更推送（接收方拿到的是副本） |
-| GP ↔ UI 被动读 | PROPERTY 直接读（跨端） | 查询，非按钮回调 |
-| 其余任意组合 | 无 | **不可达**，见 `reference/context-matrix.md` |
+| GP ↔ UI 被动读 | PROPERTY 直接读（跨端） | 查询，非按钮回调；GP 写、UI 延后读，属被动辅助 |
+| GP ↔ UI（需同步返回值） | 暴露函数 `ExposedMembers` | 双向、可直接调用；**仅 UI 按钮回调禁用** |
+| 直接调用另一上下文全局 | 无 | **不可达**，须经上面的通道桥接，见 `reference/context-matrix.md` |
 
-### PROPERTY 系统速查
+#### PROPERTY 系统速查
 
 | 读渠道 | 适用范围 | 方式 |
 |--------|---------|------|
@@ -585,57 +635,13 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 
 不存在 `CITY_PROPERTY_MATCHES` 或 `UNIT_PROPERTY_MATCHES` — 城市/玩家 PROPERTY 做条件必须走 Lua。
 
-## Code Generation Workflow
-
-所有代码生成任务遵循此流程。
-
-### ① Understand — 理解需求
-
-写任何代码前，先澄清：
-- 任务类型：UI（XML+Lua）/ Gameplay（Lua）/ Data（SQL/XML）/ 混合
-- 范围：新增 / 修改 / 修复
-- 通信需求：需要 UI↔GP 吗？需要跨脚本传数据吗？（→ `reference/context-matrix.md` 通道矩阵）
-- 持久化：需要跨存档保存状态吗？（→ PROPERTY）
-
-### ② Route — 确定走向
-
-按 §1 Task Routing 表选定模式，进入对应 Routing 小节。
-
-### ③ Plan — 规划实现
-
-确定文件清单、模式、API：
-
-先按「写前三问（按指令明确程度分级）」判级；一级与二级按判级结果直接写，下表只对三级与四级生效。
-
-| 维度 | 参考文件 |
-|------|---------|
-| 检索量 | 「写前三问（按指令明确程度分级）」第一步判级 |
-| 文件清单 | `project-setup.md`「文件清单同步」+ 本次 diff 涉及的文件 |
-| 模式选择 | `workflows.md`（A-J） |
-| API 查询 | `api-cheatsheet.md` / `database\api.sqlite` |
-| 事件选择 | `events.md` |
-| 命名规范 | `conventions.md` |
-| 多列表格填表 | **预先** `database/schema-annotated.md`（列定义/必填/示例值） |
-
-### ④ Write — 编写代码
-
-遵循参考文件写代码，完成后注册到 `.civ6proj` / `.modinfo`（仅 XML/SQL/Lua 必须写文件清单；ImportFiles 图片/视频、Platform 音频 bank 等媒体资产走专门导入或用户手动导入，其余文件 ModBuddy 引擎自动打包无需写入 —— 见 project-setup.md「文件清单同步」）。
-
-### ⑤ Validate — 验证
-
-按 `scripts/README.md` 的标准顺序跑完全部脚本（含改过 `.lua` 时必跑的 `check_lua_context.py`，必须 0 问题）；对照 `validation.md` 清单逐项确认。
-
 ---
 
-### Anti-Patterns 反模式
+## 5. 验证与工具
 
-1. **不要混用 UI/GP API** — 查可用性
-2. **不要忘记热重载** — 始终处理 `OnInit(isReload)` 和 `OnShutdown()`
-3. **不要通过 LuaEvents 传 C++ 对象** — 表格按引用传递（端内跨文件实时同步），C++ 对象（userdata）禁止
+代码与数据写完之后的口径：先跑工具，再按清单确认。
 
----
-
-## DSH 工具集成（dsh-rgn-tools）
+### 5.1 DSH 工具集成（dsh-rgn-tools）
 
 **调用优先级（硬性）**：
 
@@ -647,7 +653,7 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 |------|--------|-----------|
 | 校验项目 `*_RGN.sql` 引用完整性（悬空 ModifierId/Type/RequirementSetId 等，可对照基础库） | `dsh_validate` | `scripts/rgn_validate_runner.mjs` |
 
-### 自带校验/运维脚本（`scripts/`，全部零依赖 + 带退出码）
+### 5.2 自带校验/运维脚本（`scripts/`，全部零依赖 + 带退出码）
 
 **完整清单与标准验证顺序见 `scripts/README.md`。** 改完代码/数据后按序跑：
 
@@ -656,19 +662,19 @@ SELECT * FROM RequirementArguments WHERE RequirementId = '<上一步的 ReqId>';
 | `scripts/check_sql_exec.py` | **可执行性** —— 非法转义（`'…\'s…'`）导致**整条 INSERT 报废**；遇错即停，同文件后续语句块也全不执行 | ★ `rgn_validate` 查不到：语句没跑起来 = 数据没进库 = 引用不悬空 |
 | `scripts/rgn_validate_runner.mjs` | **引用完整性 + 本次改动 Modifier 单复数/作用域（--scope-check）** —— 悬空 ID / 单复数误用 | 与上面互补 |
 | `scripts/check_types_kinds.py` | `INSERT INTO Types` 的 `Kind` 是否引擎合法枚举 | 打包不报错、加载期才丢弃 |
-| `scripts/check_sql_antipatterns.py` | **语义反模式** —— 语法合法但恒假：`LIKE ('%A%' OR '%B%')`、`WHERE … = NULL` | ★ 前三个都抓不到：它跑得起来、引用也闭合，只是**意思错了** |
+| `scripts/check_sql_antipatterns.py` | **语义反模式** —— 语法合法但恒假/恒错：`LIKE ('%A%' OR '%B%')`、`WHERE … = NULL`、前置列填了特色对象（D 类，口径见 `gotchas.md` G15） | ★ 前三个都抓不到：它跑得起来、引用也闭合，只是**意思错了** |
 | `scripts/check_proj_content.py` | `<Content Include>` ↔ 磁盘**双向闭合**（悬空清单项 / 漏登记） | 见 `gotchas.md` §3「打包 vs 加载」 |
 | `scripts/check_pantry.py` | **pantry 卫生** —— `.tex` 位置 / 重名 / depot 路径 / 非 ASCII / `.tex`↔`.dds` 配对 | 开 AssetEditor 前必跑 |
 | `art/verify_tex_class.py` | **`.tex` 类别 vs XLP 注册类**是否匹配（如 `UITexture` 包里的贴图必须 `UserInterface`） | ★ 唯一能防「类别写错 → cooker 静默替换成 error asset」的机械防线；`check_pantry`/`verify_icon_atlas`/`align_tex_format` 都不查它 |
 | `scripts/clear_ae_cache.py` | 清 AssetEditor 依赖缓存（动过贴图后**必须**清，否则验证结论是缓存假象） | 同上 |
 | `scripts/verify_trees.py` | 两棵目录逐字节相同（源 ↔ Mods 副本） | 双目录一致性 |
 | `scripts/check_lua_registration.py` | **`.lua` 注册体检** —— 按角色（UI 上下文 / include 扩展件 / GP 脚本）判定哪些 `.lua` 实际不会被加载；角色判定在 `scripts/_lua_roles.py`（与下一个脚本共用） | 改过 `.lua` 后必跑（`scripts/README.md` 标准顺序第 ⑥ 步） |
-| `scripts/check_lua_context.py` | **跨上下文体检** —— UI 侧 `GameEvents` / UI 侧 `SetProperty` / 跨端注册触发 `LuaEvents` / 调用不在 include 闭包内的全局函数 / `ExposedMembers` 使用点；端内跨上下文只有 `LuaEvents`，其余不可达，口径真源 `reference/context-matrix.md` | 新增或改过 `.lua` 后必跑（标准顺序第 ⑦ 步） |
+| `scripts/check_lua_context.py` | **跨上下文体检** —— UI 侧 `GameEvents` / UI 侧 `SetProperty` / 跨端注册触发 `LuaEvents` / 调用不在 include 闭包内的全局函数 / `ExposedMembers` 使用点（仅报告，不阻断）；端内 `LuaEvents` 首选、跨端四通道，口径真源 `reference/context-matrix.md` | 新增或改过 `.lua` 后必跑（标准顺序第 ⑦ 步） |
 | `scripts/check_doc_anchors.py` | **文档指针一致性** —— 跨上下文结论行是否都带 `context-matrix.md` 指针、指针行是否带排他结论 | 改过家族 md 或移动真源文件后 |
-| `scripts/normalize_eol.py` | **换行归一化** —— 按 `gotchas.md` §68「资产类 LF / 代码·配置类 CRLF」体检（默认只报告；`--fix` 才写入，工程内既有文件内容有变化时改写结果落 `workspace/gen/`，由 AI 用文件编辑工具写入工程） | 接手他人工程、批量改过行尾后 |
+| `scripts/normalize_eol.py` | **换行归一化** —— 按 `gotchas.md` §68「资产类 LF / 代码·配置类 CRLF」体检（默认只报告；`--fix` 只写美术与音频产物，代码文件的清单落 `workspace/gen/reports/`） | 接手他人工程、批量改过行尾后 |
 
 
-### rgn_validate 离线执行器
+### 5.3 rgn_validate 离线执行器
 
 `scripts/rgn_validate_runner.mjs`：逻辑提取自 dsh-rgn-tools 插件源码，仅依赖 Node ≥22 内置 `node:sqlite`，任意终端可直接运行。默认**实跑模式**：把基础库快照到临时文件 → 真实执行项目 SQL（两遍：先跨文件 DDL 再其余语句，逐语句容错）→ 直接查库比对定义/引用全集，可识别 `INSERT INTO ... SELECT '字面量' || 列 ...` 动态拼接，并附带语法校验能力。
 
@@ -682,9 +688,36 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 - **基础库防污染**：参考库必须与官方 schema 1:1。改过 DB 后跑 `python database/scripts/audit_schema_drift.py`（有漂移 exit 1）；校验器也会对 DynamicModifiers/Modifiers/ModifierArguments/Types 做列断言并告警
 - `--lang` 按所选语言匹配文本列（默认 `zh`，可选 `en` / `ja`）
 
-## File Reference
+## 6. 参考资料（File Reference）
 
-### 数据查询（写前必跑）
+需要时查，不必通读。§6.2 是写数据前的查询入口，§6.4 是「哪个文件干什么」，其余按需取用。
+
+### 6.1 环境路径总表（必读 · 分享自举）
+
+> **使用顺序：`<skill目录>\local_paths.json`（若存在）＞ 下表硬编码值。**
+> 任一路径 `Test-Path` 失败 → 按"自动纠正"列依次探测；全部失败 → **询问用户一次**，
+> 把结果写入 `<skill目录>\local_paths.json`（个人环境文件，分享时不携带、不覆盖他人）后继续。
+> 「本机硬编码」列是整理人机器的示例值，换机器一律走「自动纠正链」或 `local_paths.json`。
+
+| # | 用途 | 本机硬编码 | 自动纠正链 |
+|---|---|---|---|
+| P1 | ModBuddy 源工程目录 | `D:\documents\Firaxis ModBuddy\Civilization VI` | ① `%USERPROFILE%\Documents\Firaxis ModBuddy\Civilization VI` → ② 询问用户 |
+| P2 | Mods 加载目录 | `D:\documents\My Games\Sid Meier's Civilization VI\Mods` | ① 注册表 `UserPath`＋`\Mods` → ② `%USERPROFILE%\Documents\My Games\Sid Meier's Civilization VI\Mods` → ③ 询问用户 |
+| P3 | 游戏本体（UI/Lua/XML/Text 官方原文） | `F:\Steam\steamapps\common\Sid Meier's Civilization VI` | ① 注册表 `ToolsPath` 去尾部 ` SDK` → ② Steam `libraryfolders.vdf` 找 appid 289070 → ③ 询问用户 |
+| P4 | SDK Assets（artdef/解包素材） | `F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK Assets` | ① 注册表 `AssetsPath` → ② P3＋` SDK Assets` → ③ 询问用户 |
+| P5 | SDK 工具（ModBuddy/MSBuild） | `F:\Steam\steamapps\common\Sid Meier's Civilization VI SDK` | ① 注册表 `ToolsPath` → ② P3＋` SDK` → ③ 询问用户 |
+| P6 | 创意工坊参考件 | `F:\Steam\steamapps\workshop\content\289070` | ① libraryfolders.vdf → ② 询问用户 |
+
+> ⚠ **P2 是游戏递归扫描的加载根**：任何位置的 `*.modinfo` 都会被收成一条 mod 记录。
+> **源工程目录绝不允许放在 P2 之内**（否则工程里的构建产物会被当成第二个 mod，同一 GUID
+> 两条记录）。判定由 `tools/_paths.py` 的 `assert_source_tree()` 提供，四个写入工具入口已接入；
+> 依据见 `gotchas.md`「Mods 加载树里不能放工程」。
+
+注册表键（P2/P4/P5 同源，一条读三值）：
+`HKCU\SOFTWARE\Firaxis\Civilization6_ModBuddy\2013\DialogPage\Firaxis.VisualStudio.Projects.Civ6.OptionsPages.OptionsDialogPage`
+→ `UserPath / AssetsPath / ToolsPath`
+
+### 6.2 数据查询（写前必跑）
 
 | 查什么 | 怎么查 |
 |--------|-------|
@@ -701,12 +734,12 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | FrontEnd 数据 (Map/Difficulty) | `SELECT * FROM Maps` (DebugConfiguration.sqlite) |
 | 事件回调参数 | `python database/scripts/query_events.py --show ExactEventName` |
 
-### 参考其他工坊作品（默认顺序）
+### 6.3 参考其他工坊作品（默认顺序）
 
-路径见文首「环境路径总表」：**P1 = ModBuddy 源工程目录（首选）、P6 = 创意工坊参考件（次选）**。
+路径见 §6.1「环境路径总表」：**P1 = ModBuddy 源工程目录（首选）、P6 = 创意工坊参考件（次选）**。
 禁止使用 `.lnk` 快捷方式地址，直接使用总表解析出的文件夹路径。
 
-### 核心文件
+### 6.4 核心文件
 
 | 文件 | 用途 | 何时读 |
 |------|------|-------|
@@ -722,21 +755,22 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `balance-patch.md` | **平衡补丁 / 差分覆盖**：★ LoadOrder 必须压过主工程最终覆盖层 / 差分手法表（改值·解挂载·换门槛·清 ID 族·文本 REPLACE）/ 全局标志 + 公式化系数 / 验证清单 | **写补丁 mod 时** |
 | `project-setup.md` | .civ6proj / .modinfo 项目结构与注册指南 | 注册文件时 |
 | `release.md` | **Steam 创意工坊发布**：workspace 准备 / 非 Trimmed 上传工具构建 / validate→upload→Steam API 验证 / Clash Verge 代理诊断（附带脚本见 `release/scripts/`、模板 `release/templates/`、`release/docs/`） | **上传或更新工坊条目时** |
+| `workshop-intro.md` | **工坊介绍与更新说明**：三栏口径（甲预置模板 / 乙用户提供 / 丙从 `Text/` 提取）/ 首传与更新的流程分流 / 依赖声明（工坊 ID 与官方 DLC 分置）/ changeNote 风格与排序 / 长度上限 | **首传写介绍、更新写说明、声明依赖时** |
 | `conventions.md` | 命名规范/文件模板 | 写任何文件前 |
-| `reference/context-matrix.md` | **Lua 上下文口径唯一真源**：术语 / 通信矩阵（端内只有 LuaEvents、跨端三个固定通道）/ 症状表 / 实测记录 / 检索词表 | **写任何跨文件、跨端、跨上下文的通信代码前** |
+| `reference/context-matrix.md` | **Lua 上下文口径唯一真源**：术语 / 通信矩阵（端内 LuaEvents 首选、跨端四通道含暴露函数）/ 症状表 / 实测记录 / 检索词表 | **写任何跨文件、跨端、跨上下文的通信代码前** |
 | `validation.md` | 验证清单 | 完成开发后 |
 | `debug-tools.md` | 调试面板/热重载 | 调试时 |
 | `gotchas.md` | **常见错误（必读）** | **写代码前扫一遍** |
 | `art-pipeline.md` | 素材转换管线（单图 PNG→DDS/.tex、多图 atlas 图集/序列图拼版、Mod.Art.xml 生成、19 类图标尺寸全表）+ 素材询问铁律 + **图标规范化专属章节（第四节，每类 Icon 对应规范，Units 已验证）** | 涉及素材文件时 |
 
-### 速查表（先扫一眼）
+### 6.5 速查表（先扫一眼）
 
 | 文件 | 内容 | 大小 |
 |------|------|------|
 | `api-cheatsheet.md` | Lua API 速查（150 函数） | 8KB |
 | `modifiers-cheatsheet.md` | Modifier/Requirement 速查 | 7KB |
 
-### 图标尺寸速查（Art asset 问答必查此表，禁止凭记忆报尺寸）
+### 6.6 图标尺寸速查（Art asset 问答必查此表，禁止凭记忆报尺寸）
 
 来源：Civ6 Modding Assistant 反编译表（完整版+用法见 `art-pipeline.md` 第三节）。
 问"xxx 要什么尺寸"→ 在此直接作答；做素材转换 → 在 manifest 里填对应 role，尺寸由脚本内置。
@@ -771,7 +805,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 > 狭长图标（长短边比 ≥1.3）可 `--slender-flush` 让长边平齐画布边缘（仅狭长图标适用）；
 > 每类 Icon 对应规范见 art-pipeline 第四节（不同于尺寸表）；未验证类别：按 `art-pipeline.md` 第四节的「调研 / 原图入库 / 推断」流程处理后报数。
 
-### 深度参考（需要时 grep）
+### 6.7 深度参考（需要时 grep）
 
 | 文件 | 用途 |
 |------|------|
@@ -796,6 +830,10 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `reference/modifiers-catalog/` | **Modifier 分域参考**（16 篇 EffectType 分类 + patterns A-G + 实案库；来源 ModTools 5.4 MIT，吸收边界见 FAMILY_INDEX §八） |
 | `reference/ui-panels/` | **官方 UI 面板 XML+Lua 双文件对照**（17 篇：InGame 结构 / PopupDialog / InstanceManager / Support 库 / HUD / 外交 / 全屏 / 样式；来源同上） |
 | `release/docs/checklist.md` · `release/docs/troubleshooting.md` | 工坊发布**核对清单**与**异常诊断**（`release.md` 引用） |
+| `tools/workshop_intro.py` | 工坊介绍**丙栏**提取（`scan` 列 tag / `build` 出 `[code]` 主体与规格 JSON）、**标题来源**（`titles`：取 `.civ6proj` 的 `..._MOD_TITLE` 并可回填规格 JSON）与**依赖清单**（`deps`：官方 DLC 与工坊 ID 分列） |
+| `release/scripts/draft_note.py` | 更新记录草稿：按「上传基线 → HEAD」的 git 差异产出 `changeNote` 与台账行（`workshop-intro.md` §三 引用） |
+| `release/templates/intro.spec.example.json` | 三栏口径的规格 JSON 样板 |
+| `release/templates/intro-presets.md` | 甲栏预置模板（点赞横幅 8 语言 + QQ 群行），**本机自留、分享时不带**（`.gitignore` 排除） |
 | `reference/sources/` | 外部参考件（Civ VI Modding Companion、原版议程表、原版图标标记全表、颜色/图标常量、StretchMode 统计）；出处与许可见该目录 README |
 | `art/bin/texconv.exe` | 随包内置的 PNG→DDS 转换器（Microsoft DirectXTex，MIT，v2026.5.8.1）；探测顺序见 `art/bin/README.md` |
 | `art/make-icon.ps1` | 白色扁平图标生成（本地扩散模型 + 阈值抠底），依赖需自备，参数见 `reference/imagegen-channels.md` |
@@ -803,7 +841,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 | `reference/sources/` | 外部参考件（Civ VI Modding Companion、原版议程表），出处与许可见该目录 README |
 | `database/api-verification-2026-09-08/` | **API 核验原始记录**（FireTuner 实跑输出、全量 CSV、人工复核清单）；核验列的真源，见该目录 README |
 
-### 数据库文件（**2026-09-18 起全部随仓库分发**）
+### 6.8 数据库文件（**2026-09-18 起全部随仓库分发**）
 
 | 数据库 | 用途 |
 |--------|------|
@@ -817,7 +855,7 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 > 逐库说明、可再生性、缺库影响与重建口径见 `database/README.md`。
 > 文中各处行数、计数与大小为建库时点快照，现值以查询为准。
 
-### API 核验字段（2026-09-08 FireTuner 全量实测 · UI/GP 范围存在性）
+### 6.9 API 核验字段（2026-09-08 FireTuner 全量实测 · UI/GP 范围存在性）
 
 | `verify_status` | 含义 | 行数 | 怎么用 |
 |---|---|---|---|
@@ -843,16 +881,18 @@ node "<本skill目录>/scripts/rgn_validate_runner.mjs" [目录=cwd] [文件模�
 
 
 
-### Game Files
+### 6.10 Game Files
 
 ```
-Game installation: 见文首「环境路径总表」P3（游戏本体）/ P2（Mods 加载目录）
+Game installation: 见 §6.1「环境路径总表」P3（游戏本体）/ P2（Mods 加载目录）
 Reference: Civ6Docs.html (Civ6 root) + Civ VI Modding Companion 2.0.xlsx
 ```
 
 ---
 
-## Special Thanks
+## 7. 附录
+
+### 7.1 Special Thanks
 
 [Civ VI Modding Companion 2.0.xlsx] by ChimpanG, WildW
 枫叶佬的 Lua 教程: https://github.com/FYMapleLeaves/ml-civ6-lua-tutorial/tree/main
@@ -865,10 +905,41 @@ texconv（PNG→DDS）来自 [microsoft/DirectXTex](https://github.com/microsoft
 
 ---
 
-## 作者与致谢
+### 7.2 作者与致谢
 
 - 整理人：千与千寻瀑
 - 致谢：优妮、Hemmelfort、枫叶、夏凉凉凉、AWAW、糸七、千川白浪 等
 - 随包的素材/模板来自社区前人的整理与分享；本 skill 的管线、工作流与实测结论为整理人所作
 
+### 7.3 workspace 落点
+
 > 本文所有 `workspace/`、`<解决方案根>/workspace/` 均指 `.civ6sln` 所在解决方案根下的 `workspace/`。
+
+---
+
+### 7.4 Civ6 Agents.md 通用约束模板
+
+#### 📍 模板路由（必读）
+
+**本 skill 内维护 Civ6 专用 Agent 通用约束模板**，作为所有 Civ6 mod 项目的 **AGENTS.md「焚诀」部分**派生源头：
+
+📄 **模板位置**: `{{SkillsRoot}}\civ6-modding\templates\agents-rules-canonical.md`
+
+> ⚠️ **AI 自动同步授权**: 用户给予 AI 一次性永久授权，允许在执行任务期间检测并同步该模板到当前工程的 `AGENTS.md`（最多每天一次），保持 `焚诀` 部分与最新版模板一致。
+
+#### 🔀 同步规则
+
+```
+技能更新 → AI 读取模板最新版本 → 对比本工程 AGENTS.md 焚诀部分 → 有差异则自动合并
+```
+
+**同步粒度：**
+- ✅ **操作约束层**（Git 阈值、提交审计、语言规范等）→ 高频同步（最多每天一次）
+- ❌ **项目级约定层**（领袖缩写、双目录配置等）→ 不自动同步，新工程创建时从 `reference/agents-best-practices.md` 派生示例
+
+#### 📚 参考文档
+
+- **最佳实践参考**: `reference/agents-best-practices.md` ← 本机已有项目的通用约定提炼
+- **本地化示例**: 见本项目 `AGENTS.md` 的「焚诀」节，由 `<!-- FENJUE:BEGIN -->` 与 `<!-- FENJUE:END -->` 标记界定
+
+> 💡 **使用建议**: 新工程首次创建时，AI 应从模板提取通用约束 + 从最佳实践参考提取项目约定，自动生成完整的 `AGENTS.md`

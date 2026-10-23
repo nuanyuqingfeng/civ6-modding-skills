@@ -19,6 +19,9 @@
 ★ **`ImportFiles/` 不适用上面的豁免**：那是显式导入通道，其下素材与其它 ImportFiles 文件
   同等对待，须三处齐全，漏登记照报。
 
+★ **`*.log` 不得进交付包**：cook 会话日志的唯一落点是源工程核心根顶层那份 `cooker.log`，
+  Mods 副本里出现任何 `.log` 都判越界（游戏会把它一起打包上传）。
+
 用法：
     python verify_mod_package.py --src <源工程目录> --mods <Mods/<ModName>>
                                  [--ws <上传工作区 content 目录>] [--files a/b.lua,c.lua]
@@ -112,6 +115,8 @@ def mods_intrusion(rel: str, modinfo_count_seen: int) -> str:
         return "源工程文件"
     if name in FORBIDDEN_IN_MODS_NAMES or name.startswith(".git"):
         return "版本控制文件"
+    if name.endswith(".log"):
+        return "日志文件（只允许留在源工程核心根那一份 cooker.log）"
     for d in parts[:-1]:
         if d in FORBIDDEN_IN_MODS_DIRS:
             return "构建中间目录 %s/" % d

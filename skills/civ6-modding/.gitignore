@@ -24,6 +24,8 @@ __pycache__/
 
 # ---- 本地个人环境文件（不随仓库分享/覆盖他人）----
 local_paths.json
+# 甲栏预置模板（点赞横幅、QQ 群宣传行）：本机自留，分享时不带
+release/templates/intro-presets.md
 
 # ---- 临时/日志 ----
 *.log

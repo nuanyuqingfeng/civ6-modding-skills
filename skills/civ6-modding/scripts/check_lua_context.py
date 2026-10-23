@@ -5,8 +5,9 @@
 
 上下文口径（2026-09-26 FireTuner 实测，见真源第五节）：
   · 每个 UI 上下文、每个 GamePlay 脚本都是独立的 Lua 状态，全局互不可见
-  · 端内跨上下文只有 LuaEvents；跨端只有 EXECUTE_SCRIPT（UI→GP）、
-    ReportingEvents.SendLuaEvent（GP→UI 推送）、PROPERTY 读取（双向）
+  · 跨端四通道：EXECUTE_SCRIPT（UI→GP）、ReportingEvents.SendLuaEvent（GP→UI 推送）、
+    PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 ExposedMembers（双向，仅按钮回调禁用）
+  · 端内跨上下文：LuaEvents（首选）或暴露函数（可行，但不如 LuaEvents 好用）
   · include 的每个包含者各持一份副本，运行期改写不传播
 
 「某个 .lua 属于哪一端」的判定（决定 C4 是否误报的关键）：
@@ -23,7 +24,7 @@
   C3  UI 角色文件调用 ReportingEvents.SendLuaEvent      → 端内广播应用 LuaEvents
   C4  一个 LuaEvents 事件的两端集合不相交                → 跨端不达
   C5  被调用的全局函数有定义，但定义点不在本文件的 include 闭包内 → 调用不到
-  C6  出现 ExposedMembers                               → 报告使用点，需会话授权
+  C6  出现 ExposedMembers                               → 报告使用点（唯一硬规则：不得出现在按钮回调）
 
 豁免：写注释 -- context-check: allow <编号> <原因> 在对应那一行；
       整数常量的 SetProperty（SetProperty(key, 1)）属于引擎输入输出，不计入 C5。
@@ -298,7 +299,7 @@ def main():
         for i, line in enumerate(code_lines):
             if RE_EXPOSED.search(line):
                 findings.append((rel, i + 1, "C6",
-                                 "使用 ExposedMembers（暴露函数，按 context-matrix 第三条第 9 行的口径处理）"))
+                                 "使用 ExposedMembers（跨端第四通道；仅 UI 按钮回调禁用，其余场景可用，需同步返回值时优先）"))
             for evt in RE_EVT_ADD.findall(line) + RE_EVT_REMOVE.findall(line):
                 evt_reg.setdefault(evt, set()).add(rel)
             for m in RE_EVT_FIRE.finditer(line):

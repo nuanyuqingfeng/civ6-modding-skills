@@ -9,12 +9,12 @@
 
 | 工具 | 干什么 | 用法 |
 |---|---|---|
-| `art/_projwrite.py` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
+| `art/_projwrite.py` | （无 docstring，待补） | `（见脚本 docstring）` |
 | `art/_texconv.py` | _texconv.py — texconv（外部 DDS 转换器）定位的单一真源 | `python _texconv.py                     # 自检：打印实际解析结果` |
-| `art/align_tex_format.py` | align_tex_format.py — 把工程 `.tex` 的**格式类字段**对齐官方 pantry 约定 | `python align_tex_format.py <projectRoot> --check     # 体检，只报告<br>python align_tex_format.py <projectRoot> --write     # 写出（新建直写；既有 .tex 改写结果落到 <解决方案根>/workspace/gen/）` |
+| `art/align_tex_format.py` | align_tex_format.py — 把工程 `.tex` 的**格式类字段**对齐官方 pantry 约定 | `python align_tex_format.py <projectRoot> --check     # 体检，只报告<br>python align_tex_format.py <projectRoot> --write     # 写出（.tex 属美术产物，允许脚本直接覆盖）` |
 | `art/apply_fow.py` | apply_fow.py — 给图标/图集 PNG 套上原版风格的迷雾（FOW）蒙版。v4 模型。 | `python apply_fow.py --input <图标.png\|dds> [--output <路径>]` |
 | `art/convert_art.ps1` | convert_art.ps1 — Civ6 素材通用转换器（读 art_manifest.json 执行） | `pwsh -File convert_art.ps1 [-Manifest <path>] [-ProjectRoot <path>]` |
-| `art/dds_io.py` | dds_io.py — Civ6 单 mip RGBA8 DDS 的最小读写（零外部依赖，纯标准库 + Pillow） | `python dds_io.py --selftest <某个既有.dds> [更多.dds ...]` |
+| `art/dds_io.py` | dds_io.py — Civ6 DDS 的读写与头部校验（零外部依赖，纯标准库 + Pillow） | `python dds_io.py --selftest <某个既有.dds> [更多.dds ...]<br>python dds_io.py --check <DDS ...>       # 按官方口径校验头部，不合规即非零退出` |
 | `art/gen_modartxml.py` | gen_modartxml.py — Mod.Art.xml（AssetObjects..GameArtSpecification）生成器。 | `python gen_modartxml.py <projectRoot>            # 生成结果打印到 stdout<br>python gen_modartxml.py <projectRoot> --check    # 与项目现有 *.Art.xml 比对，只报告不写` |
 | `art/gen_tex.py` | 为 {MOD_NAME}/Textures/ 下的每个 dds 文件生成同名 .tex 文件。 | `python gen_tex.py [textures_dir] [assets_dir] [asset_map_json]` |
 | `art/iconify_text.py` | iconify_text.py — 给游戏文本自动插入 `[ICON_x]` 标记（文本图标化） | `python iconify_text.py <工程根> --audit<br>python iconify_text.py <工程根> --check` |
@@ -39,6 +39,7 @@
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） | `powershell -File clash_api.ps1 -Method GET -Path "/proxies" -OutFile resp.txt` |
 | `release/scripts/clash_proxy.py` | Clash Verge 代理节点测速与自动选优（上传工坊网络差时用） | `python clash_proxy.py [--url <工坊链接>] [--timeout 3000] [--max-workers 8]（测完自动选最优节点为 GLOBAL，无关闭开关）` |
 | `release/scripts/cleanup.ps1` | 删除临时上传工作区（真上传成功并验证后才跑）。三重守卫：仅在工作区根之下（`ws_root`，与 make_workspace.ps1 同源解析；短/长名两种写法均已归一） / 工作区自身非 reparse point / 先摘内部链接再递归删——摘链用 `Directory.Delete`，不用 Remove-Item（PS 5.1 对跨卷 junction 会抛 NullReferenceException）；content 是 junction 时 Mods 副本不受影响 | `powershell -File cleanup.ps1 -Workspace <工作区路径>（长名或 8.3 短名均可）` |
+| `release/scripts/draft_note.py` | draft_note.py — 从 git 差异归纳工坊更新说明与台账行草稿 | `python draft_note.py --project <源工程根> [--since <commit>] [--ledger <台账路径>]<br>python draft_note.py --project <源工程根> --out <草稿路径> --date YYYY-MM-DD` |
 | `release/scripts/ensure_uploader.ps1` | ensure_uploader.ps1 —— 工坊上传器的"自适应保障"（与音频模板 ensure_template.py 同口径） | `powershell -File ensure_uploader.ps1                 # 只检查，缺就提示（exit 2）<br>powershell -File ensure_uploader.ps1 -Confirmed      # 允许联网 clone + 构建` |
 | `release/scripts/find_item_id.ps1` | 从本机 Steam 日志反查工坊条目 ID | `powershell -File find_item_id.ps1 -ModName <ModName>` |
 | `release/scripts/make_workspace.ps1` | 建工坊上传工作区（首选入口）：content 用 junction 指向 Mods 副本（不物理复制 751 MB）→ workshop.json → mod_id.txt → validate，幂等可重跑 | `powershell -File make_workspace.ps1 -ModDir <Mods/<ModName>> [-ItemId <工坊ID>] [-WsRoot <根>] [-Force] [-SkipValidate]` |
@@ -46,30 +47,32 @@
 | `release/scripts/validate.ps1` | 上传前 validate 工作区（exit 0 才允许 upload） | `powershell -File validate.ps1 -Workspace <工作区>` |
 | `release/scripts/verify.ps1` | 上传后经 Steam API 验证（比对 time_updated / hcontent_file，识别假成功） | `powershell -File verify.ps1 -ItemId <工坊条目ID>` |
 | `scripts/_lua_roles.py` | `.lua` 角色判定单一真源。 | `（库：被其它脚本 import，无独立 CLI）` |
-| `scripts/_projwrite.py` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
+| `scripts/_projwrite.py` | （无 docstring，待补） | `（见脚本 docstring）` |
 | `scripts/check_adjacency_text.py` | （无 docstring，待补） | `（见脚本 docstring）` |
 | `scripts/check_doc_anchors.py` | 跨上下文口径的文档指针一致性体检。 | `python check_doc_anchors.py [--skills <skills 根目录>]` |
 | `scripts/check_dual_side_actions.py` | （无 docstring，待补） | `（见脚本 docstring）` |
 | `scripts/check_lua_context.py` | Lua 跨上下文体检 —— 找出「在另一个 Lua 上下文里根本调用不到」的写法。 | `python check_lua_context.py <工程根目录>` |
 | `scripts/check_lua_registration.py` | `.lua` 注册体检 —— 用「按角色判定」的规则找出真正不会被加载的脚本。 | `python check_lua_registration.py <工程根目录> [--modinfo <构建产物.modinfo>]` |
+| `scripts/check_no_codegen.py` | 代码文件生成闸：跑任何生成器前后各校验一次，任何新增或被改动的代码文件都判违规。 | `python check_no_codegen.py snapshot <根目录> [--baseline <json>]<br>python check_no_codegen.py --check <根目录> [--baseline <json>]` |
 | `scripts/check_pantry.py` | pantry 体检：`.tex` 位置 / 重名 / depot 库路径 / 非 ASCII / `.tex`↔`.dds` 配对 —— 开 AssetEditor / cook 前必跑。（注：其中 `m_SourceFilePath` 期望 `D:\desktop\<stem>.png` 这一条是**示例工程（作者 mod 工程）的约定**，不是 Civ6 通用规则；别的工程会命中 `[src-convention]` 告警，按你自己工程的约定判断即可。） | `python check_pantry.py --root <工程根> [--quiet]        # 注意：根目录只走 --root（不是位置参数），也没有贴图目录过滤选项` |
 | `scripts/check_proj_content.py` | 核对 .civ6proj 的 <Content Include> 清单与实际磁盘内容是否闭合。 | `python check_proj_content.py <工程根目录><br>python check_proj_content.py --root <工程根目录>     # 等价写法` |
 | `scripts/check_proj_layout.py` | 核对 .civ6proj 的 CDATA 动作块是否按「一元素一行」排版规范书写。 | `python check_proj_layout.py <工程根目录><br>python check_proj_layout.py <X.civ6proj>` |
 | `scripts/check_project_hygiene.py` | 工程核心文件夹卫生体检 —— 只允许工程文件与处理后的成品素材。 | `python check_project_hygiene.py <工程核心文件夹><br>python check_project_hygiene.py <解决方案根> --solution` |
-| `scripts/check_script_write_targets.py` | 工程文件写入体检：脚本只能新建工程文件，改写一律走 _projwrite 入位 <解决方案根>/workspace/gen。 | `python check_script_write_targets.py [--skills <skills 根目录>]` |
-| `scripts/check_sql_antipatterns.py` | SQL 语义反模式静态扫描 —— 抓「语法完全合法、但语义恒假/恒错」的写法。 | `python check_sql_antipatterns.py <工程根目录> [--glob *.sql]` |
+| `scripts/check_script_write_targets.py` | 工程文件写入体检：代码文件一律拒写，只有美术与音频产物允许脚本直写。 | `python check_script_write_targets.py [--skills <skills 根目录>]` |
+| `scripts/check_sql_antipatterns.py` | SQL 语义反模式静态扫描 —— 抓「语法完全合法、但语义恒假/恒错」的写法，含前置列填了特色对象。 | `python check_sql_antipatterns.py <工程根目录> [--glob *.sql] [--esc]` |
 | `scripts/check_sql_exec.py` | 全工程 SQL 执行排查 —— 抓「整条语句报废」类错误（非法转义 / 字符错位）。 | `python check_sql_exec.py [--root <工程根目录>] [--base <基础库>]` |
 | `scripts/check_text_refs.py` | （无 docstring，待补） | `（见脚本 docstring）` |
 | `scripts/check_types_kinds.py` | Types.Kind 合法性检查 —— 复现游戏加载期的 `Invalid Reference on Types.Kind`。 | `python check_types_kinds.py [--root <工程根目录>] [--db <基础库>] [--dirs Data,Mod_Adaptation]` |
 | `scripts/clear_ae_cache.py` | 清除 AssetEditor 依赖缓存（可再生文件，按「备份规范」不备份、直接删）。 | `python clear_ae_cache.py [--mod <ModName>] [--dry-run]        # 动过贴图后必跑，否则 AssetEditor 结论是缓存假象` |
-| `scripts/normalize_eol.py` | 归一化文本文件换行：mod 工程按「原版分层铁律」，skill 仓库一律 LF（`--repo-skill`）。 | `python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）<br>python normalize_eol.py <工程目录> --fix           # 归一化（既有文件内容有变化时，改写结果落到 <解决方案根>/workspace/gen/）` |
+| `scripts/normalize_eol.py` | 归一化文本文件换行：mod 工程按「原版分层铁律」，skill 仓库一律 LF（`--repo-skill`）。 | `python normalize_eol.py <工程目录>                 # 只报告，不写盘（默认）<br>python normalize_eol.py <工程目录> --fix           # 就地归一美术与音频产物；代码文件只输出报告清单` |
+| `scripts/replacement_subtables.py` | 取代对象的子表取料 —— 把被取代对象在基础库各处的行原样取出，供写入阶段逐表复刻。 | `python replacement_subtables.py <工程根> [--object TYPE] [--diff] [--sql] [--db <库>]` |
 | `scripts/rgn_validate_runner.mjs` | rgn_validate 离线执行器 v2 — 核心判定逻辑提取自 @dsh-external/dsh-rgn-tools 的 | `node rgn_validate_runner.mjs [目录=cwd] [文件模式=*.sql] [checkNaming=true] [--base <基础库>] [--static]` |
 | `scripts/test_rgn_scope_check.mjs` | rgn_validate --scope-check 回归测试：临时 git 仓库构造 baseline -> 误用改动 -> 恢复正确 | `（库：被其它脚本 import，无独立 CLI）` |
 | `scripts/verify_trees.py` | Verify two directory trees are byte-identical (recursive SHA256 comparison). | `python verify_trees.py <dirA> <dirB>` |
 | `tools/_paths.py` | 本机 Civ6 关键路径解析（P1–P6），全 civ6-modding/tools 共用。 | `python _paths.py                          # 自检：打印 P1-P6 关键路径 + 外部工具的实际解析结果（缺失项标 [缺失]）
 python _paths.py --tool uploader            # 只打印某个外部工具的解析路径（供 shell 包装脚本调用）
 python _paths.py --path mods                # 同上，取 P1-P6 路径键；未找到 exit 1、键名非法 exit 2` |
-| `tools/_projwrite.py` | （无 docstring，待补） | `（库：被其它脚本 import，无独立 CLI）` |
+| `tools/_projwrite.py` | （无 docstring，待补） | `（见脚本 docstring）` |
 | `tools/civ_leader_data.py` | civ_leader_data.py — 新文明 / 新领袖的**数据与文本机械推导**（规格 JSON → SQL） | `python civ_leader_data.py <spec.json> --project <工程根>          # 预演（不写盘）<br>python civ_leader_data.py <spec.json> --project <工程根> --write` |
 | `tools/cook_assets.py` | cook_assets.py — 无 GUI 重放 ModBuddy 的 ArtDef / XLP cook（Civ6.targets 的三组分区）。 | `python cook_assets.py <工程根>                    # 全量 cook 到 Mods 副本<br>python cook_assets.py <工程根> --check            # 只列 pantry 展开、调用清单与对账结果` |
 | `tools/cook_dep.py` | cook_dep.py — 从 <ModName>.Art.xml 生成 <ModName>.dep（AssetObjects..GameDependencyData）。 | `python cook_dep.py <工程根><br>python cook_dep.py <工程根> --out "<Mods>/<ModName>"` |
@@ -82,10 +85,11 @@ python _paths.py --path mods                # 同上，取 P1-P6 路径键；未
 | `tools/verify_mod_package.py` | 交付包体检：源工程 ↔ Mods 副本 ↔ 上传工作区 三处一致性 + .modinfo 结构与引用闭合。两类预期差异自动放行：cook 产物（BLPs 与 .dep 源工程本就没有）、美术引用管线文件（见 ART_PIPELINE_EXTS，按规范不进 Content 与 Files）。ImportFiles/ 之下不豁免，须三处齐全。UpdateArt 与 .dep 另做独立硬检查，不参与软放行 | `python verify_mod_package.py --src <源工程目录> --mods <Mods/<ModName>> [--ws <上传工作区 content>] [--files a/b.lua,c.lua] [--strict]
 --strict = 关掉全部放行，逐字节 + 零未登记（默认关闭）` |
 | `tools/workshop_cover.py` | 工坊封面合成：生图模型出的底图/徽记 + **确定性 CJK 排版**。 | `python workshop_cover.py --bg bg_7.png --emblem emblem.png         --line1 "人类玩家所有单位" --line2 "可以建立城市"         --subtitle "CIVILIZATION VI MOD"         --master "D:\desktop\X_Surface.png" --preview out/image.png` |
+| `tools/workshop_intro.py` | workshop_intro.py — 工坊介绍「丙栏」（`[code]` 主体）提取与依赖清单生成 | `python workshop_intro.py scan   <源工程根> [--lang schinese] [--kind ABILITY,DISTRICT]<br>python workshop_intro.py build  <源工程根> --order <order.json> --langs <codes> --out <spec.json>` |
 | `tools/workshop_item_check.py` | 工坊条目线上状态核对（Steam Web API，无需登录）。 | `python workshop_item_check.py 3801714971 [3800974286 ...]<br>python workshop_item_check.py 3801714971 --expect-title "All Units Can Found Cities" --expect-public` |
 | `tools/workshop_meta.py` | 工坊 workshop.json 生成器（多语言）。 | `python workshop_meta.py <spec.json> --out <workshop.json> [--record <存档txt>]` |
 
-共 72 个脚本。
+共 76 个脚本。
 
 ## 第三方依赖（非标准库）
 

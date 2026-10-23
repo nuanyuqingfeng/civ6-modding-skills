@@ -34,13 +34,13 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 
 ## Lua 跨上下文 Validation
 
-- [ ] **新增的 `.lua` 是否与另一个上下文交换数据** — 若有，走的是 `reference/context-matrix.md` 第三节列出的通道（端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。）
+- [ ] **新增的 `.lua` 是否与另一个上下文交换数据** — 若有，走的是 `reference/context-matrix.md` 第三节列出的通道（跨端四通道：`EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取（被动辅助）/ 暴露函数（仅按钮回调禁用）；端内用 `LuaEvents` 首选或暴露函数。直接读写另一上下文全局不可达。真源 `reference/context-matrix.md`。）
 - [ ] **UI 角色文件内没有 `GameEvents.*`** — 被 UI 加载的共享库里也不行
 - [ ] **UI 角色文件内没有 `SetProperty(`** — UI 侧无此端口，要写就经 `EXECUTE_SCRIPT` 交给 GP 侧
-- [ ] **GP 侧通知 UI 用的是 `ReportingEvents.SendLuaEvent`** — 不是 `LuaEvents.X(...)`；端内跨上下文只有 `LuaEvents`，其余不可达 → `reference/context-matrix.md`
+- [ ] **GP 侧通知 UI 用的是 `ReportingEvents.SendLuaEvent`** — 不是 `LuaEvents.X(...)`；端内跨上下文用 `LuaEvents`（首选）或暴露函数 → `reference/context-matrix.md`
 - [ ] **UI 侧触发 GP 动作用的是 `EXECUTE_SCRIPT`**
 - [ ] **同端跨文件用 `LuaEvents`，且触发端与接收端在同一端** — 跨端注册/触发不达 → `reference/context-matrix.md`
-- [ ] **`ExposedMembers` 使用处附有会话授权记录**
+- [ ] **`ExposedMembers` 没有出现在 UI 按钮回调里** — 按钮回调用 `EXECUTE_SCRIPT`；非按钮场景不设限，不再要求会话授权
 - [ ] **交付前跑过 `scripts/check_lua_context.py` 且 0 输出**
 
 ## .modinfo Validation
@@ -83,7 +83,7 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 - [ ] **`Initialize()` called at bottom** — `Initialize();` as last line
 - [ ] **Uses `Events.*` / `GameEvents.*`** — 引擎事件按 `eventSystem` 选线；跨文件通信用 `LuaEvents.*`
 - [ ] **No UI access** — no `ContextPtr`, `Controls`, `UIManager`, etc.
-- [ ] **`LuaEvents.*` 仅用于同端跨文件** — UI 上下文互播 / GP 文件间跨文件；不跨端（GP→UI 用 ReportingEvents.SendLuaEvent）。端内跨上下文只有 `LuaEvents`，其余不可达；跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents.SendLuaEvent` / PROPERTY 读取三个固定通道 → 真源 `reference/context-matrix.md`
+- [ ] **`LuaEvents.*` 仅用于同端跨文件** — UI 上下文互播 / GP 文件间跨文件；不跨端（GP→UI 用 ReportingEvents.SendLuaEvent）。端内跨上下文用 `LuaEvents`（首选）或暴露函数；跨端四通道（含暴露函数，仅按钮回调禁用）→ 真源 `reference/context-matrix.md`
 - [ ] **Nil checks on game objects** — `if pPlayer ~= nil and pPlayer:IsAlive() then`
 - [ ] **No `math.random()` in multiplayer** — use `Game.GetRandNum(n)`
 - [ ] **No `Game.GetLocalPlayer()` in Gameplay** — it's a UI concept
@@ -97,6 +97,8 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 - [ ] **SQL 版 Types 注册核对** — 所有新 `Type`（含 `KIND_PROMOTION` 等）在 `Types` 表注册，且 Kind 正确
 - [ ] **灌库验证脚本须开启 FK** — `PRAGMA foreign_keys = ON`（SQLite 默认 OFF，不开则漏检外键错误）
 - [ ] **Referenced types exist** — `PrereqTech`, `TraitType`, etc. must be valid
+- [ ] **前置列填被取代的原版对象** — 特色条目经 `DistrictReplaces` / `BuildingReplaces` / `UnitReplaces` 取代原版对象时，`Buildings.PrereqDistrict` / `Units.PrereqDistrict` / `Projects.PrereqDistrict` / `BuildingPrereqs.PrereqBuilding` / `Unit_BuildingPrereqs.PrereqBuilding` 仍填原版被取代对象，特色 Type 不得出现在这些列（`python scripts/check_sql_antipatterns.py <工程>` 的 D 类判定）
+- [ ] **取代对象的子表已逐表复刻** — 写取代映射之后跑 `python scripts/replacement_subtables.py <工程> --diff`，未覆盖项为零。这一项属写入阶段动作，不进常规校验套件（手动删除子表行属持久意图，见 `gotchas.md` G15b）
 - [ ] **`LoadOrder` set correctly** — `-100` for schema/removal, `0` for standard, `100` for scenario
 - [ ] **依赖顺序已显式安排** — 动作之间用 `LoadOrder`（移除/前置 `-100`）；**同一动作内部**用 `Priority`（**数值越大越先**）。注意**同 `Priority`（含都省略）按路径字母序执行**，声明序无效 —— 曾被此坑导致 `no such table`
       **什么算「明确需要先后加载」**（只有这两种才该写 `Priority`）：① 后者会**遍历/引用**前者写入的行（典型：Types → 遍历；建表 → `SELECT FROM` 该表）；② 运行时报错已**指向**加载顺序（`no such table: X` / 外键失败）。其余情况**不写** —— 动作划分总则见 `reference/action-splitting.md`
@@ -117,8 +119,8 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 ## UI ↔ Gameplay Communication Validation
 
 - [ ] **No C++ objects passed across boundary** — only primitives
-- [ ] **GP 同端跨文件通信用 LuaEvents** — 接收端 `LuaEvents.X.Add(fn)`（文件加载期注册），触发端 `LuaEvents.X(params)`；表格按引用传递，handler 回写、调用方无需 return；不用 ExposedMembers 跨文件传函数。端内跨上下文只有 `LuaEvents` → `reference/context-matrix.md`
-- [ ] **跨上下文调用函数一律不可达** — 端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
+- [ ] **GP 同端跨文件通信用 LuaEvents** — 接收端 `LuaEvents.X.Add(fn)`（文件加载期注册），触发端 `LuaEvents.X(params)`；表格按引用传递，handler 回写、调用方无需 return；端内首选 LuaEvents → `reference/context-matrix.md`
+- [ ] **跨上下文调用函数不直接进行，必须经通道** — 端内用 `LuaEvents`（首选）或暴露函数；跨端四通道：`EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（被动辅助）、暴露函数（仅按钮回调禁用）。直接读写另一上下文全局不可达。真源 `reference/context-matrix.md`。
 - [ ] **PlayerOperations only during player's turn** — UI side constraint
 - [ ] **Function arguments are simple types** — number, string (not tables)
 
@@ -148,7 +150,7 @@ Use this checklist after generating any Civ6 mod code to catch common errors.
 | Crash on nil | Missing nil check | Add `if pPlayer ~= nil then` |
 | Data lost on save | Not using SetProperty | Use `Game:SetProperty()` for persistence |
 | Multiplayer desync | `math.random()` | Use `Game.GetRandNum(n)` |
-| UI can't read data | Not exposed | Use `PROPERTY` 直接读 / Core 共享读取函数（禁止跨端 `ExposedMembers`；端内跨上下文只有 `LuaEvents`，其余不可达 → `reference/context-matrix.md`） |
+| UI can't read data | Not exposed | Use `PROPERTY` 直接读 / Core 共享读取函数（暴露函数仅在按钮回调禁用；端内用 `LuaEvents` 首选或暴露函数 → `reference/context-matrix.md`） |
 | Wrong player data | Using `GetLocalPlayer()` in Gameplay | Use event parameters or `PlayerManager` |
 
 ### Database Mistakes

@@ -43,6 +43,10 @@ INSERT INTO Districts (DistrictType, Name, Description, Cost, AdvisorType, Plund
 `District_TradeRouteYields`、`DistrictModifiers` 与被替换区域挂载的其他 `District_*` 桥表；
 建筑和单位按同类原则覆盖 `Building_*` / `Unit_*` 关联表。
 
+复刻时**前置列保留原版值**：`Buildings.PrereqDistrict`、`Units.PrereqDistrict`、`Projects.PrereqDistrict`、
+`BuildingPrereqs.PrereqBuilding`、`Unit_BuildingPrereqs.PrereqBuilding` 一律填被取代的原版对象，
+特色对象只能出现在取代表左侧列与主表 `Type` 列。口径与症状见 `gotchas.md` G15。
+
 ## 链路 2：区域挂载 Modifier（DistrictModifiers）
 
 ```sql
@@ -92,5 +96,6 @@ INSERT INTO ModifierArguments (ModifierId, Name, Value) VALUES
 - [ ] 区域有自己的 `TRAIT_DISTRICT_xxx` 并填入 Districts.TraitType
 - [ ] 取代官方区域时 DistrictReplaces 两列齐全
 - [ ] 替换式特色条目已先复刻被替换原版对象的全部关联表，再叠加特色差异
+- [ ] 前置列（`PrereqDistrict` / `PrereqBuilding`）填的是被取代的原版对象，特色对象未出现在前置列
 - [ ] DistrictModifiers 挂载的 ModifierId 在 Modifiers 表有定义
 - [ ] 槽位替换参数：Added/Replaced/ReplacesAll 三件套

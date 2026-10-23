@@ -16,12 +16,12 @@ civ6/modart.pyc 的 buildModArtXml + civ6/modart_data.pyc 的静态表。
   6. requiredGameArtIDs 保留项目现有 *.Art.xml 的全部条目（不折叠成首条）；
      文件缺失时取 *.civ6proj 的 Guid 作 id、文件名作 name、默认 Civ6 作包。
   7. --ensure 系列为增量编辑：只做加法，不删除、不重排、不改写既有条目；
-     已有文件内容有变化时改写结果落 <解决方案根>/workspace/gen/，由 AI 用文件编辑工具写入工程。
+     *.Art.xml 属美术产物，由本脚本直接写盘（见 SKILL.md「工程文件写入铁律」）。
 
 用法：
   python gen_modartxml.py <projectRoot>            # 生成结果打印到 stdout
   python gen_modartxml.py <projectRoot> --check    # 与项目现有 *.Art.xml 比对，只报告不写
-  python gen_modartxml.py <projectRoot> --write    # 全量重生成（改写走 workspace/gen 守卫）
+  python gen_modartxml.py <projectRoot> --write    # 全量重生成（.Art.xml 属美术产物，直接覆盖）
   python gen_modartxml.py <projectRoot> --ensure-consumer "Overlay=Overlay.artdef"
   python gen_modartxml.py <projectRoot> --ensure-library "UILensAsset=UILensAssets"
   python gen_modartxml.py <projectRoot> --ensure-required Expansion2
@@ -421,7 +421,7 @@ def ensure_required(text, package):
 
 
 def _stage(out, text, root, existing):
-    """按既有文件的换行风格交给写入守卫；返回 NEW/SAME/STAGED。"""
+    """按既有文件的换行风格交给写入守卫；返回 NEW/SAME。"""
     if existing is not None:
         cur = Path(existing).read_bytes()
         if b"\r\n" in cur:
@@ -447,13 +447,13 @@ def _result_line(result, out):
         return f"已写入: {out}"
     if result == "SAME":
         return f"无需改动: {out}"
-    return f"改写结果已写到 workspace/gen/：{out}"
+    return f"已写入 {out}"
 
 
 def ensure(project_root, consumers=(), libraries=(), required=()):
     """程序化增量接线，返回 (退出码, 输出行列表)。
 
-    退出码 0 = 无需改动；1 = 无美术工程拒绝创建；2 = 改写结果已入位 workspace/gen。
+    退出码 0 = 无需改动或已写入；1 = 无美术工程拒绝创建。
     与命令行的 --ensure-* 走同一套实现（main 也调它）。
     """
     root = Path(project_root)
@@ -481,7 +481,7 @@ def ensure(project_root, consumers=(), libraries=(), required=()):
         out = root / (modname + ".Art.xml")
         result = write_project_file(str(out), xml, str(root))
         lines.append(_result_line(result, out))
-        return (2 if result == "STAGED" else 0), lines
+        return 0, lines
 
     text = art_xml.read_text(encoding="utf-8")
     changed = 0
@@ -506,14 +506,14 @@ def ensure(project_root, consumers=(), libraries=(), required=()):
         return 0, lines
     result = _stage(art_xml, text, root, art_xml)
     lines.append(_result_line(result, art_xml))
-    return (2 if result == "STAGED" else 0), lines
+    return 0, lines
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("projectRoot")
     ap.add_argument("--check", action="store_true", help="与项目现有 *.Art.xml 比对，只报告不写")
-    ap.add_argument("--write", action="store_true", help="全量重生成（改写走 workspace/gen 守卫）")
+    ap.add_argument("--write", action="store_true", help="全量重生成（*.Art.xml 直接写盘）")
     ap.add_argument("--ensure-consumer", action="append", default=[], metavar="NAME=ARTDEF",
                     help="增量：确保该 consumer 的 relativeArtDefPaths 含该 artdef（可重复）")
     ap.add_argument("--ensure-library", action="append", default=[], metavar="LIB=PACKAGE",
@@ -591,8 +591,6 @@ def main():
     result = _stage(art_xml, xml, root, art_xml)
     if result == "SAME":
         print(f"无需改动: {art_xml}")
-    elif result == "STAGED":
-        print(f"改写结果已写到 workspace/gen/：{art_xml}")
     else:
         print(f"已写入: {art_xml}")
     sys.exit(finish())

@@ -99,7 +99,7 @@ sqlite3 $db "SELECT name, dflt_value FROM pragma_table_info('TableName') WHERE [
 | NumRandomChoices | INTEGER | — | `0` | `1` 允许随机选晋升 |
 | PrereqTech | TEXT | — | — | `TECH_MINING` |
 | PrereqCivic | TEXT | — | — | `CIVIC_CODE_OF_LAWS` |
-| PrereqDistrict | TEXT | — | — | `DISTRICT_ENCAMPMENT` |
+| PrereqDistrict | TEXT | — | — | `DISTRICT_ENCAMPMENT`（特色单位取代原版单位时，此处仍填被取代单位的原版前置区域）|
 | StrategicResource | TEXT | — | — | `RESOURCE_HORSES` / `RESOURCE_IRON` / `RESOURCE_NITER` |
 | PurchaseYield | TEXT | — | — | `YIELD_GOLD` / `YIELD_FAITH` |
 | MustPurchase | BOOLEAN | — | `0` | `1`（仅能购买不能训练）|
@@ -130,7 +130,7 @@ sqlite3 $db "SELECT name, dflt_value FROM pragma_table_info('TableName') WHERE [
 | MaxPlayerInstances | INTEGER | — | `-1` | `-1`（不限），`1`（奇观唯一）|
 | MaxWorldInstances | INTEGER | — | `-1` | `1`（世界奇观）|
 | Capital | BOOLEAN | — | `0` | `1`（宫殿）|
-| PrereqDistrict | TEXT | — | — | `DISTRICT_CITY_CENTER` / `DISTRICT_CAMPUS` |
+| PrereqDistrict | TEXT | — | — | `DISTRICT_CITY_CENTER` / `DISTRICT_CAMPUS`（特色建筑取代原版建筑时，此处填被取代建筑的原版前置区域，即使本文明另有取代该区域的特色区域）|
 | AdjacentDistrict | TEXT | — | — | 必须相邻的区（较少用）|
 | Description | TEXT | — | — | `LOC_BUILDING_MONUMENT_DESCRIPTION` |
 | RequiresPlacement | BOOLEAN | — | `0` | 需要放置？ |
@@ -311,7 +311,7 @@ sqlite3 $db "SELECT name, dflt_value FROM pragma_table_info('TableName') WHERE [
 | CostProgressionModel | TEXT | — | `NO_PROGRESSION_MODEL` | `COST_PROGRESSION_GAME_PROGRESS` |
 | PrereqTech | TEXT | — | — | `TECH_ROCKETRY` |
 | PrereqCivic | TEXT | — | — | — |
-| PrereqDistrict | TEXT | — | — | `DISTRICT_SPACEPORT` |
+| PrereqDistrict | TEXT | — | — | `DISTRICT_SPACEPORT`（项目的前置区域同样只填原版区域，不填特色区域）|
 | PrereqResource | TEXT | — | — | 需要资源 |
 | MaxPlayerInstances | INTEGER | — | — | 玩家上限 |
 | AdvisorType | TEXT | — | — | `ADVISOR_GENERIC` 等 |
@@ -507,7 +507,10 @@ Context 各值适用场景：
 `Unit` + `UpgradeUnit` — 单位升级链。
 
 ### BuildingPrereqs
-`Building` + `PrereqBuilding` — 建筑前置建筑链。
+`Building` + `PrereqBuilding` — 建筑前置建筑链。`PrereqBuilding` 填被取代的原版建筑，特色建筑不得出现在这一列。
+
+### Unit_BuildingPrereqs
+`Unit` + `PrereqBuilding` + `NumSupported` — 单位建造所需的建筑。`PrereqBuilding` 填被取代的原版建筑。
 
 ### UnitAbilityModifiers
 `UnitAbilityType` + `ModifierId` — 能力绑定的 Modifier。

@@ -1,0 +1,25 @@
+{
+  "mode": "create",
+  "changeNote": "首次发布 / Initial release",
+  "visibility": "public",
+  "tags": ["Mod", "Gameplay", "Gathering Storm", "Civilizations", "Leaders"],
+  "dependencies": [],
+  "preamble": {
+    "schinese": "[h1][u]↑如果喜欢本 mod ，还请点一个小小的赞，您随手一点，也许就能让我欢欣雀跃一整天，感谢大家！[/u][/h1]"
+  },
+  "postamble": {
+    "schinese": "[hr][/hr]\n[h1]写在最后[/h1]\n<乙栏：由用户提供，未提供则整段删除>"
+  },
+  "blocks": [
+    {
+      "language": "english",
+      "title": "[EN] <由用户提供，未提供则沿用线上标题>",
+      "body": "[code]\n[h1]Civilization: <地区> - <文明名>[/h1]\n<文明能力正文>\n\n[hr][/hr]\n[h2]Leader: <名> (<称号>)[/h2]\n[h3]Leader Ability: <能力名>[/h3]\n<能力正文>\n\n[hr][/hr]\n[h3]Unique District: <区域名>[/h3]\n<效果正文>\n[/code]"
+    },
+    {
+      "language": "schinese",
+      "title": "<同上>",
+      "body": "[code]\n[h1]文明：<地区> - <文明名>[/h1]\n<文明能力正文>\n\n[hr][/hr]\n[h2]领袖：<名>（<称号>）[/h2]\n[h3]领袖能力：<能力名>[/h3]\n<能力正文>\n\n[hr][/hr]\n[h3]特色区域：<区域名>[/h3]\n<效果正文>\n[/code]"
+    }
+  ]
+}

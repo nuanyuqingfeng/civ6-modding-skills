@@ -2,13 +2,14 @@
 
 > 一页式导航：**什么任务 → 加载哪个 skill**，以及各 skill 的边界、共用约定与分享状态。
 > 生成于 2026-09-14 的 12 工程横向审查；2026-09 家族整合后由 9 个 skill 收缩为 **5 个**；
-> 2026-09-28 吸收 ModTools 5.4 部分能力后为 **7 个**（另有 1 个门禁通道 `civ6-art-unpack`，
+> 2026-09-28 吸收 ModTools 5.4 部分能力后为 **7 个**；**2026-10-20 新增 `civ6-text-authoring`
+> （文本处理权威规范，含风云变幻口径简体中文语料）后为 8 个**（另有 1 个门禁通道 `civ6-art-unpack`，
 > 不入本表路由，唯一入口见 `civ6-art-reference` SKILL.md）。
 > 各 skill 的详细内容以各自 `SKILL.md` 为准。
 
 ---
 
-## 一、家族总览（7 个 skill）
+## 一、家族总览（8 个 skill）
 
 | Skill | 版本 | 管什么（一句话） | 体量 |
 |---|---|---|---|
@@ -19,6 +20,7 @@
 | **`civ6-asset-forge`** | 1.0 | **2D 美术素材总入口**：由原 `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` **四个 skill 合并而成**——忠诚度/宗教压力图标、总督素材、2D 领袖立绘注册（各成一册 `reference/*.md`）；2026-09-17 增第 ⑤ 类 **UI 领袖立绘 / 选人界面背景（Suk 适配）** 与第 ⑥ 类 **历史时刻插画（MomentIllustrations）**；2026-09-19 增第 ⑦ 类 **原版 FrontEnd 立绘/背景（选人 placard + 加载界面）**——此前该链被误判为"不关联"而无人承接。⚠ **单位晋升图标（原第 ③ 类）生成管线已于 2026-09-18 作废**，只保留规格 `reference/promotion-icon-sizes.md` | 14.6 MiB |
 | `civ6-html-ui` | 1.0 | **HTML/CSS 设计 → UI 纹理 → 原生 XML/Lua**：HTML 设计源导出精确像素 PNG（背景/透明装饰/四态按钮/精灵表），原生布局指导与静态检查（2026-09-28 自 ModTools 5.4 整包吸收，MIT；原生布局规范与通信口径以 `civ6-modding` 为准） | 117 KiB |
 | `civ6-landmarks` | 1.0 | **静态地标组合**：SDK 官方几何组合改良/区域的 TileBase AST → Landmarks.artdef + tilebases.xlp + 建筑差分 → 落地工程 → 官方 Cooker（2026-09-28 自 ModTools 5.4 吸收；算法层在 `civ6-modding/tools/landmark_lib/`，与 .CIV 通道解耦，.civ6proj 手工登记） | ~60 KiB |
+| **`civ6-text-authoring`** | 1.0 | **文本处理权威规范（唯一真源）**：风云变幻口径简体中文语料（27,998 tag，`reference/zh_corpus.sqlite`）+ 六大类写法规范（领袖/文明 trait 能力 / 区域建筑单位等可关联物品 / **开幕颂词（领袖加载介绍词 `LOC_LOADING_INFO_LEADER_*`）** / 外交文本 / 相邻加成写法 / Icon 引用规范）；**另设「模式模块」（仅路由，`mode-text.md` + `zh_mode_corpus.sqlite`）**处理 GameMode 文本，仅命中模式关键词时进入。含从游戏文件按引擎加载顺序重导的确定性管线。家族任何流程涉及**面向玩家的文本描述**一律路由到此 | 7.6 MiB（含 zh 语料主库 + 分类清单） |
 
 > **体量口径**（2026-09-18 实测）：**不含 `.git/` 与 `__pycache__/`**，1 MiB = 1,048,576 字节
 > （`Get-ChildItem -Recurse -File | Measure-Object Length -Sum` 同口径）；asset-forge 的 14.6 MiB
@@ -28,8 +30,8 @@
 > - `civ6-workshop-uploader` → 并入 **`civ6-modding/release.md`**（发布同属工程管理；脚本落在 `civ6-modding/release/scripts/`、模板 `release/templates/`、清单 `release/docs/`）。
 > - `civ6-loyalty-icon` + `civ6-promotion-icon` + `civ6-governor-art` + `civ6-leader-2d` → 合并为 **`civ6-asset-forge`**。
 
-> **家族外的依赖**：本家族 7 个 skill 自洽，**不依赖任何家族外 skill**；多语言文本按 `SKILL.md` §4.1 的
-> Civ6 侧规则自行处理（工具自备）。
+> **家族外的依赖**：本家族 8 个 skill 自洽，**不依赖任何家族外 skill**；**面向玩家的文本描述**
+> 一律走 `civ6-text-authoring`（文本权威规范唯一真源，含风云变幻口径简体中文语料与六大类写法规范）。
 
 > 🧰 **每个 skill 都有 `TOOLS.md`（可复用工具名录）** —— 要写脚本做某件事之前先查它：
 > 本 skill 全部脚本的用途 / 用法 / 路径 + 本机**路径收纳**表。**有能用的就改它，不要重建。**
@@ -71,7 +73,7 @@
 | **做总督素材（徽章 / 头像小图标 / 立绘 / 边缘透明渐变）** | `civ6-asset-forge` → `reference/governor-art.md` |
 | **运行时验证 API 行为 / 复现脚本报错** | `civ6-tuner` |
 | **上传 / 更新 Steam 工坊** | `civ6-modding` → **`release.md`**（脚本 `release/scripts/`） |
-| 多语言翻译与本地化审计 | `civ6-modding` → `SKILL.md` §4.1（Civ6 侧规则；工具自备） |
+| **任意面向玩家的文本描述**（LOC 命名 / 后缀变体 / 标记 / 图标引用 / 相邻加成写法 / **开幕颂词（领袖加载介绍词 `LOC_LOADING_INFO_LEADER_*`）** / 外交文本 / 领袖能力文案 / 翻译与本地化审计） | **`civ6-text-authoring`**（文本权威规范唯一真源；语料 `reference/zh_corpus.sqlite` + 六大类规范文档） |
 
 > `civ6-asset-forge` 的素材类分册在 skill 内以 `reference/*.md` 组织：`leader-2d.md` / `loyalty-icon.md` / `governor-art.md` / `ui-leader-portrait.md`（Suk，**可选分支**） / `frontend-portrait.md`（原版 FrontEnd 选人+加载界面，**必需**） / `moment-illustration.md` / `promotion-icon-sizes.md`（最后一册**只有尺寸规格**——类别③ 的生成管线已作废）；总入口与该 skill 自己的路由表见其 `SKILL.md`。
 > 原 `civ6-leader-2d` / `civ6-loyalty-icon` / `civ6-promotion-icon` / `civ6-governor-art` 四个名字**已废止**，一律改走 `civ6-asset-forge`。
@@ -89,11 +91,12 @@
 | `civ6-audio-pipeline` | 不做 3D/2D 美术资产；音频以外的注册一律回 `civ6-modding/project-setup.md` |
 | `civ6-tuner` | 只做**运行时**验证；静态校验走 `civ6-modding` 的 `rgn_validate` / `scripts/*.py`，不在本 skill 重复 |
 | `civ6-asset-forge` | **素材处理前必须先询问用户是否提供素材**（默认只生成注册文件）；只管美术规格与素材合成，**玩法注册链**仍在 `civ6-modding`（如总督玩法见 `governor-authoring.md`）；2D UI 宗教图标（`IconTextureAtlases` 270px 图集）不在范围（→ `civ6-modding/art-pipeline.md` §图标规范化）。五类素材见其 `SKILL.md` §一（③ 晋升图标只剩尺寸规格） |
+| `civ6-text-authoring` | **只做文本（LOC）规范与语料**：不做玩法注册链（→ `civ6-modding`）、不做美术/字体（→ `civ6-asset-forge` / `civ6-modding/art-pipeline.md`）；文本**校验器保持单源在 `civ6-modding`**（`check_text_refs.py` / `check_adjacency_text.py` / `iconify_text.py`），本 skill 以路径引用、不复制；语料口径限**简体中文 + 风云变幻环境**，其它语言/环境的文本仍可查该 skill 的派生规则但语料不含 |
 
-### 3.1 本家族**不负责**的方向（职责真空 —— 先看这里，别在 7 个 skill 之间空转）
+### 3.1 本家族**不负责**的方向（职责真空 —— 先看这里，别在 8 个 skill 之间空转）
 
 下面三类**没有任何一个 civ6 skill 负责**。列在这里是为了让你在 30 秒内知道"这条路本家族走不通"，
-省去把 7 个 skill 逐个翻完才发现。确需自建时，只能使用家族外的资料 / 工具链。
+省去把 8 个 skill 逐个翻完才发现。确需自建时，只能使用家族外的资料 / 工具链。
 
 | 方向 | 你会卡在哪一步 | 建议去哪找 |
 |---|---|---|
@@ -105,7 +108,7 @@
 
 ## 四、跨 skill 共用约定
 
-### 4.1 环境路径总表（`civ6-modding/SKILL.md` 文首）
+### 4.1 环境路径总表（`civ6-modding/SKILL.md` §6.1）
 
 | # | 用途 | 本机 |
 |---|---|---|
@@ -170,15 +173,20 @@ UTF-8 读写；不改编码/换行；PowerShell 先 `chcp 65001`；**查看中�
 
 ### 4.6 工程文件写入铁律（真源：`civ6-modding/SKILL.md`）
 
-**脚本可以新建工程文件，绝不允许改写工程文件。** 已有文件内容有变化时，脚本把结果写到
-`<解决方案根>/workspace/gen/`，由 AI 用文件编辑工具写入工程。唯一例外是 `Textures/` 之下的贴图与
-`.dds`/`.tex`/`.bnk`/`.wem`/`.wav` 这些可再生二进制资产（文件编辑工具写不出其字节）。
+**代码文件只能逐行编辑。** `.sql`、`.lua`、`.xml`、`.ini`、`.gitignore`、`.gitattributes` 一律由脚本拒写，
+脚本只把结果写成 `<解决方案根>/workspace/gen/reports/` 下的数据清单，由人逐行写入工程。
+`.civ6sln`、`.civ6proj` 由 ModBuddy 从零产生，`.modinfo` 由 `.civ6proj` 派生，三者一旦存在即只许逐行编辑。
+允许脚本直接落盘的只有美术与音频产物：`.artdef`、`.xlp`、`.ast`、`.mtl`、`.dep`、`*.Art.xml`、
+`.dds`、`.tex`、`.png`、`.tga`、`.jpg`、`.jpeg`、`.bnk`、`.wem`、`.wav`、`.wwu`、`.wproj`，
+以及 `Platforms/Windows/Audio/` 下 WwiseCLI 产出的 `<Bank>.xml` 与 `<Bank>.txt`。
 
 实现通道是 `_projwrite.py`（六份逐字节相同的副本：`civ6-modding/art`、`civ6-modding/tools`、
 `civ6-modding/scripts`、`civ6-asset-forge/scripts`、`civ6-art-reference/scripts`、
 `civ6-audio-pipeline/scripts`），体检工具 `scripts/check_script_write_targets.py`。
-不受约束的是 `new_project.py`（建骨架）与构建类工具（`modinfo_build.py` / `cook_assets.py` /
+不受约束的是构建类工具（`modinfo_build.py` / `cook_assets.py` /
 `cook_dep.py` / `landmark_tool.py cook`，写 Mods 副本与输出目录）。
+
+**禁止用「先删除既有文件、再新建同名文件」绕过本节**：`_projwrite.py` 在首次写入该工程时记下文件清单，目标已不在盘上、却出现在清单里即抛 `CodeWriteForbidden`；`check_script_write_targets.py` 对同时 import 守卫与调用删除／改名原语的脚本判违规（删除豁免须在脚本内显式声明）。
 
 ---
 
@@ -187,7 +195,7 @@ UTF-8 读写；不改编码/换行；PowerShell 先 `chcp 65001`；**查看中�
 | Skill | git | 说明 |
 |---|---|---|
 | `civ6-modding` | ✅ | 含 `.gitignore`（排除 SQLite 快照与 `local_paths.json`）与 `.gitattributes`（钉 LF） |
-| 其余 6 个 | ✅ | 2026-09-14 纳入版本控制（`civ6-html-ui` / `civ6-landmarks` 为 2026-09-28 新入），各含 `.gitignore` / `.gitattributes` |
+| 其余 7 个 | ✅ | 2026-09-14 纳入版本控制（`civ6-html-ui` / `civ6-landmarks` 为 2026-09-28 新入，`civ6-text-authoring` 为 2026-10-20 新入），各含 `.gitignore` / `.gitattributes` |
 
 **分享包形态**（历史做法，见 `.agents/skills/civ6-modding_2026-08-06_*.zip`）：
 
@@ -232,7 +240,7 @@ ModTools 5.4（PyQt6 可视化 Mod 编辑器，MIT）的部分能力与知识按
 | 决议 | 内容 |
 |---|---|
 | D2 命名 | 本家族与各工程的命名规范为准（Type 主体缩写后置、ID 缩写居中、CIVILIZATION/LEADER/TRAIT 由作者自拟）；ModTools 的 `{HEAD}_{前缀}_{中缀}{编号:04d}_{简称}` 生成规则不采用，其产物进入本工程前一律重命名并过 `rgn_validate` |
-| D3 ExposedMembers | 口径以 `reference/context-matrix.md` 为准：慎用，除被动获取跨端返回参数情形外不主动使用（工程约定须经用户首肯，每会话一次）；吸收文档中的鼓励性示例一律改写或加批注 |
+| D3 ExposedMembers | 口径以 `reference/context-matrix.md` 为准：跨端第四通道，双向可调、可同步返回；唯一硬规则是不得出现在 UI 按钮回调（那里走 `EXECUTE_SCRIPT`），其余场景不设限 |
 | D4 BLP 素材 | BLP 包体素材知识收敛为唯一门禁入口：`civ6-art-reference` SKILL.md「原版美术资产路径」节的一句路由 → `civ6-art-unpack`（首行门禁，无授权禁止读取，不进 L0 检索、不进本表路由）；家族其余位置不出现该通道的指引。**禁令仅针对 `.blp` 素材包体**；对可执行文件做简单资源提取不受限（既有实践：`Civ6LuaHelper.exe` → `data/api_enhanced.json`，见 api-verification 审核清单） |
 | D5 领袖差分 | 纸片领袖一律以 `civ6-asset-forge` 为准（铁律四语音判定门前置）；外交差分知识深藏于其 `reference/leader-diplo-fallback.md`，仅用户提及外交差分时检索使用；槽位拼写以全拼 `DECLARE_WAR_FROM_HUMAN` 为准（官方枚举实测为全拼，见 `database/DebugGameplay.sqlite`） |
 | D6 工程文件 | `.civ6proj` 保持手工维护 + `check_proj_content.py` 双向闭合体检；外部生成器产物只进独立目录，禁止外部工具直接绑定本工程写入 |

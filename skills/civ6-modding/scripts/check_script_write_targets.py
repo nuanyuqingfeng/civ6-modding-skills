@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
-"""工程文件写入体检：脚本只能新建工程文件，改写一律走 _projwrite 入位 <解决方案根>/workspace/gen。
+"""工程文件写入体检：代码文件一律拒写，只有美术与音频产物允许脚本直写。
 
 铁律真源：civ6-modding/SKILL.md「工程文件写入铁律」。
 
-三条规则：
+四条规则：
   规则一  六份 _projwrite.py 副本必须逐字节相同（唯一实现，禁止各写一份）。
   规则二  凡同时出现「工程标记」与「写盘调用」的脚本，必须 import _projwrite：
-          允许脚本新建工程文件与直写可再生资产，改写的唯一通道是守卫模块。
+          代码文件一律拒写，只有美术与音频产物可由脚本直接落盘。
   规则三  其余写盘调用只报告，不判违规（写临时目录、skill 自身目录、素材目录）。
+  规则四  已 import 守卫的脚本不得再调用删除／改名原语（os.remove / os.unlink /
+          os.rename / os.replace / shutil.move / shutil.rmtree）删掉既有文件后重建，
+          以此绕过规则二；命中判违规，确属删除可再生资产者列 DELETION_EXEMPT。
 
 豁免用显式表格声明（相对路径 → 理由），命中即跳过并在末尾列出，不静默跳过。
 
@@ -61,6 +64,7 @@ EXEMPT_FILES = {
     "scripts/normalize_eol.py": "换行归一化：mod 工程只报告，--repo-skill 只写 skill 自身仓库",
     "scripts/clear_ae_cache.py": "删除 %APPDATA% 下的 AssetEditor 依赖缓存",
     "scripts/check_sql_exec.py": "校验器：只在 %TEMP% 建临时库",
+    "scripts/check_no_codegen.py": "生成闸基线：只写 workspace/gen/reports/ 下的 JSON 快照",
     "database/scripts/build_localization.py": "写 skill 自身的 DebugLocalization.sqlite",
     "database/scripts/export_side_tables.py": "写 skill 自身的 annotations/ 侧表",
     "database/scripts/query_effect_args.py": "写 --dump-json 指定的位置",
@@ -84,6 +88,17 @@ EXEMPT_FILES = {
     "civ6-asset-forge/scripts/_projwrite.py": "守卫模块自身",
     "civ6-art-reference/scripts/_projwrite.py": "守卫模块自身",
     "civ6-audio-pipeline/scripts/_projwrite.py": "守卫模块自身",
+}
+
+# 规则四：删除／改名原语（删掉工程文件再重建，即绕过规则二的改写分流）
+DELETION_PRIMITIVES = ("os.remove", "os.unlink", "os.rename", "os.replace",
+                       "shutil.move", "shutil.rmtree")
+
+# 已 import 守卫且调用上述原语的脚本：按设计删除的不是工程文本文件（相对路径子串 → 理由）
+DELETION_EXEMPT = {
+    "civ6-audio-pipeline/scripts/register_to_mod.py": "删除旧 bank 媒体文件（可再生音频产物）",
+    "civ6-audio-pipeline/scripts/unregister_audio.py": "删除旧 bank 媒体文件（可再生音频产物）",
+    "civ6-modding/art/make_atlas.py": "产物 .dds 入位 Textures/（可再生二进制，非文本）",
 }
 
 
@@ -119,6 +134,20 @@ def write_calls(tree):
     return sorted(set(found))
 
 
+def deletion_calls(tree):
+    """返回该文件的删除／改名调用点列表 [(行号, 名称)]。"""
+    found = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+            name = func.value.id + "." + func.attr
+            if name in DELETION_PRIMITIVES:
+                found.append((node.lineno, name))
+    return sorted(set(found))
+
+
 def main():
     parser = argparse.ArgumentParser(description="工程文件写入体检")
     parser.add_argument("--skills", default=os.path.dirname(os.path.dirname(os.path.dirname(
@@ -146,6 +175,7 @@ def main():
 
     reported = []
     skipped = []
+    deletion_skipped = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in ("__pycache__", ".git")]
         for name in sorted(filenames):
@@ -176,6 +206,17 @@ def main():
                 for line, call in calls:
                     print("            第 %d 行  %s" % (line, call))
                 bad += 1
+            dels = deletion_calls(tree)
+            if guarded and dels:
+                exempt_del = next((reason for key, reason in DELETION_EXEMPT.items() if key in rel), None)
+                if exempt_del:
+                    deletion_skipped.append((rel, exempt_del, len(dels)))
+                else:
+                    print("违规    %s：已 import %s 却仍有 %d 处删除／改名调用，可能删掉工程文件后重建以绕过改写分流"
+                          % (rel, GUARD[:-3], len(dels)))
+                    for line, call in dels:
+                        print("            第 %d 行  %s" % (line, call))
+                    bad += 1
 
     print("")
     if reported:
@@ -188,6 +229,11 @@ def main():
         print("显式豁免（%d 个脚本）：" % len(skipped))
         for rel, reason, count in skipped:
             print("    %s  写盘 %d 处  %s" % (rel, count, reason))
+    if deletion_skipped:
+        print("")
+        print("删除/改名豁免（%d 个脚本）：" % len(deletion_skipped))
+        for rel, reason, count in deletion_skipped:
+            print("    %s  删除/改名 %d 处  %s" % (rel, count, reason))
 
     print("")
     if bad:

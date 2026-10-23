@@ -149,6 +149,9 @@ LOC_DIPLO_DEFEAT_FROM_AI_LEADER_<ID>_ANY           战败台词
 
 **必填文本**（`LOC_TRAIT_<ID>_*` 这类 tag 归 `Text_Config_*` 文件；`LOC_LOADING_INFO_LEADER_<ID>` 是开幕颂词，写 100 字上下的完整长句，禁止只写称号）：
 
+> 文本命名与写法（含**开幕颂词**文风规范、能力描述句式、外交台词结构）→ **`civ6-text-authoring`**
+> （其 `leader-trait-text.md` / `opening-ode.md` / `diplomacy-text.md`；要写文案先过该 skill）。
+
 ```
 LOC_LEADER_<ID>_NAME                      领袖名
 LOC_LEADER_<ID>_DESCRIPTION               称号（写 Text_Config）
@@ -230,8 +233,8 @@ python tools/civ_leader_data.py reference/civ-leader-spec.example.json \
 产出 `Data/CivLeader_<Slug>.sql` + `Data/Config_<Slug>.sql` + `Text/Text_<Slug>.sql`，
 并自检 LOC tag 闭包、8 语言齐缺、`Portrait` 未登记 XLP 告警。
 
-三个 `.sql` 目标文件不存在时脚本新建直写；任一已存在且内容有变化时，改写结果落到
-`<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时
+`.sql` 属代码文件，脚本不写盘：三个目标文件的内容与待插入的行一律写进
+`<解决方案根>/workspace/gen/reports/` 的数据清单，由人逐行写入工程；
 打印待写入清单。
 
 `leaders[]` 里支持 `civilization` 字段指定挂靠文明；与本规格的 `civilization.type`

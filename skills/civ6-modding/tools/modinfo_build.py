@@ -10,6 +10,7 @@ r"""从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可�
     python modinfo_build.py <X.civ6proj> --deploy        # cook 美术产物 + 复制 Content + 写 modinfo
     python modinfo_build.py <X.civ6proj> --deploy --mods-root <目录>
     python modinfo_build.py <X.civ6proj> --deploy --no-cook   # 跳过 cook（没有 Art.xml 的工程）
+    python modinfo_build.py <X.civ6proj> --deploy --hardlink  # 强制走硬链接（默认按暂存区自动判定）
 
 工程目录位置（硬性）：
     工程目录不得位于游戏 Mods 加载目录（本机 P2）之内 —— 游戏递归扫描 Mods 全树，
@@ -36,6 +37,12 @@ r"""从 .civ6proj 派生 .modinfo（等价 ModBuddy 的构建动作），并可�
     · Content Include 是拷贝清单（ModBuddy 只拷 Content 条目 —— 只写在 InGameActions 里
       而漏进 Content 的文件不会被部署，是踩过的坑）；去重在分隔符规范化之后，
       反斜杠/斜杠两种写法不会产生重复 <File> 项
+    · 副本按「干净重建」维护：拷贝循环只覆盖本次产出的路径，工程侧改名或删除之后旧文件
+      会永远留在交付包里（实测残留 Config_*.sql 与 *_Banks.ini 四个孤儿）。部署收尾用
+      prune_stale() 删掉本次没有产出的文件，副本恒等于本次部署结果。
+    · --hardlink 只给 <解决方案根>/workspace/gen/Mods 暂存区用（build.py stage）：Content
+      是逐字节原样搬运，硬链接让暂存副本与工程共用同一份字节。游戏 Mods 目录不用它 ——
+      那里在测试迭代中会被直接改动，硬链接会把改动回写到工程。
 
 退出码：0 成功 / 1 失败
 """
@@ -53,6 +60,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _paths  # noqa: E402
+import _projwrite  # noqa: E402  （部署收尾回收 workspace/gen 里已写回的暂存副本）
 import cook_assets  # noqa: E402  （只借它的 *.Art.xml 解析，避免两套实现漂移）
 
 try:
@@ -294,6 +302,77 @@ def sync_artdefs(proj_dir: str, mod_dir: str) -> tuple[int, int]:
     return synced, len(names)
 
 
+# 不属于「本次部署产出」也允许留在副本里的路径：cook 产物（BLP 与 .dep）与 .modinfo
+STALE_KEEP_PREFIXES = ("platforms/windows/blps/", "platforms/macos/blps/")
+STALE_KEEP_SUFFIXES = (".dep", ".modinfo")
+
+
+def staging_mods_root(proj_dir: str) -> str:
+    """暂存区 Mods 根：<解决方案根>/workspace/gen/Mods。
+
+    与 _projwrite.workspace_gen 同一套定位（.civ6sln 所在层 + workspace/gen），
+    但不在 tools/ 里 import 守卫 —— 守卫只管工程文件写入，构建工具不该沾它。
+    """
+    root = os.path.abspath(proj_dir)
+    solution = (root if cook_assets.glob_ci(root, "*.civ6sln")
+                else os.path.dirname(root))
+    return os.path.join(solution, "workspace", "gen", "Mods")
+
+
+def under_staging(proj_dir: str, mods_root: str) -> bool:
+    """mods_root 是否就是本工程的暂存区（决定要不要硬链接）。"""
+    staged = os.path.normcase(os.path.abspath(staging_mods_root(proj_dir)))
+    given = os.path.normcase(os.path.abspath(mods_root))
+    return given == staged or given.startswith(staged + os.sep)
+
+
+def link_or_copy(src: str, dst: str, hardlink: bool) -> None:
+    """把 src 放到 dst：hardlink 时优先硬链接，失败回落 copy2。
+
+    硬链接只用于 <解决方案根>/workspace/gen/Mods 暂存区。游戏 Mods 目录在测试迭代中
+    会被直接改动，硬链接会把改动回写到源工程，故那里一律真实复制。
+    """
+    if os.path.isfile(dst):
+        os.remove(dst)
+    if hardlink:
+        try:
+            os.link(src, dst)
+            return
+        except OSError:
+            pass
+    shutil.copy2(src, dst)
+
+
+def prune_stale(mod_dir: str, keep: set) -> list:
+    """删掉副本里本次部署没有产出的文件，返回被删清单。
+
+    拷贝循环只覆盖本次产出，工程侧改名或删除之后旧文件会永远留在交付包里
+    （实测残留 Data/Config_*.sql 与 Platforms/Windows/Audio/*_Banks.ini 四个孤儿）。
+    cook 产物（BLPs、*.dep）与 .modinfo 不参与判定：它们不是 Content 拷贝的产物，
+    是否存在由 cook 与写入动作各自决定。
+    """
+    removed = []
+    root_abs = os.path.abspath(mod_dir)
+    for dirpath, dirnames, filenames in os.walk(root_abs):
+        dirnames[:] = [d for d in dirnames if d not in (".git", "__pycache__")]
+        for name in sorted(filenames):
+            full = os.path.join(dirpath, name)
+            rel = os.path.relpath(full, root_abs).replace(os.sep, "/")
+            low = rel.lower()
+            if low.startswith(STALE_KEEP_PREFIXES) or low.endswith(STALE_KEEP_SUFFIXES):
+                continue
+            if rel in keep:
+                continue
+            os.remove(full)
+            removed.append(rel)
+    for dirpath, _dirnames, _filenames in os.walk(root_abs, topdown=False):
+        if os.path.abspath(dirpath) == root_abs:
+            continue
+        if not os.listdir(dirpath):
+            os.rmdir(dirpath)
+    return removed
+
+
 def run_cook(proj_dir: str, mods_root: str) -> int:
     """调用同目录的 cook_assets.py 重放 ArtDef / XLP 分区，返回其退出码。
 
@@ -323,6 +402,10 @@ def main() -> int:
     ap.add_argument("--out", default=None, help="不部署时把派生结果写到该文件（默认打到 stdout）")
     ap.add_argument("--no-cook", action="store_true",
                     help="--deploy 时跳过 cook_assets.py（没有 *.Art.xml 的工程用）")
+    ap.add_argument("--hardlink", dest="hardlink", action="store_true", default=None,
+                    help="--deploy 时 Content 走硬链接（默认按 --mods-root 是否位于暂存区自动判定）")
+    ap.add_argument("--no-hardlink", dest="hardlink", action="store_false",
+                    help="--deploy 时强制真实复制")
     args = ap.parse_args()
 
     proj = os.path.abspath(args.project)
@@ -352,6 +435,8 @@ def main() -> int:
     if not mods_root:
         raise SystemExit("找不到 Mods 目录，请用 --mods-root 指定")
     mod_dir = os.path.join(mods_root, mod_name)
+    # 硬链接只对暂存区生效：游戏 Mods 目录在测试迭代中会被直接改动。
+    hardlink = under_staging(proj_dir, mods_root) if args.hardlink is None else args.hardlink
 
     # ★ cook 必须排在 Content 拷贝之前：BLP / ArtDef / .dep 是游戏实际加载的美术产物，
     #   它们不进 <Content Include>，只能由 cook 写进副本。放在拷贝之后会让本次部署
@@ -377,7 +462,7 @@ def main() -> int:
             continue
         # 目录按需创建：没有产物就不该在 Mods 树里留空目录
         os.makedirs(os.path.dirname(d), exist_ok=True)
-        shutil.copy2(s, d)
+        link_or_copy(s, d, hardlink)
         print("COPY %-46s %7d B" % (rel, os.path.getsize(d)))
     if missing_src:
         print("FAIL <Content Include> 指向的文件不存在：%s" % missing_src)
@@ -451,6 +536,31 @@ def main() -> int:
         print("OK  ArtDefs 强制同步 %d / %d 个（源 → Mods 副本）" % (n_sync, n_total))
     else:
         print("OK  ArtDefs 已一致（%d 个）" % n_total)
+
+    # ⑤ 干净重建：删掉本次没有产出的旧文件（只对暂存区，游戏 Mods 目录不动）
+    #    游戏 Mods 目录在测试迭代中会被直接改动，删掉「本次没产出」的文件等于删掉
+    #    用户那一侧的临时改动与调试插桩。
+    if hardlink:
+        keep = set(content) | {mod_name + ".modinfo"}
+        artdef_dir = os.path.join(proj_dir, "ArtDefs")
+        if os.path.isdir(artdef_dir):
+            keep |= {"ArtDefs/" + f for f in os.listdir(artdef_dir)
+                     if f.lower().endswith(".artdef")}
+        stale = prune_stale(mod_dir, keep)
+        if stale:
+            print("PRUNE 删除 %d 个本次没有产出的旧文件：%s" % (len(stale), "、".join(stale)))
+        else:
+            print("PRUNE 副本无旧文件残留")
+
+    # ⑥ 回收 workspace/gen 里已写回工程的暂存副本（守卫的写回产物不常驻）
+    gone, pending, orphans = _projwrite.prune_applied(proj_dir)
+    if gone:
+        print("PRUNE 回收 workspace/gen 暂存副本 %d 项" % len(gone))
+    if pending:
+        print("WARN workspace/gen 仍有 %d 项待写回工程：%s" % (len(pending), "、".join(pending)))
+    if orphans:
+        print("WARN workspace/gen 有 %d 项孤立副本（源文件已改名或删除）：%s"
+              % (len(orphans), "、".join(orphans)))
     return 0
 
 

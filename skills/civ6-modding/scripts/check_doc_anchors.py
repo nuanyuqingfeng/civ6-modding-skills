@@ -8,8 +8,8 @@
           跨脚本 / 同端 这类关系词，或同一行命中两个以上 API 关键词（EXECUTE_SCRIPT /
           ReportingEvents / ExposedMembers / LuaEvents）。单纯调用 API 的行不算结论行。
           指针可以落在结论行本身，或它的前两行 / 后两行内（标题、代码块放不下指针）。
-  规则二  带指针且提到 LuaEvents 的结论行，必须同时含「不可达」「只有」「唯一」这类排他
-          结论词，防止指针退化成一句空链接。
+  规则二  带指针且提到 LuaEvents 的结论行，必须标明「端内 / 跨端 / 通道」中的至少一项，
+          防止指针退化成一句空链接（旧口径的「不可达 / 只有 / 唯一」仍兼容，但不再强制）。
 
 豁免用**显式表格**声明（文件名 + 理由），命中即跳过并在末尾列出，不静默跳过。
 历史记录、事故复盘、实测数据文件天然保留当时的措辞，属于豁免范围。
@@ -46,7 +46,7 @@ RE_SEARCH_CMD = re.compile(r"Select-String\s+-Path|--pattern|Pattern\s*=\s*\"")
 # 强关系词：单独出现即判定为结论行，裸「跨文件」不算（它在别的语境里也用）
 STRONG_RELATION = ("跨上下文", "跨端", "跨脚本", "同端", "不跨")
 
-EXCLUSIVE = ("不可达", "只有", "唯一", "不跨端", "禁止跨端", "不达", "副本", "不是同一实例", "两个不同实例")
+EXCLUSIVE = ("端内", "跨端", "通道", "不可达", "只有", "唯一", "不跨端", "禁止跨端", "不达", "副本", "不是同一实例", "两个不同实例")
 
 # 指针可以落在结论行的同一行、前两行或后两行内（标题、代码块这类行放不下指针）
 WINDOW_BEFORE = 2
@@ -119,7 +119,7 @@ def main():
                     if not has_ptr:
                         violations.append((rel, i, "规则一", "有关键词但无指针: " + line.strip()[:110]))
                     elif "LuaEvents" in line and not any(x in window for x in EXCLUSIVE):
-                        violations.append((rel, i, "规则二", "有指针但无排他结论: " + line.strip()[:110]))
+                        violations.append((rel, i, "规则二", "有指针但未标明端内/跨端/通道: " + line.strip()[:110]))
 
     print("=" * 78)
     print("扫描 %d 个 .md（%s）" % (scanned, ", ".join(targets)))

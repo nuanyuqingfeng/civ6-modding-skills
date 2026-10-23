@@ -156,6 +156,23 @@
           -ModDir "D:\...\Mods\<ModName>" -ItemId <工坊ID>
       ```
 
+11. **首次上传与更新走两条不同的文字流程**（口径全文见 `workshop-intro.md`）：
+
+    | 场景 | 判据 | 流程 |
+    |---|---|---|
+    | 首次上传（创建新条目） | 工作区无 `mod_id.txt` 且工坊无对应条目 | 介绍撰写流程：`tools/workshop_intro.py` 提取 `[code]` 主体（丙栏）、预置模板提供点赞与 QQ 群（甲栏）、用户提供前置行/标语/致谢/写在最后（乙栏，未提供即整节不写） |
+    | 更新已有条目 | `mod_id.txt` 存在且条目已上线 | 更新记录编写流程：`release/scripts/draft_note.py` 按「上传基线 → HEAD」的 git 差异产出 `changeNote` 与台账行草稿，再由人工定稿 |
+
+    更新时不重写介绍正文；用户明确要求改介绍时才走介绍撰写流程，且只改被点名的段落。
+
+12. **`dependencies` 是全量列表，每次上传都被同步**（`UploadCommand.cs` 的 `UpdateDependencies`）：
+    上传器在每次上传结束时，把线上依赖与本次 `workshop.json` 的 `dependencies` 做增删同步 ——
+    列表里没有的线上依赖会被 `RemoveDependency` **删除**。因此：首次上传按
+    `python tools/workshop_intro.py deps <源工程根>` 的结果写入；更新时若线上已有依赖，
+    必须把全量列表写进本次 `workshop.json`（只写 `changeNote` 会清空依赖）。
+    官方 DLC / 资料片依赖只能写在源工程 `.civ6proj` 与派生 `.modinfo` 的 `<Dependencies>`，
+    工坊侧不接受 DLC；需要提示玩家时写进介绍的前置行（乙栏，由用户提供）。
+
 ## Standard Workflow
 
 ### 1. 定位本地 mod 目录
@@ -167,6 +184,9 @@ D:\documents\My Games\Sid Meier's Civilization VI\Mods\<ModName>
 确认存在 `<ModName>.modinfo`。
 
 ### 2. 创建 workspace
+
+> 首次上传（新建条目）时，介绍与依赖先按 `workshop-intro.md` 写规格 JSON，再在这里建工作区；
+> 更新时文字部分只走更新记录编写流程（`release/scripts/draft_note.py`）。
 
 **首选：一条命令搞定**（`release/scripts/make_workspace.ps1`）——它依次做
 「建 junction → workshop.json → mod_id.txt → validate」，且**幂等可重跑**：
@@ -224,6 +244,9 @@ New-Item -ItemType Junction -Path "$ws\content" -Target $modDir    # ★ 不复�
 
 > 用了空对象后，上传器日志会显示 `Uploading '' to the steam workshop`（标题为空串），
 > 这是正常的；标题/描述/标签/可见性/封面均保持原样。**上传后仍须用 Steam API 复核标题未被清空。**
+>
+> ★ 空对象与「只写 `changeNote`」都**不含 `dependencies`**：线上条目若有工坊依赖，本次上传会把它们
+> 删除（Hard Rules ⑫）。更新前先核对线上依赖，需要保留时把全量列表一并写进 `workshop.json`。
 
 #### 2.2 预览图 `image.png`（可选）
 
@@ -369,6 +392,10 @@ Pop-Location
 ### 上传后回写
 
 - 每次上传/更新后回写该工程台账：条目元数据（当前版本 / `hcontent_file` / `time_updated` 基线、内容规模）、历史版本行、操作历史行（日期倒序，新行插在最上）。
+- **上传基线**（`条目详情` 内单独一行，更新记录的取数依据）：
+  `- 上传基线：commit \`<sha>\`｜hcontent_file \`<id>\`｜time_updated \`<ts>\``。
+  首次上传时在上传成功后补录；`draft_note.py` 缺 `--since` 时读这一行，读到 `commit` 之前的位置即报错退出。
+- **依赖基线**：条目有工坊依赖时，在「条目详情」写明 `当前依赖：<ID 列表>`，与 `workshop.json` 的 `dependencies` 保持一致（Hard Rules ⑫）。
 - 真成功判据：上传器 `Successfully uploaded` + Steam API `hcontent_file` 变化；`No content change detected` / `0 of 0 bytes` 属假成功。已知判读经验（`result = 9` ≠ 不存在、`k_EItemUpdateStatusInvalid` 行不必然失败）记于各台账。
 
 
@@ -448,7 +475,10 @@ Pop-Location
 | `release/scripts/find_item_id.ps1` | 从 Steam 日志反查工坊条目 ID（`-ModName <名>`） |
 | `release/scripts/clash_api.ps1` | Clash Verge 命名管道 API 调用壳（返回原始 HTTP 响应） |
 | `release/scripts/clash_proxy.py` | 测各节点延迟并自动选择最佳节点（`--url <工坊链接>`） |
+| `release/scripts/draft_note.py` | **更新记录草稿**：按「上传基线 → HEAD」的 git 差异产出 `changeNote` 与台账行草稿（`--project <源工程根> [--since <commit>]`） |
 | `release/templates/workshop.update.json` | 仅更新内容时的 `workshop.json` 最小模板 |
+| `release/templates/intro.spec.example.json` | 三栏口径的规格 JSON 样板（甲栏预置、丙栏 `[code]` 主体、乙栏用户提供） |
+| `release/templates/intro-presets.md` | 甲栏预置模板（点赞横幅 8 语言 + QQ 群行），**本机自留、分享时不带** |
 | `release/docs/checklist.md` | 上传前 / 中 / 后逐项核对清单 |
 | `release/docs/troubleshooting.md` | 六类异常的现象 / 原因 / 处理 |
 

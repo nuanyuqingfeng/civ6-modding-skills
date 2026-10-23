@@ -62,7 +62,7 @@
 
 6. **LuaEvents automatically clean up** — no need to `.Remove()`.
 
-7. **GamePlay 脚本 `Events.*` / `GameEvents.*` / `LuaEvents.*` 均可用；UI 侧不可用 `GameEvents.*`（整条为 `nil`）。** `LuaEvents.*` 是同端广播系统：UI 侧跨 UI 上下文、GP 侧跨 GP 文件均可用（表格按引用传递，handler 回写调用方立即可读）；GP 侧与 UI 侧**不是同一实例**，跨端推送一律用 `ReportingEvents.SendLuaEvent`（见 §36）。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
+7. **GamePlay 脚本 `Events.*` / `GameEvents.*` / `LuaEvents.*` 均可用；UI 侧不可用 `GameEvents.*`（整条为 `nil`）。** `LuaEvents.*` 是同端广播系统：UI 侧跨 UI 上下文、GP 侧跨 GP 文件均可用（表格按引用传递，handler 回写调用方立即可读）；GP 侧与 UI 侧**不是同一实例**，跨端推送一律用 `ReportingEvents.SendLuaEvent`（见 §36）。跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`。
 
 > **⚠ 三条总线互不镜像 —— 用错总线是「静默无效」，必须按事件查表，不要凭印象**（2026-09 修订）
 >
@@ -86,7 +86,7 @@
 >
 > **⚠ `GameEvents.X` 不是存在性探针**——它对**任意**名字都返回 table（自动建表）。只能用 `type(Events.X) == "table"` 判断事件是否存在；对不存在的事件写 `Events.X.Add()`，**UI 侧会直接抛 `attempt to index a nil value` 并中断该函数后续所有初始化**。引擎未暴露到 `Events.*` 的 48 个事件在 `events_enhanced.json` 中标 `availability: "None"`（这 48 条的 `eventSystem` 同为 `GameEvents`，即「按名字该走 GameEvents，但实际哪一层都订阅不到」）。
 
-8. **Never pass C++ objects or UI controls across `LuaEvents`**. The owning context may delete them before the receiver processes the event, causing crashes. Tables are passed by reference（同端实时同步；跨端经 `ReportingEvents` 为副本 → `reference/context-matrix.md` 第三节第 4 行）；C++ 对象禁止。端内跨上下文只有 `LuaEvents`，其余不可达 → `reference/context-matrix.md`
+8. **Never pass C++ objects or UI controls across `LuaEvents`**. The owning context may delete them before the receiver processes the event, causing crashes. Tables are passed by reference（同端实时同步；跨端经 `ReportingEvents` 为副本 → `reference/context-matrix.md` 第三节第 4 行）；C++ 对象禁止。端内跨上下文用 `LuaEvents`（首选）或暴露函数；跨端四通道（含暴露函数，仅按钮回调禁用）→ `reference/context-matrix.md`
 
 ## Database Pitfalls
 
@@ -151,9 +151,59 @@
     另一条纪律：写含文本的 INSERT 时**不要用 PowerShell here-string / 重定向生成**（会引入转义层），用 Python/Node 显式 UTF-8 写入。
 
 
-13. [G13b] **查询游戏数据 API 首选 SQLite。** `database/api.sqlite` (Lua API) 和 `database/DebugGameplay.sqlite` (游戏数据) 覆盖全部查询需求。详见 SKILL.md「写前三问 / 查询三级阶梯」（SKILL.md 无 Rule 编号体系，原文此处为悬空引用）。
+13. [G13b] **查询游戏数据 API 首选 SQLite。** `database/api.sqlite` (Lua API) 和 `database/DebugGameplay.sqlite` (游戏数据) 覆盖全部查询需求。详见 `SKILL.md` §3.3 写前三问、§3.1 查询阶梯。
 
 14. [G14a] **`MODIFIER_*_ADJUST_PROPERTY` 的 ModifierArgument 用 `Key` + `Amount`；`REQUIREMENT_PLOT_PROPERTY_MATCHES` 的 RequirementArgument 用 `PropertyName` + `PropertyMinimum`。** — ModifierArgument 中无论玩家级还是单位级，设置 PROPERTY 值的参数名都是 `Key`。但 RequirementArgument 中检测 PROPERTY 用的是 `PropertyName`（以及 `PropertyMinimum` 阈值）。二者参数名不同，混用不会报错但永远不生效。`REQUIREMENT_PLAYER_PROPERTY_MATCHES` 等其他 PROPERTY 检测 RequirementType 也沿用 `PropertyName`。
+
+15. [G15] **前置区域 / 前置建筑列一律填写被取代的原版对象，特色对象不得出现在前置列里。**
+
+    特色条目经 `DistrictReplaces` / `BuildingReplaces` / `UnitReplaces` 取代原版对象之后，它的**前置列**仍然指向原版被取代对象。特色对象只能出现在取代表左侧列（`CivUniqueDistrictType` / `CivUniqueBuildingType` / `CivUniqueUnitType`）与主表的 `Type` 列。
+
+    适用列（`PRAGMA table_info` 实查 `database/DebugGameplay.sqlite`）：
+
+    | 表 | 前置列 |
+    |---|---|
+    | `Buildings` | `PrereqDistrict` |
+    | `Units` | `PrereqDistrict` |
+    | `Projects` | `PrereqDistrict` |
+    | `BuildingPrereqs` | `PrereqBuilding` |
+    | `Unit_BuildingPrereqs` | `PrereqBuilding` |
+
+    典型场景：特色建筑 `BUILDING_XXX_ELY` 经 `BuildingReplaces` 取代 `BUILDING_TEMPLE`，其 `PrereqDistrict` 写 `DISTRICT_HOLY_SITE`。即使本文明另有一个取代 `DISTRICT_HOLY_SITE` 的特色圣地 `DISTRICT_XXX_ELY`，这一列仍然写 `DISTRICT_HOLY_SITE`；`BuildingPrereqs` 里的 `PrereqBuilding` 同理填被取代的原版建筑。
+
+    为什么必须这样写：前置判定发生在**建造资格检查**阶段，检查对象是「该文明当前实际拥有的区域 / 建筑类型」。特色区域在引擎内部以被取代对象的身份参与判定，前置列写特色 Type 时这个 Type 与判定集合对不上，建筑直接不可建造，且**加载期不报错**——症状是特色建筑在建造列表里根本不出现，或者同一前置下的其他文明条目连带失效。
+
+    自查：`python scripts/check_sql_antipatterns.py <工程根目录>` 的 D 类判定会收集取代映射并报出前置列里的特色对象。
+
+16. [G15b] **取代对象的子表要整类复刻。**
+
+    `BuildingReplaces` / `DistrictReplaces` / `UnitReplaces` 只登记取代映射：引擎按它把特色对象当作原版对象参与建造资格判定。被取代对象在各子表里的行**不会被继承**。特色对象在某张子表里一行都没有时，该子表承载的行为静默丢失，加载期零报错。
+
+    判据是**整类缺失**：被取代对象在某张表的某个主体列里有行、特色对象在同一位置零行 → 该表要复刻。数值不同不属缺陷（信仰 4 点取代 1 点是设计）。
+
+    主体列指「整行挂在这个对象上」的列，只有两类：
+
+    - 表名以对象族开头且列名以 `Type` 结尾：`Building_YieldChanges.BuildingType`、`District_Adjacencies.DistrictType`、`Units_XP2.UnitType`；
+    - 两张用裸列的：`BuildingPrereqs.Building`、`Unit_BuildingPrereqs.Unit`。
+
+    `ModifierArguments.Value`、`StartingBuildings.Building`、`MajorStartingUnits.District`、`MutuallyExclusiveDistricts.District` 这类列里出现的对象名是**别人的表在引用它**，复刻过去等于把起始配给、互斥关系、修正参数搬错位置，不在复刻范围。列名以 `Prereq` 开头的是**反向引用**（该行的意思是"我要求某个对象存在"），同样只读不抄。
+
+    **触发时机只有两处**，其余时刻不跑：
+
+    | 入口 | 时机 | 动作 |
+    |---|---|---|
+    | 写入路径 | 本次写的 SQL 里出现取代表 | 写完映射、写子表之前跑 `--diff`，按清单逐表复刻 |
+    | 用户点名 | 「补全 xx 的全部表格」 | `--object xx --sql` 取原版全部行 |
+
+    手动删除子表行属持久意图，工具只报告、不恢复，也不设为常规校验项 —— 把这类删除当缺陷的校验器必然误报。
+
+    ```bash
+    python scripts/replacement_subtables.py <工程根> --diff     # 未覆盖项清单，有未覆盖时退出码 1
+    python scripts/replacement_subtables.py <工程根> --diff --sql   # 连同可照抄的 INSERT
+    python scripts/replacement_subtables.py <工程根> --object DISTRICT_HOLY_SITE --sql
+    ```
+
+    计数在**快照**上做：脚本把基础库复制到临时文件、灌入工程 SQL，再比对两侧行数。基础库本身不含工程行，直接在原库上计数会把每个特色对象都算成零行。
 
 ## UI Pitfalls
 
@@ -254,15 +304,15 @@
 
 ## GP → UI 通信
 
-36. **GP→UI 推送用 `ReportingEvents.SendLuaEvent`，不用 `LuaEvents.*` 直接触发** — 这是 GP→UI 的标准推送方式。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
+36. **GP→UI 推送用 `ReportingEvents.SendLuaEvent`，不用 `LuaEvents.*` 直接触发** — 这是 GP→UI 的标准推送方式。跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`。
      ```lua
      ReportingEvents.SendLuaEvent('Name', { key = value })
      ```
-     UI 侧 `LuaEvents.Name.Add(handler)` 接收。**GP 侧的 `LuaEvents` 表与 UI 侧不是同一实例**，不要依赖 GP 直调 `LuaEvents.Name(...)` 到达 UI —— 跨端推送统一用 `SendLuaEvent`（官方跨 Lua 状态的 API）。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
+     UI 侧 `LuaEvents.Name.Add(handler)` 接收。**GP 侧的 `LuaEvents` 表与 UI 侧不是同一实例**，不要依赖 GP 直调 `LuaEvents.Name(...)` 到达 UI —— 跨端推送统一用 `SendLuaEvent`（官方跨 Lua 状态的 API）。跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`。
 
-37. **按钮触发的 UI→GP 动作必须走 `EXECUTE_SCRIPT`，禁止跨端通过 `ExposedMembers` 调用** — 按钮回调中触发的一切 GP 函数调用（升级、增益切换、购买等）统一使用 `UI.RequestPlayerOperation(EXECUTE_SCRIPT)`。GP 同端跨文件通信用 `LuaEvents`，`ExposedMembers` 禁止跨端暴露给 UI；UI 被动读取用 PROPERTY / Core 共享读取函数。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
+37. **按钮触发的 UI→GP 动作必须走 `EXECUTE_SCRIPT`，按钮回调中禁止通过 `ExposedMembers` 调用** — 按钮回调中触发的一切 GP 函数调用（升级、增益切换、购买等）统一使用 `UI.RequestPlayerOperation(EXECUTE_SCRIPT)`。GP 同端跨文件通信用 `LuaEvents`，`ExposedMembers` 仅按钮回调禁用（其余跨端场景可用）；UI 被动读取用 PROPERTY / Core 共享读取函数。跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`。
 
-38. **UI 可直接读取 PROPERTY，共享读取函数放 Core 文件** — `Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")` 在 UI 侧同样可用。将读取函数定义在 Core 文件中，GP 和 UI 各自 `include()` 即可；跨端不需要也不允许用 `ExposedMembers` 包装。端内跨上下文只有 `LuaEvents`；跨端只有 `EXECUTE_SCRIPT`（UI→GP）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（双向）三个固定通道，其余任何跨上下文调用函数都不可达。真源 `reference/context-matrix.md`。
+38. **UI 可直接读取 PROPERTY，共享读取函数放 Core 文件** — `Players[id]:GetProperty("KEY")` / `pPlot:GetProperty("KEY")` 在 UI 侧同样可用。将读取函数定义在 Core 文件中，GP 和 UI 各自 `include()` 即可；跨端若需要同步返回值可用 `ExposedMembers`（按钮回调除外）。跨端四通道：`EXECUTE_SCRIPT`（UI→GP 动作）、`ReportingEvents.SendLuaEvent`（GP→UI 推送）、PROPERTY 读取（GP 写、UI 延后读的被动辅助）、暴露函数 `ExposedMembers`（双向；仅 UI 按钮回调禁用，需同步返回值时优先）；端内跨上下文用 `LuaEvents`（首选）或暴露函数。直接读写另一上下文全局仍不可达。真源 `reference/context-matrix.md`。
 
 43. **ForgeUI `Offset` 正负号：左对齐(L)与右对齐(R)相反，上对齐(T)与下对齐(B)相反 —— 正值恒指向容器内部** — `Anchor` 是 `L/C/R × T/C/B` 九宫格，Offset 正值方向不是全局坐标系而是相对锚点镜像翻转：`L`→右、`R`→**左**、`T`→下、`B`→**上**；`C` 无镜像（与 `L,T` 同向，2026-09-28 用户裁定：CC 与 LT 正负判断一致；正值即屏幕正向：右/下）。⚠ 不要把「负值」一概判为 bug —— 负值只是「往容器外推」，本工程 45 个 UI XML 实测 `R,T` 负值 6 处均在正常运行面板中；`B` 锚点 28 正 0 负（镜像零反例）。症状：同一面板中一个按钮正常、另一个"贴屏幕边缘/面板外"，通常就是 `R,B`/`B` 系锚点写了负值（或镜像错值）。例：`R,B` + `Offset="-80,33"` = 向右 80 推出右缘；正确应为 `"80,33"`（向左）。vanilla 佐证 `WorldBuilderMenu.xml:14-15`（`R,B`/`L,B` 均正值正常）、`BoostUnlockedPopup.xml:38`（`C,B` + `0,15` 向上）。规避：角落锚点先按上表反推符号；或统一用 `C,*` 锚点 + 正值，无镜像歧义。详见 `xml-templates.md` "Anchor Syntax Reference"。
 
@@ -624,8 +674,8 @@
     归一化脚本必须**按扩展名排除 + 逐文件 NUL 探测双重把关**。
 
     **施工与体检**：`python civ6-modding/scripts/normalize_eol.py <工程目录>`（默认只报告；`--fix` 才写入 ——
-    工程内既有文件内容有变化时，改写结果落到 `<解决方案根>/workspace/gen/` 的同一相对路径，由 AI 用文件编辑工具
-    写入工程对应路径，脚本在退出码 2 时打印待写入清单；`--repo-skill` 清理 skill 自身仓库仍直写）。
+    美术与音频产物由脚本直接写盘，代码文件的换行偏离清单落到 `<解决方案根>/workspace/gen/reports/normalize_eol_manual.json`，
+    由人逐行编辑；`--repo-skill` 清理 skill 自身仓库仍直写）。
     工程侧在 `.gitattributes` 落实：
 
     ```gitattributes

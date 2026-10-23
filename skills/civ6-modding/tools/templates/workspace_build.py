@@ -16,6 +16,8 @@
      一律不进工程核心文件夹。
 
 工程核心文件夹不落任何构建产物。日常迭代走 stage + verify，产物全部落在 workspace/gen/。
+暂存区按「干净重建 + 同字节共用」维护：modinfo_build.py 每次部署删掉本次没有产出的旧文件，
+Content 走硬链接（与工程共用字节），cook 侧把跨平台相同的 BLP 合并成硬链接。
 
 ## 用法
 
@@ -134,6 +136,7 @@ def cmd_check(_args) -> int:
     data, text = os.path.join(PROJ, "Data"), os.path.join(PROJ, "Text")
     s = lambda n: os.path.join(SCRIPTS, n)
     steps = [
+        ("⓪ workspace/gen 暂存副本回收", py(os.path.join(TOOLS, "_projwrite.py"), PROJ, "--quiet")),
         ("① SQL 可执行性（Data）", py(s("check_sql_exec.py"), "--root", data)),
         ("① SQL 可执行性（Text）", py(s("check_sql_exec.py"), "--root", text)),
         ("② 引用完整性", ["node", s("rgn_validate_runner.mjs"), data]),
@@ -169,8 +172,11 @@ def cmd_stage(_args) -> int:
     """部署到 workspace/gen/Mods/：整条部署链（含引用闭合硬检查）在 workspace 内可反复验证。"""
     os.makedirs(STAGE_MODS, exist_ok=True)
     proj = find_proj()
+    # 暂存区用硬链接：Content 是逐字节原样搬运，共用字节可省掉一整套音频与数据副本。
+    # 游戏 Mods 目录不用（那边测试时会被直接改动，硬链接会把改动回写进工程）。
     return run("部署到 workspace 暂存区", py(os.path.join(TOOLS, "modinfo_build.py"),
-                                          proj, "--deploy", "--mods-root", STAGE_MODS))
+                                          proj, "--deploy", "--mods-root", STAGE_MODS,
+                                          "--hardlink"))
 
 
 def cmd_verify(args) -> int:

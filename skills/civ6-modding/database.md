@@ -62,7 +62,7 @@ All database XML wraps tables in `<GameInfo>`:
 | `UnitUpgrades` | Upgrade paths | `Unit` → `UpgradeUnit` |
 | `UnitReplaces` | Unique unit replaces | `CivUniqueUnitType` → `ReplacesUnitType` |
 | `Units_XP2` | GS expansion columns | `ResourceCost`, `CanFormMilitaryFormation` |
-| `Buildings` | Building definitions | 46 columns — includes `PrereqDistrict`, `Housing` |
+| `Buildings` | Building definitions | 46 columns — includes `PrereqDistrict`, `Housing`；`PrereqDistrict` 填被取代的原版区域（见 `gotchas.md` G15） |
 | `Buildings_XP2` | GS expansion columns | `RequiredPower`, `PreventsFloods` |
 | `Districts` | District definitions | 40 columns — includes `CostProgressionModel` |
 | `Adjacency_YieldChanges` | 区域/改良相邻加成规则 | PK: `ID`，来源列 `AdjacentTerrain` / `AdjacentImprovement` / `AdjacentDistrict` 等 |
@@ -119,6 +119,30 @@ All database XML wraps tables in `<GameInfo>`:
 `District_Adjacencies` 只有两列：`DistrictType` 与 `YieldChangeId`。替换原版区域的特色区域不会自动继承原区域挂载，需要自行复制或逐条挂载。
 
 相邻加成 `Description` 的文本必须包含 `{1_num}` 动态数字与 `[ICON_产出]` 图标，写法规范与完整模板见 `reference/modifiers-catalog/modifier-improvement-plot.md` 的「相邻加成本地化文本铁律」和 `xml-templates.md` 的「自定义区域相邻加成模板」。
+
+## 取代对象的子表复刻
+
+`BuildingReplaces` / `DistrictReplaces` / `UnitReplaces` 只登记取代映射：引擎按它把特色对象当作原版对象参与建造资格判定。被取代对象在各子表里的行不会被继承，特色对象在某张子表里零行时，该表承载的行为静默丢失、加载期零报错。
+
+取料：
+
+```bash
+python scripts/replacement_subtables.py <工程根> --diff          # 未覆盖表清单，有未覆盖时退出码 1
+python scripts/replacement_subtables.py <工程根> --diff --sql    # 连同可照抄的 INSERT
+python scripts/replacement_subtables.py <工程根> --object DISTRICT_HOLY_SITE --sql
+```
+
+标准写法是把被取代对象的行原样搬过来，只换主体列：
+
+```sql
+INSERT INTO Building_YieldChanges (BuildingType, YieldType, YieldChange)
+SELECT 'BUILDING_XXX_ELY', YieldType, YieldChange
+FROM Building_YieldChanges WHERE BuildingType = 'BUILDING_TEMPLE';
+```
+
+主体列只有两类：表名以对象族开头且列名以 `Type` 结尾（`Building_YieldChanges.BuildingType`、`District_Adjacencies.DistrictType`、`Units_XP2.UnitType`），以及 `BuildingPrereqs.Building` 与 `Unit_BuildingPrereqs.Unit` 这两张用裸列的。其余列照抄。`ModifierArguments.Value`、`StartingBuildings.Building`、`MajorStartingUnits.District`、`MutuallyExclusiveDistricts.District` 是别人的表在引用该对象，复刻过去等于把起始配给与互斥关系搬错位置；`Prereq*` 列是反向引用（该行要求某个对象存在），同样只读不抄。
+
+复刻是**写入阶段**的动作，不设常规校验项：手动删除子表行属持久意图，把这类删除当缺陷的校验器必然误报。完整口径与触发时机见 `gotchas.md` G15b。
 
 ## Removing Data
 

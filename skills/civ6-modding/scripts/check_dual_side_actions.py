@@ -170,7 +170,9 @@ def main():
             if not fname:
                 fails.append("%s: 图集 %s 的 %s 档缺少 Filename" % (os.path.basename(p), name, size))
                 continue
-            if not os.path.isfile(os.path.join(tex_dir, fname + ".dds")):
+            # Filename 口径见 art-pipeline.md「图标图集」：多格图集带 .dds 后缀，1×1 单图集不带
+            dds_name = fname if fname.lower().endswith(".dds") else fname + ".dds"
+            if not os.path.isfile(os.path.join(tex_dir, dds_name)):
                 fails.append("%s: 图集 %s 的 %s 档指向 %s，Textures 下无该贴图"
                              % (os.path.basename(p), name, size, fname))
 

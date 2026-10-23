@@ -29,7 +29,7 @@ pantry 列表
 
 与 targets 刻意不同的三点
     · `IgnoreExitCode="true"` 不再沿用 —— 退出码被检查，并按日志模式分类报告；
-    · CWD 固定到 `<解决方案根>\workspace\tmp\cook_cwd`，`cooker.log` 不落工程核心文件夹；
+    · 每轮 cooker 的完整日志追加进 `<工程核心根>\cooker.log`（全解决方案唯一一份，只追加不截断）；
     · cook 之后把源工程 `ArtDefs/*.artdef` 覆盖进输出副本（见 sync_artdefs 的说明）。
 
 报什么错、不报什么错
@@ -46,16 +46,20 @@ pantry 列表
       掉到 786,964 B）；登记了但没有 `Assets/<名>.ast`，整条被移除，产物与空 BLP 逐字节相同
       （实测 34,816 B / `cc549f071b50`，与 `JuliusCaesar` / `BarbarianClansMode`
       的空 BLP 完全一致）→ 运行时零影响，代价只是日志变吵与 cooker 退出码 2。
-    · MacOS 轮对本工程必然整轮空转（28 个 `.xlp` 全部 `AllowedPlatforms = WINDOWS`），
-      仍要跑，否则日志与实际动作就和 ModBuddy 不一致。
+    · 平台轮次按 XLP 的 `m_AllowedPlatforms` 并集裁剪：`Civ6.targets` 只 cook Windows 与
+      MacOS 两档，故取二者的并集与该声明集合的交集；某档没有任何 XLP 声明时不跑该轮
+      （整轮只会打印 SKIP-PLATFORM）。
 
     不要试图消灭 `HAS MISSING ENTRIES`：给它补一个真实存在的 `.ast` 会让词条成功打包
     （实测 BLP 从 34,816 B 涨到 85,504 B，产物里出现 `DIS_Preserve_Base_01` 字符串），
     本 mod 后挂载、包名与越南 DLC 同为 `landmarks/tilebases` → 同名条目覆盖 DLC 几何体，
     实机表现被改坏（cook-layer §4.3 的反例）。
 
-    判失败的只有两类：产物缺失（该有的 `.blp` / `.artdef` / `.dep` 没产出），
-    以及退出码非零且日志里没有任何可解释模式（既没有移除条目，也不是平台跳过）。
+    判失败的有三类：产物缺失（该有的 `.blp` / `.artdef` / `.dep` 没产出），
+    退出码非零且日志里没有任何可解释模式（既没有移除条目，也不是平台跳过），
+    以及 .Art.xml 与实存文件的双向对账不闭合：实存但未声明（永不被 cook）、
+    声明但工程内不存在（空声明，cooker 静默忽略）。两个方向都判失败，
+    空声明必须删掉、缺声明必须补上，不允许任意一侧留缺口。
 
 用法：
     python cook_assets.py <工程根>                    # 全量 cook 到 Mods 副本
@@ -270,11 +274,25 @@ def build_calls(inputs: dict, out_root: str, only) -> list:
             calls.append(CookCall("ArtDef", "Windows", "--banquet_hall",
                                   os.path.join(out_root, "ArtDefs"), src))
     if only in (None, "XLP"):
-        for platform in PLATFORMS:
+        for platform in cook_platforms(inputs):
             for src in inputs["XLP"]:
                 calls.append(CookCall("XLP", platform, "--stewpot",
                                       os.path.join(out_root, "Platforms", platform, "BLPs"), src))
     return calls
+
+
+def cook_platforms(inputs: dict) -> list:
+    """本次要 cook 的平台：targets 的两档与该工程 XLP 声明集合的交集。
+
+    全部 XLP 都只声明 WINDOWS 时，MacOS 轮只会对每个文件打印一行 SKIP-PLATFORM，
+    不产出任何 BLP —— 跳过该轮，日志与产物都不变。没有任何 XLP 声明平台时按
+    targets 全跑（判定留给 cooker，本工具不替它猜）。
+    """
+    declared: set = set()
+    for src in inputs["XLP"]:
+        declared |= xlp_allowed_platforms(src)
+    chosen = [p for p in PLATFORMS if p.upper() in declared]
+    return chosen or list(PLATFORMS)
 
 
 def xlp_package_name(path: str):
@@ -289,19 +307,45 @@ def xlp_allowed_platforms(path: str) -> set:
     return {(e.text or "").strip().upper() for e in node.findall("Element")}
 
 
+def start_cook_log(path: str, calls: list) -> None:
+    """开一轮 cook 会话：向工程核心根的唯一一份 cooker.log 追加会话头与调用清单。"""
+    with open(path, "a", encoding="utf-8", newline="\n") as fh:
+        fh.write("===== cook_assets %s =====\n" % time.strftime("%Y-%m-%d %H:%M:%S"))
+        for c in calls:
+            fh.write("   %-12s %-42s -> %s\n" % (c.order, os.path.basename(c.src), c.outdir))
+        fh.write("\n")
+
+
+def append_cook_log(path: str, call: CookCall, text: str) -> None:
+    """把一轮的完整日志追加进同一份 cooker.log。"""
+    with open(path, "a", encoding="utf-8", newline="\n") as fh:
+        fh.write("----- %s / %s -----\n" % (call.order, os.path.basename(call.src)))
+        fh.write(text if text.endswith("\n") else text + "\n")
+        fh.write("\n")
+
+
 def run_call(cooker: str, config: str, pantry: list, call: CookCall,
-             cwd: str, logdir: str) -> tuple:
-    """spawn 一次 cooker；输出落日志文件再读回（受限宿主禁管道捕获）。
+             cwd: str, log_path: str) -> tuple:
+    """spawn 一次 cooker；完整日志追加进工程核心根的 cooker.log 再读回。
 
     输出目录由 cooker 自己按需创建 —— 这里不再预建。预建会让「平台声明里没有这一档」
     的轮次也留下空目录（本工程 MacOS 轮 28 个 XLP 全是 WINDOWS，于是
     <Mods>\\<ModName>\\Platforms\\MacOS\\BLPs\\SHARED_DATA 常年是空壳）。
+
+    cooker 会把日志写到自己的 CWD；CWD 保持在临时目录，跑完把那轮的输出追加进
+    核心根的唯一一份，临时文件（含 cooker 自己写的那份）立即删除。
     """
-    log = os.path.join(logdir, "%s_%s.log" % (call.order.replace("/", "_"), call.stem))
-    with open(log, "wb") as fh:
+    cap = os.path.join(cwd, "cooker.round.log")
+    with open(cap, "wb") as fh:
         rc = subprocess.run(call.cmd(cooker, config, pantry), cwd=cwd,
                             stdout=fh, stderr=subprocess.STDOUT).returncode
-    return rc, open(log, encoding="utf-8", errors="replace").read()
+    text = open(cap, encoding="utf-8", errors="replace").read()
+    os.remove(cap)
+    own = os.path.join(cwd, "cooker.log")
+    if os.path.isfile(own):
+        os.remove(own)
+    append_cook_log(log_path, call, text)
+    return rc, text
 
 
 def classify(text: str) -> dict:
@@ -389,6 +433,41 @@ def sync_artdefs(root: str, out_root: str) -> tuple:
         shutil.copy2(s, d)
         synced.append(name)
     return synced, problems
+
+
+def dedupe_identical_blps(out_root: str) -> tuple:
+    """把与 Windows 档逐字节相同的其它平台 BLP 换成硬链接，返回 (合并数, 省下字节)。
+
+    贴图与平台无关，同一个包在 Windows 与 MacOS 两轮里产出的 BLP 完全一致时，两份
+    文件是纯冗余。Windows 那一份留作真身，其它平台的同相对路径删掉后重新链接过去：
+    读到、打包到的字节完全相同，磁盘上只占一份。
+    先链接到临时名再替换，链接失败时原文件仍在盘上，不会出现「删了却链不上」。
+    """
+    base = os.path.join(out_root, "Platforms", PLATFORMS[0], "BLPs")
+    if not os.path.isdir(base):
+        return 0, 0
+    merged, saved = 0, 0
+    for platform in PLATFORMS[1:]:
+        top = os.path.join(out_root, "Platforms", platform, "BLPs")
+        if not os.path.isdir(top):
+            continue
+        for dirpath, _dirnames, filenames in os.walk(top):
+            for name in sorted(filenames):
+                cur = os.path.join(dirpath, name)
+                peer = os.path.join(base, os.path.relpath(cur, top))
+                if not os.path.isfile(peer):
+                    continue
+                with open(peer, "rb") as fa, open(cur, "rb") as fb:
+                    if fa.read() != fb.read():
+                        continue
+                size = os.path.getsize(cur)
+                temp = cur + ".link"
+                os.link(peer, temp)
+                os.remove(cur)
+                os.replace(temp, cur)
+                merged += 1
+                saved += size
+    return merged, saved
 
 
 def artdefs_match_source(root: str, out_root: str) -> list:
@@ -493,8 +572,14 @@ def art_xml_checks(root: str, art_xml: str, out_root: str, mod_name: str) -> tup
     return lines, fails
 
 
-def reconcile_art_xml(art_xml: str, inputs: dict) -> list:
-    """与 .Art.xml 对账：实存的 artdef / XLP 包名是否都被声明。"""
+def reconcile_art_xml(art_xml: str, inputs: dict) -> tuple:
+    """与 .Art.xml 对账：声明与实存必须双向闭合，任一方向不闭合都判失败。
+
+    relativeArtDefPaths 与 gameLibraries 下的 relativePackagePaths 都是**声明**：
+      · 实存但未声明 → 该文件永不被 cook，判失败；
+      · 声明但实存无此文件 → 空声明，cooker 静默忽略，判失败。
+    返回 (报数行, 失败项)。
+    """
     root = load_art_spec(art_xml)
     declared_artdef: set = set()
     declared_pkg: set = set()
@@ -507,6 +592,7 @@ def reconcile_art_xml(art_xml: str, inputs: dict) -> list:
             if el.get("text"):
                 declared_pkg.add(el.get("text"))
     lines: list = []
+    fails: list = []
     actual_artdef = {os.path.basename(p) for p in inputs["ArtDef"]}
     undeclared = sorted(actual_artdef - declared_artdef)
     dangling = sorted(declared_artdef - actual_artdef)
@@ -514,12 +600,27 @@ def reconcile_art_xml(art_xml: str, inputs: dict) -> list:
         len(actual_artdef), len(declared_artdef),
         "" if not undeclared and not dangling else
         "  未声明=%s 声明但不存在=%s" % (undeclared or "无", dangling or "无")))
+    for name in undeclared:
+        fails.append("artdef %s 实存但未在 relativeArtDefPaths 声明（永不被 cook，补声明）"
+                     % name)
+    for name in dangling:
+        fails.append("artdef %s 在 relativeArtDefPaths 声明但工程内不存在（空声明，删掉该行）"
+                     % name)
     pkg_of = {os.path.basename(p): xlp_package_name(p) for p in inputs["XLP"]}
-    undeclared_pkg = sorted(n for n in pkg_of.values() if n and n not in declared_pkg)
+    actual_pkg = {n for n in pkg_of.values() if n}
+    undeclared_pkg = sorted(actual_pkg - declared_pkg)
+    dangling_pkg = sorted(declared_pkg - actual_pkg)
     lines.append("XLP ：实存 %d / 声明包 %d%s" % (
-        len(pkg_of), len(declared_pkg),
-        "" if not undeclared_pkg else "  未声明的包=%s" % undeclared_pkg))
-    return lines
+        len(actual_pkg), len(declared_pkg),
+        "" if not undeclared_pkg and not dangling_pkg else
+        "  未声明的包=%s 声明但不存在=%s" % (undeclared_pkg or "无", dangling_pkg or "无")))
+    for name in undeclared_pkg:
+        fails.append("XLP 包 %s 实存但未在 relativePackagePaths 声明（永不被 cook，补声明）"
+                     % name)
+    for name in dangling_pkg:
+        fails.append("XLP 包 %s 在 relativePackagePaths 声明但工程内无对应 XLP（空声明，删掉该行）"
+                     % name)
+    return lines, fails
 
 
 def print_plan(calls: list, quiet: bool) -> None:
@@ -601,10 +702,12 @@ def main() -> int:
         print("   WARN %s" % w)
     print_plan(calls, args.quiet)
 
-    rec = reconcile_art_xml(art_xml, inputs)
+    rec, rec_fails = reconcile_art_xml(art_xml, inputs)
     print("对账：")
     for line in rec:
         print("   %s" % line)
+    for f in rec_fails:
+        print("   FAIL %s" % f)
 
     art_lines, art_fails = art_xml_checks(root, art_xml, out_root, mod_name)
     print("Art.xml 专项：")
@@ -619,18 +722,21 @@ def main() -> int:
             len(exp),
             "含 .dep 1 个" if any(c.mode == "ArtDef" for c in calls) else "纯 XLP 轮，不产 .dep"))
         print("CHECK 模式：未执行任何 cook，未写入任何文件。")
-        return 1 if art_fails else 0
+        return 1 if (art_fails or rec_fails) else 0
 
     cook_cwd = os.path.join(solution_root(root), "workspace", "tmp", "cook_cwd")
-    logdir = os.path.join(cook_cwd, "logs")
-    os.makedirs(logdir, exist_ok=True)
+    os.makedirs(cook_cwd, exist_ok=True)
+    log_path = os.path.join(root, "cooker.log")
+    start_cook_log(log_path, calls)
 
     rep = Report(calls=calls)
+    rep.failures.extend(rec_fails)
     print()
+    print("会话日志 : %s" % log_path)
     print("开始 cook（%d 次调用，逐文件 spawn）…" % len(calls))
     t0 = time.time()
     for i, c in enumerate(calls, 1):
-        rc, text = run_call(cooker, config, pantry, c, cook_cwd, logdir)
+        rc, text = run_call(cooker, config, pantry, c, cook_cwd, log_path)
         ev = classify(text)
         merge_events(rep.events, ev)
         if rc != 0:
@@ -653,6 +759,12 @@ def main() -> int:
         rep.failures.extend("产物缺失：%s" % m for m in missing)
     else:
         print("   全部存在（%d 个）" % len(exp))
+
+    merged, saved = dedupe_identical_blps(out_root)
+    if merged:
+        print()
+        print("跨平台 BLP 合并：%d 个与 %s 档逐字节相同，改用硬链接（省 %.1f MB）"
+              % (merged, PLATFORMS[0], saved / 1048576.0))
 
     print()
     print("ArtDefs 同步（源 → 副本）：")

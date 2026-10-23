@@ -34,6 +34,7 @@ CLOUD_URL = "https://github.com/nuanyuqingfeng/civ6-modding-skills.git"
 PROXY = "http://127.0.0.1:7897"
 WORK = os.path.join(os.environ.get("TEMP") or r"C:\Windows\Temp", "civ6-mono")
 README_SRC = os.path.join(SKILL_DIR, "tools", "monorepo_README.md")
+LICENSE_SRC = os.path.join(SKILL_DIR, "tools", "monorepo_LICENSE")
 GIT_FALLBACK = [r"E:\SoftWares\Git\cmd\git.exe", r"C:\Program Files\Git\cmd\git.exe"]
 
 
@@ -142,6 +143,16 @@ def main():
     else:
         print("WARN 找不到 %s，本次不动仓库根 README.md" % README_SRC)
 
+    license_want = None
+    license_changed = False
+    if os.path.isfile(LICENSE_SRC):
+        license_want = open(LICENSE_SRC, encoding="utf-8").read()
+        dst = os.path.join(WORK, "LICENSE")
+        have = open(dst, encoding="utf-8").read() if os.path.isfile(dst) else None
+        license_changed = have != license_want
+    else:
+        print("WARN 找不到 %s，本次不动仓库根 LICENSE" % LICENSE_SRC)
+
     changed = []
     for n in skills:
         src = os.path.join(SKILLS_ROOT, n)
@@ -161,7 +172,7 @@ def main():
         changed.append(n)
         print("  %-24s %s -> %s" % (n, (have or "云端新增")[:8], want[:8]))
 
-    if not changed and not readme_changed:
+    if not changed and not readme_changed and not license_changed:
         print("云端已是最新，无需提交。")
         if not a.keep:
             rmtree_force(WORK)
@@ -177,6 +188,12 @@ def main():
         git(["-C", WORK, "add", "README.md"])
         parts.append("README.md")
         print("  README.md 由 tools/monorepo_README.md 更新")
+    if license_changed:
+        with open(os.path.join(WORK, "LICENSE"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(license_want)
+        git(["-C", WORK, "add", "LICENSE"])
+        parts.append("LICENSE")
+        print("  LICENSE 由 tools/monorepo_LICENSE 更新")
     msg = a.message or ("sync: " + "、".join(parts))
     git(["-C", WORK, "commit", "-q", "-m", msg])
     head = git(["-C", WORK, "rev-parse", "HEAD"]).stdout.strip()
@@ -193,6 +210,13 @@ def main():
         if committed.replace("\r\n", "\n").strip("\n") != want.replace("\r\n", "\n").strip("\n"):
             raise SystemExit("FAIL 提交内 README.md 与 tools/monorepo_README.md 不一致")
         print("README 核对：与 tools/monorepo_README.md 一致")
+
+    if os.path.isfile(LICENSE_SRC):
+        committed = git(["-C", WORK, "show", "HEAD:LICENSE"]).stdout
+        want = open(LICENSE_SRC, encoding="utf-8").read()
+        if committed.replace("\r\n", "\n").strip("\n") != want.replace("\r\n", "\n").strip("\n"):
+            raise SystemExit("FAIL 提交内 LICENSE 与 tools/monorepo_LICENSE 不一致")
+        print("LICENSE 核对：与 tools/monorepo_LICENSE 一致")
 
     if a.dry_run:
         print("--dry-run：未推送，临时目录保留在 %s" % WORK)

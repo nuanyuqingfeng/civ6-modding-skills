@@ -47,7 +47,6 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -90,6 +89,14 @@ def solution_root(project_root: str) -> str:
     return os.path.dirname(root)
 
 
+def append_block(path: str, header: str, text: str) -> None:
+    """把一轮 cooker 日志追加进工程核心根的唯一一份 cooker.log。"""
+    with open(path, "a", encoding="utf-8", newline="\n") as fh:
+        fh.write("----- %s -----\n" % header)
+        fh.write(text if text.endswith("\n") else text + "\n")
+        fh.write("\n")
+
+
 def generate(proj: str, art_xml: str, out_dir: str, platform: str) -> tuple[bool, str]:
     """跑 cooker --mode Dependency，返回 (成功, 说明)。"""
     cooker = find_cooker()
@@ -109,13 +116,19 @@ def generate(proj: str, art_xml: str, out_dir: str, platform: str) -> tuple[bool
            "--config", cfg,
            art_xml]
     # 注意：不要用 capture_output=True —— 部分受限宿主禁管道。
-    # 先落临时日志，再读回过滤（等价且不依赖管道）。
-    with tempfile.TemporaryDirectory() as td:
-        log = os.path.join(td, "cooker.log")
-        with open(log, "wb") as fh:
-            rc = subprocess.run(cmd, stdout=fh, stderr=subprocess.STDOUT,
-                                cwd=out_dir).returncode
-        text = open(log, encoding="utf-8", errors="replace").read()
+    # CWD 固定在临时目录，跑完把这一轮的完整日志追加进工程核心根那份 cooker.log。
+    cook_cwd = os.path.join(solution_root(proj), "workspace", "tmp", "cook_cwd")
+    os.makedirs(cook_cwd, exist_ok=True)
+    cap = os.path.join(cook_cwd, "cooker.round.log")
+    with open(cap, "wb") as fh:
+        rc = subprocess.run(cmd, stdout=fh, stderr=subprocess.STDOUT,
+                            cwd=cook_cwd).returncode
+    text = open(cap, encoding="utf-8", errors="replace").read()
+    os.remove(cap)
+    own = os.path.join(cook_cwd, "cooker.log")
+    if os.path.isfile(own):
+        os.remove(own)
+    append_block(os.path.join(proj, "cooker.log"), "cook_dep / %s" % platform, text)
 
     # ★ .dep 文件名来自 .Art.xml 的 <id><name>（= mod 名），**不是**工程目录名
     #   （工程目录可能叫 NtE_Eidolon_Mode 而 mod 名是 NtE_Anomaly_Mode）。

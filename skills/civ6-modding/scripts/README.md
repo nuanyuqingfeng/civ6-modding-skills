@@ -13,7 +13,7 @@
 |---|---|---|---|
 | `rgn_validate_runner.mjs` | **引用完整性 + Modifier 单复数/作用域**：悬空 ModifierId / Type / RequirementSetId …；`--scope-check` 只查 git diff 命中的改动，并从 `DynamicModifiers` 回查官方/项目既有自建类型 | `node rgn_validate_runner.mjs <目录> [模式=*.sql] [checkNaming=true] [--base <库>] [--static] [--scope-check]` | 0 无异常 / 1 有 |
 | `check_sql_exec.py` | **可执行性**：非法转义、字符错位导致「整条 INSERT 报废」 | `python check_sql_exec.py [--root <工程>] [--base <库>]` | 0 / 1 |
-| `check_sql_antipatterns.py` | **语义反模式**：语法合法但恒假/恒错 —— `LIKE ('%A%' OR '%B%')`、`WHERE … = NULL` | `python check_sql_antipatterns.py <工程根目录> [--esc]` | 0 / 1 |
+| `check_sql_antipatterns.py` | **语义反模式**：语法合法但恒假/恒错 —— `LIKE ('%A%' OR '%B%')`、`WHERE … = NULL`、前置列填了特色对象 | `python check_sql_antipatterns.py <工程根目录> [--esc]` | 0 / 1 |
 | `check_types_kinds.py` | `INSERT INTO Types` 的 `Kind` 是否是引擎合法枚举（复现 `Invalid Reference on Types.Kind`） | `python check_types_kinds.py [--root <工程>] [--db <库>] [--dirs Data,Mod_Adaptation]` | 0 / 1 |
 | `check_dual_side_actions.py` | **双端动作与图标注册闭合**：`FrontEndActions` / `InGameActions` 的 `UpdateArt` / `UpdateColors` / `UpdateIcons` 是否成对；FrontEnd 图集档位与 `IconDefinitions` 是否被 InGame 全覆盖；`Data/*.sql` 引用的 `ICON_*` 是否在 InGame 定义；图集 `Filename` 是否在 `Textures/` 有 `.dds` | `python check_dual_side_actions.py <工程根目录> [--quiet]` | 0 通过 / 1 有缺口 |
 | `check_proj_content.py` | `.civ6proj` 的 `<Content Include>` 与磁盘是否**双向闭合**（悬空清单项 / 漏登记） | `python check_proj_content.py <工程根目录>` | 0 / 1 |
@@ -26,7 +26,7 @@
 | `check_pantry.py` | **pantry 卫生**：`.tex` 是否只在 `Textures/`、`m_Name`/`m_RelativePath` 是否全工程唯一、有无 depot 库路径、非 ASCII 文件名、`.tex`↔`.dds` 配对 | `python check_pantry.py [--root <pantry>] [--quiet]` | 0 通过 / 1 有 error |
 | `verify_trees.py` | 两棵目录树是否**逐字节相同**（递归 SHA256）—— 源 ↔ Mods 副本一致性 | `python verify_trees.py <dirA> <dirB>` | 0 相同 / 1 不同 |
 | `check_script_write_targets.py` | **工程文件写入体检**：六份 `_projwrite.py` 副本是否逐字节相同；凡认识「工程」的脚本，写盘是否都走守卫（铁律见 `../SKILL.md`「工程文件写入铁律」） | `python check_script_write_targets.py [--skills <skills 根>]` | 0 通过 / 1 违规 |
-| `check_project_hygiene.py` | **工程核心文件夹卫生**：只允许工程文件与处理后的成品素材；`workspace/` `gen/` `tmp/` 备份目录、`Build/` `Cooked/` `.modinfo` `*.log` 一律报违规（真源 `../SKILL.md`「工程核心文件夹卫生」） | `python check_project_hygiene.py <工程核心文件夹><br>python check_project_hygiene.py <解决方案根> --solution` | 0 干净 / 1 有违规或未登记项 |
+| `check_project_hygiene.py` | **工程核心文件夹卫生**：只允许工程文件与处理后的成品素材；`workspace/` `gen/` `tmp/` 备份目录、`Build/` `Cooked/` `.modinfo` 与 `*.log` 一律报违规；唯一例外是工程核心根顶层那份 `cooker.log`（全解决方案只允许一份，其余位置出现即判重复副本；真源 `../SKILL.md`「工程核心文件夹卫生」） | `python check_project_hygiene.py <工程核心文件夹><br>python check_project_hygiene.py <解决方案根> --solution` | 0 干净 / 1 有违规或未登记项 |
 
 ### 四个互补，缺一不可
 
@@ -34,7 +34,7 @@
 check_sql_exec.py         管「语句跑不跑得起来」     ← 一条语句报废时，数据根本没进库
 rgn_validate              管「引用闭不闭合」         ← 语句都跑通了，但引用了不存在的东西
 check_types_kinds.py      管「Kind 是不是合法枚举」  ← 打包不报错，加载期才丢弃
-check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR 恒假、= NULL 恒 NULL
+check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR 恒假、= NULL 恒 NULL、前置列填了特色对象
 ```
 
 > **★ 为什么需要 `check_sql_exec.py`**：一条 `INSERT` 因 `'knight\'s story!'`（应为 `''`）整条报废时，
@@ -48,11 +48,16 @@ check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR �
 > 只生成了 **20** 条，缺少的 **6** 条特色区域被静默漏掉，且无任何报错。
 > **只有模式扫描能抓到它。**（该反模式的实机证据与修法见 `gotchas.md` §52。）
 
+> **★ D 类判定的用途**：前置列（`PrereqDistrict` / `PrereqBuilding`）填了特色对象时，建造资格判定与
+> 引擎实际拥有的类型集合对不上，特色建筑直接不可建造、加载期零报错。脚本先扫全工程取代表建映射，
+> 再核前置列的值，口径见 `gotchas.md` G15。
+
 ## 2. 运维脚本
 
 | 脚本 | 作用 | 用法 |
 |---|---|---|
 | `clear_ae_cache.py` | 删 `%APPDATA%\AssetCloud\mod-<Mod>-asset-deps.json`（可再生，AssetEditor 会重建）。**开 AE 前若动过贴图，必须先清**，否则"移走问题文件仍不闪退"是缓存假象 | `python clear_ae_cache.py [--mod <名>] [--dry-run]` |
+| `replacement_subtables.py` | **取代对象的子表取料**：列出被取代对象在各子表的行数、特色对象的覆盖情况，`--sql` 输出可照抄的 INSERT。写入阶段动作，不属常规校验套件（口径见 `../gotchas.md` G15b） | `python replacement_subtables.py <工程根> [--object TYPE] [--diff] [--sql]` |
 
 ## 3. 标准验证顺序
 
@@ -79,6 +84,7 @@ check_sql_antipatterns.py 管「跑起来了但意思是错的」  ← LIKE-OR �
 ⑪ （动过贴图时）
    python check_pantry.py --root <工程>           # pantry 卫生
    python clear_ae_cache.py --mod <工程名>        # 清 AE 缓存，再开 AssetEditor 看日志有无 CRASH
+⑫ python check_project_hygiene.py <解决方案根> --solution   # 工程卫生：cooker.log 全解决方案唯一一份
 ```
 
 > **为什么 ⓿ 要排在第一位**：①–⑧ 都是**静态**检查 —— 它们能证明"源文件没写错"，

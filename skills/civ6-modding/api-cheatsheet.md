@@ -205,7 +205,7 @@
 |------|------|
 | `DB.MakeHash` | `(string) -> hash: number` |
 | `Locale.Lookup` | `(key: string) -> localizedText` |
-| `ExposedMembers.XXX` | GP 同端跨文件暴露成员；禁止跨端暴露给 UI（跨端只有 `EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取，其余不可达 → `reference/context-matrix.md`） |
+| `ExposedMembers.XXX` | 跨端第四通道（双向、可同步返回）；仅 UI 按钮回调禁用，其余场景可用，需要返回值时优先（其余三通道：`EXECUTE_SCRIPT` / `ReportingEvents` / PROPERTY 读取 → `reference/context-matrix.md`） |
 | `include("file")` | 加载文件到当前作用域 |
 | `include("file", true)` | 可选加载（文件不存在不报错） |
 

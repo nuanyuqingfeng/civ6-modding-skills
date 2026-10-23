@@ -733,8 +733,8 @@ ModBuddy 工程属性页有一个 **`Custom Properties`** 面板（`Civ6.Project
 1. **生成器脚本（推荐）**：读一份变量表，直接渲染出完整
    `Data/*.sql`、`Text/*.sql`、`.civ6proj`。本 skill 家族的
    `civ6-asset-forge/scripts/gen_leader_2d.py`、`gen_suk_portrait.py` 即此形态。
-   目标文件不存在时脚本新建直写；已存在且内容有变化时，改写结果落到 `<解决方案根>/workspace/gen/` 的
-   同一相对路径，由 AI 用文件编辑工具写入工程对应路径；脚本会在退出码 2 时打印待写入清单。
+   代码文件（`.sql`/`.lua`/`.xml`/`.ini`）与已存在的工程文件一律不写盘：内容与待插入的行写进
+   `<解决方案根>/workspace/gen/reports/` 的数据清单，由人逐行写入工程。
 2. **SQL 拼接**：`INSERT ... SELECT 'PREFIX_' || ...`
    （注意本工程 AGENTS.md 对 `SELECT` 拼接样式另有约定）。
 
@@ -907,6 +907,17 @@ XML / SQL / Lua 同步时的条目格式：
 日常迭代用 `workspace/_tools/build.py` 的 `stage` + `verify`，产物全部落在 `workspace/gen/`，
 不碰游戏目录；确要进游戏时再 `deploy`。体检：`python scripts/check_project_hygiene.py <工程核心文件夹>`。
 
+**workspace/gen 的冗余口径**：
+
+| 子项 | 内容 | 生命周期 |
+|---|---|---|
+| `gen/Mods/<ModName>/` | 暂存部署副本（`build.py stage` 产出） | 每次 `stage` 用 `prune_stale()` 删掉本次没有产出的旧文件；`<Content Include>` 与工程硬链接共用字节 |
+| `gen/reports/` | 待逐行写入工程的数据清单（JSON / TSV / Markdown） | `emit_report()` 的落点；写入工程后即删除 |
+| `gen/<ModName>.modinfo` | `build.py modinfo` 的派生结果 | 派生产物，不参与回收判定 |
+| `gen/*.Art.xml` | **禁止出现** | 见 `SKILL.md`「工程文件写入铁律」第 9 条 |
+
+`python "_projwrite.py" <工程根>` 可单独跑一次回收，输出「回收 N 项 / 待写回 N 项 / 孤立 N 项」。
+
 ### 工程目录位置与两侧归属（硬性）
 
 **源工程目录不得位于游戏 Mods 加载目录之内**（本机 P2，见 `SKILL.md` 环境路径总表）。
@@ -1009,8 +1020,8 @@ workspace/
 > `.gitattributes` 的完整论证与实测支撑见 `civ6-art-reference/reference/cook-layer.md §2.3.1`
 > 与 `gotchas.md` §68。加完规则后若出现大批"看似被改动"的文件，**先跑
 > `python scripts/normalize_eol.py <工程目录>` 看报告**（默认只报告），确认方向符合上表再写盘 ——
-> `--fix` 时工程内既有文件内容有变化的话，改写结果落到 `<解决方案根>/workspace/gen/` 的同一相对路径，
-> 由 AI 用文件编辑工具写入工程对应路径，脚本在退出码 2 时打印待写入清单；
+> `--fix` 只写美术与音频产物；代码文件的换行偏离清单落到 `<解决方案根>/workspace/gen/reports/normalize_eol_manual.json`，
+> 由人逐行编辑；
 > **不要用 `git add --renormalize .` 一把梭** —— 它会把被 `eol=lf` 覆盖的 Lua/SQL/XML 烘成 LF 写进索引。
 
 ### 加载动作更新（动作定义 / Action definitions）
