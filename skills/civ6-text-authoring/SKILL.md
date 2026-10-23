@@ -3,7 +3,7 @@ name: civ6-text-authoring
 description: "文明6 文本处理的**权威规范**（skill 体系内唯一）：简体中文文本语料（风云变幻为准，27,998 tag）+ 六大类写法规范 —— 领袖与文明 trait 能力 / 区域建筑单位等可关联物品 / **开幕颂词（领袖加载介绍词 LOC_LOADING_INFO_LEADER_*）** / 外交文本 / 相邻加成写法 / Icon 引用规范；另设**模式模块（仅路由）**处理 GameMode 文本。含 zh 语料库（zh_corpus.sqlite / zh_mode_corpus.sqlite / catalog TSV）+ 从 F 盘原版游戏文件按引擎加载顺序（EXP2>EXP1>base）重导的确定性管线。触发词：文本、文案、文本描述、LOC_、LocalizedText、本地化、localization、翻译、多语言、zh_Hans_CN、trait 文本、能力描述、领袖文本、文明文本、区域文本、建筑文本、单位文本、开幕颂词、领袖介绍词、领袖开场白、加载信息、加载文本、加载界面、加载介绍词、loading info、loading_info、LOC_LOADING_INFO_LEADER、opening ode、时代旁白、era、外交文本、diplomacy、KUDO、WARNING、相邻加成、adjacency、图标引用、[ICON_、COLOR、NEWLINE、百科文本、文明百科、pedia、文案润色、措辞优化、游戏模式、模式文本、game mode、GAMEMODE、_mode、蛮族氏族、英雄模式、秘密结社、行业与公司、垄断、天启模式、塔防、戏剧时代、树随机、Barbarian Clans、Heroes、Secret Societies、Monopolies、Apocalypse、Tower Defense、Dramatic Ages、Tree Randomizer。"
 version: "1.0"
 author: 千与千寻瀑
-license: MIT
+license: PolyForm-Noncommercial-1.0.0 (repository root LICENSE)
 category: game-modding
 tags:
   - civ6
